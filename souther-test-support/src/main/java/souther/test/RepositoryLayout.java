@@ -122,9 +122,30 @@ public final class RepositoryLayout {
      * belongs beside the rest of them. Written out wherever it is wanted, it is a fact each writer
      * has taken on: a check that says it is one that would go on looking in the old place, and a
      * walk that says it in order to leave it out is one more copy to find when it moves.
+     *
+     * <p>Kept here rather than answered. A caller handed this can build the path to a build's
+     * output, which is the thing not writing it down was for, so what is answered is whether
+     * something is under one ({@link #isUnderBuildOutput}) or names one
+     * ({@link #namesBuildOutput}), and never the name itself.
      */
-    public static String whereABuildWrites() {
+    private static String whereABuildWrites() {
         return "target";
+    }
+
+    /**
+     * Whether {@code said} names the directory a build writes into, at any step of a path.
+     *
+     * <p>For a rule about what is written down rather than about what is on disk: a check that
+     * works out where compiled output is has said this somewhere, and saying it is what such a
+     * check has in common however it then goes looking.
+     */
+    public static boolean namesBuildOutput(String said) {
+        for (String step : said.split("[/\\\\]")) {
+            if (step.equals(whereABuildWrites())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

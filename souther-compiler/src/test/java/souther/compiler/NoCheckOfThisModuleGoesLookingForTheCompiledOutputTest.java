@@ -33,6 +33,13 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
  * co-occurrence. Naming an output is asked of the call that names one, and finding the files is
  * asked of the word a build's output goes by, which nothing here has any business writing down.
  *
+ * <p><b>Which leaves what hands the location out, and nothing does.</b> A rule against writing the
+ * word is worth nothing while something answers with it, and two things did: a reading said which
+ * output it was, and the repository said what a build calls its directory. Both are kept where they
+ * are worked out, so what is left of the second way in is writing the word — which is what this
+ * asks. Reaching an output any other way needs the repository root and then the word, and that is
+ * the same question again.
+ *
  * <p>What is not refused is reading a class file. This module compiles Souther models and asks what
  * came out of them, and what came out is a value in the test rather than a file anybody went looking
  * for; a rule written over parsing would refuse those as well, and there are many of them.
@@ -73,7 +80,6 @@ class NoCheckOfThisModuleGoesLookingForTheCompiledOutputTest {
 
     @Test
     void andNothingWritesDownWhereABuildPutsWhatItMade() {
-        String said = RepositoryLayout.whereABuildWrites();
         Set<String> writing = new TreeSet<>();
         List<ClassModel> checks = checks();
         assertFalse(checks.isEmpty(), "no check of this module was read at all, so this rule is"
@@ -81,10 +87,8 @@ class NoCheckOfThisModuleGoesLookingForTheCompiledOutputTest {
 
         for (ClassModel each : checks) {
             for (String constant : constantsOf(each)) {
-                for (String step : constant.split("[/\\\\]")) {
-                    if (step.equals(said)) {
-                        writing.add(named(each) + " says `" + constant + "`");
-                    }
+                if (RepositoryLayout.namesBuildOutput(constant)) {
+                    writing.add(named(each) + " says `" + constant + "`");
                 }
             }
         }

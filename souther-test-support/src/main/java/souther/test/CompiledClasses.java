@@ -95,8 +95,15 @@ public final class CompiledClasses {
         }
     }
 
-    /** Which output this is, settled. */
-    public Path root() {
+    /**
+     * Which output this is, settled.
+     *
+     * <p>Not handed out. What a caller can do with an output root is walk it, and a caller that
+     * walks one reads the files this exists to read once — so a reading that answered where it is
+     * would be handing back the way round itself. What the output holds is asked for above; where
+     * it is stays here.
+     */
+    Path root() {
         return root;
     }
 
