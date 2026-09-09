@@ -501,9 +501,10 @@ class AdequacyLensTest {
         Analyzer analyzer = measuring(Adequacy.Level.ALL);
         ModuleGraph graph = graphOf(Map.of(EDGES, noted));
 
-        assertFalse(offersRows(analyzer, EDGES, noted, caret(7, 3), graph),
+        int comment = lineOf(noted, "// what this keeps");
+        assertFalse(offersRows(analyzer, EDGES, noted, caret(comment, 3), graph),
                 "the caret is in the comment");
-        assertTrue(offersRows(analyzer, EDGES, noted, caret(8, 3), graph),
+        assertTrue(offersRows(analyzer, EDGES, noted, caret(comment + 1, 3), graph),
                 "and on the line under it, in the declaration");
     }
 
@@ -519,16 +520,79 @@ class AdequacyLensTest {
     void aSelectionMeetsTheDeclarationWhereTheyShareACharacter() {
         Analyzer analyzer = measuring(Adequacy.Level.ALL);
         ModuleGraph graph = graphOf(Map.of(MODULE, TRIP));
-        int endOfTheDeclaration = "    constructs Submitted, Waiting".length();
+        String lastLine = "    constructs Submitted, Waiting";
+        int first = lineOf(TRIP, "behavior submit");
+        int last = lineOf(TRIP, lastLine);
+        int ends = lastLine.length();
 
-        assertFalse(offersRows(analyzer, MODULE, TRIP, over(8, 0, 9, 0), graph),
+        assertFalse(offersRows(analyzer, MODULE, TRIP, over(first - 1, 0, first, 0), graph),
                 "the blank line above, up to where the declaration starts");
-        assertTrue(offersRows(analyzer, MODULE, TRIP, over(8, 0, 9, 1), graph),
+        assertTrue(offersRows(analyzer, MODULE, TRIP, over(first - 1, 0, first, 1), graph),
                 "and one character further, into it");
-        assertFalse(offersRows(analyzer, MODULE, TRIP, over(10, endOfTheDeclaration, 12, 0), graph),
+        assertFalse(offersRows(analyzer, MODULE, TRIP, over(last, ends, last + 2, 0), graph),
                 "from where the declaration ends, down");
-        assertTrue(offersRows(analyzer, MODULE, TRIP, over(10, endOfTheDeclaration - 1, 12, 0), graph),
+        assertTrue(offersRows(analyzer, MODULE, TRIP, over(last, ends - 1, last + 2, 0), graph),
                 "and one character back, from inside it");
+    }
+
+    private static final String TWO_URI = "file:///two.sou";
+
+    /** Two behaviors alike in everything but their names, each short of the rows its edges want. */
+    private static final String TWO = """
+            module two
+
+            data Amount = Int
+                invariant value >= 0 && value <= 10
+
+            data Ok = { n: Amount }
+
+            behavior first : (a: Amount) -> Ok
+                constructs Ok
+
+            behavior second : (a: Amount) -> Ok
+                constructs Ok
+
+            let first (a) = Ok { n = a }
+            let second (a) = Ok { n = a }
+
+            example first
+                | "mid" : (Amount(5)) -> Ok { n = Amount(5) }
+
+            example second
+                | "mid" : (Amount(5)) -> Ok { n = Amount(5) }
+            """;
+
+    /**
+     * The offer is for the declaration the caret is in, and not for the first one the module holds.
+     *
+     * <p>Two readings of the same declaration meet here: the syntax node the caret is in, and the
+     * behavior the compile prepared. They are joined on where each says the declaration begins, and
+     * a join that let anything else through would answer every caret in the module with whichever
+     * behavior came first. Everything else about these two is the same, so the name in the title is
+     * the whole of what tells the answers apart.
+     */
+    @Test
+    void theOfferNamesTheBehaviorTheCaretIsIn() {
+        Analyzer analyzer = measuring(Adequacy.Level.ALL);
+        ModuleGraph graph = graphOf(Map.of(TWO_URI, TWO));
+
+        assertEquals("Write the rows `first` does not cover",
+                analyzer.codeActions(TWO_URI, TWO, caret(lineOf(TWO, "behavior first"), 4), graph)
+                        .get(0).title());
+        assertEquals("Write the rows `second` does not cover",
+                analyzer.codeActions(TWO_URI, TWO, caret(lineOf(TWO, "behavior second"), 4), graph)
+                        .get(0).title());
+    }
+
+    /** The zero-based line {@code written} is on. */
+    private static int lineOf(String text, String written) {
+        String[] lines = text.split("\n", -1);
+        for (int i = 0; i < lines.length; i++) {
+            if (lines[i].startsWith(written)) {
+                return i;
+            }
+        }
+        throw new IllegalArgumentException("not in the source: " + written);
     }
 
     /** Whether the rows this behavior does not cover are on offer for {@code asked}. */

@@ -797,16 +797,17 @@ public final class Analyzer {
         if (!measure.level().readsRows()) {
             return List.of();
         }
-        // Which declaration is being asked about, before anything is compiled to answer about it.
-        // This reads the document the request arrived with and costs a walk of its top-level nodes;
-        // what comes after is a workspace compile and a search over what it holds, and an editor
-        // asks this every time the cursor moves.
+        // Which declaration is being asked about, asked of the document the request arrived with.
+        // Ahead of the compile because it is what the rest is about: everything below answers about
+        // a behavior, and there is no behavior to answer about until this says so.
         LineIndex lines = new LineIndex(text);
-        SyntaxNode declaration = behaviorDeclarationAsked(root, lines, requested);
-        if (declaration == null) {
+        SyntaxNode declaration = defReaching(root,
+                lines.offsetOf(requested.start().line(), requested.start().character()),
+                lines.offsetOf(requested.end().line(), requested.end().character()));
+        if (declaration == null || declaration.kind() != SyntaxKind.BEHAVIOR_DEF) {
             return List.of();
         }
-        int writtenFrom = writtenFrom(declaration);
+        int declaredAt = writtenFrom(declaration);
         Compilation compilation = compileOf(graph);
         String module = moduleOf(compilation, graph, uri);
         if (module == null) {
@@ -818,8 +819,7 @@ public final class Analyzer {
             return List.of();
         }
         for (Hir.BehaviorDef behavior : written.behaviors()) {
-            if (!isWrittenIn(behavior, uri, graph)
-                    || !startsWithin(lines, behavior.pos(), writtenFrom, declaration.end())) {
+            if (!isWrittenIn(behavior, uri, graph) || !declaredBy(lines, behavior, declaredAt)) {
                 continue;
             }
             // Whether the model owes this behavior anything a row could answer. Asked of the
@@ -859,43 +859,17 @@ public final class Analyzer {
     }
 
     /**
-     * The behavior declaration the request is in, or null where it is in none.
+     * Whether {@code behavior} is what the declaration written at {@code declaredAt} declares.
      *
-     * <p>A declaration is what a caret is inside of while reading it, and it runs from its first
-     * code token to the end of its last. Not the node's span: a node reaches back over the blank
-     * lines and comments in front of it, and a caret on the line above a declaration is where the
-     * next one is written rather than inside this one.
-     *
-     * <p>A caret and a selection are asked differently. A caret is a position, and a position at
-     * either end of a declaration is on it. A selection is a stretch, and it meets the declaration
-     * where the two share a character — so a selection of the blank line above stops at the first
-     * code token rather than reaching past it.
+     * <p>The two are the same declaration read by the two halves of this server, and each says where
+     * it begins: a syntax node's first code token is the {@code behavior} keyword, and so is a
+     * {@link Hir.BehaviorDef}'s own position. So they are joined on that and not on the name — a name
+     * is canonical on one side and as spelled on the other, and a declaration written in a
+     * decomposed spelling would be joined to nothing.
      */
-    private SyntaxNode behaviorDeclarationAsked(SyntaxNode root, LineIndex lines, Range requested) {
-        int from = lines.offsetOf(requested.start().line(), requested.start().character());
-        int to = lines.offsetOf(requested.end().line(), requested.end().character());
-        for (SyntaxNode def : root.childNodes()) {
-            if (def.kind() != SyntaxKind.BEHAVIOR_DEF) {
-                continue;
-            }
-            int written = writtenFrom(def);
-            if (written < 0) {
-                continue;
-            }
-            boolean asked = from == to
-                    ? from >= written && from <= def.end()
-                    : from < def.end() && written < to;
-            if (asked) {
-                return def;
-            }
-        }
-        return null;
-    }
-
-    /** Whether a compiler position is one this document writes between two of its offsets. */
-    private static boolean startsWithin(LineIndex lines, SourcePos pos, int from, int to) {
-        int at = lines.offsetOf(pos.line() - 1, pos.column() - 1);
-        return at >= from && at <= to;
+    private static boolean declaredBy(LineIndex lines, Hir.BehaviorDef behavior, int declaredAt) {
+        SourcePos pos = behavior.pos();
+        return lines.offsetOf(pos.line() - 1, pos.column() - 1) == declaredAt;
     }
 
     /** Whether anything this behavior is short of is a thing writing a row could answer. */
@@ -2355,12 +2329,31 @@ public final class Analyzer {
      * it.
      */
     private SyntaxNode enclosingDef(SyntaxNode root, int offset) {
+        return defReaching(root, offset, offset);
+    }
+
+    /**
+     * The same for a stretch of the document rather than a position: the top-level definition the
+     * request from {@code from} to {@code to} is in, or null where it is in none.
+     *
+     * <p>A position and a stretch are asked differently. A position at either end of a definition is
+     * on it, which is what a caret at the end of a line is. A stretch meets a definition where the
+     * two share a character — read as a position is, a selection of the blank line above would
+     * reach the definition below by ending where its first character begins.
+     */
+    private SyntaxNode defReaching(SyntaxNode root, int from, int to) {
         for (SyntaxNode def : root.childNodes()) {
             if (!DEFINITIONS.contains(def.kind())) {
                 continue;
             }
             int written = writtenFrom(def);
-            if (written >= 0 && offset >= written && offset <= def.end()) {
+            if (written < 0) {
+                continue;
+            }
+            boolean reaches = from == to
+                    ? from >= written && from <= def.end()
+                    : from < def.end() && written < to;
+            if (reaches) {
                 return def;
             }
         }
