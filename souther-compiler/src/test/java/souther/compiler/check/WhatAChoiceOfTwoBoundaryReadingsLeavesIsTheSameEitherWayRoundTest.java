@@ -54,23 +54,27 @@ class WhatAChoiceOfTwoBoundaryReadingsLeavesIsTheSameEitherWayRoundTest {
      * <p>Nothing said of it, stopped at one of two places, stopped where no value is, and each of
      * those with a line on it nothing placed — which are the four the type names, crossed with
      * whether a line is waiting.
+     *
+     * <p><b>Made the way a reading makes one.</b> Which state a range becomes is decided where a
+     * range becomes a state, so a stopped-nowhere written out by hand here would be one these laws
+     * hold of and the reading never produces — and the decision itself would go unasked.
      */
     private static List<BoundaryState> states() {
         List<BoundaryState> out = new ArrayList<>();
-        for (Map<DerivedNumber, BoundaryState.Left> left : List.of(
-                Map.<DerivedNumber, BoundaryState.Left>of(),
-                Map.<DerivedNumber, BoundaryState.Left>of(LENGTH,
-                        new BoundaryState.Left.Known(FROM_TWO)),
-                Map.<DerivedNumber, BoundaryState.Left>of(LENGTH,
-                        new BoundaryState.Left.Known(FROM_THREE)),
-                Map.<DerivedNumber, BoundaryState.Left>of(LENGTH,
-                        new BoundaryState.Left.NothingLeft()),
+        for (BoundaryState stopped : List.of(
+                BoundaryState.nothing(),
+                BoundaryState.bounded(LENGTH, FROM_TWO),
+                BoundaryState.bounded(LENGTH, FROM_THREE),
+                BoundaryState.bounded(LENGTH, CROSSED),
                 // A second number beside the first, so that a rule mixing them is here too.
-                Map.<DerivedNumber, BoundaryState.Left>of(SIZE,
-                        new BoundaryState.Left.Known(FROM_TWO)))) {
-            for (Set<OpenEnd> open : List.of(Set.<OpenEnd>of(), Set.of(ONE_LINE),
-                    Set.of(ANOTHER_LINE), Set.of(ONE_LINE, ANOTHER_LINE))) {
-                out.add(new BoundaryState(left, open));
+                BoundaryState.bounded(SIZE, FROM_TWO))) {
+            for (List<OpenEnd> open : List.of(List.<OpenEnd>of(), List.of(ONE_LINE),
+                    List.of(ANOTHER_LINE), List.of(ONE_LINE, ANOTHER_LINE))) {
+                BoundaryState waiting = stopped;
+                for (OpenEnd each : open) {
+                    waiting = waiting.both(BoundaryState.leftOpen(each));
+                }
+                out.add(waiting);
             }
         }
         return out;
