@@ -64,8 +64,42 @@ class AChoiceIsWhereAnAuthorGoesAndNotTheClauseAroundItTest {
                                 + " || Int.abs(n) >= 5", "v.s"));
     }
 
+    /**
+     * And where both readings reach one choice, they reach one place.
+     *
+     * <p>Two entries and one address. They are two facts — what may stand at a position, and where
+     * the values there stop — so a document folding them would answer one of the two questions
+     * twice; and they are one thing for an author to do, so entries that named no place left a
+     * reader to lift one and find the other still there.
+     *
+     * <p>Asked of the addresses and not of the words. Two sentences that happen to mention a choice
+     * apiece say nothing about whether it is the same choice, which is the whole of what a reader
+     * holding both wants to know.
+     */
+    @Test
+    void bothReadingsOfOneChoiceSendAnAuthorToOnePlace() {
+        String clause = "n >= 2 || (Int.abs(n) >= 5 && String.reverse(s) /= \"\")";
+        assertEquals(List.of("· not accounted for: invariant N (r) — which values may stand at"
+                        + " v.s: left open by a choice in it whose other alternative this compiler"
+                        + " does not read, at 4:26; written in a form this compiler does not read"),
+                accountedFor(clause, "v.s"),
+                "the values reading is short at the choice written at 4:26");
+        assertEquals(List.of("· not read: invariant N (r) — left open by a choice in it whose other"
+                        + " alternative this compiler does not read, about `v.n`, at 4:26"),
+                linesStartingWith(clause, "· not read:"),
+                "and the reading of ends is short at the same one, so an author has one place to"
+                        + " go and two things they are told about it");
+    }
+
     /** The lines of the report about what may stand at {@code position} under {@code clause}. */
     private static List<String> accountedFor(String clause, String position) {
+        return linesStartingWith(clause, "· not accounted for:").stream()
+                .filter(each -> each.contains("stand at " + position + ":"))
+                .toList();
+    }
+
+    /** The lines of the report about {@code clause} that begin with {@code word}. */
+    private static List<String> linesStartingWith(String clause, String word) {
         String model = """
                 module m
                 %s
@@ -80,8 +114,7 @@ class AChoiceIsWhereAnAuthorGoesAndNotTheClauseAroundItTest {
         compilation.answerEverything();
         return AdequacyReport.of(compilation).human(SourceNameResolver.identity()).lines()
                 .map(String::strip)
-                .filter(each -> each.startsWith("· not accounted for:")
-                        && each.contains("stand at " + position + ":"))
+                .filter(each -> each.startsWith(word))
                 .toList();
     }
 }
