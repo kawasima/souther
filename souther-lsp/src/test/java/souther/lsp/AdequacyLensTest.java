@@ -120,7 +120,12 @@ class AdequacyLensTest {
                 .codeLenses(MODULE, graphOf(Map.of(MODULE, TRIP)));
 
         assertEquals(1, lenses.size());
-        assertEquals(9, lenses.get(0).range().start().line(), "the `behavior` line, zero-based");
+        // And drawn at a point. A lens is read for the line its range starts on, and the offer to
+        // write the rows is what the stretch of a declaration is for — the two are separate answers
+        // about the same declaration, and a lens given a width would be the one lent to the other.
+        int line = lineOf(TRIP, "behavior submit");
+        assertEquals(new Range(new Position(line, 0), new Position(line, 0)),
+                lenses.get(0).range());
         assertEquals("1 row · out 1/2 · boundary 2/5 · branch 1/2", lenses.get(0).title());
     }
 
