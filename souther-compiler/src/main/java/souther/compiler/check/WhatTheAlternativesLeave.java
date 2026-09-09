@@ -1,5 +1,7 @@
 package souther.compiler.check;
 
+import souther.compiler.numeric.OrderedInterval;
+
 import java.util.LinkedHashSet;
 import java.util.Set;
 
@@ -98,20 +100,28 @@ record WhatTheAlternativesLeave(Set<FactSubject> mayHoldDownOnLeft,
      */
     private static Set<FactSubject> leftWholeBy(Confinement.Planned<FactSubject> one,
                                                 Confinement.Planned<FactSubject> other) {
-        Set<FactSubject> bounded = new LinkedHashSet<>(one.ordered().boundedAt());
-        bounded.addAll(other.ordered().boundedAt());
-        Set<FactSubject> out = new LinkedHashSet<>();
+        Set<FactSubject> bounded = one.ordered().boundedAt();
+        if (!other.ordered().boundedAt().isEmpty()) {
+            bounded = new LinkedHashSet<>(bounded);
+            bounded.addAll(other.ordered().boundedAt());
+        }
+        Set<FactSubject> out = null;
         for (FactSubject position : bounded) {
             Carrier on = one.carriers().get(position);
             if (on == null) {
                 continue;
             }
-            if (one.ordered().valuesAt(position, on).join(other.ordered().valuesAt(position, on))
-                    .sameValuesAs(on.extent())) {
-                out.add(position);
+            OrderedInterval extent = on.extent();
+            if (!one.ordered().valuesAt(position, on).join(other.ordered().valuesAt(position, on))
+                    .sameValuesAs(extent)) {
+                continue;
             }
+            if (out == null) {
+                out = new LinkedHashSet<>();
+            }
+            out.add(position);
         }
-        return out;
+        return out == null ? Set.of() : out;
     }
 
     /** Whether the left alternative leaves {@code position} at every value of its order, wherever
@@ -128,6 +138,12 @@ record WhatTheAlternativesLeave(Set<FactSubject> mayHoldDownOnLeft,
     /** Whether the choice itself stops {@code position} short of its order, wherever it stands. */
     boolean stops(FactSubject position) {
         return !mayLeaveWhole.contains(position);
+    }
+
+    /** Whether there is any position at all a copy of this choice left whole, which is what a
+     *  caller with nothing to strike off asks. */
+    boolean leavesNothingWhole() {
+        return mayLeaveWhole.isEmpty();
     }
 
     /** What one more occurrence of the same choice leaves, taken in beside this. */

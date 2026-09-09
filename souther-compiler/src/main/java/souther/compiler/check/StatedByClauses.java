@@ -251,6 +251,9 @@ sealed interface StatedByClauses {
         /** The same, with the positions the choice between the two leaves whole struck off. */
         private static Set<FactSubject> left(Set<FactSubject> stopped,
                                              WhatTheAlternativesLeave narrowed) {
+            if (stopped.isEmpty() || narrowed.leavesNothingWhole()) {
+                return stopped;
+            }
             Set<FactSubject> out = new LinkedHashSet<>();
             stopped.forEach(position -> {
                 if (narrowed.stops(position)) {

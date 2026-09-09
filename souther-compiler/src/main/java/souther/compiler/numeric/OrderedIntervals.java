@@ -172,14 +172,26 @@ public final class OrderedIntervals<A> {
      * all of anything.
      */
     public Set<A> stoppedShortOfTheirOrders(Map<A, ? extends ValueOrder> orders) {
-        Set<A> out = new LinkedHashSet<>();
-        ranges().forEach((position, range) -> {
-            ValueOrder on = orders.get(position);
-            if (on == null || !on.extent().meet(range).sameValuesAs(on.extent())) {
-                out.add(position);
+        // Nothing until there is something to hold. This is asked of every leaf of every clause,
+        // and most leaves stop no position at all — a set built and wrapped for each of them is
+        // made as often as anything in this reading.
+        Set<A> out = null;
+        for (Map.Entry<A, OrderedInterval> each : ranges().entrySet()) {
+            ValueOrder on = orders.get(each.getKey());
+            if (on != null && !stopsShortOf(each.getValue(), on.extent())) {
+                continue;
             }
-        });
-        return Collections.unmodifiableSet(out);
+            if (out == null) {
+                out = new LinkedHashSet<>();
+            }
+            out.add(each.getKey());
+        }
+        return out == null ? Set.of() : Collections.unmodifiableSet(out);
+    }
+
+    /** Whether {@code range} leaves less of {@code extent} than all of it. */
+    private static boolean stopsShortOf(OrderedInterval range, OrderedInterval extent) {
+        return !extent.meet(range).sameValuesAs(extent);
     }
 
     /** Whether nothing satisfies these rules, at a position or otherwise. */

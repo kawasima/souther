@@ -108,8 +108,20 @@ public record OrderedInterval(Endpoint low, Endpoint high) {
     /** Both, which is what a conjunction of rules leaves: a value inside this one and inside the
      *  other. */
     public OrderedInterval meet(OrderedInterval other) {
-        return new OrderedInterval(Endpoint.lower(low, other.low),
-                Endpoint.upper(high, other.high));
+        Endpoint tighterLow = Endpoint.lower(low, other.low);
+        Endpoint tighterHigh = Endpoint.upper(high, other.high);
+        // Whichever side the meet turned out to be, said as that side. Both ends come back as one
+        // of the two they were chosen from, so a conjunction that took nothing off either side is
+        // told by the ends being the ones that went in — and most are: a range met with the order
+        // it was already read against is that range, and holding every position against its order
+        // is asked of every position of every choice.
+        if (tighterLow == low && tighterHigh == high) {
+            return this;
+        }
+        if (tighterLow == other.low && tighterHigh == other.high) {
+            return other;
+        }
+        return new OrderedInterval(tighterLow, tighterHigh);
     }
 
     /**
