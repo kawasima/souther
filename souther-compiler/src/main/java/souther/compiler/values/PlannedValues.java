@@ -587,9 +587,11 @@ public sealed interface PlannedValues<A> {
         Refinement<A> mine = Refinement.of(here.sameness(), heldAsOne);
         Refinement<A> theirs = Refinement.of(there.sameness(), heldAsOne);
         Map<Sameness.Block<A>, AdmittedPlan> out = new LinkedHashMap<>();
-        named(here, there, heldAsOne).forEach(each -> out.put(each, AdmittedPlan.meeting(
-                List.of(promisedAcross(here, mine.fineBlocksWithin(each)),
-                        promisedAcross(there, theirs.fineBlocksWithin(each))))));
+        named(here, there, heldAsOne).forEach(each -> {
+            List<AdmittedPlan> promised = promisesFor(here, mine, each);
+            promised.addAll(promisesFor(there, theirs, each));
+            out.put(each, AdmittedPlan.meeting(promised));
+        });
         return out;
     }
 
@@ -626,18 +628,19 @@ public sealed interface PlannedValues<A> {
         return of.guaranteed().getOrDefault(own, of.defaultGuaranteed());
     }
 
-    /** What one reading promises at all of {@code own} at once, which is a description and costs
-     *  nothing to say. Handed over together rather than folded, so what it comes to does not
-     *  follow the order the blocks were walked in. */
-    private static <A> AdmittedPlan promisedAcross(Settled<A> of, Set<Sameness.Block<A>> own) {
-        // Where the coarser relation states no equality this one does not, the block is one of
-        // this reading's own and what it promises there is the whole answer.
-        if (own.size() == 1) {
-            return promisedAt(of, own.iterator().next());
-        }
-        List<AdmittedPlan> these = new ArrayList<>();
-        own.forEach(each -> these.add(promisedAt(of, each)));
-        return AdmittedPlan.meeting(these);
+    /**
+     * Every promise one reading made about the value {@code block} stands for — see
+     * {@link AdmissibleValues#promisesFor}, whose reasoning this is.
+     *
+     * <p>The promises and not what they come to, though a description costs nothing to say. What a
+     * block is promised is one meet over both sides, and one written here would be a bracket the
+     * meet below has to be relied on to take out again.
+     */
+    private static <A> List<AdmittedPlan> promisesFor(Settled<A> of, Refinement<A> into,
+                                                      Sameness.Block<A> block) {
+        List<AdmittedPlan> out = new ArrayList<>();
+        into.fineBlocksWithin(block).forEach(each -> out.add(promisedAt(of, each)));
+        return out;
     }
 
     /** What each position holds across the alternatives, which a description makes free. */

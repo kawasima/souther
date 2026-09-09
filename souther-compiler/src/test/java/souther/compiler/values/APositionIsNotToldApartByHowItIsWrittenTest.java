@@ -67,9 +67,9 @@ class APositionIsNotToldApartByHowItIsWrittenTest {
     /**
      * A block is its positions, so the same ones gathered in any order are one block.
      *
-     * <p>Over every order they can be gathered in and not over two of them. What this is about is
-     * that no order decides anything, and a property over permutations is the only way to say it —
-     * a pair of cases is a pair of cases, and the ordering this replaced passed one of them.
+     * <p>Over every order they can be gathered in and not over two of them. What is claimed is that
+     * no order decides anything, and a pair of cases claims it of that pair — an order over the
+     * positions' renderings passes one of them.
      */
     @Test
     void aBlockIsOneBlockHoweverItsPositionsWereGathered() {

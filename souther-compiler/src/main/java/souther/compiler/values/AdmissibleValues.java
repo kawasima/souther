@@ -1728,9 +1728,15 @@ public final class AdmissibleValues<A> {
      * missing one standing at its own default.
      *
      * <p>Said in the conjunction's own blocks, which is the coordinate the answer being built is
-     * in and is coarser than either side's. What a side promises there is what it promises at every
-     * one of its own blocks the positions fall in ({@link #promisedFor}), because they are one
-     * value here and a value standing in this reading stands in that side.
+     * in and is coarser than either side's. One of those blocks covers several of a side's own, and
+     * what that side promises there is what it promises at every one of them — a value at the block
+     * is a value at each of the positions in it, and each of those stands in that side.
+     *
+     * <p><b>So what a block is promised is one meet over every promise either side made about it,
+     * and one thing built.</b> The promises are gathered ({@link #promisesFor}) and the set is made
+     * where they are all in hand: a side's own met first would build a set nobody asked about, and
+     * what the block cost would be how many blocks each side happened to hold its positions in
+     * rather than what was asked of it.
      *
      * <p>The keys are the footprint as well as the values — the blocks a rule of these readings
      * reached — so a block either side named is a key here whatever the promise came to. Dropped for coming to the default, which blocks a rule reached would turn
@@ -1746,36 +1752,33 @@ public final class AdmissibleValues<A> {
         Map<Sameness.Block<A>, ValueSet> out = new LinkedHashMap<>();
         // What could not be built exactly comes back as nothing promised, which is what a promise
         // widens to. Nothing is recorded: see {@link #meet}.
-        named.forEach(each -> out.put(each, sets.meetPromised(each,
-                these.promisedFor(each, mine, sets), those.promisedFor(each, theirs, sets)).set()));
+        named.forEach(each -> {
+            List<ValueSet> promised = these.promisesFor(each, mine);
+            promised.addAll(those.promisesFor(each, theirs));
+            out.put(each, sets.meetingPromised(each, promised).set());
+        });
         return out;
     }
 
     /**
-     * What this reading promises the value {@code block} stands for, {@code block} being a block of
-     * a relation that holds as one everything this one does.
+     * Every promise this reading made about the value {@code block} stands for, {@code block} being
+     * a block of a relation that holds as one everything this one does.
      *
-     * <p>What it promises at every one of its own blocks those positions fall in, met. Read off one
-     * of them, the answer would be about the positions that block happens to hold: a reading
-     * stating {@code p == q} and promising {@code S} there, asked about a conjunction's
-     * {@code p == q == r}, promises {@code S} of {@code p} and {@code q} and its default of
-     * {@code r} — and a value at the three of them is a value at each, so what is promised is what
-     * both of those say and not whichever was reached first.
+     * <p>One per block of its own those positions fall in, since a value at {@code block} is a
+     * value at each of them: a reading stating {@code p == q} and promising {@code S} there, asked
+     * about a conjunction's {@code p == q == r}, promises {@code S} of {@code p} and {@code q} and
+     * its default of {@code r}, and what stands at the three is what both of those admit.
      *
-     * <p>Met under the allowance, because these are sets and putting two of them together is
-     * building a third — and handed over at once rather than folded, so what it costs is not the
-     * order this reading's positions were walked in ({@link Allowance#meetingPromised}).
+     * <p><b>The promises and not what they come to.</b> They are met with the other side's, and a
+     * set built here would be one nobody asked for — charged to the block, and then charged again
+     * where the answer that was wanted is built. What a block is promised is one question, so it is
+     * one thing built ({@link Allowance#meetingPromised}).
      */
-    private ValueSet promisedFor(Sameness.Block<A> block, Refinement<A> into, Allowance<A> sets) {
-        Set<Sameness.Block<A>> own = into.fineBlocksWithin(block);
-        // Where the coarser relation states no equality this one does not, the block is one of
-        // this reading's own and what it promises there is the whole answer.
-        if (own.size() == 1) {
-            return guaranteed().getOrDefault(own.iterator().next(), defaultGuaranteed());
-        }
-        List<ValueSet> mine = new ArrayList<>();
-        own.forEach(each -> mine.add(guaranteed().getOrDefault(each, defaultGuaranteed())));
-        return sets.meetingPromised(block, mine).set();
+    private List<ValueSet> promisesFor(Sameness.Block<A> block, Refinement<A> into) {
+        List<ValueSet> out = new ArrayList<>();
+        into.fineBlocksWithin(block)
+                .forEach(each -> out.add(guaranteed().getOrDefault(each, defaultGuaranteed())));
+        return out;
     }
 
 }

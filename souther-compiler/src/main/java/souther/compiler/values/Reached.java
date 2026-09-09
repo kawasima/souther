@@ -13,10 +13,6 @@ import java.util.Map;
  * alternative is worked out once and kept, because it is taken again for every block the choice
  * names.
  *
- * <p>Read through a position before, one taken out of the block. Which is this same step where the
- * block is one an alternative holds whole, and a different question where it is not — and nothing
- * in the spelling said which of the two it was.
- *
  * @param <A> what a position is called
  */
 record Reached<A>(PlannedValues.Settled<A> of,

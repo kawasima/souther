@@ -114,26 +114,39 @@ public final class Sameness<A> {
     public final void filing(Set<Block<A>>... these) {
         for (Set<Block<A>> filed : these) {
             for (Block<A> block : filed) {
-                // Asked of each position rather than of the blocks they land in. The two say the
-                // same thing — a block every position of it lands on is the block they are all in
-                // — and this one reads nothing but the map, where gathering the blocks first is a
-                // set built for every answer a reading files.
-                for (A member : block.members()) {
-                    if (!block.equals(blockOf(member))) {
-                        throw new IllegalArgumentException("an answer at " + block
-                                + " is filed under a coordinate this reading does not answer in,"
-                                + " which holds those positions as " + InOneOrder.of(holding(block)));
-                    }
+                if (!has(block)) {
+                    throw new IllegalArgumentException("an answer at " + block
+                            + " is filed under a coordinate this reading does not answer in,"
+                            + " which holds those positions as " + InOneOrder.of(holding(block)));
                 }
             }
         }
     }
 
+    /**
+     * Whether this is one of the blocks this relation has.
+     *
+     * <p>Asked of every position rather than of one, because one position of a block says which
+     * block it is on and says nothing about where the rest are. A block some of whose positions
+     * this holds elsewhere is not a block of it, and neither is one holding fewer positions than
+     * this holds together.
+     *
+     * <p>What a question about a block may be asked of. A relation answers about the blocks it
+     * has; asked about any other set of positions it has no answer, and one worked out from a
+     * position taken out of the set would be an answer about that position's block.
+     */
+    boolean has(Block<A> block) {
+        for (A member : block.members()) {
+            if (!block.equals(blockOf(member))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     /** The blocks this holds {@code block}'s positions in, which is one block where it holds them
      *  as {@code block} does and several where it cuts them apart. */
     Set<Block<A>> holding(Block<A> block) {
-        // One position is in one block, so there is nothing to gather and nothing two of them
-        // could disagree about. Which is what nearly every block asked about is.
         if (block.isOne()) {
             return Set.of(blockOf(block.members().iterator().next()));
         }
@@ -285,11 +298,6 @@ public final class Sameness<A> {
      * them in the order the value declares them ({@code ProofOfEmptiness}), and a rendering puts
      * the renderings in order ({@link InOneOrder}).
      *
-     * <p>Ordered by their spellings before, so that a proof would not read differently for the
-     * order the equalities behind it were written in. What a spelling gives is an order over
-     * renderings, and putting the members in it made an order over positions — which two positions
-     * rendering alike leave in the order a closure reached them, and which the reader that owed the
-     * promise never read.
      */
     public static final class Block<A> {
 

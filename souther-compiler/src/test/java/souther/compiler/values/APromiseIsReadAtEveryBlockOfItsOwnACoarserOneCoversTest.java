@@ -14,10 +14,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * what it promises there is what it promises at every one of its own blocks those positions fall
  * in. A value at the three of them is a value at each.
  *
- * <p>Read off one position of the block before. Which of its own blocks answered then turned on
- * which position was taken out, so a side promising {@code S} where it held two positions as one
- * answered {@code S} or its default depending on where the pick landed — and the default is every
- * value, which is a promise nothing proved.
+ * <p>Every one of them and not one, because a side's default is every value: a promise read at one
+ * of its blocks and not the rest says a value stands wherever that block's positions are silent,
+ * which nothing proved.
  */
 class APromiseIsReadAtEveryBlockOfItsOwnACoarserOneCoversTest {
 
