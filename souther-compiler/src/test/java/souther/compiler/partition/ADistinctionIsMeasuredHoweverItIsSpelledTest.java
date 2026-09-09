@@ -2,15 +2,12 @@ package souther.compiler.partition;
 
 import org.junit.jupiter.api.Test;
 
-import souther.compiler.ast.Hir;
+import souther.compiler.check.DeclaredSig;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.RuleReadings;
-import souther.compiler.check.Prepared;
-import souther.compiler.check.Sig;
 import souther.compiler.inputs.InputDomain;
 import souther.compiler.query.Bodies;
 import souther.compiler.query.Compilation;
-import souther.compiler.query.Shapes;
 
 import java.util.List;
 import java.util.Map;
@@ -43,12 +40,10 @@ class ADistinctionIsMeasuredHoweverItIsSpelledTest {
         Compilation compilation = Compilation.ofSource(source, "Main");
         compilation.answerEverything();
         String module = compilation.modules().get(0);
-        Prepared prepared = compilation.db().ask(new Shapes.Prepared(module)).value();
-        Map<String, Sig> sigs = compilation.db().ask(new Bodies.Signatures(module)).value();
-        Hir.SpecBehavior spec = (Hir.SpecBehavior) prepared.behaviors().stream()
-                .filter(b -> b.name().equals(behavior)).findFirst().orElseThrow();
+        Map<String, DeclaredSig> sigs =
+                compilation.db().ask(new Bodies.DeclaredSignatures(module)).value();
         RuleReadingSource rules = RuleReadings.of(compilation, module);
-        return Partitions.of(spec.name(), InputDomain.of(spec, sigs.get(behavior), rules, souther.compiler.query.ReadAs.THE_COMPILATION_DOES),
+        return Partitions.of(behavior, InputDomain.of(sigs.get(behavior), rules, souther.compiler.query.ReadAs.THE_COMPILATION_DOES),
                 rules, souther.compiler.query.ReadAs.THE_COMPILATION_DOES);
     }
 

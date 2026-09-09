@@ -632,31 +632,34 @@ public final class AdmissibleValues<A> {
              * The alternative this is, or where nothing stands in it.
              *
              * <p>Two ways for a conjunction of two alternatives to stand for nothing, and both of
-             * them are answered here. A side may be left no value, which is a product with an empty
+             * them are looked for. A side may be left no value, which is a product with an empty
              * side and no alternative at all; and the denials may state a value to differ from
-             * itself, which nothing satisfies whatever the sides hold.
+             * itself, which nothing satisfies whatever the sides hold. Neither is asked because
+             * the other came back empty — an alternative refused both ways is refused both ways,
+             * and which of them a reader would be shown is otherwise settled by the order the two
+             * happen to be asked in.
+             *
+             * <p><b>Which is also what says whether it stands.</b> The proof is complete, so it is
+             * empty exactly where neither witness was found, and there is no second reading of the
+             * sides that could disagree with it.
              *
              * <p><b>Answered here and not by keeping it and reading it later.</b> An alternative
              * standing for nothing is not a member of a union — a choice between it and something
              * else is that something else — so keeping it would make the union hold what its
              * alternatives do not, and a reading of it say that it admits what none of them does.
              * What is carried out instead is why, since that is knowable only here.
+             *
+             * <p>Less what a position answers for itself, since what is kept is the reading's own
+             * proof. An alternative left nothing at one position is refused, and the place to read
+             * why is that position's own rules — see {@link Refusal#withoutWhatAPositionAnswers}.
              */
-            Held<A> stands() {
-                Set<Sameness.Block<A>> emptied = new LinkedHashSet<>();
-                at.forEach((block, set) -> {
-                    if (!block.isOne() && set.isEmpty()) {
-                        emptied.add(block);
-                    }
-                });
-                if (at.values().stream().anyMatch(ValueSet::isEmpty)) {
-                    return new Held.Nothing<>(Refusal.atEachOf(emptied));
+            Held<A> held() {
+                Refusal<A> refused = Refusal.ofAnAlternative(at, (_, set) -> set.isEmpty(),
+                        WhatARelationShows.statedApart(apart));
+                if (refused.isNowhere()) {
+                    return Held.Alternatives.of(new Alternative<>(new Box<>(at), apart));
                 }
-                Lacks<A> stated = apart.apartFromThemselves();
-                if (!stated.isEmpty()) {
-                    return new Held.Nothing<>(Refusal.ofThemTogether(stated));
-                }
-                return Held.Alternatives.of(new Alternative<>(new Box<>(at), apart));
+                return new Held.Nothing<>(refused.withoutWhatAPositionAnswers());
             }
         }
 
@@ -1096,7 +1099,7 @@ public final class AdmissibleValues<A> {
             // what they were described as holding, so building the descriptions is not where it
             // could be lost or gained — and whether anything stands in the alternative is asked the
             // one way it is asked wherever two of them are put together.
-            Held<A> said = new Alternative.Met<>(builtIn(box, by, gaveUp), box.apart()).stands();
+            Held<A> said = new Alternative.Met<>(builtIn(box, by, gaveUp), box.apart()).held();
             switch (said) {
                 case Held.Alternatives<A> it -> {
                     live.addAll(it.boxes());
@@ -1370,29 +1373,26 @@ public final class AdmissibleValues<A> {
     }
 
     /**
-     * Where one alternative was refused, which is at its blocks or about several of them together.
+     * Where one alternative was refused, which is at its blocks and about several of them together.
      *
-     * <p>The blocks first, because a lack at a block is the nearer answer: it names a place whose
-     * own rules leave it nothing, where a lack about several of them names no such place. An
-     * alternative refused both ways is refused at the blocks, and the relation is what is left to
-     * say where no block has nothing on its own.
+     * <p>Both, and neither because the other found nothing. Which of the two a report writes is a
+     * question about a refusal and is asked of the whole of one ({@link Refusal#nearest}); asked
+     * instead by leaving the relation unread wherever a block was refused, the refusal a reader is
+     * handed would hold whichever witness this walk looked for first.
+     *
+     * <p>Every block a witness, blocks of one position among them. What this asks of a block is
+     * not the reading's own rules but what those rules come to against whatever the reader is
+     * holding them against, so a lone position refused here is a place that reading did not refuse
+     * on its own and is a place to name.
      */
     private Refusal<A> refusalIn(Alternative<A> box, AskedOfEachBlock<A> asked,
                                  AskedOfARelation<A> relating) {
-        Set<Sameness.Block<A>> here = new LinkedHashSet<>();
         // The block and not its positions. What was refused is the one value those positions
         // share, and each of them may be left something on its own — taken apart here, the
         // proof would say a lack is at a place whose own rules are fine with it.
-        box.at().forEach((block, set) -> {
-            if (asked.of(block, set).isEmpty()) {
-                here.add(block);
-            }
-        });
-        if (!here.isEmpty()) {
-            return Refusal.atEachOf(here);
-        }
-        return relating.of(box.apart(), box.product()) instanceof Apartness.Reduction.Nothing<A> it
-                ? Refusal.ofThemTogether(it.lacks()) : Refusal.nowhere();
+        return Refusal.ofAnAlternative(box.at(),
+                (block, set) -> asked.of(block, set).isEmpty(),
+                WhatARelationShows.askedOf(relating, box.apart(), box.product()));
     }
 
     /**
@@ -1631,7 +1631,7 @@ public final class AdmissibleValues<A> {
         Refusal<A> dropped = null;
         for (Alternative<A> here : alternatives()) {
             for (Alternative<A> there : other.alternatives()) {
-                switch (here.narrowedWith(there, sets, gaveUp).stands()) {
+                switch (here.narrowedWith(there, sets, gaveUp).held()) {
                     case Held.Alternatives<A> it -> live.addAll(it.boxes());
                     case Held.Nothing<A> it -> dropped = dropped == null ? it.shown()
                             : Refusal.shownByBoth(dropped, it.shown());

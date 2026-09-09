@@ -2,16 +2,13 @@ package souther.compiler.partition;
 
 import org.junit.jupiter.api.Test;
 
-import souther.compiler.ast.Hir;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.RuleReadings;
-import souther.compiler.check.Prepared;
-import souther.compiler.check.Sig;
+import souther.compiler.check.DeclaredSig;
 import souther.compiler.core.Core;
 import souther.compiler.inputs.InputDomain;
 import souther.compiler.query.Bodies;
 import souther.compiler.query.Compilation;
-import souther.compiler.query.Shapes;
 
 import java.util.List;
 import java.util.Map;
@@ -41,7 +38,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
  */
 class AClassIsOneThePositionCanHoldAndNothingTakesItAwayTest {
 
-    private record Read(Compilation compilation, String module, Hir.SpecBehavior spec, Sig sig,
+    private record Read(Compilation compilation, String module, String behavior, DeclaredSig sig,
                         RuleReadingSource rules) {}
 
     private static Read of(String source, String behavior) {
@@ -54,18 +51,16 @@ class AClassIsOneThePositionCanHoldAndNothingTakesItAwayTest {
                 souther.compiler.meta.ModulePath.EMPTY);
         compilation.answerEverything();
         String module = compilation.modules().get(nth);
-        Prepared prepared = compilation.db().ask(new Shapes.Prepared(module)).value();
-        Map<String, Sig> sigs = compilation.db().ask(new Bodies.Signatures(module)).value();
+        Map<String, DeclaredSig> sigs =
+                compilation.db().ask(new Bodies.DeclaredSignatures(module)).value();
         RuleReadingSource rules = RuleReadings.of(compilation, module);
-        Hir.SpecBehavior spec = (Hir.SpecBehavior) prepared.behaviors().stream()
-                .filter(b -> b.name().equals(behavior)).findFirst().orElseThrow();
-        return new Read(compilation, module, spec, sigs.get(behavior), rules);
+        return new Read(compilation, module, behavior, sigs.get(behavior), rules);
     }
 
     /** The classes of the one position, off the declarations alone. */
     private static List<String> declared(String source, String behavior) {
         Read read = of(source, behavior);
-        return classesOf(Partitions.of(read.spec().name(), InputDomain.of(read.spec(), read.sig(), read.rules(), souther.compiler.query.ReadAs.THE_COMPILATION_DOES), read.rules(), souther.compiler.query.ReadAs.THE_COMPILATION_DOES));
+        return classesOf(Partitions.of(read.behavior(), InputDomain.of(read.sig(), read.rules(), souther.compiler.query.ReadAs.THE_COMPILATION_DOES), read.rules(), souther.compiler.query.ReadAs.THE_COMPILATION_DOES));
     }
 
     /** And the same with what the behavior's own body draws taken in. */
@@ -83,7 +78,7 @@ class AClassIsOneThePositionCanHoldAndNothingTakesItAwayTest {
                 checked.analysisBodies().get(behavior), body,
                 checked.plan(), inputs, read.rules());
         Partitions.Partitioning base =
-                Partitions.of(read.spec().name(), inputs, read.rules(), souther.compiler.query.ReadAs.THE_COMPILATION_DOES);
+                Partitions.of(read.behavior(), inputs, read.rules(), souther.compiler.query.ReadAs.THE_COMPILATION_DOES);
         return classesOf(Partitions.withThresholds(base, inputs.quantities(read.rules()),
                 guards.thresholds(), read.rules(), souther.compiler.query.ReadAs.THE_COMPILATION_DOES,
                 guards.noLine(), guards.singled(), guards.between(),
@@ -115,7 +110,7 @@ class AClassIsOneThePositionCanHoldAndNothingTakesItAwayTest {
     /** The classes at {@code path}, off the declarations alone. */
     private static List<String> declaredAt(String source, String behavior, String path) {
         Read read = of(source, behavior);
-        return classesAt(Partitions.of(read.spec().name(), InputDomain.of(read.spec(), read.sig(), read.rules(), souther.compiler.query.ReadAs.THE_COMPILATION_DOES), read.rules(), souther.compiler.query.ReadAs.THE_COMPILATION_DOES),
+        return classesAt(Partitions.of(read.behavior(), InputDomain.of(read.sig(), read.rules(), souther.compiler.query.ReadAs.THE_COMPILATION_DOES), read.rules(), souther.compiler.query.ReadAs.THE_COMPILATION_DOES),
                 path);
     }
 
@@ -328,7 +323,7 @@ class AClassIsOneThePositionCanHoldAndNothingTakesItAwayTest {
     private static List<String> declaredAt(List<String> sources, String behavior, int nth,
                                            String path) {
         Read read = of(sources, behavior, nth);
-        return classesAt(Partitions.of(read.spec().name(), InputDomain.of(read.spec(), read.sig(), read.rules(), souther.compiler.query.ReadAs.THE_COMPILATION_DOES), read.rules(), souther.compiler.query.ReadAs.THE_COMPILATION_DOES),
+        return classesAt(Partitions.of(read.behavior(), InputDomain.of(read.sig(), read.rules(), souther.compiler.query.ReadAs.THE_COMPILATION_DOES), read.rules(), souther.compiler.query.ReadAs.THE_COMPILATION_DOES),
                 path);
     }
 
@@ -381,7 +376,7 @@ class AClassIsOneThePositionCanHoldAndNothingTakesItAwayTest {
                 """.replace("UNREAD", souther.compiler.ARuleNoReadingTakesIn.about("value"));
         Read read = of(model, "classify");
         Partitions.Partitioning base =
-                Partitions.of(read.spec().name(), InputDomain.of(read.spec(), read.sig(), read.rules(), souther.compiler.query.ReadAs.THE_COMPILATION_DOES), read.rules(), souther.compiler.query.ReadAs.THE_COMPILATION_DOES);
+                Partitions.of(read.behavior(), InputDomain.of(read.sig(), read.rules(), souther.compiler.query.ReadAs.THE_COMPILATION_DOES), read.rules(), souther.compiler.query.ReadAs.THE_COMPILATION_DOES);
 
         assertFalse(base.unanswered().isEmpty(),
                 "a rule about this position was taken in by nothing, and the classes were made"
@@ -399,17 +394,17 @@ class AClassIsOneThePositionCanHoldAndNothingTakesItAwayTest {
         Bodies.Elaborated checked =
                 read.compilation().db().ask(new Bodies.Checked(read.module())).value();
         assertNotNull(checked, "the model under test compiles");
-        Core body = checked.behaviorBodies().get(read.spec().name());
+        Core body = checked.behaviorBodies().get(read.behavior());
         assertNotNull(body, "the behavior under test has a body");
-        GuardThresholds.Guards guards = GuardThresholds.of(read.spec().name(),
-                checked.analysisBodies().get(read.spec().name()), body,
+        GuardThresholds.Guards guards = GuardThresholds.of(read.behavior(),
+                checked.analysisBodies().get(read.behavior()), body,
                 checked.plan(),
                 read.compilation().db()
                         .ask(new souther.compiler.query.Adequacy.Inputs(read.module())).value()
-                        .get(read.spec().name()),
+                        .get(read.behavior()),
                 read.rules());
         return Partitions.withThresholds(base,
-                InputDomain.of(read.spec(), read.sig(), read.rules(), souther.compiler.query.ReadAs.THE_COMPILATION_DOES)
+                InputDomain.of(read.sig(), read.rules(), souther.compiler.query.ReadAs.THE_COMPILATION_DOES)
                         .quantities(read.rules()),
                 guards.thresholds(), read.rules(), souther.compiler.query.ReadAs.THE_COMPILATION_DOES,
                 guards.noLine(), guards.singled(), guards.between(),

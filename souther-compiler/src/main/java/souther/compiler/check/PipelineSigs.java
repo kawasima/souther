@@ -31,33 +31,27 @@ public final class PipelineSigs {
     private PipelineSigs() {}
 
     /**
-     * Builds the input/output signature of every behavior, checking pipeline composition. The
-     * {@code imported} map seeds the resolvable behaviors with those imported from other modules
-     * (spec §modules, §composition), so a stage naming an imported behavior resolves through {@link #stageSig}.
+     * The signature of every behavior a module can name, which is what a stage is typed against.
+     *
+     * <p>{@code declared} is what the module's own declarations were admitted as, by the name each
+     * is declared under, and {@code imported} the same for the behaviors it borrows (spec §modules,
+     * §composition) — so a stage naming either resolves through {@link #stageSig}. What is worked
+     * out here is the compositions, whose answer nobody wrote.
+     *
+     * <p>A declared behavior's signature is what it declares, whether a {@code let} implements it
+     * here or the Java side is injected (spec §injected-behavior): both are named the same way from a
+     * {@code >->} or a {@code depends on}, and both need the output union's generated interface.
+     * Where the arity rules out a use — every stage after the first takes one input
+     * (§sequential-composition) — the composition says so; leaving the name out of this map instead
+     * would report it as one that was never declared.
      */
     public static Map<ValueName.Behavior, Sig> signatures(String module,
                                                          List<Hir.BehaviorDef> behaviors,
+                                                         Map<String, Sig> declared,
                                                          Symbols symbols,
                                                          Map<ValueName.Behavior, Sig> imported) {
         Map<ValueName.Behavior, Sig> sigs = new HashMap<>(imported);
-        for (Hir.BehaviorDef b : behaviors) {
-            if (b instanceof Hir.SpecBehavior spec) {
-                // A behavior's signature is what it declares, whether a `let` implements it here or the Java
-                // side is injected (spec §injected-behavior): both are named the same way from a `>->` or a
-                // `depends on`, and both need the output union's generated interface. Where the arity rules
-                // out a use — every stage after the first takes one input (§sequential-composition) — the
-                // composition says so; leaving the name out of this map instead reports it as one that was
-                // never declared. What the declaration says is admitted here, in the making of the signature,
-                // and there is no other way to make one. A behavior resting on a name that denotes nothing
-                // has no signature to build and is left out: the name was reported where it was written.
-                try {
-                    sigs.put(new ValueName.Behavior(module, spec.name()),
-                            SignatureBoundary.of(spec, symbols));
-                } catch (Unanswerable _) {
-                    // deliberately empty: see above
-                }
-            }
-        }
+        declared.forEach((name, sig) -> sigs.put(new ValueName.Behavior(module, name), sig));
         Map<ValueName.Behavior, List<Hir.Var>> pipeStages = pipelineStages(module, behaviors);
         for (Hir.BehaviorDef b : behaviors) {
             if (b instanceof Hir.PipeBehavior pipe) {

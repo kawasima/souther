@@ -2,11 +2,9 @@ package souther.compiler.partition;
 
 import org.junit.jupiter.api.Test;
 
-import souther.compiler.ast.Hir;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.RuleReadings;
-import souther.compiler.check.Prepared;
-import souther.compiler.check.Sig;
+import souther.compiler.check.DeclaredSig;
 import souther.compiler.core.Core;
 import souther.compiler.coverage.CoverageSites;
 import souther.compiler.inputs.InputDomain;
@@ -18,7 +16,6 @@ import souther.compiler.observe.RowOutcome;
 import souther.compiler.query.Bodies;
 import souther.compiler.query.Compilation;
 import souther.compiler.query.Output;
-import souther.compiler.query.Shapes;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -81,19 +78,17 @@ class AnObservationSaysTheSameThingWhereverThePathMeetsItTest {
         Compilation compilation = Compilation.ofSource(MODEL, "Main");
         compilation.answerEverything();
         String module = compilation.modules().get(0);
-        Prepared prepared = compilation.db().ask(new Shapes.Prepared(module)).value();
         RuleReadingSource rules = RuleReadings.of(compilation, module);
-        Map<String, Sig> sigs = compilation.db().ask(new Bodies.Signatures(module)).value();
+        Map<String, DeclaredSig> sigs =
+                compilation.db().ask(new Bodies.DeclaredSignatures(module)).value();
         Bodies.Elaborated checked = compilation.db().ask(new Bodies.Checked(module)).value();
         assertNotNull(checked, "the model under test compiles");
-        Hir.SpecBehavior spec = (Hir.SpecBehavior) prepared.behaviors().stream()
-                .filter(b -> b.name().equals("book")).findFirst().orElseThrow();
         Core body = checked.behaviorBodies().get("book");
         CoverageSites.Plan plan = checked.plan();
-        InputDomain read = InputDomain.of(spec, sigs.get("book"), rules,
+        InputDomain read = InputDomain.of(sigs.get("book"), rules,
                 souther.compiler.query.ReadAs.THE_COMPILATION_DOES);
         Partitions.Partitioning partitioning = Partitions.withThresholds(
-                Partitions.of(spec.name(), read, rules, souther.compiler.query.ReadAs.THE_COMPILATION_DOES),
+                Partitions.of("book", read, rules, souther.compiler.query.ReadAs.THE_COMPILATION_DOES),
                 read.quantities(rules),
                 GuardThresholds.of("book", checked.analysisBodies().get("book"), body, plan,
                 compilation.db().ask(new souther.compiler.query.Adequacy.Inputs(module)).value().get("book"), rules).thresholds(), rules, souther.compiler.query.ReadAs.THE_COMPILATION_DOES,

@@ -120,7 +120,12 @@ class AdequacyLensTest {
                 .codeLenses(MODULE, graphOf(Map.of(MODULE, TRIP)));
 
         assertEquals(1, lenses.size());
-        assertEquals(9, lenses.get(0).range().start().line(), "the `behavior` line, zero-based");
+        // And drawn at a point. A lens is read for the line its range starts on, and the offer to
+        // write the rows is what the stretch of a declaration is for — the two are separate answers
+        // about the same declaration, and a lens given a width would be the one lent to the other.
+        int line = lineOf(TRIP, "behavior submit");
+        assertEquals(new Range(new Position(line, 0), new Position(line, 0)),
+                lenses.get(0).range());
         assertEquals("1 row · out 1/2 · boundary 2/5 · branch 1/2", lenses.get(0).title());
     }
 
@@ -444,6 +449,208 @@ class AdequacyLensTest {
     void withNoWorkspaceThereIsNothingToOffer() {
         assertEquals(List.of(),
                 measuring(Adequacy.Level.ALL).codeActions(MODULE, TRIP, on(9)));
+    }
+
+    /**
+     * The offer stands at every position the declaration is written over, and at no other.
+     *
+     * <p>Asked from every position in the document rather than from the one column a helper sends.
+     * A lens is drawn at a point, and the point a declaration begins at was what the offer compared
+     * a caret against — so the offer was made at the first column of the {@code behavior} line and
+     * nowhere else on it, which no test said either way.
+     *
+     * <p>What decides it here is read off the source: from the first character of {@code behavior}
+     * to the last of the declaration's final line. The offer works it out from the syntax tree, so
+     * the two would have to be wrong in the same way to agree.
+     */
+    @Test
+    void theOfferStandsExactlyWhereTheDeclarationIsWritten() {
+        Analyzer analyzer = measuring(Adequacy.Level.ALL);
+        ModuleGraph graph = graphOf(Map.of(MODULE, TRIP));
+        String lastLine = "    constructs Submitted, Waiting";
+        int from = TRIP.indexOf("behavior submit");
+        int to = TRIP.indexOf(lastLine) + lastLine.length();
+
+        List<String> offeredOutsideIt = new ArrayList<>();
+        List<String> withheldInsideIt = new ArrayList<>();
+        String[] lines = TRIP.split("\n", -1);
+        int startOfLine = 0;
+        for (int line = 0; line < lines.length; line++) {
+            for (int column = 0; column <= lines[line].length(); column++) {
+                boolean offered = offersRows(analyzer, MODULE, TRIP, caret(line, column), graph);
+                int at = startOfLine + column;
+                if (offered != (at >= from && at <= to)) {
+                    (offered ? offeredOutsideIt : withheldInsideIt).add(line + ":" + column);
+                }
+            }
+            startOfLine += lines[line].length() + 1;
+        }
+
+        assertEquals(List.of(), withheldInsideIt,
+                "the offer stands wherever the caret is in the declaration");
+        assertEquals(List.of(), offeredOutsideIt, "and nowhere it is not");
+    }
+
+    /**
+     * A comment above a declaration is not inside it.
+     *
+     * <p>The syntax tree covers every character, so the blank lines and the comment in front of a
+     * declaration are part of its node. They are not part of what it writes: a caret there is where
+     * the comment is being written, and the declaration below it is the next thing on the page
+     * rather than the thing the caret is in.
+     */
+    @Test
+    void aCommentAboveADeclarationIsNotInsideIt() {
+        String noted = ONLY_EDGES.replace("behavior keep",
+                "// what this keeps\nbehavior keep");
+        Analyzer analyzer = measuring(Adequacy.Level.ALL);
+        ModuleGraph graph = graphOf(Map.of(EDGES, noted));
+
+        int comment = lineOf(noted, "// what this keeps");
+        assertFalse(offersRows(analyzer, EDGES, noted, caret(comment, 3), graph),
+                "the caret is in the comment");
+        assertTrue(offersRows(analyzer, EDGES, noted, caret(comment + 1, 3), graph),
+                "and on the line under it, in the declaration");
+    }
+
+    /**
+     * A selection meets the declaration where the two share a character.
+     *
+     * <p>A caret is a position and is inside the declaration at either end of it. A selection is a
+     * stretch, and read the same way a selection of the blank line above would reach the
+     * declaration below by touching its first character — which is the boundary the point range
+     * got wrong at the other end.
+     */
+    @Test
+    void aSelectionMeetsTheDeclarationWhereTheyShareACharacter() {
+        Analyzer analyzer = measuring(Adequacy.Level.ALL);
+        ModuleGraph graph = graphOf(Map.of(MODULE, TRIP));
+        String lastLine = "    constructs Submitted, Waiting";
+        int first = lineOf(TRIP, "behavior submit");
+        int last = lineOf(TRIP, lastLine);
+        int ends = lastLine.length();
+
+        assertFalse(offersRows(analyzer, MODULE, TRIP, over(first - 1, 0, first, 0), graph),
+                "the blank line above, up to where the declaration starts");
+        assertTrue(offersRows(analyzer, MODULE, TRIP, over(first - 1, 0, first, 1), graph),
+                "and one character further, into it");
+        assertFalse(offersRows(analyzer, MODULE, TRIP, over(last, ends, last + 2, 0), graph),
+                "from where the declaration ends, down");
+        assertTrue(offersRows(analyzer, MODULE, TRIP, over(last, ends - 1, last + 2, 0), graph),
+                "and one character back, from inside it");
+    }
+
+    private static final String TWO_URI = "file:///two.sou";
+
+    /** Two behaviors alike in everything but their names, each short of the rows its edges want. */
+    private static final String TWO = """
+            module two
+
+            data Amount = Int
+                invariant value >= 0 && value <= 10
+
+            data Ok = { n: Amount }
+
+            behavior first : (a: Amount) -> Ok
+                constructs Ok
+
+            behavior second : (a: Amount) -> Ok
+                constructs Ok
+
+            let first (a) = Ok { n = a }
+            let second (a) = Ok { n = a }
+
+            example first
+                | "mid" : (Amount(5)) -> Ok { n = Amount(5) }
+
+            example second
+                | "mid" : (Amount(5)) -> Ok { n = Amount(5) }
+            """;
+
+    /**
+     * The offer is for the declaration the caret is in, and not for the first one the module holds.
+     *
+     * <p>Two readings of the same declaration meet here: the syntax node the caret is in, and the
+     * behavior the compile prepared. They are joined on where each says the declaration begins, and
+     * a join that let anything else through would answer every caret in the module with whichever
+     * behavior came first. Everything else about these two is the same, so the name in the title is
+     * the whole of what tells the answers apart.
+     */
+    @Test
+    void theOfferNamesTheBehaviorTheCaretIsIn() {
+        Analyzer analyzer = measuring(Adequacy.Level.ALL);
+        ModuleGraph graph = graphOf(Map.of(TWO_URI, TWO));
+
+        assertEquals("Write the rows `first` does not cover",
+                analyzer.codeActions(TWO_URI, TWO, caret(lineOf(TWO, "behavior first"), 4), graph)
+                        .get(0).title());
+        assertEquals("Write the rows `second` does not cover",
+                analyzer.codeActions(TWO_URI, TWO, caret(lineOf(TWO, "behavior second"), 4), graph)
+                        .get(0).title());
+    }
+
+    /**
+     * A selection that starts in another declaration still reaches the behavior it ends in.
+     *
+     * <p>What a stretch reaches is as many declarations as it is drawn over, and which of them the
+     * offer is about is the offer's to say. Asked for one, the walk answers with whichever is
+     * written first — an answer about the order of the file — and a `data` above the behavior would
+     * take the place of the behavior.
+     */
+    @Test
+    void aSelectionReachesTheBehaviorItEndsInFromAnotherDeclaration() {
+        Analyzer analyzer = measuring(Adequacy.Level.ALL);
+        ModuleGraph graph = graphOf(Map.of(MODULE, TRIP));
+        int data = lineOf(TRIP, "data Waiting");
+        int behavior = lineOf(TRIP, "behavior submit");
+
+        assertTrue(offersRows(analyzer, MODULE, TRIP, over(data, 5, behavior, 1), graph),
+                "the selection runs from inside the data declaration into the behavior");
+    }
+
+    /**
+     * A selection over both behaviors is an offer about one of them.
+     *
+     * <p>The rows an offer writes are the rows of one declaration, so a stretch drawn over two is
+     * answered about the one written first rather than about both or about neither.
+     */
+    @Test
+    void aSelectionOverTwoBehaviorsIsAnOfferAboutTheFirst() {
+        Analyzer analyzer = measuring(Adequacy.Level.ALL);
+        ModuleGraph graph = graphOf(Map.of(TWO_URI, TWO));
+        int first = lineOf(TWO, "behavior first");
+        int second = lineOf(TWO, "behavior second");
+
+        assertEquals("Write the rows `first` does not cover",
+                analyzer.codeActions(TWO_URI, TWO, over(first, 0, second + 1, 0), graph)
+                        .get(0).title());
+    }
+
+    /** The zero-based line {@code written} is on. */
+    private static int lineOf(String text, String written) {
+        String[] lines = text.split("\n", -1);
+        for (int i = 0; i < lines.length; i++) {
+            if (lines[i].startsWith(written)) {
+                return i;
+            }
+        }
+        throw new IllegalArgumentException("not in the source: " + written);
+    }
+
+    /** Whether the rows this behavior does not cover are on offer for {@code asked}. */
+    private static boolean offersRows(Analyzer analyzer, String uri, String text, Range asked,
+                                      ModuleGraph graph) {
+        return analyzer.codeActions(uri, text, asked, graph).stream()
+                .anyMatch(action -> action.title().startsWith("Write the rows"));
+    }
+
+    private static Range caret(int line, int column) {
+        Position at = new Position(line, column);
+        return new Range(at, at);
+    }
+
+    private static Range over(int line, int column, int toLine, int toColumn) {
+        return new Range(new Position(line, column), new Position(toLine, toColumn));
     }
 
     /** And nothing is offered where nothing was asked to be measured. */

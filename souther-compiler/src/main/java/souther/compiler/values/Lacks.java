@@ -38,6 +38,10 @@ import java.util.function.Predicate;
  */
 public final class Lacks<A> {
 
+    /** What an argument that refused nothing showed, which is one value however its positions are
+     *  named — see {@link #none()}. */
+    private static final Lacks<?> NONE = new Lacks<>(List.of());
+
     /** In the order they arrived, which nothing reads. */
     private final List<Shown<A>> each;
 
@@ -63,9 +67,18 @@ public final class Lacks<A> {
         return new Lacks<>(each);
     }
 
-    /** None of them, which is what an argument that refused nothing showed. */
+    /**
+     * None of them, which is what an argument that refused nothing showed.
+     *
+     * <p>One value for every naming of a position. What these hold is what a caller put in them,
+     * so what an empty one holds is nothing whatever its positions are called — and what it is
+     * equal to, hashes as and is written as is settled by that alone. Which is why a reader on the
+     * path where a relation shows nothing is handed the same one every time rather than a new one:
+     * that path is walked once for every pair of two readings' alternatives.
+     */
+    @SuppressWarnings("unchecked")
     public static <A> Lacks<A> none() {
-        return new Lacks<>(List.of());
+        return (Lacks<A>) NONE;
     }
 
     /** The one lack an argument showed, of the blocks it names and of nothing else. */

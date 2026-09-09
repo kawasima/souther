@@ -8,13 +8,17 @@ import java.util.Set;
 /**
  * A reading worked out, together with what could not be built while working it out.
  *
- * <p>Three facts settled by one piece of work and handed over together. Which values each position
- * admits is one; whether the reading admits anything at all is the second; and which limit stopped
- * this compiler where it stopped is the third. They are not separable questions — the second and
- * third are only answerable by doing the work the first needed — and a caller given the first alone
- * has to guess the others from what it holds. What it holds is a set widened to every value, and
- * every guess made from that is the wrong one: it reads a position nobody could work out as one the
- * rules left open.
+ * <p>Two facts settled by one piece of work and handed over together. Which values each position
+ * admits is one, and which limit stopped this compiler where it stopped is the other. They are not
+ * separable questions — the second is only answerable by doing the work the first needed — and a
+ * caller given the first alone has to guess it from what it holds. What it holds is a set widened
+ * to every value, and every guess made from that is the wrong one: it reads a position nobody could
+ * work out as one the rules left open.
+ *
+ * <p>Whether anything satisfies the reading is not among them and is not asked here. That is about
+ * the values beside where their orders stop ({@code Confinement}), and what this settles enters it
+ * as {@link LeftUnbuilt} — the reading is one half of the question and answering it here would be
+ * answering for the other half as well.
  *
  * <p><b>The two shortfalls are apart because they are owed to different people.</b> What is about a
  * rule may be filed under that rule and shown to an author as something to change. What is about the
@@ -123,22 +127,20 @@ public final class Realized<A> {
     }
 
     /**
-     * Whether anything satisfies the reading.
+     * Whether working this out left a position nobody could build.
      *
-     * <p>Three answers, because a reading with a position nobody could work out has not been shown
-     * to admit anything or to admit nothing. What stands there is every value, which is true and is
-     * wider than the rules — so the reading may hold something the rules refuse, and reading it as
-     * one that admits something is sound and is not exact.
+     * <p>What a reader asking about the reading is owed beside the reading. The values it comes
+     * back with hold every value at such a position, which is true and is wider than the rules — so
+     * an answer worked out of them alone is sound and is not exact, and what says so is here rather
+     * than at whoever is asking.
      *
-     * <p>Which is why the shortfall travels with it. A caller taking {@link Emptiness#UNDECIDED} for
-     * "it admits something" and dropping what is here has claimed a reading is a branch anybody can
-     * be in, and has kept no record of why nobody knows.
+     * <p>The existential question and not the shortfalls: what a rule or the answer is answerable
+     * for is a report's ({@link #aboutARule}, {@link #aboutTheAnswer}), and what a verdict turns on
+     * is only whether there is such a position. What that comes to for a verdict is
+     * {@link LeftUnbuilt}'s, so nothing here names one of the answers.
      */
-    public Emptiness emptiness() {
-        if (values().isBottom()) {
-            return Emptiness.EMPTY;
-        }
-        return unbuilt().isEmpty() ? Emptiness.NONEMPTY : Emptiness.UNDECIDED;
+    public LeftUnbuilt leftUnbuilt() {
+        return unbuilt().isEmpty() ? LeftUnbuilt.NOTHING : LeftUnbuilt.A_POSITION;
     }
 
     /** Every position whose answer was not built, whichever of the two it is owed to. */

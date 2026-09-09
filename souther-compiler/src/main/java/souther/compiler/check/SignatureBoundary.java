@@ -34,22 +34,31 @@ import java.util.List;
  * outside in. A precedence between rules would be a second thing to state and to keep true; the
  * traversal is one thing, and it is the one the author reads their own declaration in.
  *
- * <p>Reached only from {@link PipelineSigs#signatures}: this is how a {@link Sig} is made, not a
- * question about a type that anything may ask again.
+ * <p>Reached from {@link SignatureDeclarations} for a written declaration and from
+ * {@link PipelineSigs} for what a composition answers: this is how a signature is made, not a
+ * question about a type that anything may ask again. Those are the two origins there are, and each
+ * is admitted once.
  */
 final class SignatureBoundary {
 
     private SignatureBoundary() {}
 
-    /** The signature a declared behavior publishes — every parameter and its answer. */
-    static Sig of(Hir.SpecBehavior spec, Symbols symbols) {
-        List<BoundaryInput> ins = new ArrayList<>(spec.params().size());
+    /**
+     * The signature a declared behavior publishes — every parameter and its answer.
+     *
+     * <p>Each parameter leaves the walk beside the shape it was admitted as. One parameter makes one
+     * shape or the walk refuses, so which shape belongs to which parameter is settled here, where
+     * both are in hand, rather than by a reader holding the two lists afterwards.
+     */
+    static DeclaredSig of(Hir.SpecBehavior spec, Symbols symbols) {
+        List<DeclaredSig.Input> ins = new ArrayList<>(spec.params().size());
         for (Hir.Param p : spec.params()) {
             Type t = TypeOps.successType(p.type());
-            ins.add(input(t, t, Where.param(p, spec.pos()), symbols));
+            ins.add(new DeclaredSig.Input(p.name(),
+                    input(t, t, Where.param(p, spec.pos()), symbols)));
         }
         Type out = TypeOps.successType(spec.ret());
-        return new Sig(ins, output(out, out, Where.output(spec.name(), spec.pos()), symbols));
+        return new DeclaredSig(ins, output(out, out, Where.output(spec.name(), spec.pos()), symbols));
     }
 
     /**

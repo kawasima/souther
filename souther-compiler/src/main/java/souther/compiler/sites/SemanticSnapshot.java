@@ -4,6 +4,7 @@ import souther.compiler.Reserved;
 import souther.compiler.ast.Hir;
 import souther.compiler.ast.WrittenName;
 import souther.compiler.check.BindingEvidence;
+import souther.compiler.check.DeclaredSig;
 import souther.compiler.check.DeclaredTypeEvidence;
 import souther.compiler.check.FieldRead;
 import souther.compiler.check.ResolvedFieldTypes;
@@ -231,7 +232,7 @@ public final class SemanticSnapshot {
      */
     private List<ParameterFact> parameterFacts() {
         Answer<Hir.Module> resolved = db.ask(new Names.Resolved(module));
-        Answer<Map<String, Sig>> signatures = db.ask(new Bodies.Signatures(module));
+        Answer<Map<String, DeclaredSig>> signatures = db.ask(new Bodies.DeclaredSignatures(module));
         if (!resolved.present() || !signatures.present()) {
             return List.of();
         }
@@ -239,27 +240,27 @@ public final class SemanticSnapshot {
         List<ParameterFact> facts = new ArrayList<>();
         SpecImplementation.implementationsOf(resolved.value())
                 .forEach((behavior, implemented) -> {
-                    Sig sig = signatures.value().get(behavior);
+                    DeclaredSig declared = signatures.value().get(behavior);
                     for (SpecImplementation.ParameterBinding binding : implemented.bindings()) {
-                        facts.add(factOf(binding, sig, reachable));
+                        facts.add(factOf(binding, declared, reachable));
                     }
                 });
         return List.copyOf(facts);
     }
 
-    /** What one parameter is, given what this module's signatures say. */
-    private static ParameterFact factOf(SpecImplementation.ParameterBinding binding, Sig sig,
+    /** What one parameter is, given what this module's declarations say. */
+    private static ParameterFact factOf(SpecImplementation.ParameterBinding binding,
+                                        DeclaredSig declared,
                                         Answer<Map<ValueName.Behavior, Sig>> reachable) {
         return switch (binding) {
-            // At the position the signature holds it at, and not tested against the signature's
-            // length first. A signature is built one input per declared parameter, so a position
-            // the division gave is a position the signature has; a test would be an answer checked
-            // against itself, and answering `Untyped` where it failed would put back the silence
-            // this reading exists to remove.
-            case SpecImplementation.ParameterBinding.AnInput input -> sig == null
+            // At the position the declaration holds it at, and not tested against the declaration's
+            // length first. The division gave the position by walking the same parameters, so a
+            // test would be an answer checked against itself, and answering `Untyped` where it
+            // failed would put back the silence this reading exists to remove.
+            case SpecImplementation.ParameterBinding.AnInput input -> declared == null
                     ? new ParameterFact.Untyped(input.written())
                     : new ParameterFact.TypedInput(input.written(),
-                            sig.inputTypes().get(input.at()));
+                            declared.inputs().get(input.at()).type());
             case SpecImplementation.ParameterBinding.AnInjection injected ->
                     injectionFact(injected, reachable);
             // A clause that reaches no declaration names no signature to read, and a parameter the
@@ -303,7 +304,8 @@ public final class SemanticSnapshot {
      *
      * <p>Empty where the name reaches no behavior: a helper, a local holding a function, a name that
      * resolves to nothing. What those take is not written on a {@code behavior} line, and there is no
-     * declaration here to show.
+     * declaration here to show. Empty for a composition too, which writes stages rather than
+     * parameters: what it takes is its first stage's, under the names that stage gave them.
      */
     public Optional<CalledBehavior> calledAt(SourcePos cursor) {
         SourceSiteId site = sites.innermostContaining(cursor);
@@ -311,36 +313,24 @@ public final class SemanticSnapshot {
                 || !(called.reachedAs().denotes() instanceof ValueName.Behavior reached)) {
             return Optional.empty();
         }
-        Answer<Map<ValueName.Behavior, Sig>> reachable = db.ask(new Bodies.Reachable(module));
-        Answer<Hir.Module> declaring = db.ask(new Names.Resolved(reached.module()));
-        if (!reachable.present() || !declaring.present()) {
+        Answer<Map<String, DeclaredSig>> declaring =
+                db.ask(new Bodies.DeclaredSignatures(reached.module()));
+        if (!declaring.present()) {
             return Optional.empty();
         }
-        Sig sig = reachable.value().get(reached);
-        List<Hir.Param> written = parametersOf(declaring.value(), reached.name());
-        if (sig == null || written == null || sig.inputTypes().size() != written.size()) {
-            // A signature and a declaration that disagree about how many things arrive is a mistake
-            // in that module, reported where it is written. Pairing them off anyway would name an
-            // argument after a parameter that is not the one arriving there.
+        // Asked of the module that declares the behavior, which is where its parameters were
+        // written and where they were admitted. A composition declares none and is not here at all,
+        // so nothing has to ask which kind of behavior this is.
+        DeclaredSig declared = declaring.value().get(reached.name());
+        if (declared == null) {
             return Optional.empty();
         }
         List<CalledBehavior.Takes> takes = new ArrayList<>();
-        for (int at = 0; at < written.size(); at++) {
-            takes.add(new CalledBehavior.Takes(written.get(at).name(),
-                    new TypeFact(sig.inputTypes().get(at), new Evidence.Declared())));
+        for (DeclaredSig.Input input : declared.inputs()) {
+            takes.add(new CalledBehavior.Takes(input.name(),
+                    new TypeFact(input.type(), new Evidence.Declared())));
         }
         return Optional.of(new CalledBehavior(reached.name(), List.copyOf(takes), site.extent()));
-    }
-
-    /** The parameters {@code behavior} is declared with, or null where the module declares no such
-     *  behavior or declares it as a composition, which writes none. */
-    private static List<Hir.Param> parametersOf(Hir.Module declaring, String behavior) {
-        for (Hir.BehaviorDef each : declaring.behaviors()) {
-            if (each.written().canonical().equals(behavior)) {
-                return each instanceof Hir.SpecBehavior spec ? spec.params() : null;
-            }
-        }
-        return null;
     }
 
     /**

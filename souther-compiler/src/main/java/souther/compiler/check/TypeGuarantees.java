@@ -99,7 +99,14 @@ final class TypeGuarantees {
                     clauses.statedAt(owner.named(), given);
             for (Clauses.Stated one : stated.clauses()) {
                 if (already.add(one.clause())) {
-                    here.add(read(one, denotations, withoutParts));
+                    // The world's rules on the way in, and the clause's own parts kept out here.
+                    // What is read is what this world has ({@link ClauseView}); what the guarantee
+                    // is filed under is what the author wrote, which is a fact about the clause and
+                    // not about any world of it — so the reading is handed one list and cannot pick
+                    // the other.
+                    Read said = read(withoutParts.viewOf(one.parts()), denotations);
+                    here.add(new TypeGuarantee(one.expr(), one.parts(), said.owed(),
+                            said.quantified(), said.parts()));
                 }
             }
             for (RuleRef.Invariant each : stated.lost()) {
@@ -154,29 +161,32 @@ final class TypeGuarantees {
         return false;
     }
 
+    /** What reading the rules of one world made of one clause, before it is filed under the clause
+     *  the author wrote. */
+    private record Read(Predicates.Owed owed, List<Quantified> quantified,
+                        List<TypeGuarantee.Part> parts) {}
+
     /**
-     * One clause, read as something that holds of this value.
+     * The rules {@code view} holds, read as something that holds of this value.
      *
      * <p>What each part of it came to is read here and kept, rather than handed to a caller as it
      * happens. A reader told mid-reading is a reader the reading has to know about; a reader given
      * the parts afterwards is one this does not.
+     *
+     * <p><b>The world's rules and no way to the clause behind them.</b> Which parts a clause has
+     * was settled where it was split, so leaving one out is leaving a part out of the list and
+     * never a node out of a walk — and the same list answers for what the clause owes and for what
+     * it quantifies, since a part left out of the one and left in the other is a clause taken half
+     * away. Handed the clause and the world instead, this would be a reading that has to be written
+     * to narrow one by the other, which is the defect that put a world here at all.
      */
-    private TypeGuarantee read(Clauses.Stated one, Denotations denotations,
-                               PartsLeftOut withoutParts) {
+    private Read read(ClauseView view, Denotations denotations) {
         // Where this clause becomes a rule of the model something can be attributed to. Settled here
         // so that no reader of the reading has to decide which of the rules of the model it holds.
         List<TypeGuarantee.Part> parts = new ArrayList<>();
         List<Quantified> quantified = new ArrayList<>();
-        // A part at a time, and the ones the caller asked for. Which parts a clause has was settled
-        // where it was split, so leaving one out is leaving a part out of the list and never a node
-        // out of a walk — and the same list answers for what the clause owes and for what it
-        // quantifies, since a part left out of the one and left in the other is a clause taken half
-        // away.
         Predicates.Owed owed = null;
-        for (Clauses.StatedPart part : one.parts()) {
-            if (withoutParts.excludes(part.id())) {
-                continue;
-            }
+        for (Clauses.StatedPart part : view.present()) {
             Predicates.Owed said = predicates.assumed(part.expr(), denotations, false,
                     (shape, of, came) ->
                             parts.add(new TypeGuarantee.Part(part.id(), shape, of, came)));
@@ -185,8 +195,7 @@ final class TypeGuarantees {
         }
         // Nothing owed where every part was left out, which is a clause with all of it taken away
         // and not a clause that holds.
-        return new TypeGuarantee(one.expr(), one.parts(),
-                owed == null ? Predicates.Owed.unread() : owed, quantified, parts);
+        return new Read(owed == null ? Predicates.Owed.unread() : owed, quantified, parts);
     }
 
     /**

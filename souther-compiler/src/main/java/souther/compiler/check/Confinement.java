@@ -11,6 +11,7 @@ import souther.compiler.values.ConjoinedAdmissibleValues;
 import souther.compiler.values.Emptiness.SidesShownEmpty;
 import souther.compiler.values.Admits;
 import souther.compiler.values.AskedOfARelation;
+import souther.compiler.values.LeftUnbuilt;
 import souther.compiler.values.StringMachineAnswers;
 import souther.compiler.values.PlannedValues;
 import souther.compiler.values.Realized;
@@ -18,6 +19,7 @@ import souther.compiler.values.Refusal;
 import souther.compiler.values.Sameness;
 import souther.compiler.values.ValueSet;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
@@ -64,16 +66,37 @@ import java.util.function.Function;
 sealed interface Confinement<A> {
 
     /**
-     * Whether anything satisfies both readings once {@code outside} has placed the positions, and
-     * what showed it where nothing does.
+     * What the walk over the alternatives left, beside what working the reading out could not
+     * build.
      *
      * <p>The envelope is the question and never a reading of this one. What it holds is what the
      * components beside this can prove about where a position sits, and it is asked here because
      * this is where the alternatives are: a restriction met against what a position admits across
      * all of them is met against a value no alternative stands for, and every one of them has to be
      * asked whole.
+     *
+     * <p><b>Where readings are composed, and not where a verdict is published.</b> A composition
+     * of two of these is short of a position where either of them is, so what a caller putting two
+     * together needs is the two halves still apart — and what a caller asking whether anything
+     * satisfies the pair needs is the verdict with the second half already spent on it
+     * ({@link #admission}). Handed the verdict alone, a composition carries a positive answer
+     * forward that the reading behind it had not settled; handed the halves, nobody outside can
+     * hold one without the other.
      */
-    Admission<A> admission(PositionEnvelope.Restrictions<A> outside, StringMachineAnswers machines);
+    ReadAdmission<A> read(PositionEnvelope.Restrictions<A> outside, StringMachineAnswers machines);
+
+    /**
+     * Whether anything satisfies both readings once {@code outside} has placed the positions, and
+     * what showed it where nothing does.
+     *
+     * <p>What the walk left, held to what the reading could not build — see
+     * {@link ReadAdmission#admission}. This is the answer a reader acts on, and there is no other
+     * way to reach one.
+     */
+    default Admission<A> admission(PositionEnvelope.Restrictions<A> outside,
+                                   StringMachineAnswers machines) {
+        return read(outside, machines).admission();
+    }
 
     /** The same, paying for every machine the asking needs. */
     default Admission<A> admission(PositionEnvelope.Restrictions<A> outside) {
@@ -124,6 +147,29 @@ sealed interface Confinement<A> {
      *             about several of them together — see {@link Refusal}
      */
     record Admission<A>(souther.compiler.values.Emptiness emptiness, EmptyBy by, Refusal<A> site, Shown how) {
+
+        /**
+         * A verdict short of the settled answer that nothing is admitted carries no proof.
+         *
+         * <p>The three words beside the verdict say a lack was shown by something, somewhere, out
+         * of something. With any other verdict they describe a lack nothing was shown, and a
+         * reader that carried one onwards would answer for a refusal no walk reached.
+         *
+         * <p><b>One direction and not both.</b> A verdict that is the settled answer that nothing
+         * is admitted may still name no place: a walk shown a lack about no block in particular
+         * has nothing to name, and {@link #left} is refused for that verdict rather than this. So
+         * what is closed here is that a proof implies the verdict, and not that the verdict
+         * implies a proof.
+         */
+        public Admission {
+            if (!emptiness.isEmpty()
+                    && (by != EmptyBy.NOTHING_SHOWN || !site.isNowhere()
+                            || how != Shown.BY_THE_READINGS)) {
+                throw new IllegalArgumentException(
+                        "a verdict of " + emptiness + " is not one anything showed, and this one"
+                                + " was shown by " + by + " at " + site + " " + how);
+            }
+        }
 
         /** The same, where what was refused is places rather than values several of them share. */
         static <A> Admission<A> at(souther.compiler.values.Emptiness emptiness, EmptyBy by, Set<A> positions, Shown how) {
@@ -187,6 +233,50 @@ sealed interface Confinement<A> {
                     Refusal.shownByBoth(one.site, other.site),
                     one.byTheReadings() && other.byTheReadings()
                             ? Shown.BY_THE_READINGS : Shown.ONCE_THE_POSITIONS_ARE_PLACED);
+        }
+    }
+
+    /**
+     * What a walk left, and what the reading it walked could not build, as one value.
+     *
+     * <p><b>Neither half is reachable on its own.</b> The verdict a walk reaches is about the
+     * alternatives it was handed, and a reading short of a position handed it more values than the
+     * rules leave — so the two are one answer, and a reader that could take the first would be
+     * taking a claim the second is the correction to. That was how a conjunction came to carry a
+     * positive answer forward out of a reading nobody had worked out: the verdict was in hand and
+     * the reason to doubt it was not.
+     *
+     * <p>So what leaves here is {@link #admission}, and what a composition of readings takes is the
+     * other half under the eye of whoever composes them. Made only where a reading answers about
+     * itself, which is inside this file.
+     */
+    final class ReadAdmission<A> {
+
+        private final Admission<A> walked;
+        private final LeftUnbuilt leftUnbuilt;
+
+        private ReadAdmission(Admission<A> walked, LeftUnbuilt leftUnbuilt) {
+            this.walked = walked;
+            this.leftUnbuilt = leftUnbuilt;
+        }
+
+        /**
+         * Whether anything satisfies the pair, once what could not be built is spent on the answer.
+         *
+         * <p>What the two halves come to, and the whole of what a reader outside may hold. The
+         * proof travels where the verdict does not move: a lack is shown by something and is where
+         * it is, and neither of those is true of an answer nobody reached — which the verdict
+         * itself refuses to be written with ({@link Admission}), so a verdict that moved is a new
+         * one carrying nothing.
+         */
+        private Admission<A> admission() {
+            souther.compiler.values.Emptiness held = leftUnbuilt.hold(walked.emptiness());
+            return held == walked.emptiness() ? walked : Admission.left(held);
+        }
+
+        /** What the reading behind this could not build, for a caller composing readings. */
+        private LeftUnbuilt leftUnbuilt() {
+            return leftUnbuilt;
         }
     }
 
@@ -530,6 +620,24 @@ sealed interface Confinement<A> {
 
         private final PlannedValues<A> values;
         private final OrderedIntervals<A> ordered;
+        /**
+         * What the rules leave the numbers this value's operations answer ({@link BoundaryState}).
+         *
+         * <p>Here because a choice is composed once and here is where it is composed: what the
+         * alternatives leave a length is put together under the same branch decision as what they
+         * leave the values and the orders, and a third place composing any of it would be a third
+         * answer about one written choice.
+         *
+         * <p>Whole, and not the ranges alone. Which numbers a rule stopped somewhere nothing
+         * worked out is the other half of what this reading came to, and it composes by the same
+         * connectives: kept somewhere else, the two halves would be put together twice.
+         *
+         * <p><b>And it is not asked whether anybody can be in a branch.</b> That question is the
+         * values' and the orders' ({@link #admission}), and this holds no half of it: a length is
+         * bounded by rules about a number the position's own reading has no word for, so a branch
+         * refused by one of these would be refused by a reading the other two cannot check.
+         */
+        private final BoundaryState derived;
         private final Map<A, Carrier> carriers;
         /**
          * What already showed this holds nothing, or null where nothing has.
@@ -543,13 +651,22 @@ sealed interface Confinement<A> {
         private final Admission<A> shown;
 
         Planned(PlannedValues<A> values, OrderedIntervals<A> ordered, Map<A, Carrier> carriers) {
-            this(values, ordered, carriers, null);
+            this(values, ordered, BoundaryState.nothing(), carriers, null);
+        }
+
+        /** The same, for a leaf that also says where a number one of this value's operations
+         *  answers stops. */
+        Planned(PlannedValues<A> values, OrderedIntervals<A> ordered,
+                BoundaryState derived, Map<A, Carrier> carriers) {
+            this(values, ordered, derived, carriers, null);
         }
 
         private Planned(PlannedValues<A> values, OrderedIntervals<A> ordered,
+                        BoundaryState derived,
                         Map<A, Carrier> carriers, Admission<A> shown) {
             this.values = values;
             this.ordered = ordered;
+            this.derived = derived;
             this.carriers = Collections.unmodifiableMap(new LinkedHashMap<>(carriers));
             this.shown = shown;
         }
@@ -583,15 +700,20 @@ sealed interface Confinement<A> {
         }
 
         @Override
-        public Admission<A> admission(PositionEnvelope.Restrictions<A> outside,
-                                      StringMachineAnswers machines) {
-            return shown != null ? shown : Confinement.admission(ordered, carriers, outside,
-                    // The relation is not asked on this side: what a denial comes to is settled
-                    // against the values its blocks are left, and those are descriptions here. The
-                    // walk says so of each alternative that carries one.
-                    (asked, _) -> values.anyAlternativeAdmits(asked),
-                    (asked, _) -> values.refusedInEveryAlternativeAt(asked),
-                    values.refusedBy(), machines);
+        public ReadAdmission<A> read(PositionEnvelope.Restrictions<A> outside,
+                                     StringMachineAnswers machines) {
+            // Nothing has been built here, so nothing was refused while building: what these
+            // descriptions cannot tell is told by the walk, as the answer nobody has worked out.
+            return new ReadAdmission<>(
+                    shown != null ? shown : Confinement.admission(ordered, carriers, outside,
+                            // The relation is not asked on this side: what a denial comes to is
+                            // settled against the values its blocks are left, and those are
+                            // descriptions here. The walk says so of each alternative that carries
+                            // one.
+                            (asked, _) -> values.anyAlternativeAdmits(asked),
+                            (asked, _) -> values.refusedInEveryAlternativeAt(asked),
+                            values.refusedBy(), machines),
+                    LeftUnbuilt.NOTHING);
         }
 
         /**
@@ -618,6 +740,7 @@ sealed interface Confinement<A> {
          */
         Planned<A> meet(Planned<A> other) {
             return new Planned<>(values.meet(other.values), ordered.meet(other.ordered),
+                    derived.both(other.derived),
                     Confinement.both(carriers, other.carriers),
                     eitherShown(admission(), other.admission()));
         }
@@ -628,7 +751,13 @@ sealed interface Confinement<A> {
             return new Planned<>(
                     apart ? values.joinLiveApart(other.values) : values.joinLive(other.values),
                     ordered.joinLive(other.ordered),
-                    Confinement.both(carriers, other.carriers));
+                    // Which is not the ranges' own join. That one is written for two alternatives
+                    // this reading has been told somebody can be in, and nothing tells this one:
+                    // whether anybody can be in a branch is settled without it, so a branch whose
+                    // lengths have crossed reaches here alive. What such a branch leaves is
+                    // {@link BoundaryState#either}'s to say.
+                    derived.either(other.derived),
+                    Confinement.both(carriers, other.carriers), null);
         }
 
         /**
@@ -649,17 +778,29 @@ sealed interface Confinement<A> {
         Planned<A> bothDead(Planned<A> other, Admission<A> shown) {
             return new Planned<>(values.bothDead(other.values),
                     ordered.bothDead(other.ordered),
+                    derived.bothDead(other.derived),
                     Confinement.both(carriers, other.carriers), shown);
         }
 
         /** This, holding what working it out could not build. */
         Planned<A> alsoStanding(souther.compiler.values.Standing<A> standing) {
-            return new Planned<>(values.alsoStanding(standing), ordered, carriers, shown);
+            return new Planned<>(values.alsoStanding(standing), ordered, derived, carriers, shown);
         }
 
         /** The values worked out, under {@code by}, and the same ranges beside them. */
         Worked<A> resolve(Allowance<A> by) {
-            return new Worked<>(values.resolve(by), ordered, carriers, shown);
+            return new Worked<>(values.resolve(by), ordered, derived, carriers, shown);
+        }
+
+        /**
+         * What the rules leave the numbers this value's operations answer.
+         *
+         * <p>Handed out for a reader looking for where a line falls, and for nothing else. What it
+         * says is where the outermost ends are; that a number takes every value between them is
+         * not something it was ever asked.
+         */
+        BoundaryState derived() {
+            return derived;
         }
 
         @Override
@@ -683,12 +824,16 @@ sealed interface Confinement<A> {
 
         private final Realized<A> made;
         private final OrderedIntervals<A> ordered;
+        /** Where the numbers this value's operations answer stop — see {@link Planned#derived}. */
+        private final BoundaryState derived;
         private final Map<A, Carrier> carriers;
         /** What already showed this holds nothing — see {@link Planned#shown}. */
         private final Admission<A> shown;
 
-        Worked(Realized<A> made, OrderedIntervals<A> ordered, Map<A, Carrier> carriers,
+        Worked(Realized<A> made, OrderedIntervals<A> ordered,
+               BoundaryState derived, Map<A, Carrier> carriers,
                Admission<A> shown) {
+            this.derived = derived;
             this.made = made;
             this.ordered = ordered;
             this.carriers = Collections.unmodifiableMap(new LinkedHashMap<>(carriers));
@@ -703,6 +848,30 @@ sealed interface Confinement<A> {
             return made.values();
         }
 
+        /** What the rules leave the numbers this value's operations answer — see
+         *  {@link Planned#derived()}. */
+        BoundaryState derived() {
+            return derived;
+        }
+
+        /**
+         * How far the values at each position reach, for the readers that draw lines.
+         *
+         * <p>The one way out of here for what the connectives came to on the positions' own orders.
+         * A reader drawing a line is handed this and never the order it is read off: holding the
+         * order, it would hold half of what says whether a value exists, and composing a choice a
+         * second time is what the whole of this arrangement is against.
+         *
+         * <p>Which is why nothing is stored. The projection is of this reading and is wanted by
+         * whoever made it — a counterfactual is a reading of its own and takes its own answer, and
+         * one lent this one would find every end exactly where it left it.
+         *
+         * @param aliases the names each position answers to, in the vocabulary of the reader asking
+         */
+        SettledOrderEnvelope envelopeOver(Map<RuleKey, ? extends Collection<A>> aliases) {
+            return SettledOrderEnvelope.of(ordered, carriers, aliases);
+        }
+
         /**
          * The same answer, unable to speak for {@code these} because a choice offered an
          * alternative nothing could read.
@@ -713,7 +882,7 @@ sealed interface Confinement<A> {
          */
         Worked<A> alsoOpenedAt(Set<A> these) {
             return these.isEmpty() ? this
-                    : new Worked<>(made.alsoOpenedAt(these), ordered, carriers, shown);
+                    : new Worked<>(made.alsoOpenedAt(these), ordered, derived, carriers, shown);
         }
 
         @Override
@@ -722,20 +891,14 @@ sealed interface Confinement<A> {
         }
 
         @Override
-        public Admission<A> admission(PositionEnvelope.Restrictions<A> outside,
-                                      StringMachineAnswers machines) {
-            if (shown != null) {
-                return shown;
-            }
-            Admission<A> said = Confinement.admission(ordered, carriers, outside,
-                    made.values()::anyAlternativeAdmits,
-                    made.values()::refusedInEveryAlternativeAt,
-                    made.values().refusedBy(), machines);
-            // A position nobody could build is one what stands there is wider than the rules, so a
-            // pair the ranges did not refuse may still hold nothing. Settled empty is settled all
-            // the same: a narrower reading refuses no less.
-            return said.emptiness() == souther.compiler.values.Emptiness.NONEMPTY && !made.unbuilt().isEmpty()
-                    ? Admission.left(souther.compiler.values.Emptiness.UNDECIDED) : said;
+        public ReadAdmission<A> read(PositionEnvelope.Restrictions<A> outside,
+                                     StringMachineAnswers machines) {
+            return new ReadAdmission<>(
+                    shown != null ? shown : Confinement.admission(ordered, carriers, outside,
+                            made.values()::anyAlternativeAdmits,
+                            made.values()::refusedInEveryAlternativeAt,
+                            made.values().refusedBy(), machines),
+                    made.leftUnbuilt());
         }
 
         /** The positions the order leaves no value at, for a reader writing down where. */
@@ -762,24 +925,36 @@ sealed interface Confinement<A> {
         private final Map<A, Carrier> carriers;
         /** What already showed this holds nothing — see {@link Planned#shown}. */
         private final Admission<A> shown;
-
-        Conjoined(ConjoinedAdmissibleValues<A> values, OrderedIntervals<A> ordered,
-                  Map<A, Carrier> carriers) {
-            this(values, ordered, carriers, null);
-        }
+        /**
+         * What the readings taken in here could not build, kept and never interpreted.
+         *
+         * <p>Beside {@code shown} and never folded into it. What showed a conjunction empty is a
+         * proof somebody reached; what a reading could not build is why nobody reached one — so a
+         * conjunction nothing showed empty carries no proof and may still be carrying this, and a
+         * value holding one word for both would have to drop whichever of the two it was not.
+         *
+         * <p>Written at every place one of these is made, rather than defaulted. Nothing read
+         * leaves nothing unbuilt; a reading taken in brings its own; two conjunctions met are
+         * short of a position where either is; and the same conjunction said again under other
+         * names, or handed a range to take as holding, asks the readings nothing and so works
+         * nothing out. A value that filled this in for itself would answer the middle two the way
+         * it answers the first.
+         */
+        private final LeftUnbuilt leftUnbuilt;
 
         private Conjoined(ConjoinedAdmissibleValues<A> values, OrderedIntervals<A> ordered,
-                          Map<A, Carrier> carriers, Admission<A> shown) {
+                          Map<A, Carrier> carriers, Admission<A> shown, LeftUnbuilt leftUnbuilt) {
             this.values = values;
             this.ordered = ordered;
             this.carriers = Collections.unmodifiableMap(new LinkedHashMap<>(carriers));
             this.shown = shown;
+            this.leftUnbuilt = leftUnbuilt;
         }
 
-        /** Nothing read, so nothing ruled out. */
+        /** Nothing read, so nothing ruled out and nothing left unbuilt. */
         static <A> Conjoined<A> top() {
             return new Conjoined<>(ConjoinedAdmissibleValues.top(), OrderedIntervals.top(),
-                    Map.of());
+                    Map.of(), null, LeftUnbuilt.NOTHING);
         }
 
         ConjoinedAdmissibleValues<A> values() {
@@ -792,11 +967,13 @@ sealed interface Confinement<A> {
         }
 
         @Override
-        public Admission<A> admission(PositionEnvelope.Restrictions<A> outside,
-                                      StringMachineAnswers machines) {
-            return shown != null ? shown : Confinement.admission(ordered, carriers, outside,
-                    values::anyAlternativeAdmits, values::refusedInEveryAlternativeAt,
-                    values.refusedBy(), machines);
+        public ReadAdmission<A> read(PositionEnvelope.Restrictions<A> outside,
+                                     StringMachineAnswers machines) {
+            return new ReadAdmission<>(
+                    shown != null ? shown : Confinement.admission(ordered, carriers, outside,
+                            values::anyAlternativeAdmits, values::refusedInEveryAlternativeAt,
+                            values.refusedBy(), machines),
+                    leftUnbuilt);
         }
 
         /** The positions the order leaves no value at. */
@@ -819,7 +996,8 @@ sealed interface Confinement<A> {
         Conjoined<A> meet(Conjoined<A> other, Allowance<A> sets) {
             return new Conjoined<>(values.meet(other.values, sets), ordered.meet(other.ordered),
                     Confinement.both(carriers, other.carriers),
-                    eitherShown(admission(), other.admission()));
+                    eitherShown(admission(), other.admission()),
+                    leftUnbuilt.met(other.leftUnbuilt));
         }
 
         /** The same rules about the same positions, under the names {@code naming} gives them. */
@@ -829,14 +1007,15 @@ sealed interface Confinement<A> {
             Admission<B> said = shown == null ? null
                     : new Admission<>(shown.emptiness(), shown.by(),
                             shown.site().renamed(naming), shown.how());
-            return new Conjoined<>(values.renamed(naming), ordered.renamed(naming), out, said);
+            return new Conjoined<>(values.renamed(naming), ordered.renamed(naming), out, said,
+                    leftUnbuilt);
         }
 
         /** The same, with {@code bounded} taken as holding of the positions it bounds, on the
          *  orders {@code on} says they are counted by. */
         Conjoined<A> taking(OrderedIntervals<A> bounded, Map<A, Carrier> on) {
             return new Conjoined<>(values, ordered.meet(bounded), Confinement.both(carriers, on),
-                    shown);
+                    shown, leftUnbuilt);
         }
 
         /**
@@ -876,27 +1055,33 @@ sealed interface Confinement<A> {
                         + values;
                 return this;
             }
+            // Both halves of what the reading answers, out of one walk of it. What it was shown
+            // empty by is a fact about the rules and travels with them — left behind, a declaration
+            // refused because two of its branches share no value between their sets and their
+            // ranges would be reported as one whose values admit nothing, which is what dropping
+            // the branches left. What it could not build is a fact about the reading and travels
+            // the same way: taken in without it, a conjunction answers that something satisfies it
+            // out of positions nobody worked out.
+            ReadAdmission<A> taken =
+                    read.read(PositionEnvelope.Restrictions.nothingSpokenOf(), machines);
             return new Conjoined<>(
                     ConjoinedAdmissibleValues.of(
                             AdmissibleValues.<A>top().meet(read.values(), sets)),
                     ordered.meet(read.ordered), Confinement.both(carriers, read.carriers()),
-                    // What the reading was already shown empty by, which is a fact about the rules
-                    // and travels with them. Left behind, a declaration refused because two of its
-                    // branches share no value between their sets and their ranges would be reported
-                    // as one whose values admit nothing, which is what dropping the branches left.
-                    eitherShown(admission(machines), read.admission(machines)));
+                    eitherShown(admission(machines), taken.admission()),
+                    leftUnbuilt.met(taken.leftUnbuilt()));
         }
 
         @Override
         public boolean equals(Object other) {
             return other instanceof Conjoined<?> it && values.equals(it.values)
                     && ordered.equals(it.ordered) && carriers.equals(it.carriers)
-                    && Objects.equals(shown, it.shown);
+                    && Objects.equals(shown, it.shown) && leftUnbuilt == it.leftUnbuilt;
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(values, ordered, carriers, shown);
+            return Objects.hash(values, ordered, carriers, shown, leftUnbuilt);
         }
 
         @Override

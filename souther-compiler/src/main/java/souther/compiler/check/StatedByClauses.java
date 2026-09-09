@@ -163,18 +163,30 @@ sealed interface StatedByClauses {
      *                     ends' own, and not the other half of {@code ruleShortfalls}: that one is
      *                     about which values may stand at a position, and a reading that has a word
      *                     for a range where the other has none is short of nothing here
+     * @param boundary what this part leaves the numbers an operation answers, over the tree its
+     *                 author wrote ({@link BoundaryState}). The same operations the whole
+     *                 declaration's reading is put together by, asked here of the alternatives as
+     *                 they stand between the brackets — which is the only tree a question about a
+     *                 choice may be asked over, since the other one has conjuncts written outside
+     *                 the brackets distributed into the branches
+     * @param boundsLeftOpen which choice an author is sent to for a line this part states on one of
+     *                       those numbers and nothing placed. The provenance alone: whether the end
+     *                       is still open is {@code boundary}'s answer, and the two are met where
+     *                       the account is published
      */
     record Part(Adoption<FactSubject, ReadingLanguage.Values> byValues,
                 Adoption<FactSubject, ReadingLanguage.Order> byOrder,
                 Map<FactSubject, StringRestriction> aboutStrings,
                 Set<AdmissibleReading.AskedAt> asked,
                 Set<RuleShortfall> ruleShortfalls,
-                EndsLeftOpen endsLeftOpen) {
+                EndsLeftOpen endsLeftOpen,
+                BoundaryState boundary,
+                Map<OpenEnd, EndsLeftOpen.Behind> boundsLeftOpen) {
 
         /** What a clause of no connective, that no reading has a word for, took in. */
         static Part nothing() {
             return new Part(Adoption.nothing(), Adoption.nothing(), Map.of(), Set.of(), Set.of(),
-                    EndsLeftOpen.nothing());
+                    EndsLeftOpen.nothing(), BoundaryState.nothing(), Map.of());
         }
 
         /**
@@ -196,7 +208,25 @@ sealed interface StatedByClauses {
                     StringRestriction.over(aboutStrings, other.aboutStrings(), true),
                     askedIn(asked, other.asked()),
                     shortOf(ruleShortfalls, other.ruleShortfalls()),
-                    endsLeftOpen.both(other.endsLeftOpen()));
+                    endsLeftOpen.both(other.endsLeftOpen()),
+                    boundary.both(other.boundary()),
+                    reached(boundsLeftOpen, other.boundsLeftOpen()));
+        }
+
+        /** The same end reached two ways, which is what a conjunction of two parts comes to. */
+        private static Map<OpenEnd, EndsLeftOpen.Behind> reached(
+                Map<OpenEnd, EndsLeftOpen.Behind> these,
+                Map<OpenEnd, EndsLeftOpen.Behind> those) {
+            if (those.isEmpty()) {
+                return these;
+            }
+            if (these.isEmpty()) {
+                return those;
+            }
+            Map<OpenEnd, EndsLeftOpen.Behind> out = new LinkedHashMap<>(these);
+            those.forEach((number, behind) ->
+                    out.merge(number, behind, EndsLeftOpen.Behind::and));
+            return Collections.unmodifiableMap(out);
         }
 
         /**
@@ -218,7 +248,7 @@ sealed interface StatedByClauses {
             // And no end of it is left open. An end nothing derived is what a value of this type
             // may still be at, and no value of this type is in this branch.
             return new Part(byValues.inADeadBranch(), byOrder.inADeadBranch(), Map.of(),
-                    Set.of(), Set.of(), EndsLeftOpen.nothing());
+                    Set.of(), Set.of(), EndsLeftOpen.nothing(), BoundaryState.nothing(), Map.of());
         }
 
         /**
@@ -231,7 +261,18 @@ sealed interface StatedByClauses {
          */
         Part underACollapsedChoice() {
             return new Part(byValues, byOrder, aboutStrings, asked, ruleShortfalls,
-                    endsLeftOpen.underACollapsedChoice());
+                    endsLeftOpen.underACollapsedChoice(), boundary,
+                    underACollapsedChoice(boundsLeftOpen));
+        }
+
+        private static Map<OpenEnd, EndsLeftOpen.Behind> underACollapsedChoice(
+                Map<OpenEnd, EndsLeftOpen.Behind> these) {
+            if (these.isEmpty()) {
+                return these;
+            }
+            Map<OpenEnd, EndsLeftOpen.Behind> out = new LinkedHashMap<>();
+            these.forEach((number, behind) -> out.put(number, behind.underACollapsedChoice()));
+            return Collections.unmodifiableMap(out);
         }
 
         /** The same part of two branches somebody can be in, under the choice between them. */
@@ -265,7 +306,24 @@ sealed interface StatedByClauses {
                     // And the ends the choice leaves open, struck down by what each alternative
                     // says it came to and never added to: what a choice can show is that the branch
                     // beside an unfollowed one puts every value of a position on the order.
-                    endsLeftOpen.either(choice, byOrder, other.endsLeftOpen(), other.byOrder()));
+                    endsLeftOpen.either(choice, byOrder, other.endsLeftOpen(), other.byOrder()),
+                    boundary.either(other.boundary()),
+                    // And the choice an author is sent to for a line on a derived number nothing
+                    // placed. Nothing is struck off here: which of them the choice still leaves
+                    // open is what the alternatives leave that number, and that is settled once,
+                    // where they are ({@link BoundaryState#either}).
+                    under(choice, reached(boundsLeftOpen, other.boundsLeftOpen())));
+        }
+
+        /** The same ends, with {@code choice} standing between them and the walk. */
+        private static Map<OpenEnd, EndsLeftOpen.Behind> under(
+                ChoiceSite choice, Map<OpenEnd, EndsLeftOpen.Behind> these) {
+            if (these.isEmpty()) {
+                return these;
+            }
+            Map<OpenEnd, EndsLeftOpen.Behind> out = new LinkedHashMap<>();
+            these.forEach((number, behind) -> out.put(number, behind.under(choice)));
+            return Collections.unmodifiableMap(out);
         }
 
         /**
@@ -445,7 +503,8 @@ sealed interface StatedByClauses {
     }
 
     /**
-     * Whether {@code read} is the tree {@code clause} was written as.
+     * Whether {@code read} is the tree {@code clause} was written as, in the world {@code view}
+     * describes.
      *
      * <p>What this type is for, said as a predicate. Every question a choice answers is asked of its
      * two alternatives, and an alternative is what stands between the brackets — so a reading that
@@ -457,15 +516,20 @@ sealed interface StatedByClauses {
      * number of choices where it was — {@code (a || b) && c} and {@code (a && c) || (b && c)} are
      * one {@code ||} each — so what is held is which node stands under which, down to the identity
      * of every node an author wrote.
+     *
+     * <p><b>The tree the world {@code view} describes holds</b>, which is the author's with the
+     * parts that world leaves out gone and every other node where the author put it. What a
+     * conjunction of one rule and no rule was read as is that rule, so the node above it stands
+     * over what is left rather than over a state standing in for what is not there.
      */
-    static boolean mirrors(Core clause, StatedByClauses read) {
+    static boolean mirrors(Core clause, StatedByClauses read, ClauseView view) {
         // The fold names the clause once as it starts and again as the shape of it is finished, so
         // the outermost of these is the one the caller put there.
         return read instanceof CameFrom it && it.node() == clause
-                && mirrors(ClauseExpr.of(clause, true), it.of());
+                && mirrors(ClauseExpr.of(clause, true), it.of(), view);
     }
 
-    private static boolean mirrors(ClauseExpr shape, StatedByClauses read) {
+    private static boolean mirrors(ClauseExpr shape, StatedByClauses read, ClauseView view) {
         StatedByClauses under = read;
         // Every node the shape was spelled as, innermost first: that is the order the fold wrapped
         // them in, and a reading that recorded a part anywhere else is one this does not accept.
@@ -478,14 +542,24 @@ sealed interface StatedByClauses {
         }
         return switch (shape) {
             case ClauseExpr.Leaf _ -> under instanceof Said;
-            case ClauseExpr.Scoped it -> mirrors(it.body(), under);
+            case ClauseExpr.Scoped it -> mirrors(it.body(), under, view);
             case ClauseExpr.Joined it -> switch (it.how()) {
-                case BOTH -> under instanceof Both both
-                        && mirrors(it.left(), both.left())
-                        && mirrors(it.right(), both.right());
+                case BOTH -> {
+                    // A side this world holds no rule of was never read, so what stands here is
+                    // the other side and not a conjunction of it with anything.
+                    if (view.omits(it.left())) {
+                        yield mirrors(it.right(), under, view);
+                    }
+                    if (view.omits(it.right())) {
+                        yield mirrors(it.left(), under, view);
+                    }
+                    yield under instanceof Both both
+                            && mirrors(it.left(), both.left(), view)
+                            && mirrors(it.right(), both.right(), view);
+                }
                 case EITHER -> under instanceof Either choice && choice.writtenAt() == it.of()
-                        && mirrors(it.left(), choice.left())
-                        && mirrors(it.right(), choice.right());
+                        && mirrors(it.left(), choice.left(), view)
+                        && mirrors(it.right(), choice.right(), view);
             };
         };
     }
@@ -494,10 +568,11 @@ sealed interface StatedByClauses {
      *  Built per clause, this walk paid for a pair of readers at every clause of every value. */
     static Reading readingOf(Terms terms, Map<FactSubject, Type> byName,
                              Symbols symbols, Alternatives alternatives,
-                             Allowance<FactSubject> allowed, StringMachineAnswers machines) {
+                             Allowance<FactSubject> allowed, StringMachineAnswers machines,
+                             StatedLines lines, BoundaryReading boundaries) {
         return new Reading(AdmissibleReading.of(terms, byName, symbols, allowed),
                 OrderedReading.of(terms, byName, symbols), terms, byName, alternatives,
-                machines);
+                machines, lines, boundaries);
     }
 
 
@@ -524,7 +599,7 @@ sealed interface StatedByClauses {
      */
     record Reading(AdmissibleReading values, OrderedReading ordered, Terms terms,
                    Map<FactSubject, Type> byName, Alternatives alternatives,
-                   StringMachineAnswers machines)
+                   StringMachineAnswers machines, StatedLines lines, BoundaryReading boundaries)
             implements ClauseReading<StatedByClauses, Denotations> {
 
         /** What a binding under a clause is entered as, for a fold over this reading. The one
@@ -555,7 +630,16 @@ sealed interface StatedByClauses {
             PlannedValues<FactSubject> said = values.leaf(e, positive, at);
             OrderedIntervals<FactSubject> range = ordered.leaf(e, positive, at);
             Set<FactSubject> mentions = mentioned(e, at);
-            return new Said(new Confinement.Planned<>(said, range, ordered.carriers()), new Part(
+            // What the leaf states, asked once and read by both of the questions below: which
+            // number a line falls on is a fact about the clause, and the readings are asked what
+            // they made of it rather than asked to work it out again.
+            StatedLines.Statement stated = lines.of(e, positive, at);
+            BoundaryReading.Read bounds = boundaries.leaf(stated, e, positive, at);
+            return new Said(new Confinement.Planned<>(said, range,
+                    // And what the leaf leaves the numbers this value's operations answer, which
+                    // is a third reading with a state of its own. Held beside the other two so
+                    // that the connectives compose it once, under the fate the other two decide.
+                    stateOf(bounds), ordered.carriers()), new Part(
                     // Each language says for itself whether it could account for the leaf, and each
                     // is asked. Read off what a language produced instead, a rule it followed to
                     // the end and found bounds nothing is one it gave up on — which is what every
@@ -572,14 +656,42 @@ sealed interface StatedByClauses {
                     // decided it and written down where it decided. Read off what the leaf leaves
                     // the positions instead, this would be a list of reasons and no clause.
                     held(values.shortfallsAt(e)),
-                    // And which of the positions this leaf names have an end here that is unknown,
-                    // which is the ends' answer and not this walk's. What the clause names is what
-                    // is handed over; which of those have an end at all, and which of them this
-                    // reading worked out, are questions only it can answer — a rule it followed to
-                    // the end leaves none of them, nor does one holding a position it counts to
-                    // another of them, nor is a position whose values are not ordered one it fell
-                    // short at.
-                    EndsLeftOpen.at(ordered.endsLeftUnknownAt(e, mentions))));
+                    // And which of the positions this leaf names have an end here that is unknown.
+                    // Two readings, each asked what only it can say. Which positions the leaf says
+                    // the values stop somewhere on is a fact about the clause and wants the
+                    // arithmetic of its sides ({@link StatedLines}); which of those have an end at
+                    // all, and which of them were worked out, are the ends' own — a rule it
+                    // followed to the end leaves none of them, nor does one holding a position it
+                    // counts to another of them, nor is a position whose values are not ordered one
+                    // it fell short at.
+                    //
+                    // Read off what the ends managed alone, a rule stating no line and a rule
+                    // stating one nobody worked out are one answer, and every leaf of the first
+                    // kind left an end open under a choice.
+                    EndsLeftOpen.at(ordered.endsLeftUnknownAt(e,
+                            lines.waitingOnAReader(stated, mentions))),
+                    // What the leaf leaves the derived numbers, over the tree its author wrote.
+                    // The same state the whole declaration's reading is put together from, and the
+                    // same operations — asked here of the alternatives as they stand between the
+                    // brackets, which is the only tree a question about a choice may be asked over.
+                    stateOf(bounds),
+                    // And where a line on a number an operation answers was left open, which
+                    // choice an author is sent to for it. The provenance and nothing else:
+                    // whether such an end is still open once the branches are settled is the
+                    // reading's own answer and is met with this where both are in hand.
+                    bounds instanceof BoundaryReading.Read.LeftOpen open
+                            ? Map.of(open.end(), EndsLeftOpen.Behind.aLeaf())
+                            : Map.of()));
+        }
+
+        /** What one leaf's reading of the derived numbers comes to, as the state that composes. */
+        private static BoundaryState stateOf(BoundaryReading.Read read) {
+            return switch (read) {
+                case BoundaryReading.Read.NoLineStated _ -> BoundaryState.nothing();
+                case BoundaryReading.Read.Bounded it ->
+                        BoundaryState.bounded(it.number(), it.range());
+                case BoundaryReading.Read.LeftOpen it -> BoundaryState.leftOpen(it.end());
+            };
         }
 
         /**
@@ -931,8 +1043,9 @@ sealed interface StatedByClauses {
                     new LinkedHashMap<>();
             made.aboutTheAnswer().forEach(each -> answered.merge(each.at(),
                     List.of(each.why()), ReadByClauses::alsoSaying));
-            return new Settlement.Sided(Confinement.Admission.left(souther.compiler.values.Emptiness.UNDECIDED), answered,
-                    made.aboutARule(), made.unbuilt());
+            // The answer the reading gave, and not one written again out of the word. What reaches
+            // here is what nobody settled, which is what that answer already is.
+            return new Settlement.Sided(admitted, answered, made.aboutARule(), made.unbuilt());
         }
 
         /**
@@ -947,8 +1060,15 @@ sealed interface StatedByClauses {
         Account accountOf(StatedByClauses rule, StatedTogether projected, Settlement made,
                           Allowance<FactSubject> by) {
             Taken took = accounted(rule, made.outcomes());
+            // This rule's own settled reading, which is what an account of it rests on. The
+            // derived numbers it still leaves open are read off the same one: which of them a
+            // choice settled is that reading's answer, worked out where the branches were, and
+            // met here with the choices an author is sent to.
+            // And which of the lines it stated on a derived number the rule still leaves open,
+            // read off the tree the author wrote — where an alternative is what stands between the
+            // brackets, and a conjunct written outside them is not in either branch.
             return new Account(narrowedBy(alone(projected, by).confinement().values(), by),
-                    partsOf(took, made), took.opened());
+                    partsOf(took, made, took.took().boundary().open()), took.opened());
         }
 
         /**
@@ -1046,7 +1166,30 @@ sealed interface StatedByClauses {
             return out;
         }
 
-        private Map<Core, PartAccount> partsOf(Taken took, Settlement made) {
+        /**
+         * The choices written for the ends of {@code stillOpen}, and none for the rest.
+         *
+         * <p>End by end and never by the number they are ends of. One rule can state two lines on
+         * one length, and an alternative beside one of them settles that one alone — asked whether
+         * the length is still open, the settled line finds that it is, because of the other, and
+         * comes back with the choice its own alternative had already answered for.
+         */
+        private static Map<OpenEnd, EndsLeftOpen.Behind> stillOpenOf(
+                Map<OpenEnd, EndsLeftOpen.Behind> written, Set<OpenEnd> stillOpen) {
+            if (written.isEmpty()) {
+                return written;
+            }
+            Map<OpenEnd, EndsLeftOpen.Behind> out = new LinkedHashMap<>();
+            written.forEach((end, behind) -> {
+                if (stillOpen.contains(end)) {
+                    out.put(end, behind);
+                }
+            });
+            return out;
+        }
+
+        private Map<Core, PartAccount> partsOf(Taken took, Settlement made,
+                                               Set<OpenEnd> stillOpen) {
             Set<FactSubject> unbuilt = made.made().unbuilt();
             // And what could not be built is given up on here too. What a leaf said it adopted was
             // said before any machine was made, so a position whose answer the whole reading did
@@ -1062,7 +1205,11 @@ sealed interface StatedByClauses {
                     // clause that asked for it, and reaches no clause that asked for something else.
                     shortOf(part.ruleShortfalls(),
                             askedFor(made.made().aboutARule(), part.asked())),
-                    part.aboutStrings(), part.endsLeftOpen())));
+                    part.aboutStrings(), part.endsLeftOpen(),
+                    // The choices this part wrote, kept only for the ends its own rule still
+                    // leaves open. The gate is the reading's and ran once; this is where its
+                    // answer and the provenance meet.
+                    stillOpenOf(part.boundsLeftOpen(), stillOpen))));
             return parts;
         }
 
@@ -1237,7 +1384,7 @@ sealed interface StatedByClauses {
                     // build says nothing about which ends this reading worked out, and a position
                     // struck off here would be one the border is told nothing about because a
                     // pattern beside it was unaffordable.
-                    part.endsLeftOpen()));
+                    part.endsLeftOpen(), part.boundary(), part.boundsLeftOpen()));
         }
 
         /**
@@ -1359,15 +1506,21 @@ sealed interface StatedByClauses {
         private final Map<K, List<Core>> byPart = new LinkedHashMap<>();
         private final Map<K, StatedByClauses> trees = new LinkedHashMap<>();
 
-        /** One clause read from {@code at}, with the parts of it noted in the order the reading
-         *  reached them. */
-        StatedByClauses read(Reading reader, Denotations at, K key, Core clause) {
+        /** One clause read from {@code at} in the world {@code view} describes
+         *  ({@link ClauseView}), with the parts of it noted in the order the reading reached
+         *  them. */
+        StatedByClauses read(Reading reader, Denotations at, K key, Core clause, ClauseView view) {
             List<Core> parts = new ArrayList<>();
             StatedByClauses one = reader.read(clause, true, at, reader.scope(),
-                    (_, part, _) -> parts.add(part));
+                    (_, part, _) -> parts.add(part), view);
             // An assertion because it is about this compiler and not about any model, and here
             // rather than in one test because every clause a corpus holds is read through it.
-            assert mirrors(clause, one)
+            //
+            // Asked of the tree this world holds and not of the one the author wrote. A part left
+            // out of the world is left out of the reading, so the two differ by exactly what the
+            // view says — and an assertion kept against the written tree would have to be weakened
+            // to a shape it no longer states.
+            assert mirrors(clause, one, view)
                     : "the reading of a clause is not the tree its author wrote it as";
             byClause.put(key, clause);
             byPart.put(key, parts);
@@ -1540,7 +1693,8 @@ sealed interface StatedByClauses {
             Map<Core, ReadByClauses.OfAPart> out = new IdentityHashMap<>();
             said.forEach((each, part) -> out.put(each, new ReadByClauses.OfAPart(
                     part.byValues(), part.byOrder(), part.aboutARule(),
-                    admitted(part.aboutStrings(), answers), part.endsLeftOpen())));
+                    admitted(part.aboutStrings(), answers), part.endsLeftOpen(),
+                    part.boundsLeftOpen())));
             return out;
         }
 
@@ -1611,7 +1765,8 @@ sealed interface StatedByClauses {
                        Adoption<FactSubject, ReadingLanguage.Order> byOrder,
                        Set<RuleShortfall> aboutARule,
                        Map<FactSubject, StringRestriction> aboutStrings,
-                       EndsLeftOpen endsLeftOpen) {}
+                       EndsLeftOpen endsLeftOpen,
+                       Map<OpenEnd, EndsLeftOpen.Behind> boundsLeftOpen) {}
 
     /** How much the allowance has spent in all, for holding an account to spending nothing — see
      *  {@code InvariantChecker.spentBy}. */

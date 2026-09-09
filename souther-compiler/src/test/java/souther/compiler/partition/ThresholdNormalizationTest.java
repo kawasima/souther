@@ -2,18 +2,15 @@ package souther.compiler.partition;
 
 import org.junit.jupiter.api.Test;
 
-import souther.compiler.ast.Hir;
+import souther.compiler.check.DeclaredSig;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.RuleReadings;
-import souther.compiler.check.Prepared;
-import souther.compiler.check.Sig;
 import souther.compiler.core.Core;
 import souther.compiler.coverage.CoverageSites;
 import souther.compiler.inputs.InputDomain;
 import souther.compiler.numeric.NumericDomain;
 import souther.compiler.query.Bodies;
 import souther.compiler.query.Compilation;
-import souther.compiler.query.Shapes;
 
 import souther.compiler.numeric.Count;
 import souther.compiler.numeric.Towards;
@@ -47,14 +44,12 @@ class ThresholdNormalizationTest {
         Compilation compilation = Compilation.ofSource(source, "Main");
         compilation.answerEverything();
         String module = compilation.modules().get(0);
-        Prepared prepared = compilation.db().ask(new Shapes.Prepared(module)).value();
         RuleReadingSource rules = RuleReadings.of(compilation, module);
-        Map<String, Sig> sigs = compilation.db().ask(new Bodies.Signatures(module)).value();
+        Map<String, DeclaredSig> sigs =
+                compilation.db().ask(new Bodies.DeclaredSignatures(module)).value();
         Bodies.Elaborated checked = compilation.db().ask(new Bodies.Checked(module)).value();
         assertNotNull(checked, "the model under test compiles");
 
-        Hir.SpecBehavior spec = (Hir.SpecBehavior) prepared.behaviors().stream()
-                .filter(b -> b.name().equals(behavior)).findFirst().orElseThrow();
         Core body = checked.behaviorBodies().get(behavior);
         assertNotNull(body);
         CoverageSites.Plan plan = checked.plan();
@@ -62,10 +57,10 @@ class ThresholdNormalizationTest {
                 checked.analysisBodies().get(behavior), body, plan,
                 compilation.db().ask(new souther.compiler.query.Adequacy.Inputs(module)).value().get(behavior), rules);
         List<Threshold> thresholds = guards.thresholds();
-        InputDomain domain = InputDomain.of(spec, sigs.get(behavior), rules,
+        InputDomain domain = InputDomain.of(sigs.get(behavior), rules,
                 souther.compiler.query.ReadAs.THE_COMPILATION_DOES);
         souther.compiler.inputs.Quantities reading = domain.quantities(rules);
-        Partitions.Partitioning base = Partitions.of(spec.name(), domain, rules, souther.compiler.query.ReadAs.THE_COMPILATION_DOES);
+        Partitions.Partitioning base = Partitions.of(behavior, domain, rules, souther.compiler.query.ReadAs.THE_COMPILATION_DOES);
         return new Read(Partitions.withThresholds(base, reading, thresholds, rules, souther.compiler.query.ReadAs.THE_COMPILATION_DOES,
                 souther.compiler.values.Allowance.of(souther.compiler.regex.PatternPlan.Budget.OF_BEHAVIOR_DISTINCTIONS)), reading, thresholds, rules);
     }

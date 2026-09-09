@@ -93,6 +93,13 @@ class ALineFallsInAClassOnTheOrderItWasDrawnOnTest {
             return axis.cuts().get(0);
         }
 
+        /** The line the rules drew at {@code place}, of however many they drew. */
+        Cut lineAt(String place) {
+            return axis.cuts().stream().filter(each -> each.key().equals(place)).findFirst()
+                    .orElseThrow(() -> new AssertionError("no line at " + place + ", among "
+                            + axis.cuts().stream().map(Cut::key).toList()));
+        }
+
         Carrier carrier() {
             return orders.answered();
         }
@@ -208,13 +215,21 @@ class ALineFallsInAClassOnTheOrderItWasDrawnOnTest {
      * What answers is where the value it holds sits on the position's order, written down when the
      * class was made — so a position whose rules name its values is narrowed by a comparison on it,
      * as it was while the line was turned back into a value to ask.
+     *
+     * <p>The guard's is one of the lines this model draws and not the only one: the invariant names
+     * three values under a choice, so the rules stop the level at one and at three as well, and the
+     * line asked about here is named rather than taken as whatever the model happened to draw.
      */
     @Test
     void aClassOfANamedValueHoldsTheLineDrawnAtThatValue() {
         Measured named = measured(NAMED, "gate/slot.level");
 
+        assertEquals(List.of("1", "2", "3"),
+                named.axis().cuts().stream().map(Cut::key).sorted().toList(),
+                "the guard cuts at two and the invariant stops the level at the outermost of the"
+                        + " values it names, so those are the lines this model draws");
         assertEquals(List.of("2"),
-                named.holding(named.line()).stream().map(PartitionClass::id).toList(),
+                named.holding(named.lineAt("2")).stream().map(PartitionClass::id).toList(),
                 "the line is at two, and the class holding two is the one that holds it");
     }
 }
