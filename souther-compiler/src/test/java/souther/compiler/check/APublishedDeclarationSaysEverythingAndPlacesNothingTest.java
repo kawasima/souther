@@ -239,8 +239,11 @@ class APublishedDeclarationSaysEverythingAndPlacesNothingTest {
         List<Call> calls = new ArrayList<>();
         Set<String> walked = new LinkedHashSet<>();
         Deque<MethodModel> pending = new ArrayDeque<>();
+        // Every way in, and not the one that reads the most. A second entry reading a component the
+        // first does not would be a component published without ever being audited, which is the
+        // hole this walk exists to have none of.
         for (MethodModel method : model.methods()) {
-            if (method.methodName().stringValue().equals("of")) {
+            if (method.methodName().stringValue().startsWith("of")) {
                 pending.add(method);
             }
         }

@@ -279,21 +279,20 @@ public final class Shapes {
 
         @Override
         public Answer<DeclarationMeaning> compute(Db db) {
-            Hir.Def declared = normalizedDeclarationOf(db, named);
-            return declared == null ? Answer.absent()
-                    : Answer.of(DeclarationMeaning.of(declared,
-                            db.ruleReadingFor(named.module()), db.readings()));
-        }
-
-        /** The declaration {@code named} is, as the settling left it, or null where nothing
-         *  declares it. */
-        private static Hir.Def normalizedDeclarationOf(Db db, TypeKey named) {
+            // Which of the two answered decides how the meaning is read, and not only which
+            // declaration came back. A module's own is read in that module's reading of its
+            // declarations; what the language declares is written in no module a compilation holds,
+            // so there is no such reading to make and nothing it would answer.
             Answer<Normalized.Def> mine = db.ask(new NormalizedDef(named));
             if (mine.present()) {
-                return mine.value().node();
+                return Answer.of(DeclarationMeaning.of(mine.value().node(),
+                        db.ruleReadingFor(named.module()), db.readings()));
             }
             Answer<Stdlib> library = db.ask(new Front.Library());
-            return library.present() ? library.value().languageDeclaration(named) : null;
+            Hir.Def declared =
+                    library.present() ? library.value().languageDeclaration(named) : null;
+            return declared == null ? Answer.absent()
+                    : Answer.of(DeclarationMeaning.ofLanguage(declared));
         }
     }
 

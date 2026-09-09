@@ -56,6 +56,35 @@ public sealed interface DeclarationMeaning {
     }
 
     /**
+     * What the language itself declares says.
+     *
+     * <p>A second way in, and it is one because there is no reading to make. A reading of a
+     * declaration's clauses is made over the scope of the module that wrote it, and no module of a
+     * compilation writes what the language declares — asked for one, a compilation answers that it
+     * holds no such module, which is true and is not a reason to have nothing to say about the
+     * declaration.
+     *
+     * <p>Nothing is lost by having none. What the library declares is a sum or a unit, and neither
+     * of them says anything a reading answers: a sum names its cases and a unit names itself.
+     *
+     * @throws IllegalStateException where the language declares a product. It would have clauses to
+     *     be read, and the reading they would be read in is the thing there is none of. The library
+     *     declares none today, and one written tomorrow is a fault in this compiler rather than
+     *     something to publish half of
+     */
+    public static DeclarationMeaning ofLanguage(Hir.Def declared) {
+        TypeSymbol.AtModule named = declared.declares();
+        return switch (declared) {
+            case Hir.SumData sum -> new Sum(named.key(), referencesTo(sum.cases()));
+            case Hir.UnitData _ -> new Unit(named.key());
+            case Hir.Data _ -> throw new IllegalStateException(
+                    "the standard library declares the product `" + named.key() + "`, whose clauses"
+                            + " are read in a reading of the module that wrote it, and no module of"
+                            + " a compilation writes what the language declares");
+        };
+    }
+
+    /**
      * The same, over a reading already made.
      *
      * <p>Exhaustive over the kinds a declaration can be, so a kind added to the language arrives
@@ -108,6 +137,12 @@ public sealed interface DeclarationMeaning {
     private static List<ClauseMeaning> clausesOf(TypeSymbol.AtModule named, Clauses reading) {
         List<ClauseMeaning> clauses = new ArrayList<>();
         for (TypeOps.Declared each : reading.of(named).reached()) {
+            if (!each.declaredOn().equals(named)) {
+                // Written on a declaration this one spreads, and that one publishes it. Carried
+                // here as well, what this declaration says would change when another was given a
+                // rule it says nothing about — which is what asking for one is for.
+                continue;
+            }
             Clause.Ref clause = Clause.Ref.of(each);
             clauses.add(switch (reading.typed(each.asExpanded(), named)) {
                 case TypedClause.Typed typed ->
@@ -137,9 +172,10 @@ public sealed interface DeclarationMeaning {
      * @param fields the fields written on it, in the order they are written — its own, not the ones
      *     it reaches through what it spreads. See {@link Field} for why the order is here at all
      * @param includes what it spreads, which may name a declaration or name nothing
-     * @param clauses what must hold of a value of it, in the order the author wrote them. The order
-     *     is what a reader elsewhere is entitled to: a clause is addressed by which of the
-     *     declaration's own it is
+     * @param clauses the clauses written on it, in the order they are written — its own, and not
+     *     the ones it reaches through what it spreads, for the reason {@code fields} is its own. The
+     *     order is what a reader elsewhere is entitled to: a clause is addressed by which of the
+     *     declaration's own it is, so an order is what makes that address mean something
      */
     record Product(TypeKey declares, boolean newtype, List<Field> fields,
                    List<DeclarationReference> includes,

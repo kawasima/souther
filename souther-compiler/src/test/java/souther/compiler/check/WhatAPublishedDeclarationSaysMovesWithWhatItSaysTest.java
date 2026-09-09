@@ -97,6 +97,29 @@ class WhatAPublishedDeclarationSaysMovesWithWhatItSaysTest {
     }
 
     /**
+     * And a rule given to what it spreads is not something it says.
+     *
+     * <p>Which is why its clauses are its own. A value of it must satisfy that rule, and that is a
+     * fact about this declaration together with the one it spreads — worked out from both of them
+     * by whoever needs it. Carried in here instead, what this declaration says would change when
+     * another was given a rule it says nothing about, and every module importing it would be worked
+     * out again for an edit it cannot see.
+     *
+     * <p>The declaration that was given the rule does say something else, which is what keeps the
+     * first half from being met by a meaning that reads nothing.
+     */
+    @Test
+    void andARuleGivenToWhatItSpreadsIsNotSomethingItSays() {
+        String given = requireEdited(DECLARING, "invariant String.length(name) >= 1",
+                "invariant String.length(name) >= 2");
+
+        assertEquals(published("Item", DECLARING), published("Item", given),
+                "`Item` says what it says, and `Named` was the one given a rule");
+        assertNotEquals(published("Named", DECLARING), published("Named", given),
+                "`Named` was given a rule it did not have and says the same thing");
+    }
+
+    /**
      * {@code source} with {@code from} written as {@code to}, where that changed something.
      *
      * <p>Every comparison here rests on the edit having happened. A search string that matches
