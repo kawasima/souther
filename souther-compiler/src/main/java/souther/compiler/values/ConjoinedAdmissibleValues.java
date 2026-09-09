@@ -153,10 +153,10 @@ public final class ConjoinedAdmissibleValues<A> {
      * question is one about which values a rule leaves, and no rule left any.
      */
     public Emptiness anyAlternativeAdmits(AskedOfEachBlock<A> asked, AskedOfARelation<A> relating) {
-        Emptiness stands = Emptiness.NONEMPTY;
+        Emptiness stands = Emptiness.identityForMeet();
         for (AdmissibleValues<A> each : factors) {
             stands = stands.met(each.anyAlternativeAdmits(asked, relating));
-            if (stands.isEmpty()) {
+            if (stands.endsAMeet()) {
                 return stands;
             }
         }

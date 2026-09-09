@@ -52,7 +52,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * <p><b>Three rules and not one, because they are three claims.</b> The widest names every nest
  * that touches a settled answer at all — said as a constant, or asked of one through the operations
  * that observe and compose settledness, since {@code a.joined(b)} carries a positive answer onwards
- * without spelling one. Inside it is who may make the positive answer. Inside that is the one the
+ * without spelling one. Inside it is who may decide the positive answer. Inside that is the one the
  * contract is about: which nests outside the readings themselves say it.
  *
  * <p><b>What these rules do not say.</b> They fix who may name a settled answer, and not who may
@@ -94,11 +94,13 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
      *  {@code UNDECIDED} settles nothing and is named freely. */
     private static final Set<String> SETTLED = Set.of("EMPTY", "NONEMPTY");
 
-    /** The operations that read whether an answer is settled or carry one onwards. A caller of
-     *  these holds a settled answer without naming one, which is why calling them counts as saying
-     *  it. */
+    /** The operations that read whether an answer is settled, carry one onwards, or hand one out. A
+     *  caller of these holds a settled answer without naming one, which is why calling them counts
+     *  as saying it — a walk asking an operation where it starts is handed whichever answer that is,
+     *  and one asking where it stops is holding the answer it stopped on. */
     private static final Set<String> OBSERVES_OR_COMPOSES =
-            Set.of("isEmpty", "isDecided", "met", "joined", "of", "bothStand");
+            Set.of("isEmpty", "isDecided", "met", "joined", "of", "bothStand",
+                    "identityForMeet", "identityForJoin", "endsAMeet", "endsAJoin");
 
     /** What javac writes for a switch over this word: a synthetic table of its constants, read by
      *  whoever switched. Taking the answer apart by which of the three it is, under a spelling that
@@ -260,20 +262,26 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
             "souther/compiler/values/TextExtents");
 
     /**
-     * And who may make the settled positive answer.
+     * And who may decide that the settled positive answer is the answer.
      *
-     * <p>{@code Settlement} is the one nest that says a position is settled without ever saying it
-     * admits something: it joins two branches' answers and reads whether the join came out empty. A
-     * nest arriving here is one that has begun to claim something exists, which is what these rules
-     * are about.
+     * <p>{@code Settlement} is one nest that says a position is settled without ever deciding that
+     * something is admitted: it joins two branches' answers and reads whether the join came out
+     * empty. A nest arriving here is one that has begun to claim something exists, which is what
+     * these rules are about.
+     *
+     * <p><b>Returning the answer is not deciding it.</b> The walks over what a reading holds hand a
+     * positive answer back out of every alternative that stands, and the answers they hand back are
+     * the one the caller's question gave them and the one the arithmetic starts a walk from
+     * ({@link #COMPOSES_SEVERAL_ANSWERS}) — an empty conjunction comes out positive because that is
+     * where a meet begins, which the word decides and the walk carries. What puts a nest here is
+     * saying in its own words which answer is the answer: {@code PlannedValues} does, for a position
+     * whose plan is already a set and needs no machine.
      */
     private static final List<String> SAYS_SOMETHING_IS_ADMITTED = List.of(
             "souther/compiler/check/Carrier",
             "souther/compiler/check/Confinement",
             "souther/compiler/check/StatedByClauses",
-            "souther/compiler/values/AdmissibleValues",
             "souther/compiler/values/Apartness",
-            "souther/compiler/values/ConjoinedAdmissibleValues",
             "souther/compiler/values/PlannedValues",
             "souther/compiler/values/Realized",
             "souther/compiler/values/TextExtents");
@@ -383,34 +391,74 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
      */
     private record Open(String place, String question) {}
 
-    /** What a settled positive answer is worth, beside a position nobody could build and at the top
-     *  of what a join can reach. */
-    private static final String WHAT_AN_ANSWER_IS_WORTH = "souther-lang/souther#1493";
+    /** What a settled positive answer is worth beside a position nobody could build. */
+    private static final String WHAT_AN_ANSWER_IS_WORTH = "souther-lang/souther#1498";
 
     /**
      * And the readings of this word whose meaning nobody has decided yet.
      *
      * <p>One question and no owner for it. {@code admission} reads what a settled positive answer is
-     * worth beside a position nobody could build. The two {@code anyAlternativeAdmits} read that a
-     * joined answer has reached the top of what a choice can be, which is a fact about the
-     * arithmetic and is known here rather than where the arithmetic is.
+     * worth beside a position nobody could build, which is a rule about what a reading that asked
+     * less than the rules say may publish rather than about which of the three an answer is.
      *
-     * <p>Each of them is a question this word could be given an owner for, and none of them is one
-     * this compiler has decided. Naming a reading here says that; it does not say that the reading
-     * was left alone.
+     * <p>It is a question this word could be given an owner for, and it is not one this compiler has
+     * decided. Naming a reading here says that; it does not say that the reading was left alone.
      */
     private static final List<Open> COMPARED_IN_PRODUCTION = List.of(
             new Open("souther/compiler/check/Confinement$Worked#admission"
                     + "(Lsouther/compiler/check/PositionEnvelope$Restrictions;"
                     + "Lsouther/compiler/values/StringMachineAnswers;)"
-                    + "Lsouther/compiler/check/Confinement$Admission;", WHAT_AN_ANSWER_IS_WORTH),
-            new Open("souther/compiler/values/AdmissibleValues#anyAlternativeAdmits"
+                    + "Lsouther/compiler/check/Confinement$Admission;", WHAT_AN_ANSWER_IS_WORTH));
+
+    /** The operations that make one of these answers out of two. Where a walk starts and where it
+     *  stops are questions asked about an operation and answer for none of it, so a place that asks
+     *  them and composes nothing is not composing. */
+    private static final Set<String> COMPOSES = Set.of("met", "joined");
+
+    /**
+     * And the readings that make one of these answers out of several.
+     *
+     * <p>Out of several and into one of them, which is not every way two are read together:
+     * {@link Emptiness.SidesShownEmpty} takes two and answers which of them were shown empty, and
+     * what comes back is an observation for a connective to value rather than an answer about a
+     * position. A reading of that is a reading of the classification, and this is about the
+     * arithmetic.
+     *
+     * <p>Three of them walk, and one shape between the three: an alternative stands where every
+     * block of it does, and a reading stands where any alternative does. Each starts where the
+     * operation it walks under starts and stops where that operation can no longer be moved, and
+     * asks the word for both — a walk that named either would be saying the arithmetic's fact in its
+     * own words, true of these three answers by a coincidence nobody wrote down. The fourth composes
+     * two answers and no more, so there is no place in it to start from or stop at: what two
+     * occurrences of one branch come to is one call.
+     *
+     * <p><b>Directly, which is the whole of what this holds.</b> What each of these does with the
+     * answers it put together is its own, and no walk here follows a call into what it calls. A
+     * reading that handed the composing to something beside it would leave here and that something
+     * would arrive, which is the finding to read: the composing moved, and where the questions a
+     * fold asks are answered moved with it.
+     *
+     * <p>Written down because the shape is what makes such a walk possible and nothing about a walk
+     * announces it. What holds these to it is the operations being ones a fold may be taken over at
+     * all, which is asked where they are written. A reading arriving here is walking over answers
+     * whose order is somebody's, and is entitled to what these are entitled to only if it is the
+     * same shape.
+     */
+    private static final List<String> COMPOSES_SEVERAL_ANSWERS = List.of(
+            "souther/compiler/check/Settlement$Sided#alsoSeen"
+                    + "(Lsouther/compiler/check/Settlement$Sided;)"
+                    + "Lsouther/compiler/check/Settlement$Sided;",
+            "souther/compiler/values/AdmissibleValues#anyAlternativeAdmits"
                     + "(Lsouther/compiler/values/AskedOfEachBlock;"
                     + "Lsouther/compiler/values/AskedOfARelation;)"
-                    + "Lsouther/compiler/values/Emptiness;", WHAT_AN_ANSWER_IS_WORTH),
-            new Open("souther/compiler/values/PlannedValues#anyAlternativeAdmits"
+                    + "Lsouther/compiler/values/Emptiness;",
+            "souther/compiler/values/ConjoinedAdmissibleValues#anyAlternativeAdmits"
+                    + "(Lsouther/compiler/values/AskedOfEachBlock;"
+                    + "Lsouther/compiler/values/AskedOfARelation;)"
+                    + "Lsouther/compiler/values/Emptiness;",
+            "souther/compiler/values/PlannedValues#anyAlternativeAdmits"
                     + "(Lsouther/compiler/values/AskedOfEachBlock;)"
-                    + "Lsouther/compiler/values/Emptiness;", WHAT_AN_ANSWER_IS_WORTH));
+                    + "Lsouther/compiler/values/Emptiness;");
 
     /**
      * One saying of the word, and whose code holds it.
@@ -460,6 +508,16 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
                 "an admission is worked out in the readings; outside them it is made at the bottom"
                         + " of the pair, by the pair itself, and read once where two branches that"
                         + " both stand are held open");
+    }
+
+    @Test
+    void andTheseAreTheReadingsThatMakeOneOfThemOutOfSeveral() {
+        assertEquals(COMPOSES_SEVERAL_ANSWERS,
+                placesSaying(saidInProduction(), use -> COMPOSES.contains(use.said())),
+                "a walk that takes these answers in one at a time answers about a set with a walk"
+                        + " over one order of it, and stops on reaching what the operation cannot be"
+                        + " moved from: a reading arriving here is one answering out of several"
+                        + " answers, and what says it may is where the operations are written");
     }
 
     /**

@@ -264,13 +264,13 @@ public sealed interface PlannedValues<A> {
             case Settled<A> it -> switch (it.held()) {
                 case PlannedHeld.Nothing<A> _ -> Emptiness.EMPTY;
                 case PlannedHeld.Alternatives<A> boxes -> {
-                    Emptiness any = Emptiness.EMPTY;
+                    Emptiness any = Emptiness.identityForJoin();
                     for (PlannedHeld.Alternative<A> box : boxes.boxes()) {
-                        Emptiness stands = Emptiness.NONEMPTY;
+                        Emptiness stands = Emptiness.identityForMeet();
                         for (Map.Entry<Sameness.Block<A>, AdmittedPlan> each
                                 : box.at().entrySet()) {
                             stands = stands.met(askedOf(each.getKey(), each.getValue(), asked));
-                            if (stands.isEmpty()) {
+                            if (stands.endsAMeet()) {
                                 break;
                             }
                         }
@@ -282,12 +282,15 @@ public sealed interface PlannedValues<A> {
                         // Said of the alternative that holds them and not of the reading, which is
                         // the grain the question is asked at — an alternative beside one carrying a
                         // denial stands on its own rules.
-                        if (!stands.isEmpty() && !box.apart().isEmpty()) {
-                            stands = box.apart().holdsABlockApartFromItself()
-                                    ? Emptiness.EMPTY : Emptiness.UNDECIDED;
+                        //
+                        // And held together with what the blocks came to, since an alternative
+                        // stands where its blocks and its denials both leave it standing.
+                        if (!stands.endsAMeet() && !box.apart().isEmpty()) {
+                            stands = stands.met(box.apart().holdsABlockApartFromItself()
+                                    ? Emptiness.EMPTY : Emptiness.UNDECIDED);
                         }
                         any = any.joined(stands);
-                        if (any == Emptiness.NONEMPTY) {
+                        if (any.endsAJoin()) {
                             yield any;
                         }
                     }

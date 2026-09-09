@@ -1307,23 +1307,24 @@ public final class AdmissibleValues<A> {
      */
     public Emptiness anyAlternativeAdmits(AskedOfEachBlock<A> asked, AskedOfARelation<A> relating) {
         if (held() instanceof Held.Alternatives<A> it) {
-            Emptiness any = Emptiness.EMPTY;
+            Emptiness any = Emptiness.identityForJoin();
             for (Alternative<A> box : it.boxes()) {
-                Emptiness stands = Emptiness.NONEMPTY;
+                Emptiness stands = Emptiness.identityForMeet();
                 for (Map.Entry<Sameness.Block<A>, ValueSet> each : box.at().entrySet()) {
                     stands = stands.met(asked.of(each.getKey(), each.getValue()));
-                    if (stands.isEmpty()) {
+                    if (stands.endsAMeet()) {
                         break;
                     }
                 }
                 // And what its denials come to, asked after the blocks and not before. An
-                // alternative already refused at a block is one no relation has to be read for,
-                // and reading it first would spend on every alternative what one question settled.
-                if (!stands.isEmpty()) {
+                // alternative the blocks have already settled is one no relation has to be read
+                // for, and reading it first would spend on every alternative what one question
+                // settled.
+                if (!stands.endsAMeet()) {
                     stands = stands.met(relating.of(box.apart(), box.product()).emptiness());
                 }
                 any = any.joined(stands);
-                if (any == Emptiness.NONEMPTY) {
+                if (any.endsAJoin()) {
                     return any;
                 }
             }
