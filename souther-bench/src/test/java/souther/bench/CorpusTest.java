@@ -4,6 +4,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
+import souther.compiler.check.ChoicesRead;
 import souther.compiler.query.Compilation;
 
 import java.util.LinkedHashMap;
@@ -34,8 +35,23 @@ class CorpusTest {
      */
     private static final Map<Corpus, Compilation> COMPILED = new LinkedHashMap<>();
 
+    /**
+     * And what each of those compiles did with the choices the corpus states, taken as it is made.
+     *
+     * <p>Around the compile that happens rather than around a compile of its own. These are held
+     * for the class, so a reading taken in one test method would be of whatever was left to do by
+     * the time that method ran — which is nothing, wherever another method reached the corpus
+     * first.
+     */
+    private static final Map<Corpus, ChoicesRead.Snapshot> READ = new LinkedHashMap<>();
+
     private static synchronized Compilation compiled(Corpus corpus) {
-        return COMPILED.computeIfAbsent(corpus, Corpus::compile);
+        return COMPILED.computeIfAbsent(corpus, each -> {
+            ChoicesRead.Snapshot before = ChoicesRead.snapshot();
+            Compilation compilation = each.compile();
+            READ.put(each, ChoicesRead.snapshot().since(before));
+            return compilation;
+        });
     }
 
     /**
@@ -49,6 +65,7 @@ class CorpusTest {
     @AfterAll
     static void released() {
         COMPILED.clear();
+        READ.clear();
     }
 
     @Test
@@ -86,6 +103,41 @@ class CorpusTest {
         throw new AssertionError("no corpus hands several sources naming several modules to one"
                 + " compile: " + Corpus.all().stream()
                         .map(c -> c + " (" + c.sources().size() + " sources)").toList());
+    }
+
+    /**
+     * That something a corpus states is a choice, and that settling it is work this compile did.
+     *
+     * <p>Of the corpora together and not of each of them. What a carried corpus is for is a model
+     * somebody would write, and a rule stating alternatives is one thing such a model has rather
+     * than something each of them must: required per corpus, the requirement would be met by
+     * writing a choice into a model that has no use for one, which is the corpus answering for a
+     * measurement instead of for an application.
+     *
+     * <p>What each of the fates costs is the generated measurement's to reach, and it is held to
+     * reaching them ({@code EveryChoiceMeasurementReachesTheReadingItIsAboutTest}). What is claimed
+     * here is only that the paths a whole-compile figure is reported over — {@code warm},
+     * {@code phase}, {@code edit} — arrive at a choice at all. Without it those figures sit where
+     * they are however much slower settling a choice becomes.
+     *
+     * <p>Not read off the sources. A count of {@code ||} in the text says a choice was written and
+     * not that a reading took one in, and the two part exactly where this would stop being true.
+     */
+    @Test
+    void someCorpusStatesAChoiceAndSettlingItIsWorkThisCompileDoes() {
+        long stated = 0;
+        long carried = 0;
+        for (Corpus corpus : Corpus.all()) {
+            compiled(corpus);
+            stated += READ.get(corpus).stated();
+            carried += READ.get(corpus).carriedToSettlement();
+        }
+        assertTrue(stated > 0,
+                "no rule of any corpus states a choice, so nothing the compile measurements are"
+                        + " taken over ever settles one");
+        assertTrue(carried > 0,
+                "every choice the corpora state was decided off the descriptions of its branches,"
+                        + " so nothing reaches the settlement the measurements are taken over");
     }
 
     /** And a corpus of one source is one on purpose, not one that lost its files: it names one
