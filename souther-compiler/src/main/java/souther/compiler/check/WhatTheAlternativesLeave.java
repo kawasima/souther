@@ -29,6 +29,13 @@ import java.util.Set;
  * <p>Union is associative, commutative and idempotent, which is what keeps the order the copies
  * were met in out of the answer.
  *
+ * <p><b>No reader's answer turns on that yet.</b> Copies that disagree are reached — compiling this
+ * repository's own corpus meets them — and keeping either copy alone rather than both leaves every
+ * other test there is passing. So the rule is pinned on this type
+ * ({@code WhatOneCopyOfAChoiceLeavesIsNotWhatTheChoiceLeavesTest}) rather than through a model, and
+ * what settles the direction is which way a reader can be wrong: publishing a copy's own answer for
+ * the choice says a position is stopped where a copy beside it draws no line.
+ *
  * <p><b>Of where the orders stop and of nothing else.</b> What a set of values leaves a position is
  * a different question with a different word for "every value", and the reading that asks it
  * answers for its own rules at its own altitude ({@link ReadByClauses.OfARule#narrows}). Held here
