@@ -2068,9 +2068,18 @@ public final class InvariantChecker {
                 return both;
             }
             case ClauseExpr.Leaf it -> {
-                return lineStatedIn(it.of(), it.positive(), at, byName)
-                        instanceof LineStated.On found
-                        ? Set.of(found.number().at()) : Set.of();
+                // The one number the rule is over, which is the same answer the attribution of an
+                // end to a conjunct is put forward on. A rule over several is a line between them
+                // and an end at none, so it puts nothing forward.
+                return switch (lineStatedIn(it.of(), it.positive(), at, byName)) {
+                    case StatedLines.Statement.OnWhatStandsAtAPosition found ->
+                            Set.of(found.number());
+                    case StatedLines.Statement.OnADerivedNumber found ->
+                            Set.of(found.number().asNumber());
+                    case StatedLines.Statement.NoLine _,
+                         StatedLines.Statement.Between _,
+                         StatedLines.Statement.OnANumberNotNamed _ -> Set.of();
+                };
             }
         }
     }
@@ -2107,72 +2116,53 @@ public final class InvariantChecker {
      * arithmetic.
      */
     private StatedLines linesStatedAgainst(Map<FactSubject, Coordinate> byName) {
-        return (leaf, positive, at, named) ->
-                ownValuesALineIsStatedOn(leaf, positive, at, byName, named);
-    }
+        return new StatedLines() {
 
-    /**
-     * Which positions of {@code named} this leaf says the values stop somewhere on.
-     *
-     * <p>The three ways a leaf can state no line, told apart by what this reader has and the ends
-     * have not. A rule that is no comparison says which values may stand somewhere and orders none
-     * of them. A denial of one value rules that value out and leaves every other where it was. And
-     * a comparison whose positions cancel holds of every row there is, which the arithmetic settles
-     * and a reading of the sides cannot — {@code n - n >= 0} names {@code n} twice and stops it
-     * nowhere.
-     *
-     * <p>Then which number the line falls on, which the coordinate the ordered side names says. A
-     * line on a number an operation answers is a line on that order and leaves the position's own
-     * where it was; a line on a number this reading cannot name is one whose position is what
-     * reading further would say, so every position the leaf writes comes back.
-     */
-    private Set<FactSubject> ownValuesALineIsStatedOn(Core leaf, boolean positive, Denotations at,
-                                                      Map<FactSubject, Coordinate> byName,
-                                                      Set<FactSubject> named) {
-        return switch (lineStatedIn(leaf, positive, at, byName)) {
-            case LineStated.None _ -> Set.of();
-            // Which position it is about is what reading further would say, so every position the
-            // leaf writes is one whose end waits on a reader.
-            case LineStated.OnANumberNotNamed _ -> named;
-            case LineStated.On it -> ownValuesAmong(named, it.number(), byName);
+            @Override
+            public StatedLines.Statement of(Core leaf, boolean positive, Denotations at) {
+                return lineStatedIn(leaf, positive, at, byName);
+            }
+
+            @Override
+            public Set<FactSubject> waitingOnAReader(StatedLines.Statement stated,
+                                                     Set<FactSubject> named) {
+                return switch (stated) {
+                    case StatedLines.Statement.NoLine _ -> Set.of();
+                    // A line between several of this value's numbers falls at none of them, so
+                    // nothing about where any one of them stops is waiting on a reader.
+                    case StatedLines.Statement.Between _ -> Set.of();
+                    // Which position it is about is what reading further would say, so every
+                    // position the leaf writes is one whose end waits on a reader.
+                    case StatedLines.Statement.OnANumberNotNamed _ -> named;
+                    case StatedLines.Statement.OnWhatStandsAtAPosition it ->
+                            ownValuesAmong(named, it.number(), byName);
+                    // A line on a number an operation answers leaves the position's own order
+                    // exactly where it was. Whether that line was placed is the reading that holds
+                    // those numbers' answer, and it is filed under the number rather than here.
+                    case StatedLines.Statement.OnADerivedNumber _ -> Set.of();
+                };
+            }
         };
     }
 
-    /** The positions of {@code named} that {@code number} is the value standing at, which is none
-     *  of them where it is a number an operation answers. */
-    private static Set<FactSubject> ownValuesAmong(Set<FactSubject> named, Coordinate number,
+    /** The positions of {@code named} that {@code number} is the value standing at. */
+    private static Set<FactSubject> ownValuesAmong(Set<FactSubject> named,
+                                                   NumberAt<RuleKey> number,
                                                    Map<FactSubject, Coordinate> byName) {
-        if (!(number.at().of() instanceof NumberAt.OfWhatNumber.OfItsOwnValue)) {
-            return Set.of();
-        }
         Set<FactSubject> out = new LinkedHashSet<>();
         for (FactSubject each : named) {
             Coordinate here = byName.get(each);
-            if (here != null && here.at().equals(number.at())) {
+            if (here != null && here.at().equals(number)) {
                 out.add(each);
             }
         }
         return out;
     }
 
-    /** What line one leaf states, and on which of this value's numbers. */
-    private sealed interface LineStated {
-
-        /** It states none: a rule holding of every row, one saying which values may stand
-         *  somewhere without ordering them, a denial of one value, a shape that is no
-         *  comparison. */
-        record None() implements LineStated {}
-
-        /** It stops the values on this number. */
-        record On(Coordinate number) implements LineStated {}
-
-        /** It stops them on a number this reading cannot name — an absolute value, a
-         *  difference. */
-        record OnANumberNotNamed() implements LineStated {}
-    }
-
-    private static final LineStated NO_LINE = new LineStated.None();
-    private static final LineStated ELSEWHERE = new LineStated.OnANumberNotNamed();
+    private static final StatedLines.Statement NO_LINE = new StatedLines.Statement.NoLine();
+    private static final StatedLines.Statement BETWEEN = new StatedLines.Statement.Between();
+    private static final StatedLines.Statement ELSEWHERE =
+            new StatedLines.Statement.OnANumberNotNamed();
 
     /**
      * Which of this value's numbers one leaf says the values stop on.
@@ -2184,10 +2174,13 @@ public final class InvariantChecker {
      * and a reading of the sides cannot — {@code n - n >= 0} names {@code n} twice and stops it
      * nowhere.
      *
-     * <p>Then which number the line falls on, which the coordinate the ordered side names says.
+     * <p>Then which number the line falls on, which is what the canonical form of the comparison
+     * says and is not read off the sides. A rule whose coordinate is written inside an expression —
+     * {@code String.length(s) * 2 >= 4} — is a rule about that coordinate, and a reading that
+     * looked for a name spelled as a whole side would call it a rule about nothing.
      */
-    private LineStated lineStatedIn(Core leaf, boolean positive, Denotations at,
-                                    Map<FactSubject, Coordinate> byName) {
+    private StatedLines.Statement lineStatedIn(Core leaf, boolean positive, Denotations at,
+                                               Map<FactSubject, Coordinate> byName) {
         if (!(leaf instanceof Core.Binary bin)) {
             return NO_LINE;
         }
@@ -2199,30 +2192,41 @@ public final class InvariantChecker {
         if (said instanceof ComparisonClaim.Singled singled && !singled.holdsAtTheValue()) {
             return NO_LINE;
         }
-        Coordinate found = byName.get(nameOf(bin.left(), at));
-        Core bound = bin.right();
-        if (found == null) {
-            found = byName.get(nameOf(bin.right(), at));
-            bound = bin.left();
+        // Whether the rule holds one of this value's positions to another, which is a fact about
+        // the two sides and not about the arithmetic: {@code n >= m + 1} is over two numbers and
+        // holds no position to a position, so the end at each of them is one a reader is still owed.
+        // Asked of the canonical form, the two would be one answer and a bound against something
+        // built from a position would read as a line that falls at neither.
+        if (Relates.twoPositions(bin, e -> {
+            FactSubject named = nameOf(e, at);
+            return named != null && byName.containsKey(named) ? named : null;
+        })) {
+            return BETWEEN;
         }
-        // Asked of the rule as written, which is what the residue is a residue of. Under a denial
-        // the same form states the opposite of what it reads as, and a rule holding of every row
-        // denied is one holding of none — which is not a rule that states no line, so the question
-        // is left where it was.
-        //
-        // And asked only where it can say what the lookup above cannot. A whole side that is a
-        // coordinate stands in the canonical form with a coefficient of one, so a comparison of one
-        // against a side naming no coordinate cuts that coordinate and cannot cancel. Where both
-        // sides reach one they may — {@code n >= n} — and where neither is one the form is the only
-        // thing that tells a rule holding of every row from a rule about a number with no name.
-        // Asked of every comparison, this reads the arithmetic of both sides at every leaf of every
-        // clause, for the shape almost all of them are.
-        if (positive && (found == null || !coordinatesIn(bound, at, byName).isEmpty())
-                && canonicalFormOf(read, at, byName) instanceof CanonicalForm.CutsNothing form
-                && form.holdsOfEveryRow()) {
-            return NO_LINE;
-        }
-        return found == null ? ELSEWHERE : new LineStated.On(found);
+        return switch (canonicalFormOf(read, at, byName)) {
+            // The walk stopped inside a side, so which number the rule stops the values on is what
+            // reading further would say — and every number the leaf writes about is one waiting on
+            // that reading, the numbers an operation answers among them.
+            case CanonicalForm.NotRead _ -> ELSEWHERE;
+            // The positions cancelled. Read as written, which is what the residue is a residue of:
+            // under a denial the same form states the opposite of what it reads as, and a rule
+            // holding of every row denied is one holding of none — which states no line either, and
+            // whether anybody can be in a branch of it is the fates' to say and not this reading's.
+            case CanonicalForm.CutsNothing _ -> NO_LINE;
+            // Over one number, which is the line's. Over several, and holding no position to a
+            // position, the rule stops the values somewhere on one of them and which is what
+            // reading further would say — the same answer as a number with no name at all.
+            case CanonicalForm.Over over -> over.numbers().size() == 1
+                    ? statedOn(over.numbers().iterator().next()) : ELSEWHERE;
+        };
+    }
+
+    /** Which of the two a line on {@code number} is, said by the number itself. */
+    private static StatedLines.Statement statedOn(Coordinate number) {
+        DerivedNumber derived = DerivedNumber.of(number.at());
+        return derived == null
+                ? new StatedLines.Statement.OnWhatStandsAtAPosition(number.at())
+                : new StatedLines.Statement.OnADerivedNumber(derived);
     }
 
     /**

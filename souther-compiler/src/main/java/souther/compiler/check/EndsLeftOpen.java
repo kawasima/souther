@@ -166,15 +166,17 @@ record EndsLeftOpen(Map<FactSubject, EndsLeftOpen.Behind> byPosition) {
      * branches brought, which is what keeps a choice from inventing a rule nobody could read.
      */
     EndsLeftOpen either(ChoiceSite choice, Adoption<FactSubject, ReadingLanguage.Order> mine,
-                        EndsLeftOpen other, Adoption<FactSubject, ReadingLanguage.Order> theirs) {
+                        Set<FactSubject> myBounds,
+                        EndsLeftOpen other, Adoption<FactSubject, ReadingLanguage.Order> theirs,
+                        Set<FactSubject> theirBounds) {
         if (byPosition.isEmpty() && other.byPosition.isEmpty()) {
             return NOTHING;
         }
         Map<FactSubject, Behind> out = new LinkedHashMap<>();
         byPosition.forEach((position, behind) ->
-                keptUnder(choice, position, behind, other, theirs, out));
+                keptUnder(choice, position, behind, other, theirs, theirBounds, out));
         other.byPosition.forEach((position, behind) ->
-                keptUnder(choice, position, behind, this, mine, out));
+                keptUnder(choice, position, behind, this, mine, myBounds, out));
         return new EndsLeftOpen(out);
     }
 
@@ -210,8 +212,15 @@ record EndsLeftOpen(Map<FactSubject, EndsLeftOpen.Behind> byPosition) {
     private static void keptUnder(ChoiceSite choice, FactSubject position, Behind behind,
                                   EndsLeftOpen beside,
                                   Adoption<FactSubject, ReadingLanguage.Order> theirs,
+                                  Set<FactSubject> theirBounds,
                                   Map<FactSubject, Behind> out) {
-        if (!theirs.constrains(position) && !beside.byPosition.containsKey(position)) {
+        // Whether the branch beside this one holds the number down, asked of whoever answers for
+        // that number. Where the values at a position stop is the reading of ends', and where a
+        // number an operation answers of one stops is the reading that holds those — a count is
+        // never among what the ends bounded and a position is never among these, so which of them
+        // is asked is settled by the number rather than by a caller picking one.
+        if (!theirs.constrains(position) && !theirBounds.contains(position)
+                && !beside.byPosition.containsKey(position)) {
             return;
         }
         out.merge(position, behind.under(choice), Behind::and);

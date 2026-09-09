@@ -5,7 +5,7 @@ import souther.compiler.core.Core;
 import java.util.Set;
 
 /**
- * Which positions a leaf states a line about, on the value standing at the position itself.
+ * What one leaf states, and on which of a value's numbers.
  *
  * <p>What a leaf states is one answer, and it is the same answer wherever the leaf is written. The
  * reading of ends composes the connectives an author wrote and has no arithmetic for the sides of a
@@ -14,31 +14,68 @@ import java.util.Set;
  * one bounding a number an operation answers all read alike there — as rules whose end nobody
  * worked out — and under a choice that is what they were published as.
  *
- * <p>The three of them are told apart here, by the reading that has the arithmetic. What comes back
- * is the positions whose own order the leaf says stops somewhere; the reading of ends is then asked
- * which of those it managed, which is its own answer and stays its own.
+ * <p>They are told apart here, by the reading that has the arithmetic, and told apart the way the
+ * attribution of an end to a conjunct already tells them apart: by the numbers the canonical form
+ * of the comparison is over. Read off which side happens to be spelled as a name, a rule whose
+ * coordinate is written inside an expression — {@code String.length(s) * 2 >= 4} — is a rule about
+ * nothing, and under a choice that comes back as a model that draws no line.
  *
- * <p><b>The position's own value and never a number taken of it.</b> A line on what an operation
- * answers — how long the string at a position is — is a line on another order, and where the values
- * at the position stop is untouched by it. Answered with the position, a bound on a length came out
- * as an end of the string order that nothing worked out, and a choice between two such bounds as a
- * border this compiler could not measure.
+ * <p><b>What a leaf states, and never what became of it.</b> Whether a range was read for the line
+ * is the reading that holds that order's answer, and this hands its own out so that the two can be
+ * put together where both are in hand ({@link #waitingOnAReader}). Decided here, a leaf would be
+ * classified by what some reader managed with it, which is the confusion the whole type is against.
  */
 interface StatedLines {
 
+    /** What {@code leaf} states, read as written where {@code positive} and denied where it is
+     *  not. */
+    Statement of(Core leaf, boolean positive, Denotations at);
+
     /**
-     * The positions of {@code named} whose own order {@code leaf} says the values stop on.
+     * The positions of {@code named} whose end nothing here worked out.
      *
-     * <p>Empty where the leaf states no line at all: a rule that holds of every row, one that says
-     * which values may stand somewhere without ordering them, a denial of one value. All of
-     * {@code named} where it states one on a number this reading cannot name — an absolute value, a
-     * difference — since which of the positions it is about is then what reading further would say.
+     * <p>Empty where the leaf states no line, and where the line it states runs between several of
+     * the value's numbers and falls at none of them. All of {@code named} where it states one on a
+     * number this reading cannot name, since which of the positions it is about is what reading
+     * further would say.
      *
-     * @param leaf     the clause of no connective, as the author wrote it
-     * @param positive whether it stands as written or under a denial. A denial of a rule stating one
-     *                 end states the other, and a denial of one ruling a value out states that value
-     * @param named    the positions the leaf writes about, which is the clause's own answer
+     * <p>And empty where the line is on a number an operation answers: such a line leaves the
+     * position's own order exactly where it was, and whether it was placed is filed under the
+     * number by the reading that holds it ({@link BoundaryReading}).
      */
-    Set<FactSubject> ownValuesALineIsStatedOn(Core leaf, boolean positive, Denotations at,
-                                              Set<FactSubject> named);
+    Set<FactSubject> waitingOnAReader(Statement stated, Set<FactSubject> named);
+
+    /** Which of a value's numbers a leaf says the values stop on. */
+    sealed interface Statement {
+
+        /** None of them: a rule holding of every row, one saying which values may stand somewhere
+         *  without ordering them, a denial of one value, a shape that is no comparison. */
+        record NoLine() implements Statement {}
+
+        /** The value standing at a position, named so that a caller can say which one. */
+        record OnWhatStandsAtAPosition(NumberAt<RuleKey> number) implements Statement {
+
+            public OnWhatStandsAtAPosition {
+                if (number == null) {
+                    throw new IllegalArgumentException("this one is about some position's value");
+                }
+            }
+        }
+
+        /** A number an operation answers of what stands at a position. */
+        record OnADerivedNumber(DerivedNumber number) implements Statement {
+
+            public OnADerivedNumber {
+                if (number == null) {
+                    throw new IllegalArgumentException("this one is about some derived number");
+                }
+            }
+        }
+
+        /** Several of them, held to each other: the line runs between them and falls at none. */
+        record Between() implements Statement {}
+
+        /** One this reading cannot name — an absolute value, a difference. */
+        record OnANumberNotNamed() implements Statement {}
+    }
 }

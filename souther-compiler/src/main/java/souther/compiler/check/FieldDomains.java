@@ -1431,7 +1431,7 @@ public final class FieldDomains {
             // Only the ends nothing else reaches. An end left open with no choice between it and
             // the walk that raises a rule's questions is one those questions already leave
             // standing, and a second account of it is one stop said twice.
-            if (!path.equals(namedBy.get(position)) || !behind.underAChoice()) {
+            if (!path.equals(placeOf(position)) || !behind.underAChoice()) {
                 return;
             }
             if (behind.named().isEmpty()) {
@@ -1467,6 +1467,28 @@ public final class FieldDomains {
      */
     public record EndLeftOpen(NumberAt<RuleKey> at, RuleRef.Invariant rule,
                               ChoiceSite byChoice) {}
+
+    /**
+     * Where the number called {@code subject} sits, whichever of a place's numbers it is.
+     *
+     * <p>Both of them, because a rule can state a line on either: {@link #namedBy} holds what a
+     * place is called and the counts are called something else, and a reader asking only the first
+     * finds nothing for a rule about how long a string is. What such a lookup is for is the place
+     * to report at, which is the same place for both — {@link #numberOf} is what tells them apart
+     * once it is found, and it is written expecting both to arrive.
+     */
+    private RuleKey placeOf(FactSubject subject) {
+        RuleKey named = namedBy.get(subject);
+        if (named != null) {
+            return named;
+        }
+        for (Map.Entry<RuleKey, Counted> each : countAt.entrySet()) {
+            if (each.getValue().atom().equals(subject)) {
+                return each.getKey();
+            }
+        }
+        return null;
+    }
 
     /** Which of {@code path}'s numbers {@code position} is, as this reading named them. */
     private NumberAt<RuleKey> numberOf(RuleKey path, FactSubject position) {

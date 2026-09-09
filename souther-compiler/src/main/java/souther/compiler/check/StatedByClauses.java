@@ -163,18 +163,25 @@ sealed interface StatedByClauses {
      *                     ends' own, and not the other half of {@code ruleShortfalls}: that one is
      *                     about which values may stand at a position, and a reading that has a word
      *                     for a range where the other has none is short of nothing here
+     * @param boundedNumbers the numbers an operation answers that this part stopped somewhere. For
+     *                       the one question a choice asks of the branch beside an end it left open
+     *                       — whether that branch holds the number down at all — which is the ends'
+     *                       own answer for a position and this reading's for a number of one. A
+     *                       count is never in what the ends bounded and a position is never here,
+     *                       so which reader answers is settled by the number and not by a caller
      */
     record Part(Adoption<FactSubject, ReadingLanguage.Values> byValues,
                 Adoption<FactSubject, ReadingLanguage.Order> byOrder,
                 Map<FactSubject, StringRestriction> aboutStrings,
                 Set<AdmissibleReading.AskedAt> asked,
                 Set<RuleShortfall> ruleShortfalls,
-                EndsLeftOpen endsLeftOpen) {
+                EndsLeftOpen endsLeftOpen,
+                Set<FactSubject> boundedNumbers) {
 
         /** What a clause of no connective, that no reading has a word for, took in. */
         static Part nothing() {
             return new Part(Adoption.nothing(), Adoption.nothing(), Map.of(), Set.of(), Set.of(),
-                    EndsLeftOpen.nothing());
+                    EndsLeftOpen.nothing(), Set.of());
         }
 
         /**
@@ -196,7 +203,22 @@ sealed interface StatedByClauses {
                     StringRestriction.over(aboutStrings, other.aboutStrings(), true),
                     askedIn(asked, other.asked()),
                     shortOf(ruleShortfalls, other.ruleShortfalls()),
-                    endsLeftOpen.both(other.endsLeftOpen()));
+                    endsLeftOpen.both(other.endsLeftOpen()),
+                    // A number either conjunct stopped is one the pair stops, and a dead
+                    // alternative brings none — which is what a branch nobody can be in bounds.
+                    union(boundedNumbers, other.boundedNumbers()));
+        }
+
+        private static Set<FactSubject> union(Set<FactSubject> these, Set<FactSubject> those) {
+            if (those.isEmpty()) {
+                return these;
+            }
+            if (these.isEmpty()) {
+                return those;
+            }
+            Set<FactSubject> out = new LinkedHashSet<>(these);
+            out.addAll(those);
+            return Collections.unmodifiableSet(out);
         }
 
         /**
@@ -218,7 +240,7 @@ sealed interface StatedByClauses {
             // And no end of it is left open. An end nothing derived is what a value of this type
             // may still be at, and no value of this type is in this branch.
             return new Part(byValues.inADeadBranch(), byOrder.inADeadBranch(), Map.of(),
-                    Set.of(), Set.of(), EndsLeftOpen.nothing());
+                    Set.of(), Set.of(), EndsLeftOpen.nothing(), Set.of());
         }
 
         /**
@@ -231,7 +253,7 @@ sealed interface StatedByClauses {
          */
         Part underACollapsedChoice() {
             return new Part(byValues, byOrder, aboutStrings, asked, ruleShortfalls,
-                    endsLeftOpen.underACollapsedChoice());
+                    endsLeftOpen.underACollapsedChoice(), boundedNumbers);
         }
 
         /** The same part of two branches somebody can be in, under the choice between them. */
@@ -265,7 +287,19 @@ sealed interface StatedByClauses {
                     // And the ends the choice leaves open, struck down by what each alternative
                     // says it came to and never added to: what a choice can show is that the branch
                     // beside an unfollowed one puts every value of a position on the order.
-                    endsLeftOpen.either(choice, byOrder, other.endsLeftOpen(), other.byOrder()));
+                    endsLeftOpen.either(choice, byOrder, boundedNumbers,
+                            other.endsLeftOpen(), other.byOrder(), other.boundedNumbers()),
+                    // And the numbers the choice stops, which are the ones both alternatives stop:
+                    // a value taking one of them owes the other nothing, so a number only one of
+                    // them holds down is one the choice holds nowhere.
+                    both(boundedNumbers, other.boundedNumbers()));
+        }
+
+        /** The numbers both of these stop. */
+        private static Set<FactSubject> both(Set<FactSubject> these, Set<FactSubject> those) {
+            Set<FactSubject> out = new LinkedHashSet<>(these);
+            out.retainAll(those);
+            return Collections.unmodifiableSet(out);
         }
 
         /**
@@ -556,11 +590,19 @@ sealed interface StatedByClauses {
             PlannedValues<FactSubject> said = values.leaf(e, positive, at);
             OrderedIntervals<FactSubject> range = ordered.leaf(e, positive, at);
             Set<FactSubject> mentions = mentioned(e, at);
+            // What the leaf states, asked once and read by both of the questions below: which
+            // number a line falls on is a fact about the clause, and the readings are asked what
+            // they made of it rather than asked to work it out again.
+            StatedLines.Statement stated = lines.of(e, positive, at);
+            BoundaryReading.Read bounds = boundaries.leaf(stated, e, positive, at);
             return new Said(new Confinement.Planned<>(said, range,
                     // And where the leaf leaves the numbers this value's operations answer, which
                     // is a third order with a reading of its own. Held beside the other two so that
                     // the connectives compose it once, under the fate the other two decide.
-                    boundaries.leaf(e, positive, at), ordered.carriers()), new Part(
+                    bounds instanceof BoundaryReading.Read.Bounded it
+                            ? OrderedIntervals.at(it.number(), it.range())
+                            : OrderedIntervals.top(),
+                    ordered.carriers()), new Part(
                     // Each language says for itself whether it could account for the leaf, and each
                     // is asked. Read off what a language produced instead, a rule it followed to
                     // the end and found bounds nothing is one it gave up on — which is what every
@@ -589,8 +631,16 @@ sealed interface StatedByClauses {
                     // Read off what the ends managed alone, a rule stating no line and a rule
                     // stating one nobody worked out are one answer, and every leaf of the first
                     // kind left an end open under a choice.
+                    // The positions whose own end this reading did not work out, and beside them
+                    // the numbers an operation answers whose line nothing placed. One question
+                    // asked of two readings, each about the numbers it holds.
                     EndsLeftOpen.at(ordered.endsLeftUnknownAt(e,
-                            lines.ownValuesALineIsStatedOn(e, positive, at, mentions)))));
+                                    lines.waitingOnAReader(stated, mentions)))
+                            .both(EndsLeftOpen.at(
+                                    bounds instanceof BoundaryReading.Read.LeftOpen open
+                                            ? Set.of(open.subject()) : Set.of())),
+                    bounds instanceof BoundaryReading.Read.Bounded placed
+                            ? Set.of(placed.subject()) : Set.of()));
         }
 
         /**
@@ -1248,7 +1298,7 @@ sealed interface StatedByClauses {
                     // build says nothing about which ends this reading worked out, and a position
                     // struck off here would be one the border is told nothing about because a
                     // pattern beside it was unaffordable.
-                    part.endsLeftOpen()));
+                    part.endsLeftOpen(), part.boundedNumbers()));
         }
 
         /**
