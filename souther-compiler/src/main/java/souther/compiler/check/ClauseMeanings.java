@@ -38,4 +38,17 @@ public interface ClauseMeanings {
 
     /** Nothing declared anywhere — for a reading over primitives, which asks of no declaration. */
     ClauseMeanings NONE = _ -> List.of();
+
+    /**
+     * The reading that makes these, which consults none.
+     *
+     * <p>Refused rather than empty. A reading that is producing what a declaration states cannot
+     * also be reading it — asking would be asking for the answer being worked out — and an empty
+     * answer would say instead that the declaration states nothing, which is a different thing and
+     * one every clause of it would then be reported as.
+     */
+    ClauseMeanings THE_ONE_THAT_MAKES_THEM = declaration -> {
+        throw new IllegalStateException("the reading that works out what `" + declaration
+                + "` states is being asked what it states");
+    };
 }

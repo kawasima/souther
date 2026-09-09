@@ -182,40 +182,48 @@ final class Clauses {
      * that is not there, and the clause is left to the run-time check rather than read against
      * nothing.
      */
-    private Core statedAt(TypeOps.Declared clause, TypeSymbol.AtModule named,
-                          Map<BindingId, Core> given) {
+    private AsStated statedAt(TypeOps.Declared clause, TypeSymbol.AtModule named,
+                              Map<BindingId, Core> given) {
         // Fail-open: a clause with no form leaves its run-time check standing, whichever way the
         // form went missing. Which of the two it was matters to a reader that publishes a sentence
         // about the clause, and this is not one.
-        if (!(meaningOf(clause) instanceof ClauseMeaning.Stated it)) {
+        if (!(meaningOf(clause) instanceof ClauseMeaning.Stated it)
+                || !everyFieldRead(given, named, it.fieldsRead())) {
             return null;
         }
-        return everyFieldRead(given, named, it.fieldsRead())
-                ? substituted(it.states().termForClauseReading(), given) : null;
+        return new AsStated(substituted(it.states().termForClauseReading(), given), it.parts());
     }
 
     /**
-     * What {@code clause} states as this reading's own tree, with nothing put in for the fields, or
-     * {@code null} where its declaration has no form for it.
+     * What a clause states as this reading's own tree, and the rules its author wrote it as.
+     *
+     * <p>The two together because they are one answer about one clause and a reader takes both: the
+     * parts are found again in the very tree beside them, so a reader handed them apart can be
+     * handed them from two lookups that need not have agreed.
+     *
+     * @param states what it states, with nothing put in for the fields
+     * @param parts the rules its author wrote it as
+     */
+    record AsStated(Core states, ClauseMeaning.Parts parts) {
+
+        AsStated {
+            if (states == null || parts == null) {
+                throw new IllegalArgumentException(
+                        "a clause that states something states it as some rules");
+            }
+        }
+    }
+
+    /**
+     * What {@code clause} states, or {@code null} where its declaration has no form for it.
      *
      * <p>For the reader that seeds a declaration's own fields, where each field stands for itself
-     * and there is nothing to substitute. The same statement the reading above puts a
+     * and there is nothing to substitute. The same statement the reading below puts a
      * construction's values into, taken the same way and from the same place.
      */
-    Core stated(TypeOps.Declared clause) {
+    AsStated stated(TypeOps.Declared clause) {
         return meaningOf(clause) instanceof ClauseMeaning.Stated it
-                ? it.states().termForClauseReading() : null;
-    }
-
-    /**
-     * The rules {@code clause}'s author wrote it as, as its declaration published them.
-     *
-     * <p>Asked of the declaration and not worked out from a tree. Which parts a clause has was
-     * settled where it was split, and a reader that recovered them from what it typed would be a
-     * second answer to how many there are.
-     */
-    ClauseMeaning.Parts partsOf(TypeOps.Declared clause) {
-        return meaningOf(clause) instanceof ClauseMeaning.Stated it ? it.parts() : null;
+                ? new AsStated(it.states().termForClauseReading(), it.parts()) : null;
     }
 
     /**
@@ -264,13 +272,13 @@ final class Clauses {
         List<RuleRef.Invariant> lost = new ArrayList<>();
         for (TypeOps.Declared inv : declared(named)) {
             Clause.Ref clause = Clause.Ref.of(inv);
-            Core one = statedAt(inv, named, given);
+            AsStated one = statedAt(inv, named, given);
             if (one != null) {
                 // The clause as one reading, and the parts its author wrote as subtrees of that
                 // very reading. Read apart instead, a conjunct would be read without the conjunct
                 // beside it, and a branch one of them rules out would stand.
-                stated.add(new Stated(clause, one,
-                        partsOf(inv).onto(ClauseExpr.of(one, true))));
+                stated.add(new Stated(clause, one.states(),
+                        one.parts().onto(ClauseExpr.of(one.states(), true))));
             } else {
                 lost.add(new RuleRef.Invariant(clause));
             }

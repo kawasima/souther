@@ -51,10 +51,8 @@ public sealed interface DeclarationMeaning {
      */
     public static DeclarationMeaning of(Hir.Def declared, RuleReadingSource source,
                                         DeclarationReadings machines) {
-        // Reading no meanings, because this is where they are made. A reading that consulted them
-        // to make one would be asking for the answer it is producing.
         return of(declared, new Clauses(source.symbols(), source.invariants(), source.written(),
-                machines, ClauseMeanings.NONE));
+                machines, ClauseMeanings.THE_ONE_THAT_MAKES_THEM));
     }
 
     /**
