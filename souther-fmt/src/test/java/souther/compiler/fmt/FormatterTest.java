@@ -31,10 +31,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class FormatterTest {
 
+    private static final RepositoryLayout REPOSITORY = RepositoryLayout.ofWorkingDirectory();
+
     /** The bundled prelude, asked for rather than found: a corpus that is not there refuses where
      *  it is handed out, and does so the same way for every check that sweeps it. */
     static Stream<Path> corpus() {
-        return RepositoryLayout.ofWorkingDirectory().preludeSources().stream();
+        return REPOSITORY.preludeSources().stream();
     }
 
     private static String read(Path p) {

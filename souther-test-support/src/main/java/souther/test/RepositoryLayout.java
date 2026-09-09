@@ -371,8 +371,22 @@ public final class RepositoryLayout {
      * sweep every row of which holds, and a round trip over nothing reproduces everything it was
      * given: the check reports a pass. That refusal belongs with the answer, because the place that
      * hands the sources over is the only one that can tell a missing corpus from an empty one.
+     *
+     * <p>Walked once, because the repository does not move while a run happens. The checks that
+     * sweep the library ask for it once per property they hold over it, and the library is the same
+     * answer each time; only where the sources are is held, so what each check makes of them stays
+     * its own.
      */
     public List<Path> preludeSources() {
+        if (prelude == null) {
+            prelude = walkThePrelude();
+        }
+        return prelude;
+    }
+
+    private List<Path> prelude;
+
+    private List<Path> walkThePrelude() {
         Path at = moduleNamed(SHIPS_THE_PRELUDE)
                 .resolve("src").resolve("main").resolve("resources").resolve(THE_PRELUDE_IS_UNDER);
         if (!isThere(at)) {

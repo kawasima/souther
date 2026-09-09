@@ -276,6 +276,10 @@ class WhatGoesBetweenTwoTokensOnALineTest {
                 | _ -> 0
             """);
 
+    /** Read once, because the repository does not move while a run happens: reading it is a pom to
+     *  parse and a walk, and {@link #corpus} is asked for by every rule this module holds. */
+    private static final RepositoryLayout REPOSITORY = RepositoryLayout.ofWorkingDirectory();
+
     /**
      * One bundled standard-library source, asked for by the name the library gives it.
      *
@@ -286,7 +290,7 @@ class WhatGoesBetweenTwoTokensOnALineTest {
      * where the library is handed out.
      */
     private static String stdlib(String module) {
-        Path source = RepositoryLayout.ofWorkingDirectory().preludeSourceOf(module);
+        Path source = REPOSITORY.preludeSourceOf(module);
         try {
             return Files.readString(source, StandardCharsets.UTF_8);
         } catch (IOException e) {

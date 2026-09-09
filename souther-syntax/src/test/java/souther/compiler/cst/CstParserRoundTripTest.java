@@ -22,11 +22,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class CstParserRoundTripTest {
 
+    private static final RepositoryLayout REPOSITORY = RepositoryLayout.ofWorkingDirectory();
+
     /** The bundled prelude — the hardest corpus, and asked for rather than gone looking for, so a
      *  source added to it is swept here without this being edited and a corpus that is not there
      *  refuses rather than leaving a sweep of nothing to pass. */
     static Stream<Path> exampleSources() {
-        return RepositoryLayout.ofWorkingDirectory().preludeSources().stream();
+        return REPOSITORY.preludeSources().stream();
     }
 
     private static String read(Path p) {

@@ -55,8 +55,10 @@ class CstLexerRoundTripTest {
         assertEquals(source, relex(source));
     }
 
+    private static final RepositoryLayout REPOSITORY = RepositoryLayout.ofWorkingDirectory();
+
     static Stream<Path> preludeSources() {
-        return RepositoryLayout.ofWorkingDirectory().preludeSources().stream();
+        return REPOSITORY.preludeSources().stream();
     }
 
     @ParameterizedTest
