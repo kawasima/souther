@@ -2,20 +2,14 @@ package souther.architecture;
 
 import souther.compiler.ast.ConstructionOrigin;
 import souther.compiler.ast.Hir;
-import souther.test.RepositoryLayout;
 
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassModel;
 import java.lang.classfile.CodeElement;
 import java.lang.classfile.MethodModel;
 import java.lang.classfile.instruction.FieldInstruction;
 import java.lang.classfile.instruction.InvokeInstruction;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -24,7 +18,6 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.function.BiConsumer;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -65,7 +58,7 @@ class EveryPlaceAnAnswerAboutAConstructionIsNamedTest {
     /** The same package, as a call's owner says it — exactly, so one under it is not it. */
     private static final String THEIR_PACKAGE = "souther/compiler/ast";
 
-    private static final RepositoryLayout REPOSITORY = RepositoryLayout.ofWorkingDirectory();
+    private static final CompiledOutputs COMPILED = CompiledOutputs.ofWhatThisRepositoryPublishes();
 
     /**
      * A member a settling call may name, and the word the edges below are written with.
@@ -289,8 +282,8 @@ class EveryPlaceAnAnswerAboutAConstructionIsNamedTest {
      *  where the calls it lists are made. */
     @Test
     void andTheWalkReadsEveryModulesClasses() {
-        assertFalse(everyCompiledClass().stream()
-                        .allMatch(each -> internalName(each).startsWith(THEIRS)),
+        assertFalse(COMPILED.all().stream()
+                        .allMatch(each -> each.thisClass().asInternalName().startsWith(THEIRS)),
                 "the calls this reads are made outside the package that declares what they reach");
     }
 
@@ -298,11 +291,11 @@ class EveryPlaceAnAnswerAboutAConstructionIsNamedTest {
      *  takes and answers with — so a second member of a name is a second row. */
     private static Set<String> namingAnAnswer() {
         Set<String> found = new TreeSet<>();
-        for (Path each : everyCompiledClass()) {
-            if (!internalName(each).startsWith(THEIRS)) {
+        for (ClassModel each : COMPILED.all()) {
+            if (!each.thisClass().asInternalName().startsWith(THEIRS)) {
                 continue;
             }
-            ClassModel model = parse(each);
+            ClassModel model = each;
             for (MethodModel method : model.methods()) {
                 if (namesAnAnswer(method)) {
                     found.add(model.thisClass().name().stringValue() + "#"
@@ -396,10 +389,10 @@ class EveryPlaceAnAnswerAboutAConstructionIsNamedTest {
 
     /** Every method this reactor compiles, and every call it makes, as the method that makes it. */
     private static void walkEveryCall(BiConsumer<String, InvokeInstruction> to) {
-        for (Path each : everyCompiledClass()) {
-            ClassModel model = parse(each);
+        for (ClassModel each : COMPILED.all()) {
+            ClassModel model = each;
             for (MethodModel method : model.methods()) {
-                String caller = internalName(each) + "#" + method.methodName().stringValue()
+                String caller = each.thisClass().asInternalName() + "#" + method.methodName().stringValue()
                         + method.methodType().stringValue();
                 method.code().ifPresent(code -> {
                     for (CodeElement element : code) {
@@ -423,11 +416,11 @@ class EveryPlaceAnAnswerAboutAConstructionIsNamedTest {
     /** Every method the package that declares these forms holds, by the whole of what it is. */
     private static Set<String> declaredInThatPackage() {
         Set<String> found = new TreeSet<>();
-        for (Path each : everyCompiledClass()) {
-            if (!internalName(each).startsWith(THEIRS)) {
+        for (ClassModel each : COMPILED.all()) {
+            if (!each.thisClass().asInternalName().startsWith(THEIRS)) {
                 continue;
             }
-            ClassModel model = parse(each);
+            ClassModel model = each;
             for (MethodModel method : model.methods()) {
                 found.add(model.thisClass().name().stringValue() + "#"
                         + method.methodName().stringValue() + method.methodType().stringValue());
@@ -483,41 +476,9 @@ class EveryPlaceAnAnswerAboutAConstructionIsNamedTest {
         return "L" + type.getName().replace('.', '/') + ";";
     }
 
-    private static ClassModel parse(Path compiled) {
-        try {
-            return ClassFile.of().parse(Files.readAllBytes(compiled));
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
-    }
 
-    /** The class's own binary name, read off the file's place under its module's build directory. */
-    private static String internalName(Path compiled) {
-        String path = compiled.toString().replace('\\', '/');
-        int from = path.indexOf("/classes/") + "/classes/".length();
-        return path.substring(from, path.length() - ".class".length());
-    }
 
-    /**
-     * The compiled classes of every module of this build that the compiler is made of.
-     *
-     * <p>Its own tests are not among them. A test builds a node to look at it and ships nothing, so
-     * what it names is not an answer anything downstream reads; and a list holding them would move
-     * whenever a test was written, which is a list nobody keeps up.
-     */
-    private static List<Path> everyCompiledClass() {
-        List<Path> out = new ArrayList<>();
-        for (Path module : REPOSITORY.modules()) {
-            Path where = module.resolve("target").resolve("classes");
-            if (!Files.isDirectory(where)) {
-                continue;
-            }
-            try (Stream<Path> found = Files.walk(where)) {
-                out.addAll(found.filter(p -> p.toString().endsWith(".class")).toList());
-            } catch (IOException e) {
-                throw new UncheckedIOException(e);
-            }
-        }
-        return out;
-    }
+
+
+
 }

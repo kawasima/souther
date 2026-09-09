@@ -1,24 +1,17 @@
 package souther.architecture;
 
-import souther.test.RepositoryLayout;
 
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassModel;
 import java.lang.classfile.Instruction;
 import java.lang.classfile.MethodModel;
 import java.lang.classfile.Opcode;
 import java.lang.classfile.instruction.InvokeInstruction;
 import java.lang.reflect.AccessFlag;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -59,7 +52,7 @@ class WhoMayBuildARefusalFromOneOfItsHalvesTest {
     private static final String PROVING_ONE_HALF =
             "souther/compiler/check/Confinement$Admission";
 
-    private static final RepositoryLayout REPOSITORY = RepositoryLayout.ofWorkingDirectory();
+    private static final CompiledOutputs COMPILED = CompiledOutputs.ofWhatThisRepositoryPublishes();
 
     /**
      * No reading builds a refusal out of one of its halves.
@@ -70,7 +63,7 @@ class WhoMayBuildARefusalFromOneOfItsHalvesTest {
     @Test
     void noReadingBuildsARefusalOutOfOneOfItsHalves() {
         List<String> naming = new ArrayList<>();
-        for (ClassModel read : classesUnder(WHERE)) {
+        for (ClassModel read : COMPILED.inTheClassesOf(WHERE)) {
             String named = read.thisClass().name().stringValue();
             if (named.equals(REFUSAL) || named.startsWith(REFUSAL + "$")) {
                 continue;
@@ -91,7 +84,7 @@ class WhoMayBuildARefusalFromOneOfItsHalvesTest {
     @Test
     void andTheReadingsBuildOneByLookingForBoth() {
         List<String> looking = new ArrayList<>();
-        for (ClassModel read : classesUnder(WHERE)) {
+        for (ClassModel read : COMPILED.inTheClassesOf(WHERE)) {
             looking.addAll(callsTo(read, Set.of(BOTH)));
         }
 
@@ -117,7 +110,7 @@ class WhoMayBuildARefusalFromOneOfItsHalvesTest {
      */
     @Test
     void andWhatMayBeAskedOfARelationIsTheseTwoQuestions() {
-        ClassModel asked = CompiledOutputs.ofWhatThisRepositoryPublishes()
+        ClassModel asked = COMPILED
                 .read(WHERE + "WhatARelationShows");
         List<String> waysIn = new ArrayList<>();
         for (MethodModel maker : asked.methods()) {
@@ -191,22 +184,5 @@ class WhoMayBuildARefusalFromOneOfItsHalvesTest {
                 .toList()).orElse(List.of());
     }
 
-    private static List<ClassModel> classesUnder(String where) {
-        List<ClassModel> out = new ArrayList<>();
-        for (Path module : REPOSITORY.modules()) {
-            Path found = module.resolve("target").resolve("classes").resolve(where);
-            if (!Files.isDirectory(found)) {
-                continue;
-            }
-            try (Stream<Path> each = Files.list(found)) {
-                for (Path compiled : each.filter(p -> p.toString().endsWith(".class")).toList()) {
-                    out.add(ClassFile.of().parse(Files.readAllBytes(compiled)));
-                }
-            } catch (IOException unread) {
-                throw new UncheckedIOException(unread);
-            }
-        }
-        assertTrue(out.size() > 1, "no class was read under " + where);
-        return out;
-    }
+
 }

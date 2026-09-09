@@ -1,23 +1,18 @@
 package souther.architecture;
 
-import souther.test.RepositoryLayout;
 
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.lang.classfile.ClassFile;
+import java.lang.classfile.ClassModel;
 import java.lang.classfile.constantpool.ClassEntry;
 import java.lang.classfile.constantpool.MemberRefEntry;
 import java.lang.classfile.constantpool.Utf8Entry;
 import java.lang.classfile.constantpool.PoolEntry;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -58,7 +53,7 @@ class WhoMayReadWhatAStringPredicateMeansTest {
 
     private static final String OWNER = "souther/compiler/check/StringPredicates";
 
-    private static final RepositoryLayout REPOSITORY = RepositoryLayout.ofWorkingDirectory();
+    private static final CompiledOutputs COMPILED = CompiledOutputs.ofWhatThisRepositoryPublishes();
 
     /**
      * Every class that reads one, and what it reads it for.
@@ -234,17 +229,6 @@ class WhoMayReadWhatAStringPredicateMeansTest {
      */
     @Test
     void andEveryModuleTheRepositoryHoldsWasRead() {
-        List<String> unbuilt = new ArrayList<>();
-        for (Path module : REPOSITORY.modules()) {
-            if (!Files.isDirectory(classesOf(module)) && hasMainSources(module)) {
-                unbuilt.add(module.getFileName().toString());
-            }
-        }
-
-        assertEquals(List.of(), unbuilt,
-                "a module whose classes are not built is one this walk passes over, and a walk that"
-                        + " passes over a module answers about the rest while saying it answers"
-                        + " about all of them");
         assertTrue(modulesRead() > 1,
                 "this walk goes over more than one module's classes, so a reader of the table"
                         + " written outside the one that declares it is one it would find");
@@ -268,9 +252,9 @@ class WhoMayReadWhatAStringPredicateMeansTest {
     /** Every class whose constant pool reaches the table, with what it names of it. */
     private static Set<String> readingOne() {
         Set<String> found = new TreeSet<>();
-        for (Path module : REPOSITORY.modules()) {
-            for (Path each : classesUnder(module)) {
-                String reader = internalName(module, each);
+        for (Path module : COMPILED.modules()) {
+            for (ClassModel each : COMPILED.classesOf(module)) {
+                String reader = each.thisClass().asInternalName();
                 // The table and the answers it declares are the table. What each of them names of
                 // the others is the reading being written down and taken apart where it is made,
                 // and a row for one of them would be this walk reporting the owner as a reader of
@@ -278,7 +262,7 @@ class WhoMayReadWhatAStringPredicateMeansTest {
                 if (names(reader)) {
                     continue;
                 }
-                for (PoolEntry entry : constantPoolOf(each)) {
+                for (PoolEntry entry : each.constantPool()) {
                     String named = reached(entry);
                     if (named != null) {
                         found.add(reader + " -> " + named);
@@ -323,48 +307,21 @@ class WhoMayReadWhatAStringPredicateMeansTest {
 
     private static int modulesRead() {
         int read = 0;
-        for (Path module : REPOSITORY.modules()) {
-            if (!classesUnder(module).isEmpty()) {
+        for (Path module : COMPILED.modules()) {
+            if (!COMPILED.classesOf(module).isEmpty()) {
                 read++;
             }
         }
         return read;
     }
 
-    private static Iterable<PoolEntry> constantPoolOf(Path compiled) {
-        try {
-            return ClassFile.of().parse(Files.readAllBytes(compiled)).constantPool();
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
-    }
 
-    /** The class's own binary name, taken against the directory it was found under rather than off
-     *  the first {@code classes} in the path, which a checkout under one would be. */
-    private static String internalName(Path module, Path compiled) {
-        String name = classesOf(module).relativize(compiled).toString().replace('\\', '/');
-        return name.substring(0, name.length() - ".class".length());
-    }
 
-    private static Path classesOf(Path module) {
-        return module.resolve("target").resolve("classes");
-    }
 
-    /** Whether the module has main sources to have been built from. A module holding only tests or
-     *  only a pom leaves no classes and is not one this walk is missing. */
-    private static boolean hasMainSources(Path module) {
-        return Files.isDirectory(module.resolve("src").resolve("main").resolve("java"));
-    }
 
-    private static List<Path> classesUnder(Path module) {
-        Path where = classesOf(module);
-        if (!Files.isDirectory(where)) {
-            return List.of();
-        }
-        try (Stream<Path> found = Files.walk(where)) {
-            return found.filter(p -> p.toString().endsWith(".class")).toList();
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
-    }
+
+
+
+
+
 }

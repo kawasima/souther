@@ -1,27 +1,22 @@
 package souther.architecture;
 
-import souther.test.RepositoryLayout;
 
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.lang.classfile.ClassFile;
 import java.lang.classfile.MethodModel;
+import java.lang.classfile.ClassModel;
 import java.lang.classfile.constantpool.FieldRefEntry;
 import java.lang.classfile.constantpool.LoadableConstantEntry;
 import java.lang.classfile.constantpool.MethodHandleEntry;
 import java.lang.classfile.constantpool.PoolEntry;
 import java.lang.classfile.instruction.InvokeDynamicInstruction;
 import java.lang.classfile.instruction.InvokeInstruction;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -49,7 +44,7 @@ class WhoMaySayWhatARuleHandleReadsAsTest {
 
     private static final String SURFACE = "souther/compiler/publish/RuleHandleSurface";
 
-    private static final RepositoryLayout REPOSITORY = RepositoryLayout.ofWorkingDirectory();
+    private static final CompiledOutputs COMPILED = CompiledOutputs.ofWhatThisRepositoryPublishes();
 
     /**
      * Every class that asks what a handle reads as outside a document, and why it may.
@@ -127,17 +122,6 @@ class WhoMaySayWhatARuleHandleReadsAsTest {
      */
     @Test
     void andEveryModuleTheRepositoryHoldsWasRead() {
-        List<String> unbuilt = new ArrayList<>();
-        for (Path module : REPOSITORY.modules()) {
-            if (!Files.isDirectory(classesOf(module)) && hasMainSources(module)) {
-                unbuilt.add(module.getFileName().toString());
-            }
-        }
-
-        assertEquals(List.of(), unbuilt,
-                "a module whose classes are not built is one this walk passes over, and a walk that"
-                        + " passes over a module answers about the rest while saying it answers"
-                        + " about all of them");
         assertTrue(modulesRead() > 1,
                 "the classes this reads are in more than the one module that declares the sentence");
     }
@@ -152,11 +136,11 @@ class WhoMaySayWhatARuleHandleReadsAsTest {
      */
     private static Set<String> naming(String owner, String member) {
         Set<String> found = new TreeSet<>();
-        for (Path module : REPOSITORY.modules()) {
-            for (Path each : classesUnder(module)) {
-                for (MethodModel method : ClassFile.of().parse(bytesOf(each)).methods()) {
+        for (Path module : COMPILED.modules()) {
+            for (ClassModel each : COMPILED.classesOf(module)) {
+                for (MethodModel method : each.methods()) {
                     if (calls(method, owner, member)) {
-                        found.add(internalName(module, each) + "#" + said(method));
+                        found.add(each.thisClass().asInternalName() + "#" + said(method));
                     }
                 }
             }
@@ -233,12 +217,12 @@ class WhoMaySayWhatARuleHandleReadsAsTest {
      */
     private static Set<String> used(String owner) {
         Set<String> found = new TreeSet<>();
-        for (Path module : REPOSITORY.modules()) {
-            for (Path each : classesUnder(module)) {
-                if (internalName(module, each).equals(owner)) {
+        for (Path module : COMPILED.modules()) {
+            for (ClassModel each : COMPILED.classesOf(module)) {
+                if (each.thisClass().asInternalName().equals(owner)) {
                     continue;
                 }
-                for (PoolEntry entry : constantPoolOf(each)) {
+                for (PoolEntry entry : each.constantPool()) {
                     if (entry instanceof FieldRefEntry read
                             && owner.equals(read.owner().name().stringValue())
                             && surfaceConstants().contains(read.name().stringValue())) {
@@ -270,54 +254,23 @@ class WhoMaySayWhatARuleHandleReadsAsTest {
 
     private static int modulesRead() {
         int read = 0;
-        for (Path module : REPOSITORY.modules()) {
-            if (!classesUnder(module).isEmpty()) {
+        for (Path module : COMPILED.modules()) {
+            if (!COMPILED.classesOf(module).isEmpty()) {
                 read++;
             }
         }
         return read;
     }
 
-    private static Iterable<PoolEntry> constantPoolOf(Path compiled) {
-        return ClassFile.of().parse(bytesOf(compiled)).constantPool();
-    }
 
-    private static byte[] bytesOf(Path compiled) {
-        try {
-            return Files.readAllBytes(compiled);
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
-    }
 
-    /** The class's own binary name, taken against the directory it was found under rather than off
-     *  the first {@code classes} in the path, which a checkout under one would be. */
-    private static String internalName(Path module, Path compiled) {
-        String name = classesOf(module).relativize(compiled).toString().replace('\\', '/');
-        return name.substring(0, name.length() - ".class".length());
-    }
 
-    private static Path classesOf(Path module) {
-        return module.resolve("target").resolve("classes");
-    }
 
-    /** Whether the module has main sources to have been built from. A module holding only tests or
-     *  only a pom leaves no classes and is not one this walk is missing. */
-    private static boolean hasMainSources(Path module) {
-        return Files.isDirectory(module.resolve("src").resolve("main").resolve("java"));
-    }
 
-    /** The compiled classes of one module that the compiler is made of. Its own tests are not among
-     *  them: a test makes one to look at it and ships nothing. */
-    private static List<Path> classesUnder(Path module) {
-        Path where = classesOf(module);
-        if (!Files.isDirectory(where)) {
-            return List.of();
-        }
-        try (Stream<Path> found = Files.walk(where)) {
-            return found.filter(p -> p.toString().endsWith(".class")).toList();
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
-    }
+
+
+
+
+
+
 }

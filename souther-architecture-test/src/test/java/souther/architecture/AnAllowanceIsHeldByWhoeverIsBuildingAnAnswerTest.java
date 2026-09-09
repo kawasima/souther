@@ -1,18 +1,13 @@
 package souther.architecture;
 
-import souther.test.RepositoryLayout;
 
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.lang.classfile.Attributes;
-import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassModel;
 import java.lang.classfile.FieldModel;
 import java.lang.classfile.MethodModel;
 import java.lang.reflect.AccessFlag;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -23,7 +18,6 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -56,7 +50,7 @@ class AnAllowanceIsHeldByWhoeverIsBuildingAnAnswerTest {
 
     private static final String CONJUNCTION = "souther/compiler/values/ConjoinedAdmissibleValues";
 
-    private static final RepositoryLayout REPOSITORY = RepositoryLayout.ofWorkingDirectory();
+    private static final CompiledOutputs COMPILED = CompiledOutputs.ofWhatThisRepositoryPublishes();
 
     /**
      * Every production class an allowance can be reached from, which is every reading still
@@ -150,10 +144,10 @@ class AnAllowanceIsHeldByWhoeverIsBuildingAnAnswerTest {
     /** Every type named by a field of {@code owner}, for asking what it names of itself. */
     private static Set<String> fieldTypesOf(String owner) {
         Set<String> out = new LinkedHashSet<>();
-        for (Path module : REPOSITORY.modules()) {
-            for (Path each : classesUnder(module)) {
-                if (internalName(module, each).equals(owner)) {
-                    classOf(each).fields().forEach(field -> out.addAll(typesIn(declared(field))));
+        for (Path module : COMPILED.modules()) {
+            for (ClassModel each : COMPILED.classesOf(module)) {
+                if (each.thisClass().asInternalName().equals(owner)) {
+                    each.fields().forEach(field -> out.addAll(typesIn(declared(field))));
                 }
             }
         }
@@ -176,13 +170,13 @@ class AnAllowanceIsHeldByWhoeverIsBuildingAnAnswerTest {
      */
     private static List<String> holdingAnAllowance() {
         Map<String, Set<String>> holds = new LinkedHashMap<>();
-        for (Path module : REPOSITORY.modules()) {
-            for (Path each : classesUnder(module)) {
+        for (Path module : COMPILED.modules()) {
+            for (ClassModel each : COMPILED.classesOf(module)) {
                 Set<String> reaching = new LinkedHashSet<>();
-                for (FieldModel field : classOf(each).fields()) {
+                for (FieldModel field : each.fields()) {
                     reaching.addAll(typesIn(declared(field)));
                 }
-                holds.put(internalName(module, each), reaching);
+                holds.put(each.thisClass().asInternalName(), reaching);
             }
         }
         // What reaches an allowance, and then what reaches that, until nothing new arrives.
@@ -235,9 +229,9 @@ class AnAllowanceIsHeldByWhoeverIsBuildingAnAnswerTest {
      */
     private static List<String> namingAnAllowance(String owner) {
         TreeSet<String> out = new TreeSet<>();
-        for (Path module : REPOSITORY.modules()) {
-            for (Path each : classesUnder(module)) {
-                String here = internalName(module, each);
+        for (Path module : COMPILED.modules()) {
+            for (ClassModel each : COMPILED.classesOf(module)) {
+                String here = each.thisClass().asInternalName();
                 // The type and everything declared inside it. What may be asked of a conjunction
                 // includes what its own nested types offer, and one of those taking a purse is the
                 // same capability under another name.
@@ -245,7 +239,7 @@ class AnAllowanceIsHeldByWhoeverIsBuildingAnAnswerTest {
                     continue;
                 }
                 String within = here.equals(owner) ? "" : here.substring(owner.length() + 1) + ".";
-                for (MethodModel method : classOf(each).methods()) {
+                for (MethodModel method : each.methods()) {
                     if (!method.flags().has(AccessFlag.PRIVATE)
                             && typesIn(declared(method)).contains(ALLOWANCE)) {
                         out.add(within + method.methodName().stringValue());
@@ -264,34 +258,11 @@ class AnAllowanceIsHeldByWhoeverIsBuildingAnAnswerTest {
                 .orElseGet(() -> method.methodType().stringValue());
     }
 
-    private static ClassModel classOf(Path compiled) {
-        try {
-            return ClassFile.of().parse(Files.readAllBytes(compiled));
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
-    }
 
-    /** The class's own binary name, taken against the directory it was found under rather than off
-     *  the first {@code classes} in the path, which a checkout under one would be. */
-    private static String internalName(Path module, Path compiled) {
-        String name = classesOf(module).relativize(compiled).toString().replace('\\', '/');
-        return name.substring(0, name.length() - ".class".length());
-    }
 
-    private static Path classesOf(Path module) {
-        return module.resolve("target").resolve("classes");
-    }
 
-    private static List<Path> classesUnder(Path module) {
-        Path where = classesOf(module);
-        if (!Files.isDirectory(where)) {
-            return List.of();
-        }
-        try (Stream<Path> found = Files.walk(where)) {
-            return found.filter(p -> p.toString().endsWith(".class")).toList();
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
-    }
+
+
+
+
 }

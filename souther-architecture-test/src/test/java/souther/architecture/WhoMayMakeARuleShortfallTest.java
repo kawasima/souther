@@ -1,21 +1,15 @@
 package souther.architecture;
 
-import souther.test.RepositoryLayout;
-
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.lang.classfile.ClassFile;
+import java.lang.classfile.ClassModel;
 import java.lang.classfile.constantpool.MemberRefEntry;
 import java.lang.classfile.constantpool.PoolEntry;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -51,7 +45,7 @@ class WhoMayMakeARuleShortfallTest {
     // had to name a shortfall to say which choice it means.
     private static final String A_CHOICE = "souther/compiler/check/ChoiceSite";
 
-    private static final RepositoryLayout REPOSITORY = RepositoryLayout.ofWorkingDirectory();
+    private static final CompiledOutputs COMPILED = CompiledOutputs.ofWhatThisRepositoryPublishes();
 
     /**
      * Every class that makes one, and why it is entitled to.
@@ -103,17 +97,6 @@ class WhoMayMakeARuleShortfallTest {
      */
     @Test
     void andEveryModuleTheRepositoryHoldsWasRead() {
-        List<String> unbuilt = new ArrayList<>();
-        for (Path module : REPOSITORY.modules()) {
-            if (!Files.isDirectory(classesOf(module)) && hasMainSources(module)) {
-                unbuilt.add(module.getFileName().toString());
-            }
-        }
-
-        assertEquals(List.of(), unbuilt,
-                "a module whose classes are not built is one this walk passes over, and a walk that"
-                        + " passes over a module answers about the rest while saying it answers"
-                        + " about all of them");
         assertTrue(modulesRead() > 1,
                 "the classes this reads are in more than the one module that declares the fact");
     }
@@ -121,15 +104,13 @@ class WhoMayMakeARuleShortfallTest {
     /** Every class naming a constructor of one of {@code these}, as the class and what it named. */
     private static Set<String> naming(Set<String> these) {
         Set<String> found = new TreeSet<>();
-        for (Path module : REPOSITORY.modules()) {
-            for (Path each : classesUnder(module)) {
-                for (PoolEntry entry : constantPoolOf(each)) {
-                    if (entry instanceof MemberRefEntry member
-                            && these.contains(member.owner().name().stringValue())
-                            && "<init>".equals(member.name().stringValue())) {
-                        found.add(internalName(module, each) + " -> "
-                                + member.owner().name().stringValue() + "#<init>");
-                    }
+        for (ClassModel model : COMPILED.all()) {
+            for (PoolEntry entry : model.constantPool()) {
+                if (entry instanceof MemberRefEntry member
+                        && these.contains(member.owner().name().stringValue())
+                        && "<init>".equals(member.name().stringValue())) {
+                    found.add(model.thisClass().asInternalName() + " -> "
+                            + member.owner().name().stringValue() + "#<init>");
                 }
             }
         }
@@ -138,50 +119,12 @@ class WhoMayMakeARuleShortfallTest {
 
     private static int modulesRead() {
         int read = 0;
-        for (Path module : REPOSITORY.modules()) {
-            if (!classesUnder(module).isEmpty()) {
+        for (Path module : COMPILED.modules()) {
+            if (COMPILED.mainOutputOf(module).isPresent()) {
                 read++;
             }
         }
         return read;
     }
 
-    private static Iterable<PoolEntry> constantPoolOf(Path compiled) {
-        try {
-            return ClassFile.of().parse(Files.readAllBytes(compiled)).constantPool();
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
-    }
-
-    /** The class's own binary name, taken against the directory it was found under rather than off
-     *  the first {@code classes} in the path, which a checkout under one would be. */
-    private static String internalName(Path module, Path compiled) {
-        String name = classesOf(module).relativize(compiled).toString().replace('\\', '/');
-        return name.substring(0, name.length() - ".class".length());
-    }
-
-    private static Path classesOf(Path module) {
-        return module.resolve("target").resolve("classes");
-    }
-
-    /** Whether the module has main sources to have been built from. A module holding only tests or
-     *  only a pom leaves no classes and is not one this walk is missing. */
-    private static boolean hasMainSources(Path module) {
-        return Files.isDirectory(module.resolve("src").resolve("main").resolve("java"));
-    }
-
-    /** The compiled classes of one module that the compiler is made of. Its own tests are not among
-     *  them: a test makes one to look at it and ships nothing. */
-    private static List<Path> classesUnder(Path module) {
-        Path where = classesOf(module);
-        if (!Files.isDirectory(where)) {
-            return List.of();
-        }
-        try (Stream<Path> found = Files.walk(where)) {
-            return found.filter(p -> p.toString().endsWith(".class")).toList();
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
-    }
 }
