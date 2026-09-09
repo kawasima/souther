@@ -15,6 +15,7 @@ import java.util.Optional;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 
 /**
  * Which rules a world has is settled before a reading says how far into them it goes.
@@ -64,8 +65,32 @@ class AWorldSaysWhichRulesThereAreBeforeAReadingSaysHowFarItGoesTest {
                 "both conjuncts are rules here, so what the reading stops at is the conjunction");
     }
 
+    /**
+     * And it holds over whatever tree the reading is walking.
+     *
+     * <p>A clause reaches a value through the tree the step that brought it there built, and a
+     * world is told which parts it holds by their names. Matched against the trees instead, a world
+     * built from one of them leaves nothing out of a walk over another — and a reading that was
+     * asked what one conjunct was holding reads the conjunct it was told to leave out.
+     */
+    @Test
+    void andTheWorldHoldsWhateverTreeTheReadingIsOver() {
+        Core again = new Core.Binary(BinOp.AND, leaf("left"), leaf("right"),
+                ConstructOccurrence.unwritten(), Type.BOOL, POS);
+        assertNotSame(BOTH, again, "the same clause, built again, which is what a step downstream"
+                + " hands on");
+        assertEquals(BOTH, again, "and it is the same clause");
+        assertEquals(List.of("right"), whatReached(again, withoutTheLeft()),
+                "the left conjunct is no rule of this world, whichever of the two trees saying so"
+                        + " the reading is walking");
+    }
+
     /** What a reading that stops at every connective was handed, in the order it reached them. */
     private static List<String> whatReached(ClauseView view) {
+        return whatReached(BOTH, view);
+    }
+
+    private static List<String> whatReached(Core clause, ClauseView view) {
         List<String> reached = new java.util.ArrayList<>();
         ClauseReading<String, Void> stopping = new ClauseReading<>() {
 
@@ -82,7 +107,7 @@ class AWorldSaysWhichRulesThereAreBeforeAReadingSaysHowFarItGoesTest {
                 return new Descent.Whole<>();
             }
         };
-        stopping.read(BOTH, true, null, ClauseScope.unchanged(), null, view);
+        stopping.read(clause, true, null, ClauseScope.unchanged(), null, view);
         return List.copyOf(reached);
     }
 
@@ -93,20 +118,26 @@ class AWorldSaysWhichRulesThereAreBeforeAReadingSaysHowFarItGoesTest {
                 Optional.empty()));
         PartId<RuleRef.Invariant> left = new PartId<>(rule, 0);
         PartId<RuleRef.Invariant> right = new PartId<>(rule, 1);
+        // The parts as subtrees of the one shape the clause was read into, which is the only way
+        // one is made: read apart, the two would each be the first occurrence of a clause of their
+        // own, and a world told to leave one out would be told a place both of them stand at.
+        ClauseExpr.Joined shape = (ClauseExpr.Joined) ClauseExpr.of(BOTH, true);
         return PartsLeftOut.without(Set.of(left)).viewOf(
-                List.of(new Clauses.StatedPart(left, ClauseExpr.of(LEFT, true)),
-                        new Clauses.StatedPart(right, ClauseExpr.of(RIGHT, true))));
+                List.of(new Clauses.StatedPart(left, shape.left()),
+                        new Clauses.StatedPart(right, shape.right())));
     }
 
     /** What a node reads as here, which is enough to tell the two conjuncts and the whole apart. */
     private static String spelled(Core node) {
-        if (node == LEFT) {
+        // What the node says and not which object it is: a clause built a second time is the same
+        // clause, and a reading walking that one is reaching the same rules.
+        if (LEFT.equals(node)) {
             return "left";
         }
-        if (node == RIGHT) {
+        if (RIGHT.equals(node)) {
             return "right";
         }
-        return node == BOTH ? "left && right" : "something else";
+        return BOTH.equals(node) ? "left && right" : "something else";
     }
 
     /** A clause of no connective, named by which of them it is. */
