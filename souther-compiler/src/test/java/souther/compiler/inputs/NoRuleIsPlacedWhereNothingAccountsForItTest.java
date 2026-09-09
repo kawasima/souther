@@ -4,17 +4,14 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
-import souther.compiler.ast.Hir;
+import souther.compiler.check.DeclaredSig;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.RuleReadings;
-import souther.compiler.check.Prepared;
-import souther.compiler.check.Sig;
 import souther.compiler.conformance.RepositoryModels;
 import souther.compiler.meta.ModulePath;
 import souther.compiler.query.Bodies;
 import souther.compiler.query.Compilation;
 import souther.compiler.query.ReadAs;
-import souther.compiler.query.Shapes;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -245,15 +242,12 @@ class NoRuleIsPlacedWhereNothingAccountsForItTest {
 
     private static void valuesRead(Compilation compilation, List<PlacedRules> out) {
         for (String module : compilation.modules()) {
-            Prepared prepared = compilation.db().ask(new Shapes.Prepared(module)).value();
-            Map<String, Sig> sigs = compilation.db().ask(new Bodies.Signatures(module)).value();
+            Map<String, DeclaredSig> sigs =
+                    compilation.db().ask(new Bodies.DeclaredSignatures(module)).value();
             RuleReadingSource rules = RuleReadings.of(compilation, module);
-            for (Hir.BehaviorDef def : prepared.behaviors()) {
-                if (!(def instanceof Hir.SpecBehavior spec) || sigs.get(spec.name()) == null) {
-                    continue;
-                }
-                for (souther.compiler.types.Type type : sigs.get(spec.name()).inputTypes()) {
-                    out.add(PlacedRules.of(TermPath.of("p"), type, rules,
+            for (DeclaredSig declared : sigs.values()) {
+                for (DeclaredSig.Input input : declared.inputs()) {
+                    out.add(PlacedRules.of(TermPath.of("p"), input.type(), rules,
                             ReadAs.THE_COMPILATION_DOES));
                 }
             }
@@ -262,14 +256,11 @@ class NoRuleIsPlacedWhereNothingAccountsForItTest {
 
     private static void readings(Compilation compilation, List<InputDomain> out) {
         for (String module : compilation.modules()) {
-            Prepared prepared = compilation.db().ask(new Shapes.Prepared(module)).value();
-            Map<String, Sig> sigs = compilation.db().ask(new Bodies.Signatures(module)).value();
+            Map<String, DeclaredSig> sigs =
+                    compilation.db().ask(new Bodies.DeclaredSignatures(module)).value();
             RuleReadingSource rules = RuleReadings.of(compilation, module);
-            for (Hir.BehaviorDef def : prepared.behaviors()) {
-                if (def instanceof Hir.SpecBehavior spec && sigs.get(spec.name()) != null) {
-                    out.add(InputDomain.of(spec, sigs.get(spec.name()), rules,
-                            ReadAs.THE_COMPILATION_DOES));
-                }
+            for (DeclaredSig declared : sigs.values()) {
+                out.add(InputDomain.of(declared, rules, ReadAs.THE_COMPILATION_DOES));
             }
         }
     }

@@ -404,19 +404,14 @@ class ABorderDebtIsTheLineTheAuthorWroteTest {
         Compilation compilation = Compilation.ofSource(model, "Main");
         compilation.answerEverything();
         String module = compilation.modules().get(0);
-        souther.compiler.check.Prepared prepared =
-                compilation.db().ask(new souther.compiler.query.Shapes.Prepared(module)).value();
         RuleReadingSource rules = RuleReadings.of(compilation, module);
-        Map<String, souther.compiler.check.Sig> sigs = compilation.db()
-                .ask(new souther.compiler.query.Bodies.Signatures(module)).value();
-        souther.compiler.ast.Hir.SpecBehavior spec =
-                (souther.compiler.ast.Hir.SpecBehavior) prepared.behaviors().stream()
-                        .filter(b -> b.name().equals(behavior)).findFirst().orElseThrow();
+        Map<String, souther.compiler.check.DeclaredSig> sigs = compilation.db()
+                .ask(new souther.compiler.query.Bodies.DeclaredSignatures(module)).value();
         assertNotNull(sigs.get(behavior), "the model under test compiles");
         souther.compiler.inputs.InputDomain domain =
-                souther.compiler.inputs.InputDomain.of(spec, sigs.get(behavior), rules,
+                souther.compiler.inputs.InputDomain.of(sigs.get(behavior), rules,
                         souther.compiler.query.ReadAs.THE_COMPILATION_DOES);
-        Partitions.Partitioning partitioning = Partitions.of(spec.name(), domain, rules,
+        Partitions.Partitioning partitioning = Partitions.of(behavior, domain, rules,
                 souther.compiler.query.ReadAs.THE_COMPILATION_DOES);
         Axis axis = partitioning.axes().stream()
                 .filter(a -> a.path().toString().equals(path)).findFirst().orElseThrow();

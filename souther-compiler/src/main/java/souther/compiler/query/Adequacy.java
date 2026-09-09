@@ -22,6 +22,7 @@ import souther.compiler.examples.FixtureReader;
 import souther.compiler.ast.Hir;
 import souther.compiler.check.AtomSpace;
 import souther.compiler.check.DeclarationCitations;
+import souther.compiler.check.DeclaredSig;
 import souther.compiler.check.PublishedDeclarations;
 import souther.compiler.check.RuleRef;
 import souther.compiler.check.RuleReadingSource;
@@ -684,7 +685,7 @@ public final class Adequacy {
                     db.ask(new Shapes.CheckSurface(name));
             Answer<DerivedSymbols> scope = Names.derivedSymbols(db, name);
             Answer<RuleReadingSource> reading = Shapes.ruleReading(db, name);
-            Answer<Map<String, Sig>> sigs = db.ask(new Bodies.Signatures(name));
+            Answer<Map<String, DeclaredSig>> sigs = db.ask(new Bodies.DeclaredSignatures(name));
             Answer<Hir.Module> settled = db.ask(new Bodies.Settled(name));
             if (!prepared.present() || !scope.present() || !sigs.present() || !settled.present()
                     || !reading.present()) {
@@ -708,8 +709,8 @@ public final class Adequacy {
                 if (!(behavior instanceof Hir.SpecBehavior spec)) {
                     continue;   // a composition's inputs are its first stage's, read there
                 }
-                Sig sig = sigs.value().get(spec.name());
-                if (sig != null) {
+                DeclaredSig declared = sigs.value().get(spec.name());
+                if (declared != null) {
                     // The implementation the body was checked against, which is where a read of a
                     // parameter gets the binding it carries: the check binds `fn`'s own binders and
                     // the lowering leaves them alone. A behavior nothing implements has positions
@@ -717,9 +718,9 @@ public final class Adequacy {
                     Answer<Hir.FnDef> fn = db.ask(new Bodies.SettledFn(name, spec.name()));
                     SpecImplementation.Implemented implemented = fn.present()
                             ? SpecImplementation.align(spec, fn.value()) : null;
-                    out.put(spec.name(), InputDomain.of(spec,
+                    out.put(spec.name(), InputDomain.of(declared,
                             implemented == null ? List.of() : implemented.declaredInputs(),
-                            sig, reading.value(), db.ask(new Front.Reading()).value(),
+                            reading.value(), db.ask(new Front.Reading()).value(),
                             // What this behavior's body reads, so the reading is closed over the
                             // paths its measurement names as well as the ones the enumeration
                             // finds. Asked as the reading is made and never after it: one that

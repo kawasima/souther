@@ -2,18 +2,15 @@ package souther.compiler.partition;
 
 import org.junit.jupiter.api.Test;
 
-import souther.compiler.ast.Hir;
 import souther.compiler.check.DeclaredBounds;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.RuleReadings;
-import souther.compiler.check.Prepared;
-import souther.compiler.check.Sig;
+import souther.compiler.check.DeclaredSig;
 import souther.compiler.inputs.InputDomain;
 import souther.compiler.inputs.TermPath;
 import souther.compiler.query.Bodies;
 import souther.compiler.query.Compilation;
 import souther.compiler.query.ReadAs;
-import souther.compiler.query.Shapes;
 import souther.compiler.types.TypeSymbol;
 
 import java.util.List;
@@ -116,7 +113,7 @@ class ANameTakenOffByOneNarrowingGoesBackOnAfterTheNextTest {
                 .orElseThrow(() -> new AssertionError("no class " + classId + " at " + path));
 
         ConstructionPlan plan = assertInstanceOf(ConstructionPlan.Result.Planned.class,
-                ConstructionPlan.of(read.sig().inputTypes().get(0),
+                ConstructionPlan.of(read.sig().inputs().get(0).type(),
                         TermPath.of(read.parameter()), read.rules().symbols(), Set.of(),
                         axis.requiring(cls), ONE_AT_LEAST),
                 "nothing here asks one position to be two things").plan();
@@ -146,17 +143,18 @@ class ANameTakenOffByOneNarrowingGoesBackOnAfterTheNextTest {
         return worn.stream().map(TypeSymbol::name).toList();
     }
 
-    private record Read(String parameter, Sig sig, RuleReadingSource rules, InputDomain domain) {}
+    private record Read(String parameter, DeclaredSig sig, RuleReadingSource rules,
+                        InputDomain domain) {}
 
     private static Read read(String source) {
         Compilation compilation = Compilation.ofSource(source, "Main");
         compilation.answerEverything();
         String module = compilation.modules().get(0);
-        Prepared prepared = compilation.db().ask(new Shapes.Prepared(module)).value();
-        Map<String, Sig> sigs = compilation.db().ask(new Bodies.Signatures(module)).value();
+        Map<String, DeclaredSig> sigs =
+                compilation.db().ask(new Bodies.DeclaredSignatures(module)).value();
         RuleReadingSource rules = RuleReadings.of(compilation, module);
-        Hir.SpecBehavior spec = (Hir.SpecBehavior) prepared.behaviors().get(0);
-        return new Read(spec.params().get(0).name(), sigs.get("look"), rules,
-                InputDomain.of(spec, sigs.get("look"), rules, ReadAs.THE_COMPILATION_DOES));
+        DeclaredSig declared = sigs.get("look");
+        return new Read(declared.inputs().get(0).name(), declared, rules,
+                InputDomain.of(declared, rules, ReadAs.THE_COMPILATION_DOES));
     }
 }

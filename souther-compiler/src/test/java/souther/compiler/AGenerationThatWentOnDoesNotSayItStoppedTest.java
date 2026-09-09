@@ -2,11 +2,9 @@ package souther.compiler;
 
 import org.junit.jupiter.api.Test;
 
-import souther.compiler.ast.Hir;
-import souther.compiler.check.Prepared;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.RuleReadings;
-import souther.compiler.check.Sig;
+import souther.compiler.check.DeclaredSig;
 import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.inputs.InputDomain;
 import souther.compiler.observe.Classification;
@@ -21,7 +19,6 @@ import souther.compiler.partition.Partitions;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.Bodies;
 import souther.compiler.query.Compilation;
-import souther.compiler.query.Shapes;
 import souther.compiler.report.GeneratedRows;
 
 import java.util.LinkedHashMap;
@@ -69,16 +66,13 @@ class AGenerationThatWentOnDoesNotSayItStoppedTest {
         Compilation compilation = Compilation.ofSource(TRIP, "Main");
         compilation.answerEverything();
         String module = compilation.modules().get(0);
-        Prepared prepared = compilation.db().ask(new Shapes.Prepared(module)).value();
-        Map<String, Sig> sigs = compilation.db().ask(new Bodies.Signatures(module)).value();
+        Map<String, DeclaredSig> sigs =
+                compilation.db().ask(new Bodies.DeclaredSignatures(module)).value();
         RuleReadingSource rules = RuleReadings.of(compilation, module);
-        Hir.SpecBehavior spec = (Hir.SpecBehavior) prepared.behaviors().stream()
-                .filter(b -> b.name().equals("submit")).findFirst().orElseThrow();
-        Sig sig = sigs.get("submit");
-        InputDomain domain = InputDomain.of(spec, sig, rules,
+        InputDomain domain = InputDomain.of(sigs.get("submit"), rules,
                 souther.compiler.query.ReadAs.THE_COMPILATION_DOES);
-        return MeasuredInput.of(spec.name(), domain.reading(rules),
-                Partitions.of(spec.name(), domain, rules,
+        return MeasuredInput.of("submit", domain.reading(rules),
+                Partitions.of("submit", domain, rules,
                         souther.compiler.query.ReadAs.THE_COMPILATION_DOES));
     }
 

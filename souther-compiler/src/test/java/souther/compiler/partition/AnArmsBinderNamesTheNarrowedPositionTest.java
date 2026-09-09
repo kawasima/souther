@@ -2,18 +2,15 @@ package souther.compiler.partition;
 
 import org.junit.jupiter.api.Test;
 
-import souther.compiler.ast.Hir;
+import souther.compiler.check.DeclaredSig;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.RuleReadings;
-import souther.compiler.check.Prepared;
-import souther.compiler.check.Sig;
 import souther.compiler.core.Core;
 import souther.compiler.inputs.InputDomain;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.Bodies;
 import souther.compiler.query.Compilation;
 import souther.compiler.query.ReadAs;
-import souther.compiler.query.Shapes;
 
 import java.util.List;
 import java.util.Map;
@@ -59,13 +56,11 @@ class AnArmsBinderNamesTheNarrowedPositionTest {
         Compilation compilation = Compilation.ofSource(MODEL, "Main");
         compilation.answerEverything();
         String module = compilation.modules().get(0);
-        Prepared prepared = compilation.db().ask(new Shapes.Prepared(module)).value();
         RuleReadingSource rules = RuleReadings.of(compilation, module);
-        Map<String, Sig> sigs = compilation.db().ask(new Bodies.Signatures(module)).value();
+        Map<String, DeclaredSig> sigs =
+                compilation.db().ask(new Bodies.DeclaredSignatures(module)).value();
         Bodies.Elaborated checked = compilation.db().ask(new Bodies.Checked(module)).value();
         assertNotNull(checked, "the model under test compiles");
-        Hir.SpecBehavior spec = (Hir.SpecBehavior) prepared.behaviors().stream()
-                .filter(b -> b.name().equals("read")).findFirst().orElseThrow();
         Core body = checked.behaviorBodies().get("read");
         assertNotNull(body, "the behavior under test has a body");
         InputDomain inputs = compilation.db().ask(new Adequacy.Inputs(module)).value().get("read");
@@ -73,9 +68,9 @@ class AnArmsBinderNamesTheNarrowedPositionTest {
                 checked.analysisBodies().get("read"), body,
                 checked.plan(),
                 inputs, rules);
-        InputDomain read = InputDomain.of(spec, sigs.get("read"), rules,
+        InputDomain read = InputDomain.of(sigs.get("read"), rules,
                 ReadAs.THE_COMPILATION_DOES);
-        Partitions.Partitioning base = Partitions.of(spec.name(), read, rules,
+        Partitions.Partitioning base = Partitions.of("read", read, rules,
                 ReadAs.THE_COMPILATION_DOES);
         return Partitions.withThresholds(base, read.quantities(rules), guards.thresholds(),
                 rules, ReadAs.THE_COMPILATION_DOES, guards.noLine(), guards.singled(),

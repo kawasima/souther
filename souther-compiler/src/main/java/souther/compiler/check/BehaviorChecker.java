@@ -46,9 +46,10 @@ public final class BehaviorChecker {
      * {@code value} leaves every rule ambiguous about what it names, so reading the rules underneath
      * it would report one mistake as several.
      */
-    public static CheckedEnsures contractOf(Hir.SpecBehavior behavior, String module, Sig sig,
-                                       Symbols symbols, Map<String, Type> helpers) {
-        Reading reading = read(behavior, module, sig, symbols);
+    public static CheckedEnsures contractOf(Hir.SpecBehavior behavior, String module,
+                                       DeclaredSig declared, Symbols symbols,
+                                       Map<String, Type> helpers) {
+        Reading reading = read(behavior, module, declared, symbols);
         BehaviorContract contract = reading.contract();
         // The rules it did read, held to what a rule has to be. Two mistakes in one declaration are
         // two things for an author to fix, and this is the reading that reports them.
@@ -90,9 +91,9 @@ public final class BehaviorChecker {
      * @throws CompileException where any of the declaration could not be read, which the executable
      *     reading of it reports as well
      */
-    public static BehaviorContract contractAsRead(Hir.SpecBehavior behavior, String module, Sig sig,
-                                                  Symbols symbols) {
-        return read(behavior, module, sig, symbols).whole();
+    public static BehaviorContract contractAsRead(Hir.SpecBehavior behavior, String module,
+                                                  DeclaredSig declared, Symbols symbols) {
+        return read(behavior, module, declared, symbols).whole();
     }
 
     /**
@@ -121,11 +122,11 @@ public final class BehaviorChecker {
     }
 
     /** The declaration as rules, beside what could not be read of it. */
-    private static Reading read(Hir.SpecBehavior behavior, String module, Sig sig,
+    private static Reading read(Hir.SpecBehavior behavior, String module, DeclaredSig declared,
                                 Symbols symbols) {
         List<Diagnostic> found = new ArrayList<>();
         ValueName.Behavior name = new ValueName.Behavior(module, behavior.name());
-        if (sig == null) {
+        if (declared == null) {
             // The signature could not be made, which is reported where that failed. A rule is
             // read against the parameters and the answer, so there is nothing to read one against
             // — said again here it would be that one mistake seen from another angle.
@@ -141,15 +142,15 @@ public final class BehaviorChecker {
 
         BindingOwner owner = BehaviorContract.ownerOf(name);
         List<Param> params = new ArrayList<>();
-        for (int i = 0; i < behavior.params().size(); i++) {
-            params.add(new Param(new BindingId(owner, i), behavior.params().get(i).name(),
-                    sig.inputTypes().get(i)));
+        int at = 0;
+        for (DeclaredSig.Input input : declared.inputs()) {
+            params.add(new Param(new BindingId(owner, at++), input.name(), input.type()));
         }
 
         // Which cases the answer can be, and what `value` is in each, come from the same place a
         // `match` over that answer reads them. A clause naming a case a caller could not match is a
         // clause a caller could never assume, so the two admit the same names by construction.
-        CaseSpace answer = CaseSpace.of(sig.outputType(), symbols);
+        CaseSpace answer = CaseSpace.of(declared.boundary().outputType(), symbols);
 
         // Arm by arm, and an arm this cannot read leaves the rest readable. Reading and checking are
         // one pass — what a rule states is which case it applies to and what holds there, and every
@@ -169,7 +170,8 @@ public final class BehaviorChecker {
             clauses.add(new BehaviorContract.Clause(written.name(), rules, written.pos(),
                     written.region()));
         }
-        return new Reading(new BehaviorContract(name, params, sig.outputType(), clauses), found);
+        return new Reading(
+                new BehaviorContract(name, params, declared.boundary().outputType(), clauses), found);
     }
 
     /**

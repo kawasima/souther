@@ -2,11 +2,9 @@ package souther.compiler.partition;
 
 import org.junit.jupiter.api.Test;
 
-import souther.compiler.ast.Hir;
+import souther.compiler.check.DeclaredSig;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.RuleReadings;
-import souther.compiler.check.Prepared;
-import souther.compiler.check.Sig;
 import souther.compiler.inputs.InputDomain;
 import souther.compiler.inputs.Refinement;
 import souther.compiler.inputs.Requirements;
@@ -14,7 +12,6 @@ import souther.compiler.inputs.TermPath;
 import souther.compiler.query.Bodies;
 import souther.compiler.query.Compilation;
 import souther.compiler.query.ReadAs;
-import souther.compiler.query.Shapes;
 import souther.compiler.types.CaseSelector;
 import souther.compiler.types.TypeKey;
 import souther.compiler.types.TypeSymbols;
@@ -61,17 +58,14 @@ class AClassUnderACaseIsOfferedARowAtThatCaseTest {
         Compilation compilation = Compilation.ofSource(QUERIES, "Main");
         compilation.answerEverything();
         String module = compilation.modules().get(0);
-        Prepared prepared = compilation.db().ask(new Shapes.Prepared(module)).value();
         RuleReadingSource rules = RuleReadings.of(compilation, module);
-        Map<String, Sig> sigs = compilation.db().ask(new Bodies.Signatures(module)).value();
-        Hir.SpecBehavior spec = (Hir.SpecBehavior) prepared.behaviors().stream()
-                .filter(b -> b.name().equals("read")).findFirst().orElseThrow();
-        Sig sig = sigs.get("read");
-        InputDomain domain = InputDomain.of(spec, sig, rules, ReadAs.THE_COMPILATION_DOES);
+        Map<String, DeclaredSig> sigs =
+                compilation.db().ask(new Bodies.DeclaredSignatures(module)).value();
+        InputDomain domain = InputDomain.of(sigs.get("read"), rules, ReadAs.THE_COMPILATION_DOES);
         Partitions.Partitioning partitioning =
-                Partitions.of(spec.name(), domain, rules, ReadAs.THE_COMPILATION_DOES);
+                Partitions.of("read", domain, rules, ReadAs.THE_COMPILATION_DOES);
         return new Model(
-                MeasuredInput.of(spec.name(), domain.reading(rules), partitioning),
+                MeasuredInput.of("read", domain.reading(rules), partitioning),
                 partitioning.axes());
     }
 
