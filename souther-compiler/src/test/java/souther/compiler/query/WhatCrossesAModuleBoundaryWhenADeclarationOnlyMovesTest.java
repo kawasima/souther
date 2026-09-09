@@ -59,6 +59,8 @@ class WhatCrossesAModuleBoundaryWhenADeclarationOnlyMovesTest {
         Answer<?> checked = c.db().ask(new Bodies.CheckedBehavior("shop.cart", "paidOn"));
         Answer<?> published = c.db().ask(new Shapes.MeaningOf(
                 new souther.compiler.types.TypeKey("shop.prices", "Amount")));
+        Answer<?> expanded = c.db().ask(new Shapes.ClausesExpandedFor(
+                new souther.compiler.types.TypeKey("shop.prices", "Amount")));
 
         edit(c, "// a line written above the declaration\n" + DECLARING);
 
@@ -68,6 +70,12 @@ class WhatCrossesAModuleBoundaryWhenADeclarationOnlyMovesTest {
         assertEquals(published.value(), c.db().ask(new Shapes.MeaningOf(
                         new souther.compiler.types.TypeKey("shop.prices", "Amount"))).value(),
                 "what the declaration says is the same, and the boundary answer moved");
+        // Which answer carries the move across. The clauses a reading is answered from are the
+        // declaration's own, in the representation its module expanded them into -- an authored
+        // tree, so moving the declaration makes a different one.
+        assertNotEquals(expanded.value(), c.db().ask(new Shapes.ClausesExpandedFor(
+                        new souther.compiler.types.TypeKey("shop.prices", "Amount"))).value(),
+                "the clauses came out the same, so this is no longer what carries the move");
         assertNotSame(checked, c.db().ask(new Bodies.CheckedBehavior("shop.cart", "paidOn")),
                 "the importer's checked body no longer moves for a comment written next door —"
                         + " which is the goal, so this line is the one to change");
