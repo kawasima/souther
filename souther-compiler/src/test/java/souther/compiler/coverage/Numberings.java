@@ -1,7 +1,10 @@
 package souther.compiler.coverage;
 
 import souther.compiler.coverage.ArmReportAnchor;
+import souther.compiler.types.ConstructOccurrence;
+import souther.compiler.types.SourceConstruct;
 import souther.compiler.types.SourceConstructOrigin;
+import souther.compiler.types.WrittenOwner;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -49,15 +52,36 @@ public final class Numberings {
      * arm is — the same stand-in the numbers themselves are, and said in one place rather than in
      * each fixture that needs a site.
      *
-     * <p>Which place it is comes in rather than being read off the number. A walk hands out control
-     * points and probe numbers from counters of their own and a place is not its address, so a
-     * fixture that let one stand for the other would be writing down a correspondence no numbering
-     * makes.
+     * <p>Which arm it is comes in rather than being read off the number. Which arm an arm is is the
+     * tree's answer and a probe number is the emitter's, so a fixture that let one stand for the
+     * other would be writing down a correspondence nothing makes.
      */
-    public static ControlPointId.ArmOccurrence armPlace(int controlId, ArmProbe probe,
-                                                        SourceConstructOrigin origin,
-                                                        ArmReportAnchor anchor) {
-        return new ControlPointId.ArmOccurrence(controlId, Optional.of(probe), anchor, origin);
+    public static ControlPointId.ArmPoint armPlace(ArmOccurrence arm, ArmProbe probe,
+                                                   ArmReportAnchor anchor) {
+        return new ControlPointId.ArmPoint(arm, Optional.of(probe), anchor);
+    }
+
+    /**
+     * An arm of a fork a fixture writes down, in no copy of anything.
+     *
+     * <p>What a fixture with no bodies to walk has instead of a fork the tree carries. The origin
+     * is the construct the fixture means; the copy is the one the source wrote, since a fixture
+     * that named a copy would be naming an inlining nothing here performed.
+     */
+    public static ArmOccurrence arm(SourceConstructOrigin fork, int part) {
+        return new ArmOccurrence(ConstructOccurrence.asWritten(fork), part);
+    }
+
+    /**
+     * The first arm of the {@code at}th fork of a body this fixture does not have.
+     *
+     * <p>For a fixture whose point is that places are told apart and not which places they are.
+     * Distinct per {@code at}, so that two arms written here under one number are one arm and two
+     * under different ones are two.
+     */
+    public static ArmOccurrence armOfForkAt(int at) {
+        return arm(new SourceConstructOrigin(new WrittenOwner.Body("fixture", "b"), at, 0,
+                SourceConstruct.IF), 0);
     }
 
     /** The arms of one numbering, by their numbers, so a fixture holds addresses of one. */

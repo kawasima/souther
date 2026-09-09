@@ -254,7 +254,7 @@ class AnOutcomeIsNamedByWhatWasWrittenTest {
                 new WrittenOwner.Body("m", "b"), 0,
                 SourceConstruct.COMPREHENSION);
         assertThrows(IllegalArgumentException.class, () -> new CoverageSites.ArmSite("b", built(),
-                Numberings.armPlace(0, Numberings.arm(1, 0), fork, null), 0,
+                Numberings.armPlace(Numberings.arm(fork, 0), Numberings.arm(1, 0), null), 0,
                 new CoverageSites.Obligation("b", fork, 0,
                         souther.compiler.coverage.DecidedBy.THE_DECLARATION)));
     }

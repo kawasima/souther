@@ -44,8 +44,8 @@ class WhatACombinationAsksIsItsOwnToSayTest {
 
     private static CellSelection over(boolean[]... positions) {
         return new CellSelection(new InteractionCells.Cell(positions),
-                List.of(ControlClaim.of(new ControlPointId.ArmOccurrence(1,
-                                Optional.of(Numberings.arm(2, 1)), null, null))
+                List.of(ControlClaim.of(new ControlPointId.ArmPoint(Numberings.armOfForkAt(1),
+                                Optional.of(Numberings.arm(2, 1)), null))
                         .orElseThrow(() -> new AssertionError("an arm with a probe can be claimed"))));
     }
 

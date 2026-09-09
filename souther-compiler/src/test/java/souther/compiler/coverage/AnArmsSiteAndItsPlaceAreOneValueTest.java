@@ -73,7 +73,7 @@ class AnArmsSiteAndItsPlaceAreOneValueTest {
     @Test
     void aSiteHoldsThePlaceOfTheArmItIsASiteOf() {
         CoverageSites.Plan plan = planOf(MODEL);
-        ControlPointId.ArmOccurrence[] arms = plan.armsByNode().values().stream().findFirst()
+        ControlPointId.ArmPoint[] arms = plan.armsByNode().values().stream().findFirst()
                 .orElseThrow(() -> new AssertionError("the model writes a fork"));
         assertEquals(1, plan.armsByNode().size(),
                 "one fork, so which arms a site is to be found among is not in question");
@@ -83,9 +83,9 @@ class AnArmsSiteAndItsPlaceAreOneValueTest {
                 .map(CoverageSites.ArmSite.class::cast).toList();
         assertEquals(arms.length, sites.size(), "every arm of it is a place a run is recorded in");
         for (CoverageSites.ArmSite site : sites) {
-            assertSame(arms[site.obligation().part()], site.occurrence(),
+            assertSame(arms[site.obligation().part()], site.place(),
                     () -> "the site owed for arm " + site.obligation().part() + " holds "
-                            + site.occurrence() + ", which is not that arm of the fork");
+                            + site.place() + ", which is not that arm of the fork");
         }
     }
 
@@ -129,9 +129,9 @@ class AnArmsSiteAndItsPlaceAreOneValueTest {
     @Test
     void aRealPlaceWithNoProbeCarriesTheProofAboutIt() {
         PathReachability.Answers answers = arrivalsOf(SILENT_REFUSED_ARM);
-        List<ControlPointId.ArmOccurrence> silent = answers.found().keySet().stream()
-                .filter(ControlPointId.ArmOccurrence.class::isInstance)
-                .map(ControlPointId.ArmOccurrence.class::cast)
+        List<ControlPointId.ArmPoint> silent = answers.found().keySet().stream()
+                .filter(ControlPointId.ArmPoint.class::isInstance)
+                .map(ControlPointId.ArmPoint.class::cast)
                 .filter(arm -> arm.probe().isEmpty()).toList();
 
         assertEquals(1, silent.size(),
@@ -152,12 +152,13 @@ class AnArmsSiteAndItsPlaceAreOneValueTest {
     @Test
     void aPlaceTheWalkDidNotReachIsUnsettledRatherThanAbsent() {
         PathReachability.Answers answers = arrivalsOf(MODEL);
-        ControlPointId.ArmOccurrence any = answers.found().keySet().stream()
-                .filter(ControlPointId.ArmOccurrence.class::isInstance)
-                .map(ControlPointId.ArmOccurrence.class::cast)
+        ControlPointId.ArmPoint any = answers.found().keySet().stream()
+                .filter(ControlPointId.ArmPoint.class::isInstance)
+                .map(ControlPointId.ArmPoint.class::cast)
                 .findFirst().orElseThrow();
-        ControlPointId.ArmOccurrence never = new ControlPointId.ArmOccurrence(
-                Integer.MAX_VALUE, Optional.empty(), any.anchor(), any.origin());
+        ControlPointId.ArmPoint never = new ControlPointId.ArmPoint(
+                new ArmOccurrence(any.arm().fork(), Integer.MAX_VALUE),
+                Optional.empty(), any.anchor());
 
         assertInstanceOf(Reachability.Unsettled.class, answers.at(never),
                 "a place nothing was filed under is one the walk did not reach");

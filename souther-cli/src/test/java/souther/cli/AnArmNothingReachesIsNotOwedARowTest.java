@@ -438,7 +438,7 @@ class AnArmNothingReachesIsNotOwedARowTest {
 
         assertEquals(Set.of(UNREACHED), asRun.provedWrong(),
                 "a row went through an arm this reading had proven nothing reaches");
-        assertFalse(asRun.answers().at(UNREACHED_ARM.occurrence())
+        assertFalse(asRun.answers().at(UNREACHED_ARM.place())
                         instanceof Reachability.Unreachable,
                 "so nothing about it is proven any more");
         // Both measures read this one object, so what is back for one is back for the other. Said
@@ -446,7 +446,7 @@ class AnArmNothingReachesIsNotOwedARowTest {
         // an arm settles — a lit comparison says it ran, not which way it came out.
         assertTrue(asRun.answers().found().entrySet().stream()
                         .filter(each -> each.getKey()
-                                instanceof souther.compiler.coverage.ControlPointId.ArmOccurrence)
+                                instanceof souther.compiler.coverage.ControlPointId.ArmPoint)
                         .noneMatch(each -> each.getValue()
                                 instanceof souther.compiler.reach.Reachability.Unreachable),
                 "and what the signature reads is the same answer the arms are counted by");

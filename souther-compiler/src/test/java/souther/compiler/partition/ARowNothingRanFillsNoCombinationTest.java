@@ -275,7 +275,7 @@ class ARowNothingRanFillsNoCombinationTest {
     private static Set<ArmProbe> claimedBy(CellSelection selection) {
         Set<ArmProbe> out = new LinkedHashSet<>();
         for (ControlClaim claim : selection.claims()) {
-            if (claim.at() instanceof ControlPointId.ArmOccurrence arm && arm.probe().isPresent()) {
+            if (claim.at() instanceof ControlPointId.ArmPoint arm && arm.probe().isPresent()) {
                 out.add(arm.probe().get());
             }
         }

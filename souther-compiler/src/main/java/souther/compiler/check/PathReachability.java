@@ -126,7 +126,7 @@ public final class PathReachability {
             java.util.Set<ArmProbe> provedWrong =
                     new java.util.LinkedHashSet<>();
             found.forEach((where, said) -> {
-                if (!(where instanceof ControlPointId.ArmOccurrence arm)
+                if (!(where instanceof ControlPointId.ArmPoint arm)
                         || arm.probe().isEmpty() || !lit.contains(arm.probe().get())) {
                     return;
                 }
@@ -409,7 +409,7 @@ public final class PathReachability {
             }
             case Core.If iff -> {
                 walk(iff.cond(), k, at, reads, decided, nothingAbove);
-                ControlPointId.ArmOccurrence[] arms = plan.armsOf(iff);
+                ControlPointId.ArmPoint[] arms = plan.armsOf(iff);
                 enterArm(arms, 0, iff, iff.then(), k, at, reads, decided, true);
                 enterArm(arms, 1, iff, iff.els(), k, at, reads, decided, false);
             }
@@ -685,7 +685,7 @@ public final class PathReachability {
      * nothing, the arm is proven and what is under it is not walked: everything there is unreachable
      * for the same reason, and one finding is what an author is owed.
      */
-    private void enterArm(ControlPointId.ArmOccurrence[] arms, int index, Core.If iff, Core arm,
+    private void enterArm(ControlPointId.ArmPoint[] arms, int index, Core.If iff, Core arm,
                           Known k, Denotations at, InputReads reads, List<PathDecision> decided,
                           boolean holds) {
         Predicates.Assumed taken = engine.assuming(iff.cond(), k, at, holds);
@@ -714,7 +714,7 @@ public final class PathReachability {
      * is built here where both are in hand rather than assembled by whoever asks.
      */
     private void cases(Core.Match match, InputReads reads, boolean nothingAbove) {
-        ControlPointId.ArmOccurrence[] arms = plan.armsOf(match);
+        ControlPointId.ArmPoint[] arms = plan.armsOf(match);
         if (arms == null) {
             return;
         }

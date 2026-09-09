@@ -124,7 +124,7 @@ public final class UnreachableClaims {
         if (path == null) {
             return;
         }
-        souther.compiler.coverage.ControlPointId.ArmOccurrence[] arms = plan.armsOf(match);
+        souther.compiler.coverage.ControlPointId.ArmPoint[] arms = plan.armsOf(match);
         for (int i = 0; i < match.cases().size(); i++) {
             Core.Case arm = match.cases().get(i);
             if (answering.at(arm.body())) {
@@ -133,7 +133,7 @@ public final class UnreachableClaims {
             if (arms == null || i >= arms.length) {
                 continue;   // a fork this plan holds no arms for is one nothing can be asked about
             }
-            souther.compiler.coverage.ControlPointId.ArmOccurrence where = arms[i];
+            souther.compiler.coverage.ControlPointId.ArmPoint where = arms[i];
             List<UnreachableReasons.Said> said = UnreachableReasons.said(arm.body(), answering);
             List<String> why = said.stream().map(UnreachableReasons.Said::reason).distinct().toList();
             // Cases written together on one arm are one run of code, and it declares the same thing

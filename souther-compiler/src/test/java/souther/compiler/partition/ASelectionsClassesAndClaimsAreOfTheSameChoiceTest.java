@@ -55,8 +55,8 @@ class ASelectionsClassesAndClaimsAreOfTheSameChoiceTest {
 
     /** A place a run can be recorded at, told from its neighbours by the probe it carries. */
     private static ControlClaim at(int probe) {
-        return ControlClaim.of(new ControlPointId.ArmOccurrence(probe,
-                        java.util.Optional.of(probe(probe)), null, null))
+        return ControlClaim.of(new ControlPointId.ArmPoint(Numberings.armOfForkAt(probe),
+                        java.util.Optional.of(probe(probe)), null))
                 .orElseThrow(() -> new AssertionError("an arm with a probe can be claimed"));
     }
 
