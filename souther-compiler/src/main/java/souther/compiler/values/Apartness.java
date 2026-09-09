@@ -274,22 +274,26 @@ public final class Apartness<A> {
     }
 
     /**
-     * Both alternatives' denials, filed under the blocks {@code heldAsOne} holds.
+     * These denials, filed under the blocks the coarser relation of {@code into} holds.
      *
-     * <p>The union pushed forward and not the union. A conjunction leaves a coarser relation — an
-     * equality read beside these puts two blocks together — so a pair stated of the blocks either
-     * side was a product over is a pair of whatever those blocks are part of here. Left where they
-     * were, a denial would name a block this alternative does not answer in, which is what
+     * <p>Pushed forward and not left. A conjunction leaves a coarser relation — an equality read
+     * beside these puts two blocks together — so a pair stated of the blocks this alternative was
+     * a product over is a pair of whatever those blocks are part of there. Left where they were, a
+     * denial would name a block the conjunction does not answer in, which is what
      * {@link Sameness#filing} refuses.
+     *
+     * <p>Of one alternative's denials and not of two put together, because the step is read
+     * against the relation the denials were stated in and two alternatives state two. Both sides'
+     * pairs are one relation once each of them is filed here.
      *
      * <p>A pair both of whose ends land on one block is kept and not dropped. What it says is that
      * a value differs from itself, which nothing satisfies — read as a pair to discard, the
      * alternative would go on standing and the rules that emptied it would be gone.
      */
-    public Apartness<A> filedIn(Sameness<A> heldAsOne) {
+    public Apartness<A> filedIn(Refinement<A> into) {
         Set<Edge<A>> out = new LinkedHashSet<>();
         for (Edge<A> edge : edges) {
-            out.add(new Edge<>(under(edge.one(), heldAsOne), under(edge.other(), heldAsOne)));
+            out.add(new Edge<>(into.coarseBlockOf(edge.one()), into.coarseBlockOf(edge.other())));
         }
         return new Apartness<>(out);
     }
@@ -393,12 +397,6 @@ public final class Apartness<A> {
         Set<Edge<B>> out = new LinkedHashSet<>();
         edges.forEach(edge -> out.add(edge.renamed(naming)));
         return new Apartness<>(out);
-    }
-
-    /** The block {@code block} is part of here, asked of any of its positions: a block is inside
-     *  one block of a coarser relation, so which member is asked does not decide the answer. */
-    private static <A> Sameness.Block<A> under(Sameness.Block<A> block, Sameness<A> heldAsOne) {
-        return heldAsOne.blockOf(block.members().iterator().next());
     }
 
     /**

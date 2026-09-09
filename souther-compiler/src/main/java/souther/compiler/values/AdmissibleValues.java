@@ -326,9 +326,11 @@ public final class AdmissibleValues<A> {
                 Set<Sameness.Block<A>> named = new LinkedHashSet<>();
                 boxes.forEach(box -> box.positions()
                         .forEach(position -> named.add(common.blockOf(position))));
+                Map<Alternative<A>, Refinement<A>> into = new LinkedHashMap<>();
+                boxes.forEach(box -> into.put(box, Refinement.of(common, box.sameness())));
                 for (Sameness.Block<A> block : named) {
-                    List<ValueSet> these = boxes.stream().map(box -> box.get(
-                            box.sameness().blockOf(block.members().iterator().next()))).toList();
+                    List<ValueSet> these = boxes.stream()
+                            .map(box -> box.get(into.get(box).coarseBlockOf(block))).toList();
                     // A block some alternative says nothing about is one a value satisfying that
                     // alternative may hold anything at, so the join is every value and is left out.
                     if (these.stream().anyMatch(ValueSet::isAny)) {
@@ -484,8 +486,8 @@ public final class AdmissibleValues<A> {
                                                       Allowance<A> sets,
                                                       Set<Sameness.Block<A>> gaveUp) {
             Map<Sameness.Block<A>, List<ValueSet>> parts = new LinkedHashMap<>();
-            gathering(at, heldAsOne, parts);
-            gathering(other.at, heldAsOne, parts);
+            gathering(at, Refinement.of(sameness(), heldAsOne), parts);
+            gathering(other.at, Refinement.of(other.sameness(), heldAsOne), parts);
             Map<Sameness.Block<A>, ValueSet> out = new LinkedHashMap<>();
             parts.forEach((block, these) -> {
                 if (these.size() == 1) {
@@ -503,11 +505,10 @@ public final class AdmissibleValues<A> {
 
         /** Every side of one box filed under the block it is part of once the two are conjoined. */
         private static <A> void gathering(Map<Sameness.Block<A>, ValueSet> these,
-                                          Sameness<A> heldAsOne,
+                                          Refinement<A> into,
                                           Map<Sameness.Block<A>, List<ValueSet>> parts) {
-            these.forEach((block, set) -> parts.computeIfAbsent(
-                            heldAsOne.blockOf(block.members().iterator().next()),
-                            _ -> new ArrayList<>())
+            these.forEach((block, set) -> parts
+                    .computeIfAbsent(into.coarseBlockOf(block), _ -> new ArrayList<>())
                     .add(set));
         }
 
@@ -621,7 +622,9 @@ public final class AdmissibleValues<A> {
                             Set<Sameness.Block<A>> gaveUp) {
             Sameness<A> heldAsOne = sameness().meet(other.sameness());
             return new Met<>(product.narrowedWith(other.product, heldAsOne, sets, gaveUp),
-                    apart.and(other.apart).filedIn(heldAsOne));
+                    apart.filedIn(Refinement.of(sameness(), heldAsOne))
+                            .and(other.apart.filedIn(
+                                    Refinement.of(other.sameness(), heldAsOne))));
         }
 
         /** What a conjunction of two alternatives came to, before anything asks whether a value
@@ -1070,10 +1073,15 @@ public final class AdmissibleValues<A> {
         // filed under a block is said in the answer's own before it is built.
         Sameness<A> heldAsOne = held instanceof Held.Alternatives<A> it
                 ? it.commonSameness() : Sameness.discrete();
+        // Carried only where something stands. A reading left holding nothing is a product over no
+        // blocks at all, so the described blocks are inside none of them and there is nowhere for a
+        // promise to be about.
         Map<Sameness.Block<A>, AdmittedPlan> promising = new LinkedHashMap<>();
-        of.guaranteed().forEach((block, plan) -> promising.merge(
-                heldAsOne.blockOf(block.members().iterator().next()), plan,
-                (one, other) -> AdmittedPlan.meeting(List.of(one, other))));
+        if (held instanceof Held.Alternatives<A>) {
+            Refinement<A> into = Refinement.of(of.sameness(), heldAsOne);
+            of.guaranteed().forEach((block, plan) -> promising.merge(into.coarseBlockOf(block),
+                    plan, (one, other) -> AdmittedPlan.meeting(List.of(one, other))));
+        }
         return Realized.of(new Outcome<>(new AdmissibleValues<>(new Parts<>(held, perPosition,
                 gaveUp.beside(of.standing()),
                 promised(promising, by), promised(of.defaultGuaranteed(), by.elsewhere()),
@@ -1119,11 +1127,12 @@ public final class AdmissibleValues<A> {
         Set<Sameness.Block<A>> named = new LinkedHashSet<>();
         standing.forEach(box ->
                 box.positions().forEach(position -> named.add(common.blockOf(position))));
+        Map<PlannedHeld.Alternative<A>, Refinement<A>> into = new LinkedHashMap<>();
+        standing.forEach(box -> into.put(box, Refinement.of(common, box.sameness())));
         Map<Sameness.Block<A>, ValueSet> across = new LinkedHashMap<>();
         for (Sameness.Block<A> block : named) {
-            A member = block.members().iterator().next();
-            AdmittedPlan plan = AdmittedPlan.joining(
-                    standing.stream().map(box -> box.get(member)).toList());
+            AdmittedPlan plan = AdmittedPlan.joining(standing.stream()
+                    .map(box -> box.get(into.get(box).coarseBlockOf(block))).toList());
             Realization made = by.realizer(block).of(plan);
             gaveUp.note(block, made);
             if (!made.upperBound().isAny()) {
@@ -1561,7 +1570,12 @@ public final class AdmissibleValues<A> {
                 // conjunction never has to say it is not one. Two of them met is one — a value
                 // taken from each position of both stands in both readings — and nothing promised
                 // is one for want of anything to promise.
-                apart ? Map.of() : guaranteedBy(this, other, heldAsOne, sets::meetPromised),
+                //
+                // And nothing where nothing stands, which is not the same as promising nothing at
+                // the blocks: a conjunction holding nothing is a product over no blocks at all,
+                // and neither side's own are inside any of them.
+                apart || !(both instanceof Held.Alternatives<A>) ? Map.of()
+                        : guaranteedBy(this, other, heldAsOne, sets),
                 // Nothing is recorded where this could not be built exactly, because what comes
                 // back is nothing promised — and a reader short of a guarantee has been told no
                 // more than the truth. The reasons below are about {@link #at}, which is an upper
@@ -1713,10 +1727,10 @@ public final class AdmissibleValues<A> {
      * What both sides guarantee, at every block either of them holds a guarantee for, each side
      * missing one standing at its own default.
      *
-     * <p>Said in {@code blocks}, which is the coordinate the answer being built is in. Each side
-     * is asked what it promises there, and a side whose own blocks are coarser or finer answers
-     * all the same: a promise about the value two positions share is a promise about that value
-     * however the side that made it was holding those positions.
+     * <p>Said in the conjunction's own blocks, which is the coordinate the answer being built is
+     * in and is coarser than either side's. What a side promises there is what it promises at every
+     * one of its own blocks the positions fall in ({@link #promisedFor}), because they are one
+     * value here and a value standing in this reading stands in that side.
      *
      * <p>The keys are the footprint as well as the values — the blocks a rule of these readings
      * reached — so a block either side named is a key here whatever the promise came to. Dropped for coming to the default, which blocks a rule reached would turn
@@ -1724,22 +1738,39 @@ public final class AdmissibleValues<A> {
      */
     private static <A> Map<Sameness.Block<A>, ValueSet> guaranteedBy(
             AdmissibleValues<A> these, AdmissibleValues<A> those, Sameness<A> heldAsOne,
-            Allowance.Composing<A> both) {
+            Allowance<A> sets) {
+        Refinement<A> mine = Refinement.of(these.sameness(), heldAsOne);
+        Refinement<A> theirs = Refinement.of(those.sameness(), heldAsOne);
         Set<Sameness.Block<A>> named = mapped(these.guaranteed().keySet(), heldAsOne);
         named.addAll(mapped(those.guaranteed().keySet(), heldAsOne));
         Map<Sameness.Block<A>, ValueSet> out = new LinkedHashMap<>();
         // What could not be built exactly comes back as nothing promised, which is what a promise
         // widens to. Nothing is recorded: see {@link #meet}.
-        named.forEach(each -> out.put(each,
-                both.of(each, these.promisedFor(each), those.promisedFor(each)).set()));
+        named.forEach(each -> out.put(each, sets.meetPromised(each,
+                these.promisedFor(each, mine, sets), those.promisedFor(each, theirs, sets)).set()));
         return out;
     }
 
-    /** What this reading promises the value {@code block} stands for, whichever blocks of its own
-     *  it holds those positions in. */
-    private ValueSet promisedFor(Sameness.Block<A> block) {
-        return guaranteed().getOrDefault(blockOf(block.members().iterator().next()),
-                defaultGuaranteed());
+    /**
+     * What this reading promises the value {@code block} stands for, {@code block} being a block of
+     * a relation that holds as one everything this one does.
+     *
+     * <p>What it promises at every one of its own blocks those positions fall in, met. Read off one
+     * of them, the answer would be about the positions that block happens to hold: a reading
+     * stating {@code p == q} and promising {@code S} there, asked about a conjunction's
+     * {@code p == q == r}, promises {@code S} of {@code p} and {@code q} and its default of
+     * {@code r} — and a value at the three of them is a value at each, so what is promised is what
+     * both of those say and not whichever was reached first.
+     *
+     * <p>Met under the allowance, because these are sets and putting two of them together is
+     * building a third — and handed over at once rather than folded, so what it costs is not the
+     * order this reading's positions were walked in ({@link Allowance#meetingPromised}).
+     */
+    private ValueSet promisedFor(Sameness.Block<A> block, Refinement<A> into, Allowance<A> sets) {
+        List<ValueSet> mine = new ArrayList<>();
+        into.fineBlocksWithin(block)
+                .forEach(each -> mine.add(guaranteed().getOrDefault(each, defaultGuaranteed())));
+        return mine.size() == 1 ? mine.getFirst() : sets.meetingPromised(block, mine).set();
     }
 
 }

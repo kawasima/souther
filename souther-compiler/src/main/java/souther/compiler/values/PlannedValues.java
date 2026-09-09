@@ -1,5 +1,6 @@
 package souther.compiler.values;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -527,7 +528,9 @@ public sealed interface PlannedValues<A> {
         return new Settled<>(new Settled.Parts<>(both,
                 narrowed(here.perPosition(), there.perPosition()),
                 here.standing().and(there.standing()),
-                apart ? Map.of() : guaranteedBy(here, there, heldAsOne, true),
+                // And nothing where nothing stands — see {@link AdmissibleValues#meet}.
+                apart || !(both instanceof PlannedHeld.Alternatives<A>) ? Map.of()
+                        : guaranteedMet(here, there, heldAsOne),
                 apart ? AdmittedPlan.NONE
                         : AdmittedPlan.meeting(List.of(here.defaultGuaranteed(),
                                 there.defaultGuaranteed())),
@@ -572,25 +575,64 @@ public sealed interface PlannedValues<A> {
         return out;
     }
 
-    /** What both sides guarantee, at every block either holds a guarantee for, each side
-     *  missing one standing at its own default — see {@link AdmissibleValues#guaranteedBy}. */
-    private static <A> Map<Sameness.Block<A>, AdmittedPlan> guaranteedBy(
-            Settled<A> here, Settled<A> there, Sameness<A> heldAsOne, boolean met) {
-        Set<Sameness.Block<A>> named = mapped(here.guaranteed().keySet(), heldAsOne);
-        named.addAll(mapped(there.guaranteed().keySet(), heldAsOne));
+    /**
+     * What both sides guarantee where the two are stated together, at every block either holds a
+     * guarantee for — see {@link AdmissibleValues#guaranteedBy}.
+     *
+     * <p>A conjunction leaves a coarser relation, so a block here covers several of a side's own
+     * and what that side promises is what it promises at all of them ({@link #promisedAcross}).
+     */
+    private static <A> Map<Sameness.Block<A>, AdmittedPlan> guaranteedMet(
+            Settled<A> here, Settled<A> there, Sameness<A> heldAsOne) {
+        Refinement<A> mine = Refinement.of(here.sameness(), heldAsOne);
+        Refinement<A> theirs = Refinement.of(there.sameness(), heldAsOne);
         Map<Sameness.Block<A>, AdmittedPlan> out = new LinkedHashMap<>();
-        named.forEach(each -> {
-            List<AdmittedPlan> two = List.of(promisedFor(here, each), promisedFor(there, each));
-            out.put(each, met ? AdmittedPlan.meeting(two) : AdmittedPlan.joining(two));
-        });
+        named(here, there, heldAsOne).forEach(each -> out.put(each, AdmittedPlan.meeting(
+                List.of(promisedAcross(here, mine.fineBlocksWithin(each)),
+                        promisedAcross(there, theirs.fineBlocksWithin(each))))));
         return out;
     }
 
-    /** What one reading promises the value {@code block} stands for, whichever blocks of its own
-     *  it holds those positions in. */
-    private static <A> AdmittedPlan promisedFor(Settled<A> of, Sameness.Block<A> block) {
-        return of.guaranteed().getOrDefault(
-                of.sameness().blockOf(block.members().iterator().next()), of.defaultGuaranteed());
+    /**
+     * What either side guarantees where one of the two holds, at every block either holds a
+     * guarantee for.
+     *
+     * <p>A choice leaves a finer relation, so a block here is inside one block of a side's own and
+     * what that side promises there is promised of it: whoever satisfies that alternative holds a
+     * value from it at every position the block covers.
+     */
+    private static <A> Map<Sameness.Block<A>, AdmittedPlan> guaranteedJoined(
+            Settled<A> here, Settled<A> there, Sameness<A> heldAsOne) {
+        Refinement<A> mine = Refinement.of(heldAsOne, here.sameness());
+        Refinement<A> theirs = Refinement.of(heldAsOne, there.sameness());
+        Map<Sameness.Block<A>, AdmittedPlan> out = new LinkedHashMap<>();
+        named(here, there, heldAsOne).forEach(each -> out.put(each, AdmittedPlan.joining(
+                List.of(promisedAt(here, mine.coarseBlockOf(each)),
+                        promisedAt(there, theirs.coarseBlockOf(each))))));
+        return out;
+    }
+
+    /** The blocks of the relation being answered in that either side holds a guarantee for. */
+    private static <A> Set<Sameness.Block<A>> named(Settled<A> here, Settled<A> there,
+                                                    Sameness<A> heldAsOne) {
+        Set<Sameness.Block<A>> out = mapped(here.guaranteed().keySet(), heldAsOne);
+        out.addAll(mapped(there.guaranteed().keySet(), heldAsOne));
+        return out;
+    }
+
+    /** What one reading promises at one of its own blocks, which is its default where it promised
+     *  nothing there. */
+    private static <A> AdmittedPlan promisedAt(Settled<A> of, Sameness.Block<A> own) {
+        return of.guaranteed().getOrDefault(own, of.defaultGuaranteed());
+    }
+
+    /** What one reading promises at all of {@code own} at once, which is a description and costs
+     *  nothing to say. Handed over together rather than folded, so what it comes to does not
+     *  follow the order the blocks were walked in. */
+    private static <A> AdmittedPlan promisedAcross(Settled<A> of, Set<Sameness.Block<A>> own) {
+        List<AdmittedPlan> these = new ArrayList<>();
+        own.forEach(each -> these.add(promisedAt(of, each)));
+        return AdmittedPlan.meeting(these);
     }
 
     /** What each position holds across the alternatives, which a description makes free. */
@@ -609,6 +651,7 @@ public sealed interface PlannedValues<A> {
                     boxes.boxes().stream().map(box -> box.get(atom)).toList());
         };
     }
+
 
     /**
      * Either reading holding, the alternatives merged back into one product.
@@ -709,7 +752,7 @@ public sealed interface PlannedValues<A> {
         PlannedHeld<A> held = apart ? apart(here, there) : merged(here, there);
         Sameness<A> heldAsOne = held instanceof PlannedHeld.Alternatives<A> it
                 ? it.commonSameness() : Sameness.discrete();
-        Map<Sameness.Block<A>, AdmittedPlan> covered = guaranteedBy(here, there, heldAsOne, false);
+        Map<Sameness.Block<A>, AdmittedPlan> covered = guaranteedJoined(here, there, heldAsOne);
         AdmittedPlan coveredElsewhere = AdmittedPlan.joining(
                 List.of(here.defaultGuaranteed(), there.defaultGuaranteed()));
         // What an alternative nothing could read left open is not said here — see
@@ -758,9 +801,10 @@ public sealed interface PlannedValues<A> {
         Map<Sameness.Block<A>, AdmittedPlan> out = new LinkedHashMap<>();
         Set<Sameness.Block<A>> named = new LinkedHashSet<>();
         adopted(here).forEach(atom -> named.add(heldAsOne.blockOf(atom)));
+        Reached<A> mine = Reached.of(here, heldAsOne);
+        Reached<A> yours = Reached.of(there, heldAsOne);
         for (Sameness.Block<A> block : named) {
-            A member = block.members().iterator().next();
-            AdmittedPlan theirs = across(there, member);
+            AdmittedPlan theirs = yours.at(block);
             // A block one side says nothing about is one the choice says nothing about, since a
             // value satisfying that side may hold anything there. The block is kept where it is
             // more than one position: what those positions being one value says stands whatever
@@ -771,7 +815,7 @@ public sealed interface PlannedValues<A> {
                 }
                 continue;
             }
-            out.put(block, AdmittedPlan.joining(List.of(across(here, member), theirs)));
+            out.put(block, AdmittedPlan.joining(List.of(mine.at(block), theirs)));
         }
         // And what every alternative of both states to differ, which the choice states as well.
         // Merging a union into the smallest product containing it widens what the blocks hold; it

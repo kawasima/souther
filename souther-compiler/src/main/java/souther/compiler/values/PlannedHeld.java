@@ -119,7 +119,9 @@ sealed interface PlannedHeld<A> {
         Alternative<A> meet(Alternative<A> other) {
             Sameness<A> heldAsOne = sameness().meet(other.sameness());
             return new Alternative<>(product.meet(other.product, heldAsOne),
-                    apart.and(other.apart).filedIn(heldAsOne));
+                    apart.filedIn(Refinement.of(sameness(), heldAsOne))
+                            .and(other.apart.filedIn(
+                                    Refinement.of(other.sameness(), heldAsOne))));
         }
 
         @Override
@@ -194,8 +196,8 @@ sealed interface PlannedHeld<A> {
          */
         Box<A> meet(Box<A> other, Sameness<A> heldAsOne) {
             Map<Sameness.Block<A>, List<AdmittedPlan>> parts = new LinkedHashMap<>();
-            gathering(at, heldAsOne, parts);
-            gathering(other.at, heldAsOne, parts);
+            gathering(at, Refinement.of(sameness(), heldAsOne), parts);
+            gathering(other.at, Refinement.of(other.sameness(), heldAsOne), parts);
             Map<Sameness.Block<A>, AdmittedPlan> out = new LinkedHashMap<>();
             parts.forEach((block, these) -> out.put(block,
                     these.size() == 1 ? these.getFirst() : AdmittedPlan.meeting(these)));
@@ -203,11 +205,10 @@ sealed interface PlannedHeld<A> {
         }
 
         private static <A> void gathering(Map<Sameness.Block<A>, AdmittedPlan> these,
-                                          Sameness<A> heldAsOne,
+                                          Refinement<A> into,
                                           Map<Sameness.Block<A>, List<AdmittedPlan>> parts) {
-            these.forEach((block, plan) -> parts.computeIfAbsent(
-                            heldAsOne.blockOf(block.members().iterator().next()),
-                            _ -> new ArrayList<>())
+            these.forEach((block, plan) -> parts
+                    .computeIfAbsent(into.coarseBlockOf(block), _ -> new ArrayList<>())
                     .add(plan));
         }
     }

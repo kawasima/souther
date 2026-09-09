@@ -98,7 +98,7 @@ class ADenialIsARelationOverTheBlocksAnAlternativeIsOverTest {
         Sameness<String> heldAsOne = Sameness.of("p", "q");
         Sameness.Block<String> both = heldAsOne.blockOf("p");
 
-        Apartness<String> filed = Apartness.of("q", "r").filedIn(heldAsOne);
+        Apartness<String> filed = Apartness.of("q", "r").filedIn(Refinement.of(Sameness.discrete(), heldAsOne));
 
         assertEquals(Set.of(both, R), filed.blocks());
         assertEquals(Set.of(both), filed.apartFrom(R));
@@ -107,7 +107,8 @@ class ADenialIsARelationOverTheBlocksAnAlternativeIsOverTest {
     /** And where both ends land on one block, the rules state that a value differs from itself. */
     @Test
     void andWhereBothEndsLandOnOneBlockAValueIsStatedToDifferFromItself() {
-        Apartness<String> filed = Apartness.of("p", "q").filedIn(Sameness.of("p", "q"));
+        Apartness<String> filed = Apartness.of("p", "q")
+                .filedIn(Refinement.of(Sameness.discrete(), Sameness.of("p", "q")));
 
         assertTrue(filed.holdsABlockApartFromItself());
         assertInstanceOf(RelationalLack.ABlockApartFromItself.class,
@@ -128,7 +129,7 @@ class ADenialIsARelationOverTheBlocksAnAlternativeIsOverTest {
     @Test
     void aChoiceKeepsWhatBothAlternativesStateAtTheFinerBlocks() {
         Sameness<String> coarser = Sameness.of("p", "q");
-        Apartness<String> one = Apartness.of("p", "r").filedIn(coarser);
+        Apartness<String> one = Apartness.of("p", "r").filedIn(Refinement.of(Sameness.discrete(), coarser));
         Apartness<String> other = Apartness.of("p", "r").and(Apartness.of("q", "r"));
 
         Apartness<String> both = one.commonWith(other, Sameness.discrete());

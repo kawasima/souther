@@ -123,16 +123,15 @@ class PositionsHeldAsOneAreClosedByAConjunctionAndCutByAChoiceTest {
         assertEquals(here, there);
     }
 
-    /** And its positions are read in one order however the equalities reached them, so that a
-     *  proof naming them comes out the same on two compiles of one model. */
+    /** And it reads the same however the equalities reached its positions, because what is put in
+     *  an order to write it out is the positions' renderings and not the positions. */
     @Test
-    void aBlockReadsItsPositionsInOneOrder() {
+    void aBlockReadsTheSameHoweverItsPositionsWereReached() {
         Sameness<String> here = Sameness.of("c", "a").meet(Sameness.of("a", "b"));
         Sameness<String> there = Sameness.of("b", "a").meet(Sameness.of("a", "c"));
 
-        assertEquals(List.of("a", "b", "c"), List.copyOf(here.blockOf("a").members()));
-        assertEquals(List.copyOf(here.blockOf("a").members()),
-                List.copyOf(there.blockOf("a").members()));
+        assertEquals(String.valueOf(here.blockOf("a")), String.valueOf(there.blockOf("a")));
+        assertEquals(String.valueOf(here), String.valueOf(there));
     }
 
     /** A renaming names two positions two positions, so a block has as many members after it. */
