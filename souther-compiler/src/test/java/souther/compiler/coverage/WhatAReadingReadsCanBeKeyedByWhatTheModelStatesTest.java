@@ -290,6 +290,64 @@ class WhatAReadingReadsCanBeKeyedByWhatTheModelStatesTest {
                 () -> "and the model states one construct per copy: " + stated);
     }
 
+    /**
+     * Every place the tree that runs writes a comparison is one the occurrence it carries tells from
+     * the others.
+     *
+     * <p>What lets the emitted side be keyed by what its nodes carry. The grain is the node: the
+     * numbering hands out one place per comparison node it reaches, and a node reached twice on the
+     * way through a body is one comparison written once. So two nodes under one occurrence are two
+     * places a run could be recorded at with one name between them, and whichever of them a reader
+     * asked about it would be told about the other.
+     */
+    @Test
+    void everyPlaceTheTreeThatRunsWritesAComparisonIsToldFromTheOthers() {
+        List<String> shared = new ArrayList<>();
+        int places = 0;
+        for (Module each : everyModule()) {
+            Map<ConstructOccurrence, Core> met = new LinkedHashMap<>();
+            for (Core node : comparisonNodesIn(each.bodies())) {
+                places++;
+                Core already = met.putIfAbsent(((Core.Binary) node).occurrence(), node);
+                if (already != null) {
+                    shared.add(already.pos() + " and " + node.pos() + " are two places under "
+                            + ((Core.Binary) node).occurrence());
+                }
+            }
+        }
+
+        assertTrue(places > 0, "no comparison of any emitted body was met at all");
+        assertEquals(List.of(), shared,
+                () -> "two places the tree that runs writes a comparison share one occurrence: "
+                        + shared);
+    }
+
+    /**
+     * An operation of the language that asks a closure twice is two places the tree that runs writes
+     * one construct of the model.
+     *
+     * <p>The control for the crossing being one to many, and for the question above being asked of a
+     * population where a coarser key would answer differently. Where every construct of the model
+     * has one place, a key of either grain does, and nothing said which was being measured.
+     */
+    @Test
+    void anOperationAskingAClosureTwiceIsTwoPlacesOfOneConstruct() {
+        Map<ModelOccurrence, Set<ConstructOccurrence>> places = new LinkedHashMap<>();
+        for (Read each : bodiesOf(List.of(ASKED_TWICE))) {
+            for (Core node : comparisonNodesIn(List.of(each))) {
+                ConstructOccurrence occurrence = ((Core.Binary) node).occurrence();
+                ModelOccurrence.statedAt(occurrence).ifPresent(states ->
+                        places.computeIfAbsent(states, _ -> new LinkedHashSet<>())
+                                .add(occurrence));
+            }
+        }
+
+        assertEquals(List.of(1, 2),
+                places.values().stream().map(Set::size).sorted().toList(),
+                () -> "one construct of the model is written into the tree that runs twice and the"
+                        + " other once: " + places);
+    }
+
     /** One behavior of one module, as both readings of its body. */
     private record Read(String name, String behavior, Core readings, Core emitted) {
 
