@@ -34,6 +34,14 @@ import souther.compiler.query.PartitionDerivation;
 import souther.compiler.query.PartitionEvidence;
 import souther.compiler.report.AdequacyReport;
 import souther.compiler.source.SourceId;
+import souther.compiler.diag.Citation;
+import souther.compiler.diag.SourcePos;
+import souther.compiler.numeric.Towards;
+import souther.compiler.partition.LineFacts;
+import souther.compiler.types.ExpansionLineage;
+import souther.compiler.types.ModelOccurrence;
+import souther.compiler.types.SourceConstruct;
+import souther.compiler.types.SourceConstructOrigin;
 import souther.compiler.types.TypeKey;
 import souther.compiler.types.TypeSymbols;
 
@@ -113,19 +121,15 @@ final class AReportOfOneBorder {
      * module; a run beside a comparison exists in the body that wrote it and is that behavior's.
      */
     static Border aBorderABodyDrew() {
+        SourceConstructOrigin wrote = new SourceConstructOrigin(
+                new WrittenOwner.Body("example.rate", "weigh"), 2, 0, SourceConstruct.BINARY);
         LineOrigin origin = new LineOrigin.ComparisonOrigin(
                 new LineOrigin.ComparisonOrigin.Read(
-                        new RuleRef.Comparison("weigh",
-                                new souther.compiler.types.SourceConstructOrigin(
-                                        new WrittenOwner.Body("example.rate", "weigh"), 2, 0,
-                                        souther.compiler.types.SourceConstruct.BINARY)),
-                        souther.compiler.diag.Citation.of(
-                                new souther.compiler.diag.SourcePos(3, 5)),
-                        java.util.List.of(new LineOrigin.ComparisonOrigin.Watched(
-                                new souther.compiler.coverage.ComparisonOccurrence(
-                                        "example.rate", "weigh", 0), WHERE))),
-                new souther.compiler.partition.LineFacts(
-                        new ComparisonClaim.Cut(souther.compiler.numeric.Towards.BELOW, true)));
+                        new RuleRef.Comparison("weigh", wrote),
+                        new ModelOccurrence(wrote, ExpansionLineage.ORIGINAL),
+                        Citation.of(new SourcePos(3, 5)),
+                        List.of(WHERE)),
+                new LineFacts(new ComparisonClaim.Cut(Towards.BELOW, true)));
         return Border.at(
                 BoundaryTarget.at(
                         new BorderQuantity.OfACoordinate("weigh", AT_W_A,

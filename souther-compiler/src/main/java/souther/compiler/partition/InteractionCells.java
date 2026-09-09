@@ -1,7 +1,7 @@
 package souther.compiler.partition;
 
 import souther.compiler.check.ComparisonClaim;
-import souther.compiler.coverage.ComparisonOccurrence;
+import souther.compiler.types.ModelOccurrence;
 import souther.compiler.inputs.TermPath;
 import souther.compiler.numeric.Towards;
 import souther.compiler.reading.Factor;
@@ -414,11 +414,21 @@ public final class InteractionCells {
                 if (axis < 0) {
                     return null;
                 }
-                Cut line = cutAt(axes.get(axis), one.comparison());
+                // Which construct of the model the decision was about, since a rule is stated at
+                // one and the decision was recorded at whichever materialisation of it ran. Empty
+                // where the model states nothing there — a comparison inside one of the language's
+                // own operations — and no rule draws a line on such a place, so there is no cut of
+                // this axis it could be the reading of.
+                ModelOccurrence states =
+                        ModelOccurrence.statedAt(one.comparison()).orElse(null);
+                if (states == null) {
+                    return null;
+                }
+                Cut line = cutAt(axes.get(axis), states);
                 if (line == null) {
                     return null;
                 }
-                LineOrigin.ComparisonOrigin guard = guardOf(line, one.comparison());
+                LineOrigin.ComparisonOrigin guard = guardOf(line, states);
                 int home = holding(axes.get(axis), line);
                 if (home < 0) {
                     return null;
@@ -514,23 +524,21 @@ public final class InteractionCells {
         return found;
     }
 
-    /** The cut this reading of the comparison drew, or null where it drew none. */
-    private static Cut cutAt(Axis axis, ComparisonOccurrence comparison) {
+    /** The cut the rule stated at {@code states} drew, or null where it drew none. */
+    private static Cut cutAt(Axis axis, ModelOccurrence states) {
         for (Cut each : axis.cuts()) {
-            if (guardOf(each, comparison) != null) {
+            if (guardOf(each, states) != null) {
                 return each;
             }
         }
         return null;
     }
 
-    /** Which rule of the cut this reading of the comparison is. */
-    private static LineOrigin.ComparisonOrigin guardOf(Cut cut, ComparisonOccurrence comparison) {
+    /** Which rule of the cut the one stated at {@code states} is. */
+    private static LineOrigin.ComparisonOrigin guardOf(Cut cut, ModelOccurrence states) {
         for (LineOrigin origin : cut.origins()) {
-            // Any of the rule's materialisations, since the decision was recorded at whichever
-            // copy ran and the rule is one however many copies an operation makes.
             if (origin instanceof LineOrigin.ComparisonOrigin guard
-                    && guard.read().names(comparison)) {
+                    && guard.read().states().equals(states)) {
                 return guard;
             }
         }

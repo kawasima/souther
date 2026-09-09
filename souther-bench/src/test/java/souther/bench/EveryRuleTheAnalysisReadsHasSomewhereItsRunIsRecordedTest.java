@@ -15,6 +15,7 @@ import souther.compiler.types.ModelOccurrence;
 import souther.compiler.types.ValueName;
 
 import java.util.ArrayList;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -131,21 +132,20 @@ class EveryRuleTheAnalysisReadsHasSomewhereItsRunIsRecordedTest {
                             new LinkedHashMap<>();
                     Map<ModelOccurrence, Set<ConstructOccurrence>> uninstrumented =
                             new LinkedHashMap<>();
-                    for (Map.Entry<ConstructOccurrence, Core.Binary> at
-                            : comparisonNodesIn(body.getValue()).entrySet()) {
+                    for (Core.Binary node : comparisonNodesIn(body.getValue())) {
                         ModelOccurrence states =
-                                ModelOccurrence.statedAt(at.getKey()).orElse(null);
+                                ModelOccurrence.statedAt(node.occurrence()).orElse(null);
                         if (states == null || !stated.contains(states)) {
                             onlyEmitted[0]++;
                             continue;
                         }
-                        var site = plan.comparisons().at(at.getValue())
+                        var site = plan.comparisons().at(node)
                                 .flatMap(one -> plan.emissionSiteOf(one.which()));
                         // A comparison behind an abort is one no run reaches, so the plan numbers
                         // none — which is a fact about what is measured and not about the join.
                         if (site.isEmpty()) {
                             uninstrumented.computeIfAbsent(states, _ -> new LinkedHashSet<>())
-                                    .add(at.getKey());
+                                    .add(node.occurrence());
                         } else {
                             placed.computeIfAbsent(states, _ -> new LinkedHashSet<>())
                                     .add(site.get());
@@ -178,19 +178,30 @@ class EveryRuleTheAnalysisReadsHasSomewhereItsRunIsRecordedTest {
                         + sitesPerEmitted);
     }
 
-    /** Every written comparison of {@code body}, by occurrence, with the node it stands at. */
-    private static Map<ConstructOccurrence, Core.Binary> comparisonNodesIn(Core body) {
-        Map<ConstructOccurrence, Core.Binary> out = new LinkedHashMap<>();
-        nodes(body, out);
+    /**
+     * Every place {@code body} writes a comparison, one per node.
+     *
+     * <p>Held by the node and never by the occurrence it carries. What is being measured here is
+     * whether each construct of the model has somewhere a run through it is recorded, and gathering
+     * the places under the name each carries would answer that with a population the names had
+     * already thinned — two places whose occurrences agreed would arrive as one, and the count would
+     * come back right because one of them was never looked at.
+     *
+     * <p>By identity, because a node this walk arrives at twice is one place written once.
+     */
+    private static List<Core.Binary> comparisonNodesIn(Core body) {
+        Map<Core, Boolean> met = new IdentityHashMap<>();
+        List<Core.Binary> out = new ArrayList<>();
+        nodes(body, met, out);
         return out;
     }
 
-    private static void nodes(Core e, Map<ConstructOccurrence, Core.Binary> out) {
+    private static void nodes(Core e, Map<Core, Boolean> met, List<Core.Binary> out) {
         if (e instanceof Core.Binary binary && binary.origin() != null
-                && binary.origin().isWritten()) {
-            out.put(binary.occurrence(), binary);
+                && binary.origin().isWritten() && met.put(binary, Boolean.TRUE) == null) {
+            out.add(binary);
         }
-        Core.forEachChild(e, child -> nodes(child, out));
+        Core.forEachChild(e, child -> nodes(child, met, out));
     }
 
     /**

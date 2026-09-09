@@ -36,12 +36,34 @@ class AnEnvelopeIsClosedByTheCopyThatWasHandedTheCallableTest {
         return within.copiedInto(operation(operation), new ExpansionSite.Written(call(ordinal)));
     }
 
-    /** A copy of the caller's block, made where {@code copy}'s body applies what it was handed. */
-    private static ExpansionLineage.Expansion applied(ExpansionLineage within,
+    /**
+     * A call written in the body {@code copy} is a copy of.
+     *
+     * <p>Where an application of a supplied block stands: the code applying it is the code being
+     * copied into, and that body's own constructs are what tell one application of the block from
+     * another.
+     */
+    private static ExpansionSite.Direct applicationIn(ExpansionLineage.Expansion copy,
+                                                      int ordinal) {
+        WrittenOwner.Body body = switch (copy.expanded()) {
+            case ValueName.Stdlib.Operation op -> new WrittenOwner.Body("souther.list", op.name());
+            case ValueName.Helper helper -> new WrittenOwner.Body(helper.module(), helper.name());
+            default -> throw new IllegalArgumentException(
+                    "a copy of something with no body: " + copy.expanded());
+        };
+        return new ExpansionSite.Written(
+                SourceConstructOrigin.written(body, ordinal, SourceConstruct.CALL));
+    }
+
+    /** A copy of the caller's block, made where {@code within}'s body applies what {@code copy} was
+     *  handed. */
+    private static ExpansionLineage.Expansion applied(ExpansionLineage.Expansion within,
                                                       ExpansionLineage.Expansion copy, int slot) {
         return within.copiedInto(
                 new ValueName.Local("keep", new BindingId(new BindingOwner.OfValue("model", "pick"), 0)),
-                new ExpansionSite.Supplied(copy.step(), new ParameterSlot(slot)));
+                new ExpansionSite.Supplied(
+                        new ExpansionSite.Supplied.Handover(copy.step(), new ParameterSlot(slot)),
+                        applicationIn(within, 0)));
     }
 
     /** Whether the model states a construct standing in {@code lineage}, and in which copy. */

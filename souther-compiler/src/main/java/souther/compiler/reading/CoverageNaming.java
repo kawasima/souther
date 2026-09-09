@@ -2,7 +2,6 @@ package souther.compiler.reading;
 
 import souther.compiler.check.Symbols;
 import souther.compiler.core.Core;
-import souther.compiler.coverage.ComparisonOccurrence;
 import souther.compiler.coverage.ControlClaim;
 import souther.compiler.coverage.ControlPointId;
 import souther.compiler.coverage.CoverageSites;
@@ -12,6 +11,7 @@ import souther.compiler.inputs.ComparedNumber;
 import souther.compiler.inputs.ComparedNumbers;
 import souther.compiler.inputs.InputReads;
 import souther.compiler.inputs.NumericTerm;
+import souther.compiler.types.ConstructOccurrence;
 import souther.compiler.inputs.PathResolution;
 import souther.compiler.inputs.TermPath;
 
@@ -102,7 +102,7 @@ final class CoverageNaming implements Naming<Outcome> {
             // it, so there is nothing here to say. The fork on it is named where the way in is.
             return null;
         }
-        ComparisonOccurrence site = plan.comparisons().occurrenceAt(comparison)
+        ConstructOccurrence site = plan.comparisons().occurrenceAt(comparison)
                 .filter(plan::instruments).orElse(null);
         // The one reading of this comparison, which is the reading whatever admitted the way used.
         // Read again here, the decision would be said of a number the admission never saw.
@@ -113,7 +113,8 @@ final class CoverageNaming implements Naming<Outcome> {
         NumericTerm at = drawn.term();
         return plan.outcomeOf(site, held)
                 .flatMap(ControlClaim::of)
-                .map(claim -> one(new Decision(new Condition.Side(at, site, held), claim)))
+                .map(claim -> one(new Decision(
+                        new Condition.Side(at, comparison.occurrence(), held), claim)))
                 .orElse(null);
     }
 

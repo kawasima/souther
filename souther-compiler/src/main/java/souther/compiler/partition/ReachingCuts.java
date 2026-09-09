@@ -2,7 +2,6 @@ package souther.compiler.partition;
 
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.core.Core;
-import souther.compiler.coverage.ComparisonOccurrence;
 import souther.compiler.diag.Citation;
 import souther.compiler.inputs.InputDomain;
 import souther.compiler.inputs.InputReads;
@@ -14,6 +13,7 @@ import souther.compiler.inputs.TermPath;
 import souther.compiler.numeric.LinearForm;
 import souther.compiler.numeric.Rel;
 import souther.compiler.semantics.ConditionJoin;
+import souther.compiler.types.ModelOccurrence;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -54,7 +54,7 @@ import java.util.Map;
  * the list is what lets a report say a condition is unaccounted for; it is not what the region is
  * built from.
  */
-public record ReachingCuts(Map<ComparisonOccurrence, List<OnTheWay>> byComparison) {
+public record ReachingCuts(Map<ModelOccurrence, List<OnTheWay>> byComparison) {
 
     public static final ReachingCuts NONE = new ReachingCuts(Map.of());
 
@@ -66,8 +66,8 @@ public record ReachingCuts(Map<ComparisonOccurrence, List<OnTheWay>> byCompariso
     public record Cut(LinearForm<NumericTerm> form, Rel rel) {}
 
     /**
-     * How a row for a border at {@code site} came to be looked for where it is: the whole account of
-     * the walk to it.
+     * How a row for a border on the rule stated at {@code states} came to be looked for where it is:
+     * the whole account of the walk to it.
      *
      * <p>Empty where nothing was collected there — and the answer says so, rather than leaving a
      * reader to tell a comparison at the top of a body from one this could read nothing on the way
@@ -75,8 +75,8 @@ public record ReachingCuts(Map<ComparisonOccurrence, List<OnTheWay>> byCompariso
      * limit of this compiler, and an author who is told nothing has no way to find out which they
      * are looking at.
      */
-    public WayToTheBorder wayTo(ComparisonOccurrence site) {
-        return new WayToTheBorder(byComparison.getOrDefault(site, List.of()));
+    public WayToTheBorder wayTo(ModelOccurrence states) {
+        return new WayToTheBorder(byComparison.getOrDefault(states, List.of()));
     }
 
     /**
@@ -210,16 +210,23 @@ public record ReachingCuts(Map<ComparisonOccurrence, List<OnTheWay>> byCompariso
         return new OnTheWay.TakenIn(at, new Cut(against, holding ? states : states.denied()));
     }
 
-    /** These conditions, with {@code site} reached under {@code assumed}. */
+    /** These conditions, with the rule stated at {@code states} reached under {@code assumed}. */
     static final class Collected {
 
-        private final Map<ComparisonOccurrence, List<OnTheWay>> byComparison = new LinkedHashMap<>();
+        private final Map<ModelOccurrence, List<OnTheWay>> byComparison = new LinkedHashMap<>();
 
-        void reached(ComparisonOccurrence site, List<OnTheWay> assumed) {
-            // The first reading of a site stands. One comparison is read once per call of the helper
-            // it is written in, and each of those is a site of its own — two readings arriving under
-            // one site would be this walk and the plan disagreeing about what a site is.
-            byComparison.putIfAbsent(site, List.copyOf(assumed));
+        void reached(ModelOccurrence states, List<OnTheWay> assumed) {
+            // Once per construct of the model, because that is what the walk reads: a comparison
+            // inside a non-recursive helper is read once per call of it and each of those calls is
+            // a construct of its own. Two arriving under one would be the reading holding two
+            // comparisons the model states at one place, which is what nothing downstream could
+            // then tell apart — so it is refused here rather than resolved by keeping one of them.
+            List<OnTheWay> already = byComparison.putIfAbsent(states, List.copyOf(assumed));
+            if (already != null) {
+                throw new IllegalStateException(
+                        "two comparisons of one reading state one construct of the model: "
+                                + states);
+            }
         }
 
         ReachingCuts made() {
