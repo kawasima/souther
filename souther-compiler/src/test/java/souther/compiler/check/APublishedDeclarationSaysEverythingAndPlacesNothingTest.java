@@ -30,7 +30,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 /**
  * What a published declaration says is everything the declaration says, and none of where it stands.
  *
- * <p>Two things {@link DeclarationMeaning} has to be, and only one of them is what #1472 was about.
+ * <p>Two things {@link DeclarationMeaning} has to be, and only one of them is the one that is easy
+ * to see.
  * A meaning that read where a declaration stands makes a module that imports it depend on an edit it
  * cannot see. A meaning that left out something the declaration says makes two declarations that say
  * different things one dependency, and the store then stops the work of everything that read the one

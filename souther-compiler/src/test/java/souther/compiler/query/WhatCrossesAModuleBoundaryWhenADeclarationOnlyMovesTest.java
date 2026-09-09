@@ -1,6 +1,7 @@
 package souther.compiler.query;
 
 import souther.compiler.meta.ModulePath;
+import souther.compiler.types.TypeKey;
 
 import org.junit.jupiter.api.Test;
 
@@ -16,10 +17,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * What an edit that only moves a declaration reaches in the module that imports it.
  *
- * <p>The chain #1472 was opened about, written down where it can be watched while the readers are
- * moved one at a time. A comment line written in the declaring module moves every position under it
- * and says nothing different; the importer's answers were worked out again for it, through the
- * declaration answers that carry the authored tree.
+ * <p>Written down where it can be watched while the readers are moved onto the boundary one at a
+ * time. A comment line written in the declaring module moves every position under it and says
+ * nothing different; the importer's answers are worked out again for it, through the declaration
+ * answers that carry the authored tree.
  *
  * <p><b>Written to be red until it is not.</b> Each answer below is asked before and after the edit
  * and held to whichever of the two it is today, so moving a reader onto the boundary shows up here
@@ -52,15 +53,17 @@ class WhatCrossesAModuleBoundaryWhenADeclarationOnlyMovesTest {
                 | "one" : (Basket { paid = Amount { value = 1 } }) -> 1
             """;
 
+    private static final TypeKey AMOUNT = new TypeKey("shop.prices", "Amount");
+
     @Test
     void aCommentWrittenInTheDeclaringModuleStillReachesTheImporter() {
         Compilation c = started();
         Answer<?> inputs = c.db().ask(new Adequacy.Inputs("shop.cart"));
         Answer<?> checked = c.db().ask(new Bodies.CheckedBehavior("shop.cart", "paidOn"));
         Answer<?> published = c.db().ask(new Shapes.MeaningOf(
-                new souther.compiler.types.TypeKey("shop.prices", "Amount")));
+                AMOUNT));
         Answer<?> expanded = c.db().ask(new Shapes.ClausesExpandedFor(
-                new souther.compiler.types.TypeKey("shop.prices", "Amount")));
+                AMOUNT));
 
         edit(c, "// a line written above the declaration\n" + DECLARING);
 
@@ -68,13 +71,13 @@ class WhatCrossesAModuleBoundaryWhenADeclarationOnlyMovesTest {
         // is a new object either way -- what an edit is absorbed by is the value being equal, not
         // the store having skipped the question.
         assertEquals(published.value(), c.db().ask(new Shapes.MeaningOf(
-                        new souther.compiler.types.TypeKey("shop.prices", "Amount"))).value(),
+                        AMOUNT)).value(),
                 "what the declaration says is the same, and the boundary answer moved");
         // Which answer carries the move across. The clauses a reading is answered from are the
         // declaration's own, in the representation its module expanded them into -- an authored
         // tree, so moving the declaration makes a different one.
         assertNotEquals(expanded.value(), c.db().ask(new Shapes.ClausesExpandedFor(
-                        new souther.compiler.types.TypeKey("shop.prices", "Amount"))).value(),
+                        AMOUNT)).value(),
                 "the clauses came out the same, so this is no longer what carries the move");
         assertNotSame(checked, c.db().ask(new Bodies.CheckedBehavior("shop.cart", "paidOn")),
                 "the importer's checked body no longer moves for a comment written next door —"
@@ -94,13 +97,13 @@ class WhatCrossesAModuleBoundaryWhenADeclarationOnlyMovesTest {
     void andAnEditThatChangesWhatItSaysReachesTheImporter() {
         Compilation c = started();
         Answer<?> published = c.db().ask(new Shapes.MeaningOf(
-                new souther.compiler.types.TypeKey("shop.prices", "Amount")));
+                AMOUNT));
         Answer<?> checked = c.db().ask(new Bodies.CheckedBehavior("shop.cart", "paidOn"));
 
         edit(c, DECLARING.replace("invariant value >= 0", "invariant value >= 1"));
 
         assertNotEquals(published.value(), c.db().ask(new Shapes.MeaningOf(
-                        new souther.compiler.types.TypeKey("shop.prices", "Amount"))).value(),
+                        AMOUNT)).value(),
                 "the declaration was given a rule it did not have");
         assertNotSame(checked, c.db().ask(new Bodies.CheckedBehavior("shop.cart", "paidOn")),
                 "a body checked against the declaration was not checked again");

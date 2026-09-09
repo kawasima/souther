@@ -6,7 +6,9 @@ import souther.compiler.check.ClauseLocations;
 import souther.compiler.check.DeclarationCitations;
 import souther.compiler.check.DeclarationLocations;
 import souther.compiler.check.DeclarationMeaning;
+import souther.compiler.check.Normalized;
 import souther.compiler.check.PublishedDeclarations;
+import souther.compiler.stdlib.Stdlib;
 import souther.compiler.check.ExpandedClauseLookup;
 import souther.compiler.check.ExpandedClauseResult;
 import souther.compiler.check.ExpandedClauses;
@@ -286,11 +288,11 @@ public final class Shapes {
         /** The declaration {@code named} is, as the settling left it, or null where nothing
          *  declares it. */
         private static Hir.Def normalizedDeclarationOf(Db db, TypeKey named) {
-            Answer<souther.compiler.check.Normalized.Def> mine = db.ask(new NormalizedDef(named));
+            Answer<Normalized.Def> mine = db.ask(new NormalizedDef(named));
             if (mine.present()) {
                 return mine.value().node();
             }
-            Answer<souther.compiler.stdlib.Stdlib> library = db.ask(new Front.Library());
+            Answer<Stdlib> library = db.ask(new Front.Library());
             return library.present() ? library.value().languageDeclaration(named) : null;
         }
     }

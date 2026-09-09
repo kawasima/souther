@@ -13,11 +13,11 @@ import java.util.Objects;
  * What a declaration says, published for a reader in another module.
  *
  * <p>A declaration is already a cut at the module boundary: a reader elsewhere asks for the
- * declaration it names rather than for the module-wide answer it came from. What that cut carried
- * until now was the authored tree, and every node of one holds where it was written — so a
- * declaration moved down its file, saying nothing different, arrived at every module that imports it
- * as a declaration that had changed. Both facts are real and both have readers; a reader across the
- * boundary reads one of them, and this is that one.
+ * declaration it names rather than for the module-wide answer it came from. What it says and where
+ * it is written are two facts about it, both real and each with readers of its own, and a reader
+ * across the boundary means the first. Carried across as the authored tree, the second goes with it
+ * — every node of one holds where it was written, so a declaration moved down its file says nothing
+ * different and arrives as a declaration that changed.
  *
  * <p><b>Not a projection of {@link Normalized.Def}.</b> The normalized declaration is the authored
  * tree after the constructions in its clauses are written as constructions, and it keeps its
