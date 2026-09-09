@@ -1041,6 +1041,7 @@ sealed interface StatedByClauses {
             return switch (read) {
                 case StatedTogether.Said it -> it;
                 case StatedTogether.Choice it -> {
+                    ChoicesRead.placeMet();
                     StatedTogether.Said one = settling(it.left(), by, outcomes);
                     StatedTogether.Said other = settling(it.right(), by, outcomes);
                     Settlement.Sided here = probed(one, by);
@@ -1645,7 +1646,9 @@ sealed interface StatedByClauses {
                 projected.put(each.getKey(), one);
                 whole = whole.meet(one);
             }
+            int settledOffDescriptions = decided.size();
             Settlement made = reader.settle(whole, by, decided);
+            ChoicesRead.settled(made, settledOffDescriptions);
             // What the choices of every rule left open, gathered as each rule is accounted for and
             // told to the positions once they all are. It cannot be known before: a branch a clause
             // written elsewhere shows dead takes what it could not read with it, and which branches

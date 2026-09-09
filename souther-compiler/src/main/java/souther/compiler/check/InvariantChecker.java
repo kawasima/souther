@@ -920,6 +920,9 @@ public final class InvariantChecker {
         long expansion = policy.expansionOf(written.stream().map(Written::clause).toList());
         Alternatives alternatives = policy.holdsApart(expansion)
                 ? Alternatives.APART : Alternatives.MERGED;
+        if (alternatives == Alternatives.MERGED) {
+            ChoicesRead.merged();
+        }
         // What puts two sets of values together, and what it is allowed to build doing it. One
         // for the whole of this value and not one per clause: what a position finally admits is
         // met from every rule that reached it, so a pattern in one clause and a pattern in
