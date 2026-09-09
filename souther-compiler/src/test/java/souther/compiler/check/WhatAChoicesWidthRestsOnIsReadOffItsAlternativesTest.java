@@ -73,6 +73,25 @@ class WhatAChoicesWidthRestsOnIsReadOffItsAlternativesTest {
     /** And one ordered on a whole number, whose order stops at both ends. */
     private static final Map<FactSubject, Carrier> ON_A_WHOLE_NUMBER = Map.of(VALUE, Carrier.WHOLE);
 
+    /** What the choice between two branches of these fates came to, which is where whether there
+     *  is a choice at that copy is decided. */
+    private static Settlement.WidthDependency widthOf(Settlement.Sided here,
+                                                      PlannedValues<FactSubject> one,
+                                                      Settlement.Sided there,
+                                                      PlannedValues<FactSubject> other) {
+        return Settlement.OfAChoice.of(here, new StatedTogether.Said(branch(one)),
+                there, new StatedTogether.Said(branch(other))).width();
+    }
+
+    /** A branch nobody can be in, or one nothing showed empty. */
+    private static Settlement.Sided emptiness(boolean empty) {
+        return Settlement.Sided.settledAs(empty
+                ? Confinement.Admission.at(souther.compiler.values.Emptiness.EMPTY,
+                        Confinement.EmptyBy.ORDER, Set.of(VALUE),
+                        Confinement.Shown.BY_THE_READINGS)
+                : Confinement.Admission.left(souther.compiler.values.Emptiness.UNDECIDED));
+    }
+
     /** One branch, with nothing said about where its orders stop. */
     private static Confinement.Planned<FactSubject> branch(PlannedValues<FactSubject> values) {
         return new Confinement.Planned<>(values, OrderedIntervals.top(), Map.of());
@@ -187,15 +206,12 @@ class WhatAChoicesWidthRestsOnIsReadOffItsAlternativesTest {
      */
     @Test
     void anOccurrenceOneBranchOfWhichAdmitsNothingRestsOnNeitherAndDoesNotSpeakForTheRest() {
-        Settlement.WidthDependency dead = Settlement.WidthDependency.of(
-                souther.compiler.values.Emptiness.EMPTY, branch(isA()),
-                souther.compiler.values.Emptiness.UNDECIDED, branch(unread(Set.of(OTHER))));
-        Settlement.WidthDependency deadOnTheRight = Settlement.WidthDependency.of(
-                souther.compiler.values.Emptiness.UNDECIDED, branch(isA()),
-                souther.compiler.values.Emptiness.EMPTY, branch(unread(Set.of(OTHER))));
-        Settlement.WidthDependency live = Settlement.WidthDependency.of(
-                souther.compiler.values.Emptiness.UNDECIDED, branch(isA()),
-                souther.compiler.values.Emptiness.UNDECIDED, branch(unread(Set.of(OTHER))));
+        Settlement.WidthDependency dead = widthOf(emptiness(true), isA(),
+                emptiness(false), unread(Set.of(OTHER)));
+        Settlement.WidthDependency deadOnTheRight = widthOf(emptiness(false), isA(),
+                emptiness(true), unread(Set.of(OTHER)));
+        Settlement.WidthDependency live = widthOf(emptiness(false), isA(),
+                emptiness(false), unread(Set.of(OTHER)));
 
         assertEquals(Settlement.WidthDependency.none(), dead,
                 "the choice is the branch beside the dead one, and no alternative widened it");

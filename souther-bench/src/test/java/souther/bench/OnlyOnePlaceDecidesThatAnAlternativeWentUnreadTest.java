@@ -63,6 +63,11 @@ class OnlyOnePlaceDecidesThatAnAlternativeWentUnreadTest {
      *
      * <p>Taking one more occurrence of the same choice in is the other, and it decides nothing: it
      * is handed two outcomes about the two branches and joins each side with the same side.
+     *
+     * <p>The site is the outcome's own maker, which is where whether there is a choice at this copy
+     * is settled. Every fact an outcome holds about the alternatives turns on that one question, so
+     * a maker outside it would be one deciding for itself whether the copy it is describing is a
+     * choice — and two answers to that are free to disagree about the same written {@code ||}.
      */
     @Test
     void aFateAndTheWidthItGoesWithAreMadeAtOneSite() throws Exception {
@@ -70,11 +75,11 @@ class OnlyOnePlaceDecidesThatAnAlternativeWentUnreadTest {
                         "souther.compiler.check.Settlement$OfAChoice#alsoSeen"
                                 + "(Lsouther/compiler/check/Settlement$OfAChoice;)"
                                 + "Lsouther/compiler/check/Settlement$OfAChoice;",
-                        "souther.compiler.check.StatedByClauses$Reading#outcome"
-                                + "(Lsouther/compiler/check/StatedTogether$Said;"
-                                + "Lsouther/compiler/check/Settlement$Sided;"
+                        "souther.compiler.check.Settlement$OfAChoice#of"
+                                + "(Lsouther/compiler/check/Settlement$Sided;"
                                 + "Lsouther/compiler/check/StatedTogether$Said;"
-                                + "Lsouther/compiler/check/Settlement$Sided;)"
+                                + "Lsouther/compiler/check/Settlement$Sided;"
+                                + "Lsouther/compiler/check/StatedTogether$Said;)"
                                 + "Lsouther/compiler/check/Settlement$OfAChoice;"),
                 whatMakes(OUTCOME),
                 "a choice's outcome is made somewhere else as well, and there is nothing to make"
@@ -88,6 +93,11 @@ class OnlyOnePlaceDecidesThatAnAlternativeWentUnreadTest {
      * two branches would write for itself — and a second one of them would be read as the same fact
      * while resting on whichever pair of branches its writer had in hand. Held here, the account
      * takes the answer and asks nothing about values.
+     *
+     * <p>Handed the branches and not their fates. Whether the copy is a choice at all is one
+     * question every fact about the two of them turns on, and it is answered where the outcome is
+     * made ({@code Settlement.OfAChoice#of}) — asked again here, this would be the second place
+     * deciding it.
      */
     @Test
     void whatAWidthRestsOnIsWorkedOutNowhereElse() throws Exception {
@@ -98,9 +108,7 @@ class OnlyOnePlaceDecidesThatAnAlternativeWentUnreadTest {
                         "souther.compiler.check.Settlement$WidthDependency#none"
                                 + "()Lsouther/compiler/check/Settlement$WidthDependency;",
                         "souther.compiler.check.Settlement$WidthDependency#of"
-                                + "(Lsouther/compiler/values/Emptiness;"
-                                + "Lsouther/compiler/check/Confinement$Planned;"
-                                + "Lsouther/compiler/values/Emptiness;"
+                                + "(Lsouther/compiler/check/Confinement$Planned;"
                                 + "Lsouther/compiler/check/Confinement$Planned;)"
                                 + "Lsouther/compiler/check/Settlement$WidthDependency;"),
                 whatMakes("souther.compiler.check.Settlement$WidthDependency"),

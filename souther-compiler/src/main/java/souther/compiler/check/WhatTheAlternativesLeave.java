@@ -3,6 +3,7 @@ package souther.compiler.check;
 import souther.compiler.numeric.OrderedInterval;
 
 import java.util.LinkedHashSet;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -71,57 +72,63 @@ record WhatTheAlternativesLeave(Set<FactSubject> mayHoldDownOnLeft,
      * What one occurrence of a choice between these two branches leaves, read off the values each
      * of them leaves and building nothing.
      *
-     * <p>Asked of the branches whatever their fate. An occurrence one alternative of which nobody
-     * can be in is no choice there and its width rests on neither side
-     * ({@link Settlement.WidthDependency#of}); what its ends leave is still what they leave, and an
-     * occurrence answering that it holds nothing down would let a copy that is not a choice say the
-     * branch leaves a position alone everywhere.
+     * <p><b>Of an occurrence that is a choice, and of no other.</b> Whether both alternatives are
+     * ones somebody can be in is decided before this is asked ({@link Settlement.OfAChoice#of}),
+     * and where they are not there is no choice at that copy — what is written inside a branch
+     * nobody can be in constrains nobody, so its ranges are no part of what the written choice
+     * leaves. Read off the branches whatever their fate, a copy that is not a choice puts a
+     * position into what the branch holds down; and since a branch is dead for the author only
+     * where nobody can be in it anywhere, that copy is met with the copies that are choices and
+     * takes back what they showed.
+     *
+     * <p>One walk over the positions either branch bounded, which is where all three answers are:
+     * what each side leaves says whether that side holds the position down, and the two of them
+     * met by a choice says whether the choice leaves it whole. Asked a side at a time and then
+     * again for the pair, the same ends are read twice over.
      */
     static WhatTheAlternativesLeave of(Confinement.Planned<FactSubject> one,
                                        Confinement.Planned<FactSubject> other) {
         // The carriers of one side, which are the declaration's and so are both sides'.
-        return new WhatTheAlternativesLeave(
-                one.ordered().stoppedShortOfTheirOrders(one.carriers()),
-                other.ordered().stoppedShortOfTheirOrders(other.carriers()),
-                leftWholeBy(one, other));
-    }
-
-    /**
-     * The positions the choice between these two leaves at every value of their order.
-     *
-     * <p>The hull of what the alternatives leave, which is what a choice of two ranges comes to,
-     * held against the order. Asked of the sides one at a time, the pair of bounds reaching
-     * opposite ends of a carrier answers that both sides hold the position down — which is true of
-     * each of them and false of the choice they are alternatives of.
-     *
-     * <p>Over the positions either of them bounded. A position neither bounded is left whole by
-     * both and so by the choice, and it is left out because a reader here is striking positions off
-     * what the branches brought and has nothing to strike one off with.
-     */
-    private static Set<FactSubject> leftWholeBy(Confinement.Planned<FactSubject> one,
-                                                Confinement.Planned<FactSubject> other) {
+        Map<FactSubject, Carrier> carriers = one.carriers();
         Set<FactSubject> bounded = one.ordered().boundedAt();
         if (!other.ordered().boundedAt().isEmpty()) {
             bounded = new LinkedHashSet<>(bounded);
             bounded.addAll(other.ordered().boundedAt());
         }
-        Set<FactSubject> out = null;
+        Set<FactSubject> onLeft = null;
+        Set<FactSubject> onRight = null;
+        Set<FactSubject> whole = null;
         for (FactSubject position : bounded) {
-            Carrier on = one.carriers().get(position);
-            if (on == null) {
-                continue;
+            // Asked of each side once, and of its own order once. A position outside a side's own
+            // ranges is one that side leaves every value of, which is the answer its order gives
+            // here without a case of its own.
+            OrderedInterval extent = carriers.get(position).extent();
+            OrderedInterval here = one.ordered().valuesAt(position, carriers);
+            OrderedInterval there = other.ordered().valuesAt(position, carriers);
+            if (!here.sameValuesAs(extent)) {
+                onLeft = alsoAt(onLeft, position);
             }
-            OrderedInterval extent = on.extent();
-            if (!one.ordered().valuesAt(position, on).join(other.ordered().valuesAt(position, on))
-                    .sameValuesAs(extent)) {
-                continue;
+            if (!there.sameValuesAs(extent)) {
+                onRight = alsoAt(onRight, position);
             }
-            if (out == null) {
-                out = new LinkedHashSet<>();
+            if (here.join(there).sameValuesAs(extent)) {
+                whole = alsoAt(whole, position);
             }
-            out.add(position);
         }
-        return out == null ? Set.of() : out;
+        return new WhatTheAlternativesLeave(orNothing(onLeft), orNothing(onRight),
+                orNothing(whole));
+    }
+
+    /** The same set with one more position in it, made where the first one arrives. */
+    private static Set<FactSubject> alsoAt(Set<FactSubject> these, FactSubject position) {
+        Set<FactSubject> out = these == null ? new LinkedHashSet<>() : these;
+        out.add(position);
+        return out;
+    }
+
+    /** And nothing where none ever did. */
+    private static Set<FactSubject> orNothing(Set<FactSubject> these) {
+        return these == null ? Set.of() : these;
     }
 
     /** Whether the left alternative leaves {@code position} at every value of its order, wherever
@@ -135,9 +142,24 @@ record WhatTheAlternativesLeave(Set<FactSubject> mayHoldDownOnLeft,
         return !mayHoldDownOnRight.contains(position);
     }
 
-    /** Whether the choice itself stops {@code position} short of its order, wherever it stands. */
+    /**
+     * Whether the choice itself stops {@code position} short of its order, wherever it stands.
+     *
+     * <p>Both halves, because the positions there is anything to answer about are the positions an
+     * alternative held down. A choice stops nothing its alternatives did not — what it leaves is
+     * what one of them leaves or wider — so a position neither of them holds down is one the choice
+     * leaves whole, and it is outside {@link #mayLeaveWhole} for the same reason it is outside
+     * these: nothing here was asked about it.
+     *
+     * <p>Read off {@code mayLeaveWhole} alone, an absence stands for two things — a position the
+     * choice was shown to stop, and a position nobody put the question about — and the second is
+     * every position of every declaration this choice says nothing about. What kept that from
+     * showing is the caller happening to ask only about positions its branches stopped, which is a
+     * condition on the caller that nothing here stated.
+     */
     boolean stops(FactSubject position) {
-        return !mayLeaveWhole.contains(position);
+        return (mayHoldDownOnLeft.contains(position) || mayHoldDownOnRight.contains(position))
+                && !mayLeaveWhole.contains(position);
     }
 
     /** Whether there is any position at all a copy of this choice left whole, which is what a

@@ -67,7 +67,35 @@ record Settlement(Confinement.Worked<FactSubject> confinement,
      * together because they read the same two branches once, and that is the whole of what they
      * share.
      */
-    record OfAChoice(Sided left, Sided right, WidthDependency width, WhatTheAlternativesLeave narrowed) {
+    record OfAChoice(Sided left, Sided right, WidthDependency width,
+                     WhatTheAlternativesLeave narrowed) {
+
+        /**
+         * What one occurrence of a choice between two branches came to, fates and all.
+         *
+         * <p><b>Where whether there is a choice at this copy is decided, and the one place it
+         * is.</b> An occurrence one alternative of which nobody can be in is not a choice there:
+         * what is left of it is the branch beside the dead one, and a rule written inside a branch
+         * nobody can be in constrains nobody. Every fact held here about the alternatives turns on
+         * that one question, so all of them are answered the same way at such a copy — said once
+         * here rather than once per fact, since two statements of one rule are free to disagree and
+         * a reader of either cannot tell which it was given.
+         *
+         * <p>Which matters because a branch is dead only where nobody can be in it anywhere. A copy
+         * that is not a choice would otherwise put a position into what the branch holds down, and
+         * the aggregate over the copies would take back what a copy that is a choice had shown.
+         */
+        static OfAChoice of(Sided left, StatedTogether.Said one,
+                            Sided right, StatedTogether.Said other) {
+            if (!souther.compiler.values.Emptiness.Alternatives
+                    .from(SidesShownEmpty.of(left.emptiness(), right.emptiness())).bothStand()) {
+                return new OfAChoice(left, right, WidthDependency.none(),
+                        WhatTheAlternativesLeave.nothing());
+            }
+            return new OfAChoice(left, right,
+                    WidthDependency.of(one.confinement(), other.confinement()),
+                    WhatTheAlternativesLeave.of(one.confinement(), other.confinement()));
+        }
 
         /** This choice with one more occurrence of it taken in, side by side. */
         OfAChoice alsoSeen(OfAChoice occurrence) {
@@ -116,18 +144,15 @@ record Settlement(Confinement.Worked<FactSubject> confinement,
          * because of, read off the descriptions and building nothing.
          *
          * <p>Each reading is asked about its own and neither is asked about the other's. Handed the
-         * whole branch rather than one half of it because the question that decides whether there
-         * is a choice here at all — whether anybody can be in each branch — is about the two of
-         * them together and is already answered.
+         * whole branch rather than one half of it, since what a reading leaves is the branch's and
+         * a caller picking a half out is the place the two would come apart.
+         *
+         * <p>Whether there is a choice at this occurrence at all is not asked here. That is one
+         * question about the two branches which every fact about them turns on, so it is decided
+         * once, where the fates are ({@link OfAChoice#of}).
          */
-        static WidthDependency of(souther.compiler.values.Emptiness here,
-                                  Confinement.Planned<FactSubject> one,
-                                  souther.compiler.values.Emptiness there,
+        static WidthDependency of(Confinement.Planned<FactSubject> one,
                                   Confinement.Planned<FactSubject> other) {
-            if (!souther.compiler.values.Emptiness.Alternatives
-                    .from(SidesShownEmpty.of(here, there)).bothStand()) {
-                return none();
-            }
             // The carriers of one side, which are the declaration's and so are both sides'. What a
             // position is ordered on is a fact about the vocabulary and not about the branch, and a
             // choice whose alternatives disagreed about it would be one this compiler built.
@@ -243,8 +268,8 @@ record Settlement(Confinement.Worked<FactSubject> confinement,
             Set<FactSubject> bounded = new LinkedHashSet<>(one.boundedAt());
             bounded.addAll(other.boundedAt());
             return comparing(bounded,
-                    position -> one.valuesAt(position, carriers.get(position)),
-                    position -> other.valuesAt(position, carriers.get(position)),
+                    position -> one.valuesAt(position, carriers),
+                    position -> other.valuesAt(position, carriers),
                     OrderedInterval::join, OrderedInterval::sameValuesAs);
         }
 

@@ -119,9 +119,84 @@ class WhatOneCopyOfAChoiceLeavesIsNotWhatTheChoiceLeavesTest {
         assertTrue(leaves.stops(VALUE), "nothing below zero is left, so the choice stops it");
     }
 
+    /**
+     * A copy of the choice that is not one leaves nothing to be taken back.
+     *
+     * <p>An occurrence one alternative of which nobody can be in is not a choice there: what is
+     * left of it is the branch beside the dead one, and a rule written inside a branch nobody can
+     * be in constrains nobody. So what its ranges say is no part of what the written choice leaves.
+     *
+     * <p>Which only shows in the aggregate, and that is why it matters. A branch is dead for the
+     * author only where nobody can be in it anywhere, so a branch dead at one copy and live at
+     * another is live — and the copy that is not a choice is met with the copies that are. Read off
+     * the ranges whatever the fate, the dead copy says the left alternative holds {@code value}
+     * down, and the copy where it is a choice and leaves all of it is overruled by a branch nobody
+     * is in.
+     */
+    @Test
+    void aCopyThatIsNotAChoiceLeavesNothingForTheOthersToTakeBack() {
+        Settlement.OfAChoice notAChoice = Settlement.OfAChoice.of(
+                dead(), said(OrderedIntervals.at(VALUE, atLeast(2))),
+                live(), said(OrderedIntervals.top()));
+        Settlement.OfAChoice aChoice = Settlement.OfAChoice.of(
+                live(), said(OrderedIntervals.top()),
+                live(), said(OrderedIntervals.top()));
+
+        assertTrue(notAChoice.narrowed().leavesEveryValueOnLeft(VALUE),
+                "there is no choice at that copy, so its left branch holds nothing down here");
+        assertTrue(notAChoice.alsoSeen(aChoice).narrowed().leavesEveryValueOnLeft(VALUE),
+                "and the copy that is a choice keeps what it showed");
+        assertTrue(aChoice.alsoSeen(notAChoice).narrowed().leavesEveryValueOnLeft(VALUE),
+                "either way round");
+    }
+
+    /** And the same of what the choice was shown to stop. */
+    @Test
+    void andACopyThatIsNotAChoiceStopsNothingEither() {
+        Settlement.OfAChoice notAChoice = Settlement.OfAChoice.of(
+                dead(), said(OrderedIntervals.at(VALUE, atLeast(2))),
+                live(), said(OrderedIntervals.at(VALUE, atLeast(2))));
+
+        assertFalse(notAChoice.narrowed().stops(VALUE),
+                "nothing at that copy is a choice, so nothing there stops the position");
+    }
+
+    /**
+     * And a choice nobody read anything about stops nothing.
+     *
+     * <p>The positions this can be asked about are the positions an alternative held down, since a
+     * choice stops nothing its alternatives did not. Answered off what the choice was shown to
+     * leave whole alone, an absence stands for two things at once — a position shown stopped, and a
+     * position nobody put the question about — and the second is every position of every
+     * declaration the choice says nothing about.
+     */
+    @Test
+    void aChoiceNothingWasReadAboutStopsNothing() {
+        assertFalse(WhatTheAlternativesLeave.nothing().stops(VALUE),
+                "no alternative held it down, so there is nothing here that stopped it");
+    }
+
     /** One branch, with its positions ordered on whole numbers. */
     private static Confinement.Planned<FactSubject> branch(OrderedIntervals<FactSubject> ordered) {
         return new Confinement.Planned<>(PlannedValues.top(), ordered, ON_WHOLE_NUMBERS);
+    }
+
+    /** The same, as a reading of the clauses met together. */
+    private static StatedTogether.Said said(OrderedIntervals<FactSubject> ordered) {
+        return new StatedTogether.Said(branch(ordered));
+    }
+
+    /** A branch nobody can be in. */
+    private static Settlement.Sided dead() {
+        return Settlement.Sided.settledAs(Confinement.Admission.at(
+                souther.compiler.values.Emptiness.EMPTY, Confinement.EmptyBy.ORDER,
+                Set.of(VALUE), Confinement.Shown.BY_THE_READINGS));
+    }
+
+    /** And one nothing showed empty. */
+    private static Settlement.Sided live() {
+        return Settlement.Sided.settledAs(
+                Confinement.Admission.left(souther.compiler.values.Emptiness.UNDECIDED));
     }
 
     /** {@code value >= low}, held inside what a whole number's order reaches. */

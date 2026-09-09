@@ -998,10 +998,7 @@ sealed interface StatedByClauses {
                                                     Settlement.Sided here,
                                                     StatedTogether.Said other,
                                                     Settlement.Sided there) {
-            return new Settlement.OfAChoice(here, there,
-                    Settlement.WidthDependency.of(here.emptiness(), one.confinement(),
-                            there.emptiness(), other.confinement()),
-                    WhatTheAlternativesLeave.of(one.confinement(), other.confinement()));
+            return Settlement.OfAChoice.of(here, one, there, other);
         }
 
         /**

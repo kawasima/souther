@@ -372,7 +372,7 @@ sealed interface Confinement<A> {
         // What the ends leave each position, read as values of that position's own order. The ends
         // alone would answer for every order at once, and what a position holds is decided here.
         Function<A, OrderedInterval> byTheOrders =
-                position -> ordered.valuesAt(position, carriers.get(position));
+                position -> ordered.valuesAt(position, carriers);
         AskedOfEachBlock<A> byTheReadings = asking(carriers, byTheOrders, meter, machines);
         AskedOfEachBlock<A> narrowed = asking(carriers, position ->
                 byTheOrders.apply(position).meet(outside.at(position).interval()), meter, machines);

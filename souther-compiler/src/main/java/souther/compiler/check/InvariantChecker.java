@@ -2667,7 +2667,7 @@ public final class InvariantChecker {
             // A part that put no constraint on the values restricts nothing, and one that placed an
             // end has a line — from the ordering it wrote, or from the run of the strings it
             // admits, which are the two ways a conjunct states where the values stop.
-            if (!account.restricts(position) || account.bounds(position)
+            if (!account.restricts(position) || account.stops(position)
                     || runs.bounds(position)) {
                 continue;
             }

@@ -153,19 +153,28 @@ public final class OrderedIntervals<A> {
      * pair of absent ends on the other and call them two answers — which is how a border nobody
      * drew was reported as one this compiler could not measure.
      *
-     * <p>Handed the order rather than an interval standing for it, so that a caller cannot hand in
-     * the extent of a position beside this one: what a position is ordered on is the carrier's to
-     * say, and there is no reading of this that is about two carriers.
+     * <p>Handed the vocabulary and not one order, so that the order this is answered against is the
+     * one belonging to the position asked about. Given an order directly, a caller can hand in the
+     * one beside it — the type would have ruled out a bare pair of ends and nothing else — and the
+     * answer would be about a position nobody asked about.
      *
-     * <p>A null order is a position ordered on nothing this reading names, which is a state a
-     * vocabulary is in and not a caller forgetting to say. There is no order to hold the ends
-     * against, so what comes back is what was written and nothing added — every value where nothing
-     * was written, which is the one answer that cannot be wrong about an order nobody named.
+     * <p><b>And there is no way to ask this without one.</b> A range says which values it leaves
+     * only against the order it is a range of, so an answer for a position whose order is not here
+     * would be the pair of absent ends this exists to stop being read as a value. Where the rules
+     * bounded such a position, that is this compiler holding a range on an order it cannot name,
+     * and it is said as the mistake it is rather than answered around.
      */
-    public OrderedInterval valuesAt(A position, ValueOrder onItsOrder) {
+    public OrderedInterval valuesAt(A position, Map<A, ? extends ValueOrder> orders) {
         OrderedInterval stated = ranges().get(position);
+        ValueOrder onItsOrder = orders.get(position);
         if (onItsOrder == null) {
-            return stated == null ? OrderedInterval.OPEN : stated;
+            if (stated != null) {
+                throw new IllegalStateException("the rules stopped " + position
+                        + " on an order this vocabulary does not name");
+            }
+            // Nothing was read about it and nothing orders it, so there is no range here to be read
+            // as values and nothing for a caller to be wrong about.
+            return OrderedInterval.OPEN;
         }
         OrderedInterval extent = onItsOrder.extent();
         return stated == null ? extent : extent.meet(stated);
@@ -180,31 +189,26 @@ public final class OrderedIntervals<A> {
      * {@link #boundedAt} for this would credit such a rule with a line nobody draws.
      *
      * <p>Over the positions the rules bounded, since a position they bounded nowhere is left every
-     * value its order has. A position ordered on nothing {@code orders} names is one there is no
-     * order to hold the ends against, and it is here: what its rules leave cannot be shown to be
-     * all of anything.
+     * value its order has. A bounded position {@code orders} does not name is this compiler holding
+     * a range on an order it cannot name, and {@link #valuesAt} says so — kept here instead, as a
+     * position whose ends cannot be shown to leave all of anything, it would go out as a position
+     * the rules stop, which is the answer nobody could have checked.
      */
     public Set<A> stoppedShortOfTheirOrders(Map<A, ? extends ValueOrder> orders) {
         // Nothing until there is something to hold. This is asked of every leaf of every clause,
         // and most leaves stop no position at all — a set built and wrapped for each of them is
         // made as often as anything in this reading.
         Set<A> out = null;
-        for (Map.Entry<A, OrderedInterval> each : ranges().entrySet()) {
-            ValueOrder on = orders.get(each.getKey());
-            if (on != null && !stopsShortOf(each.getValue(), on.extent())) {
+        for (A position : ranges().keySet()) {
+            if (valuesAt(position, orders).sameValuesAs(orders.get(position).extent())) {
                 continue;
             }
             if (out == null) {
                 out = new LinkedHashSet<>();
             }
-            out.add(each.getKey());
+            out.add(position);
         }
         return out == null ? Set.of() : Collections.unmodifiableSet(out);
-    }
-
-    /** Whether {@code range} leaves less of {@code extent} than all of it. */
-    private static boolean stopsShortOf(OrderedInterval range, OrderedInterval extent) {
-        return !extent.meet(range).sameValuesAs(extent);
     }
 
     /** Whether nothing satisfies these rules, at a position or otherwise. */

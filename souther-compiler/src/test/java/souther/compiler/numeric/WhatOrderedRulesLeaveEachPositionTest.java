@@ -7,6 +7,7 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -22,10 +23,16 @@ class WhatOrderedRulesLeaveEachPositionTest {
     private static final String B = "b";
 
     /** An order that stops nowhere, for the questions the extent has no part in. */
-    private static final ValueOrder ANY = () -> OrderedInterval.OPEN;
+    private static final ValueOrder ANY_ORDER = () -> OrderedInterval.OPEN;
 
     /** And one that stops at both ends, which is what every carrier but a decimal is. */
-    private static final ValueOrder ZERO_TO_TEN = () -> from(0, 10);
+    private static final ValueOrder ZERO_TO_TEN_ORDER = () -> from(0, 10);
+
+    /** The vocabulary the positions are ordered by, which is what a reading is read against. */
+    private static final java.util.Map<String, ValueOrder> ANY =
+            java.util.Map.of(A, ANY_ORDER, B, ANY_ORDER);
+    private static final java.util.Map<String, ValueOrder> ZERO_TO_TEN =
+            java.util.Map.of(A, ZERO_TO_TEN_ORDER, B, ZERO_TO_TEN_ORDER);
 
     private static OrderedInterval from(long low, long high) {
         return new OrderedInterval(Endpoint.inclusive(Count.of(low)),
@@ -73,11 +80,35 @@ class WhatOrderedRulesLeaveEachPositionTest {
         OrderedIntervals<String> covered = OrderedIntervals.at(A, above(6))
                 .joinLive(OrderedIntervals.at(A, below(5)));
 
-        assertTrue(covered.valuesAt(A, ZERO_TO_TEN).sameValuesAs(ZERO_TO_TEN.extent()),
+        assertTrue(covered.valuesAt(A, ZERO_TO_TEN).sameValuesAs(ZERO_TO_TEN_ORDER.extent()),
                 "between them the two bounds hold every value the order has");
         assertTrue(covered.valuesAt(A, ZERO_TO_TEN)
                         .sameValuesAs(OrderedIntervals.<String>top().valuesAt(A, ZERO_TO_TEN)),
                 "which is what a reading that said nothing about it leaves");
+    }
+
+    /**
+     * And a position the rules stopped on an order the vocabulary does not name is said to be a
+     * mistake in this compiler.
+     *
+     * <p>What a range leaves is only ever the values of the order it is a range of, so there is no
+     * answer to give. Answered with the pair of absent ends, this would be handing back the reading
+     * that has no order in it — the one every other method here exists to stop being read as a
+     * value — and a caller that dropped the order on the way would get it silently.
+     *
+     * <p>The position nothing was said about is not that. Nothing put a range there, so there is no
+     * range to be read against an order, and every value there is is the answer that cannot be
+     * wrong about an order nobody named.
+     */
+    @Test
+    void aBoundedPositionWithNoOrderIsAMistakeInThisCompiler() {
+        OrderedIntervals<String> bounded = OrderedIntervals.at(A, above(5));
+
+        assertThrows(IllegalStateException.class,
+                () -> bounded.valuesAt(A, java.util.Map.of()),
+                "the rules stopped it and nothing here says what they stopped");
+        assertEquals(OrderedInterval.OPEN, bounded.valuesAt(B, java.util.Map.of()),
+                "and a position nothing was said about has no range to be read against one");
     }
 
     /** Both rules holding is the tighter of each end. */

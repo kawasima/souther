@@ -142,6 +142,11 @@ record ReadByClauses(Confinement.Worked<FactSubject> confinement,
         /**
          * Whether this part stops those values anywhere short of the position's own order.
          *
+         * <p>Named for what it answers. Called {@code bounds}, it read as the question the ordered
+         * reading's own account answers — which positions some rule of the part was about — and
+         * that is the reading a caller acted on while the two were one method
+         * ({@link Adoption#readAt}).
+         *
          * <p>Asked of the ordered reading, because that is what an end is read by. A part that
          * stopped them has a line at the position and is accounted for by whoever draws lines, so
          * it is not a part a reader is owed a second sentence about.
@@ -153,7 +158,7 @@ record ReadByClauses(Confinement.Worked<FactSubject> confinement,
          * the part has a line at {@code n} — and the line it is credited with is one nobody draws,
          * so the restriction the rule does state goes out unsaid.
          */
-        boolean bounds(FactSubject position) {
+        boolean stops(FactSubject position) {
             return stopped.contains(position);
         }
     }
