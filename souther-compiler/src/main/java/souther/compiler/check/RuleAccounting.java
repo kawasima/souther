@@ -3,6 +3,7 @@ package souther.compiler.check;
 import souther.compiler.inputs.BlockReason;
 import souther.compiler.inputs.RuleReasons;
 import souther.compiler.inputs.WhatAQuestionStandsOn;
+import souther.compiler.inputs.WhereInTheRule;
 import souther.compiler.values.UnreadReason;
 
 import java.util.ArrayList;
@@ -265,6 +266,7 @@ public final class RuleAccounting {
                 case TheValueReadingSays it -> new WhatAQuestionStandsOn(
                         RuleReasons.from(it.shortfalls().stream()
                                 .map(each -> new RuleReasons.Placed(each.site().writtenAt(),
+                                        WhereInTheRule.theRuleItself(),
                                         BlockReason.ofARuleTheValueReadingLeft(each.why())))
                                 .toList()),
                         WhatAQuestionStandsOn.oneOf(it.aboutTheAnswer().reasons().stream()

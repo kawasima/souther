@@ -41,9 +41,9 @@ class OnlyPlacesOfOneTextPutReasonsInAnOrderTest {
     void aReasonStandingTwiceIsSaidWhereItWasFirstWritten() {
         assertEquals(List.of(FORM, DOMAIN),
                 RuleReasons.from(List.of(
-                        new RuleReasons.Placed(at(30), FORM),
-                        new RuleReasons.Placed(at(10), DOMAIN),
-                        new RuleReasons.Placed(at(5), FORM))).reasons(),
+                        placed(at(30), FORM),
+                        placed(at(10), DOMAIN),
+                        placed(at(5), FORM))).reasons(),
                 "the form is written before the domain and is said before it, however late the"
                         + " copy of it that was met first stands");
     }
@@ -52,11 +52,11 @@ class OnlyPlacesOfOneTextPutReasonsInAnOrderTest {
     @Test
     void twoReasonsAtOnePlaceArePutInTheOrderTheVocabularyDeclares() {
         assertEquals(RuleReasons.from(List.of(
-                        new RuleReasons.Placed(at(1), FORM),
-                        new RuleReasons.Placed(at(1), DOMAIN))).reasons(),
+                        placed(at(1), FORM),
+                        placed(at(1), DOMAIN))).reasons(),
                 RuleReasons.from(List.of(
-                        new RuleReasons.Placed(at(1), DOMAIN),
-                        new RuleReasons.Placed(at(1), FORM))).reasons(),
+                        placed(at(1), DOMAIN),
+                        placed(at(1), FORM))).reasons(),
                 "nothing an author wrote tells them apart, so nothing about how they were met may"
                         + " decide it either");
     }
@@ -66,8 +66,8 @@ class OnlyPlacesOfOneTextPutReasonsInAnOrderTest {
     void reasonsOfOneTextStandInAnOrderSomebodyWrote() {
         assertInstanceOf(RuleReasons.AsWritten.class,
                 RuleReasons.from(List.of(
-                        new RuleReasons.Placed(at(5), FORM),
-                        new RuleReasons.Placed(at(10), DOMAIN))));
+                        placed(at(5), FORM),
+                        placed(at(10), DOMAIN))));
     }
 
     /**
@@ -81,8 +81,8 @@ class OnlyPlacesOfOneTextPutReasonsInAnOrderTest {
     void andReasonsOfTwoTextsStandInNoOrderAnybodyWrote() {
         assertInstanceOf(RuleReasons.NoSingleAuthoredOrder.class,
                 RuleReasons.from(List.of(
-                        new RuleReasons.Placed(new SourcePos(5, 1, ONE), FORM),
-                        new RuleReasons.Placed(new SourcePos(10, 1, ANOTHER), DOMAIN))),
+                        placed(new SourcePos(5, 1, ONE), FORM),
+                        placed(new SourcePos(10, 1, ANOTHER), DOMAIN))),
                 "nothing an author did says which file comes first");
     }
 
@@ -100,11 +100,11 @@ class OnlyPlacesOfOneTextPutReasonsInAnOrderTest {
     @Test
     void whatComesOutOfTwoTextsIsTheSameWhicheverWayRoundTheyWereMet() {
         assertEquals(RuleReasons.from(List.of(
-                        new RuleReasons.Placed(new SourcePos(5, 1, ONE), FORM),
-                        new RuleReasons.Placed(new SourcePos(10, 1, ANOTHER), DOMAIN))).reasons(),
+                        placed(new SourcePos(5, 1, ONE), FORM),
+                        placed(new SourcePos(10, 1, ANOTHER), DOMAIN))).reasons(),
                 RuleReasons.from(List.of(
-                        new RuleReasons.Placed(new SourcePos(10, 1, ANOTHER), DOMAIN),
-                        new RuleReasons.Placed(new SourcePos(5, 1, ONE), FORM))).reasons(),
+                        placed(new SourcePos(10, 1, ANOTHER), DOMAIN),
+                        placed(new SourcePos(5, 1, ONE), FORM))).reasons(),
                 "which text was met first is a fact about this compiler and about no model");
     }
 
@@ -118,5 +118,12 @@ class OnlyPlacesOfOneTextPutReasonsInAnOrderTest {
     /** A place in the one text these are written in. */
     private static SourcePos at(int column) {
         return new SourcePos(1, column, ONE);
+    }
+
+    /** A reason about the whole of its rule, which is what everything here is about: what is asked
+     *  is the order the places put them in. */
+    private static RuleReasons.Placed placed(SourcePos writtenAt,
+                                             BlockReason.RuleReadingStopped reason) {
+        return new RuleReasons.Placed(writtenAt, WhereInTheRule.theRuleItself(), reason);
     }
 }

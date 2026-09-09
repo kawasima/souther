@@ -641,8 +641,10 @@ class WhatEachWayOfDrawingNoLineLeavesIsWrittenDownOnceTest {
         WhatAQuestionStandsOn said = new WhatAQuestionStandsOn(
                 RuleReasons.from(List.of(
                         new RuleReasons.Placed(new SourcePos(1, 1),
+                                WhereInTheRule.theRuleItself(),
                                 new BlockReason.UnreadComparisonDomain()),
                         new RuleReasons.Placed(new SourcePos(1, 9),
+                                WhereInTheRule.theRuleItself(),
                                 new BlockReason.UnreadValueRule()))),
                 Optional.of(new BlockReason.ExactValuesTooCostly()));
 

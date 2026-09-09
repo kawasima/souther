@@ -38,8 +38,8 @@ public final class ReportedReason {
      * projection saying they are one thing to lift, rather than a reader dropping one of them.
      */
     public static SourceOrdered<UndividedPosition.Reason> asWritten(
-            AuthoredOrder<BlockReason.RuleReadingStopped> stopped) {
-        return SourceOrdered.carrying(stopped.map(ReportedReason::of));
+            AuthoredOrder<RuleReasons.Said> stopped) {
+        return SourceOrdered.carrying(stopped.map(each -> of(each.reason())));
     }
 
     /**

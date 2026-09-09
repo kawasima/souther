@@ -11,6 +11,7 @@ import souther.compiler.source.SourceId;
 import souther.compiler.inputs.BlockReason;
 import souther.compiler.inputs.FilingCoordinate;
 import souther.compiler.inputs.RuleReasons;
+import souther.compiler.inputs.WhereInTheRule;
 import souther.compiler.inputs.InputQuestion;
 import souther.compiler.inputs.StandingQuestion;
 import souther.compiler.inputs.TermPath;
@@ -221,7 +222,8 @@ class OneFactIsOneWeakeningHoweverItWasEvidencedTest {
         List<RuleReasons.Placed> written = new ArrayList<>();
         for (int i = 0; i < stopped.length; i++) {
             written.add(new RuleReasons.Placed(
-                    new SourcePos(1, i + 1, new SourceId("one")), stopped[i]));
+                    new SourcePos(1, i + 1, new SourceId("one")),
+                    WhereInTheRule.theRuleItself(), stopped[i]));
         }
         return of(new Weakening.ModelReadingIncomplete(ClosureGap.QuestionUnanswered.of(
                 StandingQuestion.Exact.of(cited,

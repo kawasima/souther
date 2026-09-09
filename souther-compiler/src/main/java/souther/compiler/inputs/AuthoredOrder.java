@@ -1,7 +1,8 @@
 package souther.compiler.inputs;
 
-import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Function;
 
 /**
@@ -42,13 +43,7 @@ public final class AuthoredOrder<T> {
      * counted, and each of them has the source's order in hand where it says it.
      */
     public static <T> AuthoredOrder<T> asWritten(List<? extends T> members) {
-        List<T> out = new ArrayList<>();
-        for (T each : members) {
-            if (!out.contains(each)) {
-                out.add(each);
-            }
-        }
-        return new AuthoredOrder<>(List.copyOf(out));
+        return new AuthoredOrder<>(List.copyOf(new LinkedHashSet<T>(members)));
     }
 
     /** The members that are held, in the order they were written. */
@@ -68,12 +63,9 @@ public final class AuthoredOrder<T> {
      * value: a caller that re-stated it would be stating what it cannot see.
      */
     public <U> AuthoredOrder<U> map(Function<? super T, U> word) {
-        List<U> out = new ArrayList<>();
+        Set<U> out = new LinkedHashSet<>();
         for (T each : written) {
-            U said = word.apply(each);
-            if (!out.contains(said)) {
-                out.add(said);
-            }
+            out.add(word.apply(each));
         }
         return new AuthoredOrder<>(List.copyOf(out));
     }
