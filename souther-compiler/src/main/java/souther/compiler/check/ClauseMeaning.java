@@ -1,6 +1,7 @@
 package souther.compiler.check;
 
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * One clause of a declaration, as what it states rather than as where it is written.
@@ -25,12 +26,34 @@ public sealed interface ClauseMeaning permits ClauseMeaning.Stated, ClauseMeanin
     /** Which clause of which declaration this is, and what a sentence calls it. */
     Clause.Ref ref();
 
-    /** It has a form, and this is what it states. */
-    record Stated(Clause.Ref ref, TermMeaning states) implements ClauseMeaning {
+    /**
+     * It has a form, this is what it states, and these are the fields of its own declaration it
+     * reads.
+     *
+     * <p><b>Which fields, said here rather than worked out from the form.</b> What a construction
+     * has to have filled for the clause to be read at all is a fact about the declaration: the
+     * clause is written on it, and the fields it names are the ones that declaration writes. A
+     * reader that works it out walks a tree of its own to answer a question the declaring module
+     * had already answered, and answers it against whichever bindings its own reading made.
+     *
+     * <p>Named as the declaration writes them, which is why this can be published. A binding is one
+     * reading's way of reaching a field, so two readings of one declaration reach the same field
+     * through two of them and a set of bindings would mean something only to the reading that
+     * built it. The names are the same names in every reading there will ever be.
+     *
+     * @param ref which clause of which declaration this is
+     * @param states what its form says
+     * @param ownFieldsRead the fields of this clause's own declaration that its form reads — not
+     *     the fields it reaches through what that declaration spreads, which are that
+     *     declaration's to publish
+     */
+    record Stated(Clause.Ref ref, TermMeaning states, Set<String> ownFieldsRead)
+            implements ClauseMeaning {
 
         public Stated {
             Objects.requireNonNull(ref, "a clause that states something is some clause");
             Objects.requireNonNull(states, "a clause that has a form states what the form says");
+            ownFieldsRead = Set.copyOf(ownFieldsRead);
         }
     }
 

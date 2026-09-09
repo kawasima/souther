@@ -145,8 +145,9 @@ public sealed interface DeclarationMeaning {
             }
             Clause.Ref clause = Clause.Ref.of(each);
             clauses.add(switch (reading.typed(each.asExpanded(), named)) {
-                case TypedClause.Typed typed ->
-                        new ClauseMeaning.Stated(clause, TermMeaning.of(typed.value()));
+                case TypedClause.Typed typed -> new ClauseMeaning.Stated(clause,
+                        TermMeaning.of(typed.value()),
+                        reading.fieldsRead(typed.value(), named));
                 case TypedClause.Stopped _ -> new ClauseMeaning.Stopped(clause);
             });
         }
