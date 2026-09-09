@@ -93,8 +93,32 @@ public final class Apartness<A> {
      *  on two compiles of one model. */
     private final Set<Edge<A>> edges;
 
+    /**
+     * Whether some pair's ends are one block, read off the pairs where they are taken in.
+     *
+     * <p>Derived and never given. Which pairs a relation holds is what it is, so a relation is
+     * asked this of itself rather than told it — handed in beside the pairs, the two could say
+     * different things and a relation would carry an answer its own pairs refute.
+     *
+     * <p>Worked out here because the answer decides whether anything reads the pairs again. A
+     * reader asking what nothing satisfies is asking about a relation that mostly holds no such
+     * pair, and a relation put together for every pair of two readings' alternatives is put
+     * together often — so the question is answered where the pairs are already being walked, and
+     * costs a reader nothing.
+     */
+    private final boolean holdsABlockApartFromItself;
+
     private Apartness(Set<Edge<A>> edges) {
-        this.edges = Collections.unmodifiableSet(new LinkedHashSet<>(edges));
+        Set<Edge<A>> copied = LinkedHashSet.newLinkedHashSet(edges.size());
+        boolean apartFromItself = false;
+        for (Edge<A> edge : edges) {
+            copied.add(edge);
+            if (edge.isOfOneBlock()) {
+                apartFromItself = true;
+            }
+        }
+        this.edges = Collections.unmodifiableSet(copied);
+        this.holdsABlockApartFromItself = apartFromItself;
     }
 
     /** No two blocks stated to differ, which is what an alternative that read no denial holds. */
@@ -141,9 +165,15 @@ public final class Apartness<A> {
         return Collections.unmodifiableSet(out);
     }
 
-    /** Whether some pair states a block differs from itself, which nothing satisfies. */
-    public boolean holdsABlockApartFromItself() {
-        return edges.stream().anyMatch(Edge::isOfOneBlock);
+    /**
+     * Whether some pair states a block differs from itself, which nothing satisfies.
+     *
+     * <p>For a reader reaching an answer and not writing a proof. What such a reader wants is that
+     * the relation admits nothing, and the blocks it is so of are a second question — asked by
+     * {@link #apartFromThemselves}, which builds the lacks a report is written from.
+     */
+    boolean holdsABlockApartFromItself() {
+        return holdsABlockApartFromItself;
     }
 
     /**
@@ -153,8 +183,17 @@ public final class Apartness<A> {
      * <p>Every one of them. Two blocks each stated to differ from themselves are two lacks about
      * two blocks, and which of them a reader is handed would otherwise be settled by which pair was
      * written first.
+     *
+     * <p><b>And nothing, cheaply, where no pair's ends are one block.</b> Which is why a caller
+     * asking what the relation shows never has to ask first whether it shows anything: a guard
+     * written at a call site is a caller deciding whether a lack is looked for, and a proof that
+     * looked for one kind of witness only where another was absent is a proof that names whichever
+     * was asked about first.
      */
     public Lacks<A> apartFromThemselves() {
+        if (!holdsABlockApartFromItself) {
+            return Lacks.none();
+        }
         List<Shown<A>> out = new ArrayList<>();
         edges.forEach(edge -> {
             if (edge.isOfOneBlock()) {

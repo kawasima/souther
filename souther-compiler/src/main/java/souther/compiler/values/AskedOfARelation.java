@@ -7,8 +7,16 @@ package souther.compiler.values;
  * <p>Beside {@link AskedOfEachBlock} and not instead of it. That one is a question about a block,
  * and every reading below it answers about one block — so a relation between two of them cannot be
  * asked that way, and widening the question until it could would make every reader of a block
- * answer for a pair. This is the other question the same walk is asked, and the walk asks the cheap
- * one first: an alternative some block is already refused at is one no relation has to be read for.
+ * answer for a pair. This is the other question the same walk may ask.
+ *
+ * <p><b>Whether it is asked turns on what the walk is for.</b> A walk reaching an answer may leave
+ * it unread once the blocks have settled the alternative — nothing more is owed about an
+ * alternative already known to admit nothing, and reading the relation first would spend on every
+ * alternative what one question settled ({@link AdmissibleValues#anyAlternativeAdmits}). A walk
+ * writing a refusal asks it whatever the blocks answered: an alternative some block is refused at
+ * may be refused by its relation as well, and both reasons are true of it, so one left unread is a
+ * witness the reader is not handed and which of the two it holds would be the order the questions
+ * were asked in ({@link Refusal#ofAnAlternative}).
  *
  * <p><b>Asked of the whole alternative and answered before the blocks are.</b> A denial is settled
  * against what its blocks are left, and what one is left is not known until everything placing its

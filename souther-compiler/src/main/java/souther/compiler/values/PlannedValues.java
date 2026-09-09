@@ -331,7 +331,7 @@ public sealed interface PlannedValues<A> {
     /**
      * Where one alternative was refused, out of the descriptions alone.
      *
-     * <p>The blocks first and the relation after, as
+     * <p>The blocks and the relation alike, as
      * {@link AdmissibleValues#refusedInEveryAlternativeAt} does. What this side can say of a
      * relation is what needs no values: a block stated to differ from itself is refused by reading
      * the rule, and everything else a denial says waits for the sets.
@@ -342,18 +342,11 @@ public sealed interface PlannedValues<A> {
      */
     private static <A> Refusal<A> refusalIn(PlannedHeld.Alternative<A> box,
                                             AskedOfEachBlock<A> asked) {
-        Set<Sameness.Block<A>> here = new LinkedHashSet<>();
+        Map<Sameness.Block<A>, AdmittedPlan> at = box.at();
         // The block and not its positions — see {@link AdmissibleValues}.
-        box.at().forEach((block, plan) -> {
-            if (askedOf(block, plan, asked).isEmpty()) {
-                here.add(block);
-            }
-        });
-        if (!here.isEmpty()) {
-            return Refusal.atEachOf(here);
-        }
-        Lacks<A> stated = box.apart().apartFromThemselves();
-        return stated.isEmpty() ? Refusal.nowhere() : Refusal.ofThemTogether(stated);
+        return Refusal.ofAnAlternative(at,
+                (block, plan) -> askedOf(block, plan, asked).isEmpty(),
+                WhatARelationShows.statedApart(box.apart()));
     }
 
     /** What one block's description comes to under the question, waiting where a machine would
@@ -428,16 +421,21 @@ public sealed interface PlannedValues<A> {
     }
 
     /**
-     * The blocks of more than one position every alternative describes as admitting nothing,
-     * which is what will have emptied the reading if nothing else does.
+     * What every alternative is described as refused by, which is what will have emptied the
+     * reading if nothing else does.
      *
      * <p>Told from the descriptions and without building, which is how far this side of
      * {@link #resolve} can go: a plan settled at nothing is settled, and a plan nobody has worked
-     * out says neither way. Which is enough for the two facts this proof rests on — that a value
-     * several positions share has none, and that each of them has something on its own.
+     * out says neither way. What a denial says needs no plan at all where its two ends are one
+     * block, so that much of the relation is read here beside the blocks rather than after them.
      *
      * <p>Every alternative and not one of them, the same way a dead choice is put together: a
      * block one alternative is left nothing at is one another may stand at.
+     *
+     * <p>Less what a position answers for itself, this being the reading's own proof rather than
+     * what refused an alternative — see {@link Refusal#withoutWhatAPositionAnswers}. Taken once
+     * the alternatives have been put together, since a witness every one of them shows is one the
+     * reading shows whether or not the reading is the place to keep it.
      */
     default Refusal<A> refusedBy() {
         if (!(this instanceof Settled<A> it
@@ -446,19 +444,17 @@ public sealed interface PlannedValues<A> {
         }
         Refusal<A> everywhere = null;
         for (PlannedHeld.Alternative<A> box : boxes.boxes()) {
-            Set<Sameness.Block<A>> here = new LinkedHashSet<>();
-            box.at().forEach((block, plan) -> {
-                if (!block.isOne() && plan instanceof AdmittedPlan.Nothing) {
-                    here.add(block);
-                }
-            });
-            Refusal<A> said = Refusal.atEachOf(here);
+            Map<Sameness.Block<A>, AdmittedPlan> at = box.at();
+            Refusal<A> said = Refusal.ofAnAlternative(at,
+                    (_, plan) -> plan instanceof AdmittedPlan.Nothing,
+                    WhatARelationShows.statedApart(box.apart()));
             everywhere = everywhere == null ? said : Refusal.shownByBoth(everywhere, said);
             if (everywhere.isNowhere()) {
                 return Refusal.nowhere();
             }
         }
-        return everywhere == null ? Refusal.nowhere() : everywhere;
+        return everywhere == null ? Refusal.nowhere()
+                : everywhere.withoutWhatAPositionAnswers();
     }
 
 
