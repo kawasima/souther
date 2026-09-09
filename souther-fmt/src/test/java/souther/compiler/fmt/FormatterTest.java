@@ -7,6 +7,7 @@ import souther.compiler.cst.SyntaxKind;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import souther.test.RepositoryLayout;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -30,22 +31,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class FormatterTest {
 
-    static Stream<Path> corpus() throws IOException {
-        // The bundled prelude, named where the compiler keeps it rather than where this module
-        // happens to stand. A root that is skipped for not being there takes its sources out of the
-        // sweep and leaves the rows that remain passing, so a missing one is said instead.
-        List<Path> roots = List.of(
-                Path.of("..", "souther-compiler", "src", "main", "resources", "souther"));
-        List<Path> sources = new ArrayList<>();
-        for (Path root : roots) {
-            if (!Files.isDirectory(root)) {
-                throw new IOException("the corpus root " + root.toAbsolutePath() + " is not there");
-            }
-            try (Stream<Path> walk = Files.walk(root)) {
-                walk.filter(p -> p.toString().endsWith(".sou")).forEach(sources::add);
-            }
-        }
-        return sources.stream();
+    /** The bundled prelude, asked for rather than found: a corpus that is not there refuses where
+     *  it is handed out, and does so the same way for every check that sweeps it. */
+    static Stream<Path> corpus() {
+        return RepositoryLayout.ofWorkingDirectory().preludeSources().stream();
     }
 
     private static String read(Path p) {

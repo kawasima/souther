@@ -8,6 +8,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -91,6 +92,64 @@ class TheRepositoryIsReadTheWayTheReactorReadsItTest {
                 "the module is there");
         assertFalse(withMainJava.contains("souther-program-api-test"),
                 "and it contributes no main sources: " + withMainJava);
+    }
+
+    /**
+     * A module is reached by the name the root pom gives it, and by no other.
+     *
+     * <p>What a check reaching another module's files says. A name the reactor does not have is
+     * refused rather than resolved, so a module renamed out from under a check stops it instead of
+     * handing it a directory that is not there.
+     */
+    @Test
+    void aModuleIsFoundByTheNameTheRootPomGivesIt() {
+        for (Path module : REPOSITORY.modules()) {
+            assertEquals(module, REPOSITORY.moduleNamed(module.getFileName().toString()));
+        }
+        assertThrows(IllegalArgumentException.class,
+                () -> REPOSITORY.moduleNamed("souther-there-is-no-such-module"));
+    }
+
+    /**
+     * The default library is a population, and it is narrower than every source here.
+     *
+     * <p>Narrower is the whole of what makes it an answer: the models written to ask one question
+     * are Souther sources too, and a check about the library that swept those would be holding the
+     * library's properties over somebody's example.
+     */
+    @Test
+    void theDefaultLibraryIsWhatTheCompilerShips() {
+        List<Path> prelude = REPOSITORY.preludeSources();
+        assertFalse(prelude.isEmpty(), "this repository ships a default library");
+        assertEquals(prelude.stream().sorted().toList(), prelude, "sorted, so a sweep is ordered");
+        Path resources = REPOSITORY.moduleNamed("souther-compiler")
+                .resolve("src").resolve("main").resolve("resources");
+        for (Path source : prelude) {
+            assertTrue(source.isAbsolute(), source + " is where it is, not where somebody stands");
+            assertTrue(source.startsWith(resources), source + " is a resource the compiler ships");
+            assertTrue(source.getFileName().toString().endsWith(".sou"), source.toString());
+        }
+        List<Path> everySource = REPOSITORY.southerSources();
+        assertTrue(everySource.containsAll(prelude), "the library is among the sources held here");
+        assertTrue(everySource.size() > prelude.size(),
+                "and the sources written to ask one question are not the library");
+    }
+
+    /**
+     * And one of them is asked for by the name the library gives it.
+     *
+     * <p>Taken from the population rather than built from the same steps a second time, so what
+     * comes back is one of the sources swept above and not a path that would be one if it were
+     * there.
+     */
+    @Test
+    void andOneOfThemIsAskedForByName() {
+        for (Path source : REPOSITORY.preludeSources()) {
+            String name = source.getFileName().toString();
+            assertEquals(source, REPOSITORY.preludeSourceOf(name.substring(0, name.length() - 4)));
+        }
+        assertThrows(IllegalArgumentException.class,
+                () -> REPOSITORY.preludeSourceOf("there-is-no-such-module"));
     }
 
     /**
