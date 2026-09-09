@@ -5,18 +5,21 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * What a walk over a reading that is still a description has to reach before it answers.
+ * What a walk over a reading that is still a description may answer from.
  *
  * <p>An alternative stands where every block of it still admits something, and the reading stands
- * where any alternative does. The walk stops as soon as one of those is decided, which is a
- * question about the operation it is walking under and not about the answer it is holding: stopped
- * on the wrong one, it answers about the blocks it had reached and calls that the reading's answer.
+ * where any alternative does. The walk takes them in one at a time and stops as soon as what it is
+ * holding cannot be moved, so what it read is the blocks up to that one and no further — and it may
+ * answer from those only because they settled the walk, which is a question about the operation it
+ * is walking under and not about the answer it is holding. Stopped on the other operation's
+ * question, it answers from a run of blocks that settled nothing.
  *
- * <p>Both orders of each, because what a walk reaches first is the order the blocks of an
- * alternative and the alternatives of a reading happen to be in, and neither order is anybody's
- * claim. A reading written the other way round is the same reading.
+ * <p>So what is asked of these is not how much they read. It is that the answer is the same wherever
+ * in the order the block or the alternative that settles it happens to fall: the blocks of an
+ * alternative are named in the order an author wrote the rules, the alternatives of a choice in the
+ * order the branches were written, and a reading written the other way round is the same reading.
  */
-class EveryBlockOfAnAlternativeIsAskedAndEveryAlternativeOfAReadingTest {
+class APlannedReadingAnswersTheSameInEitherIterationOrderTest {
 
     private static final Value A = Value.text("A");
 
@@ -48,22 +51,22 @@ class EveryBlockOfAnAlternativeIsAskedAndEveryAlternativeOfAReadingTest {
     }
 
     @Test
-    void anAlternativeIsAskedAboutAtEveryBlockItNames() {
+    void anAlternativeIsRefusedByAnyBlockInEitherOrder() {
         assertEquals(Emptiness.EMPTY,
                 plans("here", A).meet(plans("there", B)).anyAlternativeAdmits(admitting(HERE)),
-                "an alternative holding a block nothing admits at stands for nothing, however many"
-                        + " of its blocks were answered before that one was reached");
+                "an alternative holding a block nothing admits at stands for nothing, whether that"
+                        + " block was the one the walk reached first or the one it reached last");
         assertEquals(Emptiness.EMPTY,
                 plans("there", B).meet(plans("here", A)).anyAlternativeAdmits(admitting(HERE)));
     }
 
     @Test
-    void andAReadingIsAskedAboutAtEveryAlternativeItHolds() {
+    void andAReadingAdmitsWhenAnyAlternativeDoesInEitherOrder() {
         assertEquals(Emptiness.NONEMPTY,
                 alternative(A, B).joinLiveApart(alternative(C, C))
                         .anyAlternativeAdmits(admittingWhatIsPlanned(C)),
-                "and a reading one alternative of which stands admits something, however many"
-                        + " alternatives were refused before that one was reached");
+                "and a reading one alternative of which stands admits something, whether the"
+                        + " alternatives refused were written before that one or after it");
         assertEquals(Emptiness.NONEMPTY,
                 alternative(C, C).joinLiveApart(alternative(A, B))
                         .anyAlternativeAdmits(admittingWhatIsPlanned(C)));

@@ -52,7 +52,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * <p><b>Three rules and not one, because they are three claims.</b> The widest names every nest
  * that touches a settled answer at all — said as a constant, or asked of one through the operations
  * that observe and compose settledness, since {@code a.joined(b)} carries a positive answer onwards
- * without spelling one. Inside it is who may make the positive answer. Inside that is the one the
+ * without spelling one. Inside it is who may decide the positive answer. Inside that is the one the
  * contract is about: which nests outside the readings themselves say it.
  *
  * <p><b>What these rules do not say.</b> They fix who may name a settled answer, and not who may
@@ -410,13 +410,19 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
                     + "Lsouther/compiler/values/StringMachineAnswers;)"
                     + "Lsouther/compiler/check/Confinement$Admission;", WHAT_AN_ANSWER_IS_WORTH));
 
-    /** Putting several answers together: the operations that compose two, and the ones a walk over
-     *  many asks about the operation it is walking under. */
-    private static final Set<String> COMPOSES = Set.of("met", "joined",
-            "identityForMeet", "identityForJoin", "endsAMeet", "endsAJoin");
+    /** The operations that make one of these answers out of two. Where a walk starts and where it
+     *  stops are questions asked about an operation and answer for none of it, so a place that asks
+     *  them and composes nothing is not composing. */
+    private static final Set<String> COMPOSES = Set.of("met", "joined");
 
     /**
-     * And the readings that put several of these answers together.
+     * And the readings that make one of these answers out of several.
+     *
+     * <p>Out of several and into one of them, which is not every way two are read together:
+     * {@link Emptiness.SidesShownEmpty} takes two and answers which of them were shown empty, and
+     * what comes back is an observation for a connective to value rather than an answer about a
+     * position. A reading of that is a reading of the classification, and this is about the
+     * arithmetic.
      *
      * <p>Three of them walk, and one shape between the three: an alternative stands where every
      * block of it does, and a reading stands where any alternative does. Each starts where the
@@ -505,13 +511,13 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
     }
 
     @Test
-    void andTheseAreTheReadingsThatPutSeveralOfThemTogether() {
+    void andTheseAreTheReadingsThatMakeOneOfThemOutOfSeveral() {
         assertEquals(COMPOSES_SEVERAL_ANSWERS,
                 placesSaying(saidInProduction(), use -> COMPOSES.contains(use.said())),
                 "a walk that takes these answers in one at a time answers about a set with a walk"
                         + " over one order of it, and stops on reaching what the operation cannot be"
-                        + " moved from: a reading arriving here is one composing several answers,"
-                        + " and what says it may is where the operations are written");
+                        + " moved from: a reading arriving here is one answering out of several"
+                        + " answers, and what says it may is where the operations are written");
     }
 
     /**

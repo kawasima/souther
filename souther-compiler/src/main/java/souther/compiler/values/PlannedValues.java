@@ -282,9 +282,12 @@ public sealed interface PlannedValues<A> {
                         // Said of the alternative that holds them and not of the reading, which is
                         // the grain the question is asked at — an alternative beside one carrying a
                         // denial stands on its own rules.
+                        //
+                        // And held together with what the blocks came to, since an alternative
+                        // stands where its blocks and its denials both leave it standing.
                         if (!stands.endsAMeet() && !box.apart().isEmpty()) {
-                            stands = box.apart().holdsABlockApartFromItself()
-                                    ? Emptiness.EMPTY : Emptiness.UNDECIDED;
+                            stands = stands.met(box.apart().holdsABlockApartFromItself()
+                                    ? Emptiness.EMPTY : Emptiness.UNDECIDED);
                         }
                         any = any.joined(stands);
                         if (any.endsAJoin()) {
