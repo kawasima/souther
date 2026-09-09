@@ -30,9 +30,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * detector, and no reading of the register could tell which. So the scenarios are the axis and the
  * detectors are applied across all of it.
  *
- * <p>The scenarios are two because an answer is two things. {@code Answer} is what a question came
- * to and what the compile said getting there, and {@code Db} compares both — so a corpus of models
- * nothing is said about exercises one half of every answer in the store.
+ * <p>An answer is two things: what a question came to and what the compile said getting there, and
+ * {@code Db} compares both. So each scenario holds a model with a mistake in it. Over a model
+ * nothing is said about, the reports half of every answer in the store is empty, and a scenario
+ * made of those exercises one half of everything it reaches.
  */
 @Tag("population")
 class EverythingAnAnswerHoldsMeansSomethingTest {
@@ -68,7 +69,7 @@ class EverythingAnAnswerHoldsMeansSomethingTest {
     private static List<Db> storesOf(AnswerClosure.Scenario scenario) {
         List<Db> out = new ArrayList<>();
         switch (scenario) {
-            case VALID_CORPUS -> ConformanceCorpus.all()
+            case THE_CORPORA -> ConformanceCorpus.all()
                     .forEach(corpus -> out.add(corpus.analyse().compilation().db()));
             case A_MODULE_SPOKEN_ABOUT -> {
                 Compilation compilation = Compilation.ofSource(SPOKEN_ABOUT, "Main");

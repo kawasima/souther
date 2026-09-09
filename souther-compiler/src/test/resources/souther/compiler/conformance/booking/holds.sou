@@ -1,0 +1,13 @@
+// A value built that its own rule rejects, which is what a report naming the clause it fails is
+// written about.
+module conformance.holds exposing ( Hold, hold )
+
+data Hold = Int
+    invariant value >= 1 && value <= 300
+
+// A hold for a party that has chosen no seat yet, written as zero. Zero is not a seat: the
+// invariant admits nothing below one, and this is the construction it rejects.
+behavior hold : (party: Int) -> Hold
+    constructs Hold
+
+let hold (party) = Hold(0)

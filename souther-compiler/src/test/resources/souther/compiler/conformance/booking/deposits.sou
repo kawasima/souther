@@ -1,0 +1,7 @@
+// A rule with nothing left to hold, which is what a report pointing at the declaration itself is
+// written about.
+module conformance.deposits exposing ( Deposit )
+
+// The bounds are the wrong way round, so nothing is left for the position to hold.
+data Deposit = Decimal
+    invariant value >= 50.00m && value <= 10.00m
