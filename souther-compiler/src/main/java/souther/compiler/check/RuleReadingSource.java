@@ -31,6 +31,11 @@ package souther.compiler.check;
  *
  * @param symbols    the module's resolved scope
  * @param invariants where a declaration's clauses in the representation this reads are answered from
+ * @param states     where what each of those clauses states is answered from, which is the
+ *                   declaration that wrote it. Beside {@code invariants} and not inside it: which
+ *                   clauses a declaration has is a question about the declaration, and what one of
+ *                   them states is a question about the clause — and the first is asked of a walk
+ *                   that reaches spreads while the second is asked of whoever wrote the clause
  * @param written    where a clause of a declaration is written, for the sentences this reading
  *                   produces that point at one. Beside {@code invariants} and not inside it: what a
  *                   clause states is what the reading is built on, and where it is written is what
@@ -39,20 +44,22 @@ package souther.compiler.check;
  * @param origin     which source this is, for a reader telling two of them apart
  */
 public record RuleReadingSource(Symbols symbols, ExpandedClauseLookup invariants,
-                                ClauseLocations written, Origin origin) {
+                                ClauseMeanings states, ClauseLocations written, Origin origin) {
 
     public RuleReadingSource {
-        if (symbols == null || invariants == null || written == null || origin == null) {
+        if (symbols == null || invariants == null || states == null || written == null
+                || origin == null) {
             throw new IllegalArgumentException(
                     "reading a declaration's rules takes a scope, somewhere to read clauses from,"
-                            + " somewhere to read where one is written, and which source that is");
+                            + " somewhere to read what one states, somewhere to read where one is"
+                            + " written, and which source that is");
         }
     }
 
     /** A source made for a reading of its own, which nobody else can name. */
     public RuleReadingSource(Symbols symbols, ExpandedClauseLookup invariants,
-                             ClauseLocations written) {
-        this(symbols, invariants, written, AReadingOfItsOwn.next());
+                             ClauseMeanings states, ClauseLocations written) {
+        this(symbols, invariants, states, written, AReadingOfItsOwn.next());
     }
 
     /**

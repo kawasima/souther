@@ -43,8 +43,9 @@ class WhatANameIsAboutIsWhatItWasGivenIsAboutTest {
     private final Hir.Binders binders = new Hir.Binders(OWNER);
     private final PathEngine engine =
             new PathEngine(Symbols.none(DefaultStdlib.get()),
-                RuleReadings.noClauseFiled(), ClauseLocations.NONE, DeclarationReadings.NONE,
-                Terms.Of.THE_DISCHARGE_TREE, souther.compiler.query.ReadAs.THE_COMPILATION_DOES);
+                RuleReadings.noClauseFiled(), ClauseMeanings.NONE, ClauseLocations.NONE,
+                DeclarationReadings.NONE, Terms.Of.THE_DISCHARGE_TREE,
+                souther.compiler.query.ReadAs.THE_COMPILATION_DOES);
 
     @Test
     void aNameGivenAPlaceIsAboutThatPlace() {

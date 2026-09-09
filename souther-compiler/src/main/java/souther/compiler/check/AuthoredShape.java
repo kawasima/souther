@@ -48,19 +48,20 @@ public sealed interface AuthoredShape {
     }
 
     /**
-     * Each part of the clause with the subtree of {@code read} it was read into, as a part of
-     * {@code rule}.
+     * The same shape as a reader anywhere may hold it: which rules there are and how they are
+     * joined, and none of what says where they stand.
      *
-     * <p>{@code read} is what the whole clause came to, and every part of it is a subtree of that
-     * one reading — not a tree of its own read alongside it. What a clause states is read as one
-     * thing (a rule's conjuncts meet inside that reading, and a choice one of them rules out is
-     * ruled out there), and what an author is answerable for is the parts; both come out of the one
-     * reading, which is why this recovers them from it rather than reading them apart.
+     * <p>What is left behind is the node each part was written as, which is what makes this shape
+     * unpublishable as it is — a node says where it stands, so a declaration moved down its file
+     * would hand a reader parts that had changed. The expansion needs those nodes and is here;
+     * every reader that only has to find the parts again in a tree it read takes this.
      */
-    default List<Clauses.StatedPart> onto(ClauseExpr read, RuleRef.Invariant rule) {
-        List<Clauses.StatedPart> out = new ArrayList<>();
-        found(read, rule, out);
-        return List.copyOf(out);
+    default ClauseMeaning.Parts asWritten(RuleRef.Invariant rule) {
+        return switch (this) {
+            case One it -> new ClauseMeaning.Parts.One(it.part().idFor(rule));
+            case Both it -> new ClauseMeaning.Parts.Both(it.left().asWritten(rule),
+                    it.right().asWritten(rule));
+        };
     }
 
     /**
@@ -84,7 +85,7 @@ public sealed interface AuthoredShape {
      * Each part of the clause with the subtree of the expanded {@code read} it became, as a part of
      * {@code rule}.
      *
-     * <p>The same recovery {@link #onto(ClauseExpr, RuleRef.Invariant)} does of a reading, done of
+     * <p>The same recovery {@link ClauseMeaning.Parts#onto(ClauseExpr)} does of a reading, done of
      * the tree an expansion left. What a helper's body joined stands under a binding there, so a
      * reader splitting that tree for itself would find parts this shape never issued — which is
      * why the shape drives the descent here as well.
@@ -110,22 +111,4 @@ public sealed interface AuthoredShape {
         }
     }
 
-    private void found(ClauseExpr read, RuleRef.Invariant rule, List<Clauses.StatedPart> out) {
-        switch (this) {
-            case One it -> out.add(new Clauses.StatedPart(it.part().idFor(rule), read));
-            case Both it -> {
-                // The author wrote two rules here, so what they were read into has two sides. Asked
-                // of the tree instead — whether this node joins two conditions — this would be a
-                // second reading of what a clause is made of, and the reading it agreed with until
-                // somebody changed one of them.
-                if (!(read instanceof ClauseExpr.Joined joined)) {
-                    throw new IllegalStateException("an author wrote two rules where this reading"
-                            + " has one " + read.getClass().getSimpleName() + ", so the clause was"
-                            + " read into a shape it was not written in");
-                }
-                it.left().found(joined.left(), rule, out);
-                it.right().found(joined.right(), rule, out);
-            }
-        }
-    }
 }

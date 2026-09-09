@@ -89,6 +89,37 @@ public final class TermMeaning {
         return predicates.assumed(term, at, decidesFalse);
     }
 
+    /**
+     * The term, for the one reader that reads a declaration's clauses into the state the discharge
+     * is made of ({@link Clauses}).
+     *
+     * <p><b>Not an unwrapping, and named so that it cannot be read as one.</b> What this type keeps
+     * from a reader is the ability to observe a term it was handed as an answer: two of these
+     * compare equal while holding terms written at different places, so anything read off the term
+     * and published would be a fact about which of two equal answers a store happened to keep.
+     * Nothing about holding the term inside one reading is that.
+     *
+     * <p><b>What is held here, and what is not.</b> One ledger says who may call this
+     * ({@code WhoMayReadTheTermOfAReadingTest}), and that is all it says: the term this hands back
+     * is a {@link Core}, and the reading it goes into passes trees of its own down to everything
+     * below it. So the caller written down there is where the term <em>enters</em> the reading and
+     * not the last place it can be seen — a reader below that one holds a tree like any other and
+     * could read a place off it.
+     *
+     * <p>What holds the rest is not a ledger. It is that nothing the reading publishes carries a
+     * tree or a place: what a body is checked against comes back as what the clauses state, and
+     * where a clause is written is asked of the thing that says where a clause is written
+     * ({@link ClauseLocations}). That is a fact about answers rather than about calls, so it is
+     * held by asking the answers — a reading of one source is the same reading whichever compile
+     * built the terms it was told about
+     * ({@code AClauseReadsTheSameWhicheverCompileBuiltTheTermTest}), and what a module publishes
+     * about a declaration does not move when the declaration only moves
+     * ({@code AnInputsReadingDoesNotDependOnWhichCompileBuiltItTest}).
+     */
+    Core termForClauseReading() {
+        return term;
+    }
+
     @Override
     public boolean equals(Object other) {
         return other instanceof TermMeaning it

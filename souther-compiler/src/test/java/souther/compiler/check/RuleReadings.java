@@ -42,7 +42,8 @@ public final class RuleReadings {
      *  about a declaration is asking for a reading this never had, and it answers that nothing
      *  declares one rather than the tree the declaration happens to carry. */
     public static RuleReadingSource ofNoClauseFiled(Symbols symbols) {
-        return new RuleReadingSource(symbols, noClauseFiled(), ClauseLocations.NONE);
+        return new RuleReadingSource(symbols, noClauseFiled(), ClauseMeanings.NONE,
+                ClauseLocations.NONE);
     }
 
     /** Where a reading with nothing expanded anywhere gets its clauses. */
@@ -79,6 +80,6 @@ public final class RuleReadings {
     static Terms termsOfNoClauseFiled(Symbols symbols, ReadingPolicy policy) {
         return new Terms(symbols, Terms.Of.THE_DISCHARGE_TREE, policy,
                 new Clauses(symbols, noClauseFiled(), ClauseLocations.NONE,
-                        DeclarationReadings.NONE));
+                        DeclarationReadings.NONE, ClauseMeanings.NONE));
     }
 }

@@ -1,5 +1,7 @@
 package souther.compiler.check;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
@@ -50,14 +52,85 @@ public sealed interface ClauseMeaning permits ClauseMeaning.Stated, ClauseMeanin
      * @param states what its form says
      * @param fieldsRead the fields of the declaration's value that its form reads, including the
      *     ones reached through what the declaration spreads
+     * @param parts the rules its author wrote it as, and how they are joined
      */
-    record Stated(Clause.Ref ref, TermMeaning states, Set<String> fieldsRead)
+    record Stated(Clause.Ref ref, TermMeaning states, Set<String> fieldsRead, Parts parts)
             implements ClauseMeaning {
 
         public Stated {
             Objects.requireNonNull(ref, "a clause that states something is some clause");
             Objects.requireNonNull(states, "a clause that has a form states what the form says");
+            Objects.requireNonNull(parts, "a clause is written as some rules");
             fieldsRead = Set.copyOf(fieldsRead);
+        }
+    }
+
+    /**
+     * The rules an author wrote a clause as, and how they are joined.
+     *
+     * <p>Which parts a clause has is settled where the clause is split ({@link ClauseHelpers}) and
+     * is published because every reading of the clause needs it: a reader that recovered the parts
+     * from a tree it typed would be a second answer to how many there are, and two answers to that
+     * is what numbering a clause in two walks came to.
+     *
+     * <p>The shape and the ordinals, and nothing an author wrote. What the split also holds is the
+     * node each part was written as ({@link AuthoredShape}), which the expansion needs and which no
+     * reader across a boundary may have — a node says where it stands, so a declaration moved down
+     * its file would publish parts that had changed.
+     */
+    sealed interface Parts permits Parts.Both, Parts.One {
+
+        /** Two rules, written as one clause. */
+        record Both(Parts left, Parts right) implements Parts {
+
+            public Both {
+                Objects.requireNonNull(left, "a clause of two rules has a left");
+                Objects.requireNonNull(right, "a clause of two rules has a right");
+            }
+        }
+
+        /**
+         * One rule, written as itself, under the name the split that found it issued.
+         *
+         * <p>The name and not the number it holds. A part is named where the clause was split
+         * ({@code ClauseHelpers.AuthoredPart#idFor}), which is the one place that may put a number
+         * beside a rule; carried as a number here, every reader that wanted the name would be
+         * putting one beside whichever rule it happened to be holding.
+         */
+        record One(PartId<RuleRef.Invariant> id) implements Parts {
+
+            public One {
+                Objects.requireNonNull(id, "a rule an author wrote is some part of a clause");
+            }
+        }
+
+        /**
+         * Each part with the subtree of {@code read} it was read into.
+         *
+         * <p>{@code read} is what the whole clause came to, and every part of it is a subtree of
+         * that one reading rather than a tree read alongside it. It says where to go and never
+         * asks: where the author wrote two rules the reading has two sides, and a reading that has
+         * one there is this compiler disagreeing with itself.
+         */
+        default List<Clauses.StatedPart> onto(ClauseExpr read) {
+            List<Clauses.StatedPart> out = new ArrayList<>();
+            found(read, out);
+            return List.copyOf(out);
+        }
+
+        private void found(ClauseExpr read, List<Clauses.StatedPart> out) {
+            switch (this) {
+                case One it -> out.add(new Clauses.StatedPart(it.id(), read));
+                case Both it -> {
+                    if (!(read instanceof ClauseExpr.Joined joined)) {
+                        throw new IllegalStateException("an author wrote two rules where this"
+                                + " reading has one " + read.getClass().getSimpleName() + ", so the"
+                                + " clause was read into a shape it was not written in");
+                    }
+                    it.left().found(joined.left(), out);
+                    it.right().found(joined.right(), out);
+                }
+            }
         }
     }
 

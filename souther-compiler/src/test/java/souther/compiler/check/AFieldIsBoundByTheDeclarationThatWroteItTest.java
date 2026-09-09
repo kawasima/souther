@@ -11,6 +11,7 @@ import souther.compiler.diag.Severity;
 import souther.compiler.meta.ModulePath;
 import souther.compiler.query.Compilation;
 import souther.compiler.query.Names;
+import souther.compiler.query.Shapes;
 import souther.compiler.types.BindingId;
 import souther.compiler.types.BindingOwner;
 import souther.compiler.types.TypeKey;
@@ -97,7 +98,7 @@ class AFieldIsBoundByTheDeclarationThatWroteItTest {
     private static Clauses readBy(Compilation c, String reading) {
         return new Clauses(Scopes.resolved(c.db(), reading).value(),
                 RuleReadings.declaredBy(c.db(), reading), ClauseLocations.NONE,
-                DeclarationReadings.NONE);
+                DeclarationReadings.NONE, Shapes.clauseMeanings(c.db()));
     }
 
     /**

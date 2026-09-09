@@ -71,16 +71,16 @@ final class PathEngine {
     /** What each behavior a body may call states about its answer, by the name it is called under. */
     private final Map<ValueName.Behavior, AssumedContract> contracts;
 
-    PathEngine(Symbols symbols, ExpandedClauseLookup dischargeInvariants, ClauseLocations written,
-               DeclarationReadings machines, ReadingPolicy policy) {
-        this(symbols, dischargeInvariants, written, machines, Map.of(),
+    PathEngine(Symbols symbols, ExpandedClauseLookup dischargeInvariants, ClauseMeanings states,
+               ClauseLocations written, DeclarationReadings machines, ReadingPolicy policy) {
+        this(symbols, dischargeInvariants, states, written, machines, Map.of(),
                 Terms.Of.THE_DISCHARGE_TREE, policy);
     }
 
-    PathEngine(Symbols symbols, ExpandedClauseLookup dischargeInvariants, ClauseLocations written,
-               DeclarationReadings machines, Map<ValueName.Behavior, AssumedContract> contracts,
-               ReadingPolicy policy) {
-        this(symbols, dischargeInvariants, written, machines, contracts,
+    PathEngine(Symbols symbols, ExpandedClauseLookup dischargeInvariants, ClauseMeanings states,
+               ClauseLocations written, DeclarationReadings machines,
+               Map<ValueName.Behavior, AssumedContract> contracts, ReadingPolicy policy) {
+        this(symbols, dischargeInvariants, states, written, machines, contracts,
                 Terms.Of.THE_DISCHARGE_TREE, policy);
     }
 
@@ -92,16 +92,18 @@ final class PathEngine {
      * recorded the fold as a shape this compiler has no term for would be answering about the
      * representation under the name of a gap.
      */
-    PathEngine(Symbols symbols, ExpandedClauseLookup dischargeInvariants, ClauseLocations written,
-               DeclarationReadings machines, Terms.Of reading, ReadingPolicy policy) {
-        this(symbols, dischargeInvariants, written, machines, Map.of(), reading, policy);
+    PathEngine(Symbols symbols, ExpandedClauseLookup dischargeInvariants, ClauseMeanings states,
+               ClauseLocations written, DeclarationReadings machines, Terms.Of reading,
+               ReadingPolicy policy) {
+        this(symbols, dischargeInvariants, states, written, machines, Map.of(), reading, policy);
     }
 
-    PathEngine(Symbols symbols, ExpandedClauseLookup dischargeInvariants, ClauseLocations written,
-               DeclarationReadings machines, Map<ValueName.Behavior, AssumedContract> contracts,
+    PathEngine(Symbols symbols, ExpandedClauseLookup dischargeInvariants, ClauseMeanings states,
+               ClauseLocations written, DeclarationReadings machines,
+               Map<ValueName.Behavior, AssumedContract> contracts,
                Terms.Of reading, ReadingPolicy policy) {
         this.symbols = symbols;
-        this.clauses = new Clauses(symbols, dischargeInvariants, written, machines);
+        this.clauses = new Clauses(symbols, dischargeInvariants, written, machines, states);
         this.terms = new Terms(symbols, reading, policy, clauses);
         this.predicates = terms.predicates();
         this.guarantees = terms.guarantees();

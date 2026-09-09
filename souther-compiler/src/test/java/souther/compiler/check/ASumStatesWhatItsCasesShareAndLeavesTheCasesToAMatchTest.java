@@ -76,8 +76,8 @@ class ASumStatesWhatItsCasesShareAndLeavesTheCasesToAMatchTest {
 
     private final Symbols symbols = rules.symbols();
 
-    private final PathEngine engine = new PathEngine(symbols, rules.invariants(), rules.written(),
-            DeclarationReadings.NONE,
+    private final PathEngine engine = new PathEngine(symbols, rules.invariants(), rules.states(),
+            rules.written(), DeclarationReadings.NONE,
             Terms.Of.THE_DISCHARGE_TREE, souther.compiler.query.ReadAs.THE_COMPILATION_DOES);
 
     private final GuaranteeWalk walk = new GuaranteeWalk(engine.guarantees(), symbols);

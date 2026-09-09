@@ -52,7 +52,7 @@ public sealed interface DeclarationMeaning {
     public static DeclarationMeaning of(Hir.Def declared, RuleReadingSource source,
                                         DeclarationReadings machines) {
         return of(declared, new Clauses(source.symbols(), source.invariants(), source.written(),
-                machines));
+                machines, ClauseMeanings.THE_ONE_THAT_MAKES_THEM));
     }
 
     /**
@@ -147,7 +147,8 @@ public sealed interface DeclarationMeaning {
             clauses.add(switch (reading.typed(each.asExpanded(), named)) {
                 case TypedClause.Typed typed -> new ClauseMeaning.Stated(clause,
                         TermMeaning.of(typed.value()),
-                        reading.fieldsRead(typed.value(), named));
+                        reading.fieldsRead(typed.value(), named),
+                        each.shape().asWritten(new RuleRef.Invariant(clause)));
                 case TypedClause.Stopped _ -> new ClauseMeaning.Stopped(clause);
             });
         }

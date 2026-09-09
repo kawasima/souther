@@ -208,8 +208,8 @@ public final class PathReachability {
             return Answers.NONE;
         }
         PathEngine engine =
-                new PathEngine(source.symbols(), source.invariants(), source.written(),
-                        DeclarationReadings.NONE,
+                new PathEngine(source.symbols(), source.invariants(), source.states(),
+                        source.written(), DeclarationReadings.NONE,
                         Terms.Of.THE_TREE_THAT_RUNS, policy);
         Map<ControlPointId, Reachability> out = new LinkedHashMap<>();
         Map<ConstructOccurrence,
