@@ -68,8 +68,7 @@ class ARenamedParameterDoesNotReachWhatCrossesTheBoundaryTest {
     }
 
     private static Map<String, Sig> boundaries(Compilation compilation) {
-        Map<String, Sig> crossing =
-                compilation.db().ask(new Bodies.DeclaredBoundaries("m.a")).value();
+        Map<String, Sig> crossing = compilation.db().ask(new Bodies.Signatures("m.a")).value();
         assertNotNull(crossing, "the module under test compiles");
         return crossing;
     }

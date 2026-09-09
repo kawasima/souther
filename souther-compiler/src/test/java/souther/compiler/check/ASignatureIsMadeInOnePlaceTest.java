@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import souther.test.RepositoryLayout;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -39,22 +40,30 @@ class ASignatureIsMadeInOnePlaceTest {
     /** Read once: what this asks of it does not change between its checks. */
     private static final RepositoryLayout REPOSITORY = RepositoryLayout.ofWorkingDirectory();
 
+    /** Every main source, with its documentation comments left out, read once for all the calls
+     *  asked about here. Reading the tree per question costs a pass over it per question, and the
+     *  questions are what this grows by. */
+    private static final List<Source> SOURCES = sources();
+
+    /** One source as this reads it: where it is, and what it says outside its comments. */
+    private record Source(Path at, String code) {}
+
     @Test
-    void aWrittenDeclarationIsAdmittedInOnePlace() throws IOException {
+    void aWrittenDeclarationIsAdmittedInOnePlace() {
         assertEquals(List.of("check/SignatureDeclarations.java"),
                 callersOf("SignatureBoundary.of("),
                 "a declaration is admitted by one walk; these admit their own");
     }
 
     @Test
-    void aCompositionsAnswerIsAdmittedInOnePlace() throws IOException {
+    void aCompositionsAnswerIsAdmittedInOnePlace() {
         assertEquals(List.of("check/PipelineSigs.java"),
                 callersOf("SignatureBoundary.composedOutput("),
                 "what a composition answers is admitted where the composition is worked out");
     }
 
     @Test
-    void theQueryThatOwnsTheAnswerIsTheOnlyCaller() throws IOException {
+    void theQueryThatOwnsTheAnswerIsTheOnlyCaller() {
         assertEquals(List.of("query/Bodies.java"), callersOf("SignatureDeclarations.of("),
                 "the query owns the declarations; these ask for a second set");
         assertEquals(List.of("query/Bodies.java"), callersOf("PipelineSigs.signatures("),
@@ -68,18 +77,30 @@ class ASignatureIsMadeInOnePlaceTest {
      * documentation comment reads as the call it describes, so a source is a caller only where the
      * text appears outside one.
      */
-    private static List<String> callersOf(String what) throws IOException {
-        List<Path> sources = REPOSITORY.mainJavaSources();
-        assertFalse(sources.isEmpty(), "found no sources at all — the scan missed the tree");
+    private static List<String> callersOf(String what) {
+        assertFalse(SOURCES.isEmpty(), "found no sources at all — the scan missed the tree");
         List<String> callers = new ArrayList<>();
-        for (Path source : sources) {
-            String text = Files.readString(source, StandardCharsets.UTF_8);
-            if (declares(source, what) || !code(text).contains(what)) {
+        for (Source source : SOURCES) {
+            if (declares(source.at(), what) || !source.code().contains(what)) {
                 continue;
             }
-            callers.add(source.getParent().getFileName() + "/" + source.getFileName());
+            callers.add(source.at().getParent().getFileName() + "/" + source.at().getFileName());
         }
         return callers;
+    }
+
+    /** The tree, read and stripped of its comments. */
+    private static List<Source> sources() {
+        try {
+            List<Source> read = new ArrayList<>();
+            for (Path source : REPOSITORY.mainJavaSources()) {
+                read.add(new Source(source,
+                        code(Files.readString(source, StandardCharsets.UTF_8))));
+            }
+            return List.copyOf(read);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 
     /** Whether this source is the one the call names, which mentions it as its own declaration. */

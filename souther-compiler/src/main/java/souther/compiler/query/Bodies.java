@@ -390,33 +390,6 @@ public final class Bodies {
     }
 
     /**
-     * The same declarations as what crosses their boundaries.
-     *
-     * <p>A step of its own so that renaming a parameter stops here. What a composition routes, what
-     * a codec is derived for and what an emitter writes are questions about shapes, and a reader of
-     * one of those is not made to recompute because a declaration now calls an input something else.
-     * Which readings that rename does reach are the ones that asked {@link DeclaredSignatures},
-     * which is the question a name is an answer to.
-     */
-    public record DeclaredBoundaries(String name) implements Key<Map<String, Sig>> {
-        @Override
-        public String module() {
-            return name;
-        }
-
-        @Override
-        public Answer<Map<String, Sig>> compute(Db db) {
-            Answer<Map<String, DeclaredSig>> declared = db.ask(new DeclaredSignatures(name));
-            if (!declared.present()) {
-                return Answer.absent();
-            }
-            Map<String, Sig> boundaries = new LinkedHashMap<>();
-            declared.value().forEach((behavior, sig) -> boundaries.put(behavior, sig.boundary()));
-            return Answer.of(Ordered.map(boundaries));
-        }
-    }
-
-    /**
      * The signature of every behavior this module can name — its own and the ones it borrows — each
      * under the declaration it belongs to.
      *
@@ -435,15 +408,17 @@ public final class Bodies {
         public Answer<Map<ValueName.Behavior, Sig>> compute(Db db) {
             Answer<InvariantSettled> settling = db.ask(new Shapes.Settling(name));
             Answer<DerivedSymbols> scope = Names.derivedSymbols(db, name);
-            Answer<Map<String, Sig>> declared = db.ask(new DeclaredBoundaries(name));
+            Answer<Map<String, DeclaredSig>> declared = db.ask(new DeclaredSignatures(name));
             Answer<Map<ValueName.Behavior, Sig>> imported = db.ask(new Imported(name));
             if (!settling.present() || !scope.present() || !declared.present()
                     || !imported.present()) {
                 return Answer.absent();
             }
+            Map<String, Sig> boundaries = new LinkedHashMap<>();
+            declared.value().forEach((behavior, sig) -> boundaries.put(behavior, sig.boundary()));
             try {
                 return Answer.of(PipelineSigs.signatures(name, settling.value().behaviors(),
-                        declared.value(), scope.value(), imported.value()));
+                        boundaries, scope.value(), imported.value()));
             } catch (CompileException e) {
                 return Answer.absent(e);
             }

@@ -105,18 +105,26 @@ public final class DeclaredSig {
         return boundary;
     }
 
-    /** Two readings of one declaration are the same when they name the same parameters and admit
-     *  the same shapes. Renaming a parameter changes this and leaves {@link #boundary()} alone,
-     *  which is what keeps a rename from reaching a reader that only ever asked what crosses. */
+    /**
+     * Two readings of one declaration are the same when they name the same parameters, admit the
+     * same shapes and answer the same thing. Renaming a parameter changes this and leaves
+     * {@link #boundary()} alone, which is what keeps a rename from reaching a reader that only ever
+     * asked what crosses.
+     *
+     * <p>The inputs and the answer, rather than the inputs and the whole projection: the shapes the
+     * projection carries are these inputs' own, so comparing both would walk them twice. What the
+     * store does with these is compare them — an answer is recomputed and asked whether it changed
+     * — so the second walk would be paid on every edit that reaches a module.
+     */
     @Override
     public boolean equals(Object other) {
         return other instanceof DeclaredSig declared
-                && inputs.equals(declared.inputs) && boundary.equals(declared.boundary);
+                && inputs.equals(declared.inputs) && boundary.out().equals(declared.boundary.out());
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(inputs, boundary);
+        return Objects.hash(inputs, boundary.out());
     }
 
     @Override
