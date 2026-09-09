@@ -3,6 +3,7 @@ package souther.compiler.query;
 import souther.compiler.ast.Hir;
 import souther.compiler.check.ClauseDischarge;
 import souther.compiler.check.ClauseLocations;
+import souther.compiler.check.DeclarationLocations;
 import souther.compiler.check.DeclarationMeaning;
 import souther.compiler.check.PublishedDeclarations;
 import souther.compiler.check.ExpandedClauseLookup;
@@ -23,6 +24,7 @@ import souther.compiler.check.ResolvedSymbols;
 import souther.compiler.core.ValueShape;
 import souther.compiler.diag.CompileException;
 import souther.compiler.diag.DiagnosticPlace;
+import souther.compiler.diag.Region;
 import souther.compiler.types.BindingOwner;
 import souther.compiler.types.TypeKey;
 import souther.compiler.types.TypeSymbol;
@@ -801,6 +803,53 @@ public final class Shapes {
             return at instanceof DiagnosticPlace.Unavailable out
                     ? new DiagnosticPlace.Unavailable(out.provenance().asDeclared()) : at;
         }
+    }
+
+    /**
+     * Where one declaration is written.
+     *
+     * <p>Beside {@link MeaningOf} and not inside it, the way {@link ClauseLocation} is beside the
+     * clauses. What a declaration says is what every reading of a module that imports it is built
+     * on; where it is written is what one sentence puts a caret under. Answered together, an edit
+     * that moves a declaration and changes nothing it says is an edit that changes what the model
+     * says, and every module that imports it is worked out again for it.
+     *
+     * <p>Read off the declaration as resolution left it, which is the answer that carries positions
+     * and moves when they do. Asked of the normalized one instead, this would keep the place the
+     * declaration used to be at for as long as what it says stayed the same — which is the stale
+     * report the cut beside it would otherwise have caused.
+     *
+     * <p>The place and not the position: whether a reader can be sent here is settled once, here,
+     * rather than by every reader that holds a position and works it out again.
+     */
+    public record DeclarationLocation(TypeKey named) implements Key<DiagnosticPlace> {
+        @Override
+        public String module() {
+            return named.module();
+        }
+
+        @Override
+        public Answer<DiagnosticPlace> compute(Db db) {
+            Hir.Def declared = ClausesExpandedFor.declarationOf(db, named);
+            return declared == null ? Answer.absent()
+                    : Answer.of(DiagnosticPlace.of(Region.point(declared.pos())));
+        }
+    }
+
+    /**
+     * Where any declaration is written, for a reader that is about to point at one.
+     *
+     * <p>One of these for the whole compilation, for the reason {@link #expandedClauses} gives:
+     * which declaration is being asked about is the only input there is.
+     */
+    public static DeclarationLocations declarationLocations(Db db) {
+        return declaration -> {
+            Answer<DiagnosticPlace> written = db.ask(new DeclarationLocation(declaration));
+            if (!written.present()) {
+                throw new DeclarationLocations.NoSuchDeclarationIsWritten(declaration);
+            }
+            return written.value();
+        };
     }
 
     /**

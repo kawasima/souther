@@ -4,6 +4,7 @@ import souther.compiler.ast.Hir;
 import souther.compiler.core.Core;
 import souther.compiler.diag.CompileException;
 import souther.compiler.diag.Diagnostic;
+import souther.compiler.diag.DiagnosticPlace;
 import souther.compiler.diag.msg.InvariantMessage;
 import souther.compiler.diag.msg.BehaviorMessage;
 import souther.compiler.diag.msg.TypeMessage;
@@ -459,7 +460,7 @@ public final class DataChecker {
      * nothing about, and it still has everything else about it to report.
      */
     static List<CompileException> typesWithNoValue(
-            UninhabitableTypes.WithNoValue counted, Symbols symbols) {
+            UninhabitableTypes.WithNoValue counted, DeclarationLocations written) {
         // A count that found nothing and no count at all are one empty list of sentences and two
         // different facts. Nothing here needs to tell them apart — what would be written is nothing
         // either way — and the difference is kept because the reader that does need it is the one
@@ -480,12 +481,35 @@ public final class DataChecker {
         }
         List<CompileException> found = new ArrayList<>();
         for (UninhabitableTypes.UninhabitableGroup group : groups) {
-            Hir.Def at = symbols.declaredNode(group.reportedAt());
-            found.add(CompileException.of(told(Diagnostic.at(at.pos()), at.name(),
-                    new Emptiness.AtAField.Where.TheValueItself(), false, group.why(),
-                    lacks.get(group.reportedAt()) == 1).build()));
+            // What the declaration is called is what the identity already says, so nothing is
+            // resolved for it. Where it is written is the one thing the identity cannot answer, and
+            // it is asked of the declarations rather than read off a tree fetched for the name.
+            found.add(CompileException.of(told(pointingAt(group.reportedAt(), written),
+                    group.reportedAt().name(), new Emptiness.AtAField.Where.TheValueItself(), false,
+                    group.why(), lacks.get(group.reportedAt()) == 1).build()));
         }
         return found;
+    }
+
+    /**
+     * A report about {@code declared}, begun where {@code written} says it is.
+     *
+     * <p>Both arms, because they are two answers and not an answer and a failure. A declaration this
+     * compilation holds no text for is still a declaration, and what is said about it is said with
+     * where its code came from instead of with a caret — which is the thing {@code DiagnosticPlace}
+     * is two arms for.
+     */
+    private static Diagnostic.Builder pointingAt(TypeSymbol declared, DeclarationLocations written) {
+        if (!(declared instanceof TypeSymbol.AtModule at)) {
+            throw new IllegalStateException("`" + declared + "` was reported as having no value and"
+                    + " no module declares it, so there is nothing this compilation wrote to point"
+                    + " at");
+        }
+        return switch (written.of(at.key())) {
+            case DiagnosticPlace.InSource in -> Diagnostic.at(in.region());
+            case DiagnosticPlace.Unavailable out ->
+                    Diagnostic.atCodeWrittenOutOfSight(out.provenance());
+        };
     }
 
     /**

@@ -2180,7 +2180,8 @@ public final class Bodies {
                     }
                 }
                 reported = TypeChecker.checkModule(lowering.value().settled(), scope.value(),
-                        withNoValue.value(), db.ask(new Front.Reading()).value(),
+                        withNoValue.value(), Shapes.declarationLocations(db),
+                        db.ask(new Front.Reading()).value(),
                         signatures.present() ? signatures.value() : null,
                         injected.value(), unwritten.value(), lowering.value().lowered(),
                         reqSigs.value(), calleeSigs.value(), sigs.value(), published.value(),
