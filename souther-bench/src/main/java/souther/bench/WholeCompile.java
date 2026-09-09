@@ -38,8 +38,19 @@ final class WholeCompile {
                 cold.millis());
     }
 
+    /**
+     * One round of what the warm figure is the time of.
+     *
+     * <p>Named rather than written into the timing call, so that a reader asking what the figure
+     * covers runs the same thing the figure is the time of. A test that compiled the corpus its own
+     * way would be answering about its own compile.
+     */
+    static void warmRound(Corpus corpus) {
+        corpus.compile();
+    }
+
     static void warm(Report report, Corpus corpus) {
-        Timing timing = Timing.of(10, 20, corpus::compile);
+        Timing timing = Timing.of(10, 20, () -> warmRound(corpus));
         report.line("WARM  %-14s %d files %5d lines  median %7.1f ms  min %7.1f ms  p90 %7.1f ms",
                 corpus.name(), corpus.sources().size(), corpus.lines(),
                 timing.medianMillis(), timing.minMillis(), timing.p90Millis());

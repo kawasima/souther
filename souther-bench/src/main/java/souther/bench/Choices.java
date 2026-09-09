@@ -1,5 +1,6 @@
 package souther.bench;
 
+import souther.compiler.check.ChoicesRead;
 import souther.compiler.meta.ModulePath;
 import souther.compiler.query.Compilation;
 
@@ -13,6 +14,13 @@ import java.util.List;
  * how a cost grows with a shape, and a shape's question is answered by holding everything else still
  * and varying the one thing. The corpora answer the other question — what a model somebody wrote
  * costs — and neither can be made to answer both.
+ *
+ * <p><b>Every point carries what it must reach.</b> A measurement of a path nothing arrives at
+ * reports a number and answers nothing, and the two are indistinguishable in a report. So what is
+ * timed is not a source but a {@link Point}: the source, and the {@link Claim} that says which
+ * reading the figure would be about. The measurement times the points and a test walks the same
+ * ones ({@code EveryChoiceMeasurementReachesTheReadingItIsAboutTest}), so a point cannot be timed
+ * without being held to arriving, and a series added here is checked by having been added.
  *
  * <p><b>Alternatives are not the whole of what a choice costs.</b> A conjunction distributes over a
  * choice ({@code StatedTogether.meet}), so a branch stands in as many places as the clauses met with
@@ -35,10 +43,10 @@ import java.util.List;
  * So the alternatives here are bracketed into a balanced tree, and what that shows is that a source
  * shallow enough for anybody to write can still expand as far as the reading will hold apart.
  *
- * <p>{@link #boundary} is where the reading stops holding alternatives apart and merges them into
+ * <p>The boundary series is where the reading stops holding alternatives apart and merges them into
  * the one product containing them. Measured on the wide shape and one alternative either side,
- * because that is the only place the two lines differ by the policy alone: taken on the deep shape,
- * the step to the next size doubles the alternatives as well, and what the pair showed would be two
+ * because that is the only place two lines differ by the policy alone: taken on the deep shape, the
+ * step to the next size doubles the alternatives as well, and what the pair showed would be two
  * changes at once.
  */
 final class Choices {
@@ -60,48 +68,202 @@ final class Choices {
      *  there is least of that to take at the small end. */
     private static final int FATED_CHOICES = 6;
 
+    /** The most alternatives a compilation holds apart, which the boundary series is written
+     *  around. Held to by the two points either side of it rather than read from the policy: what
+     *  the series is for is the step, and a series that took the limit from the same place the
+     *  reading does would step wherever the reading did and never say so. */
+    private static final int HELD_APART = 64;
+
+    /**
+     * What one point must reach for its figure to be about what the point says it is about.
+     *
+     * <p>Beside the source rather than in a test of its own. A claim written where the tests are is
+     * a second statement of what a point measures, and the two agree until somebody changes one.
+     */
+    interface Claim {
+
+        /** Why {@code read} is not the reading this point measures, or null where it is. */
+        String unmetBy(ChoicesRead.Snapshot read);
+    }
+
+    /**
+     * One thing that is timed: what is compiled, what the line calls it, and what it must reach.
+     *
+     * @param alternatives what to divide the figure by, or nought where the series has no such
+     *                     figure. Reported beside the total rather than instead of it, because past
+     *                     the limit the two say different things — the alternatives are counted off
+     *                     the source either way, and a reading that merged them did not hold the
+     *                     number the figure is divided by
+     */
+    record Point(String series, String label, String source, Claim claim, int alternatives) {}
+
     static void measure(Report report) {
+        for (Point point : points()) {
+            Timing timing = Timing.of(3, 5, () -> compile(point.source()));
+            if (point.alternatives() > 0) {
+                report.line("CHOICE %-16s %-14s %7.1f ms (%6.3f ms/alternative)",
+                        point.series(), point.label(), timing.medianMillis(),
+                        timing.medianMillis() / point.alternatives());
+            } else {
+                report.line("CHOICE %-16s %-14s %7.1f ms",
+                        point.series(), point.label(), timing.medianMillis());
+            }
+        }
+    }
+
+    /** Every point this measurement times, in the order it times them. */
+    static List<Point> points() {
+        List<Point> points = new ArrayList<>();
         for (int alternatives : ALTERNATIVES) {
-            line(report, "expansion wide", alternatives, wide(alternatives));
+            points.add(new Point("expansion wide", "n=" + alternatives, wide(alternatives),
+                    claimOfWide(alternatives), alternatives));
         }
         for (int alternatives : ALTERNATIVES) {
-            line(report, "expansion deep", alternatives,
-                    deep(Integer.numberOfTrailingZeros(alternatives)));
+            int choices = Integer.numberOfTrailingZeros(alternatives);
+            points.add(new Point("expansion deep", "n=" + alternatives, deep(choices),
+                    claimOfDeep(choices, alternatives), alternatives));
         }
         for (int alternatives : BOUNDARY) {
-            line(report, "boundary", alternatives, wide(alternatives));
+            points.add(new Point("boundary", "n=" + alternatives, wide(alternatives),
+                    claimOfWide(alternatives), alternatives));
         }
         for (int conjuncts : CONJUNCTS) {
-            Timing timing = timeOf(conjuncts(conjuncts));
-            report.line("CHOICE %-16s conjuncts=%-3d %7.1f ms",
-                    "distributed into", conjuncts, timing.medianMillis());
+            points.add(new Point("distributed into", "conjuncts=" + conjuncts, conjuncts(conjuncts),
+                    multipliesNothing(), 0));
         }
         for (Fate fate : Fate.values()) {
-            Timing timing = timeOf(fate.source(FATED_CHOICES));
-            report.line("CHOICE %-16s %-14s %7.1f ms", "fate", fate.written(),
-                    timing.medianMillis());
+            points.add(new Point("fate", fate.written(), fate.source(FATED_CHOICES),
+                    reaches(fate), 0));
         }
+        return points;
     }
 
-    /** One line of an expansion series, with the per-alternative figure beside the total.
-     *
-     *  <p>Both, because past the limit the two say different things: the alternatives are counted off
-     *  the source either way, and a reading that merged them did not hold the number the figure is
-     *  divided by. */
-    private static void line(Report report, String shape, int alternatives, String source) {
-        Timing timing = timeOf(source);
-        report.line("CHOICE %-16s n=%-4d %7.1f ms (%6.3f ms/alternative)",
-                shape, alternatives, timing.medianMillis(),
-                timing.medianMillis() / alternatives);
+    /** A wide shape states one fewer choice than it has alternatives, and one of them states
+     *  none. Past the limit it is the fallback, however it got there. */
+    private static Claim claimOfWide(int alternatives) {
+        if (alternatives == 1) {
+            return statesNoChoice();
+        }
+        return alternatives > HELD_APART ? merges() : holdsApart(alternatives);
     }
 
-    private static Timing timeOf(String source) {
-        return Timing.of(3, 5, () -> {
-            Compilation compilation = Compilation.ofSources(List.of(source), ModulePath.EMPTY);
-            compilation.answerEverything();
-            compilation.classes();
-        });
+    private static Claim claimOfDeep(int choices, int alternatives) {
+        if (choices == 0) {
+            return statesNoChoice();
+        }
+        return alternatives > HELD_APART ? merges() : distributesInto(choices);
     }
+
+    private static void compile(String source) {
+        Compilation compilation = Compilation.ofSources(List.of(source), ModulePath.EMPTY);
+        compilation.answerEverything();
+        compilation.classes();
+    }
+
+    // === What the points claim ===
+    //
+    // None of them is a count. A declaration is read as many times as the questions put to it need
+    // — its own reading, and one more for each counterfactual somebody asks — so a figure is that
+    // many times what one reading did, and how many that is belongs to the callers. What is claimed
+    // is what holds whatever the number is: how the figures stand to each other.
+
+    /** The floor of a series, which is the same declaration with nothing to choose between. */
+    private static Claim statesNoChoice() {
+        return read -> read.stated() == 0 ? null
+                : "states " + read.stated() + " choices, and a floor states none";
+    }
+
+    /** A wide shape: every alternative held apart, standing where it was written, and standing. */
+    private static Claim holdsApart(int alternatives) {
+        return read -> {
+            if (read.stated() == 0 || read.stated() % (alternatives - 1) != 0) {
+                return "states " + (alternatives - 1) + " choices in each reading of it, and this"
+                        + " reading stated " + read.stated();
+            }
+            if (read.merged() > 0) {
+                return "was merged, so the reading held none of its alternatives apart";
+            }
+            if (read.placesMet() != read.stated()) {
+                return "put a branch in " + read.placesMet() + " places for " + read.stated()
+                        + " choices, and nothing was met with it to put it anywhere else";
+            }
+            if (read.everyAlternativeStood() != read.stated()) {
+                return "lost an alternative: " + read.everyAlternativeStood() + " of "
+                        + read.stated() + " choices kept both";
+            }
+            return null;
+        };
+    }
+
+    /** A deep shape: each branch in every place the choices met with it put it. */
+    private static Claim distributesInto(int choices) {
+        return read -> {
+            if (read.stated() == 0 || read.stated() % choices != 0) {
+                return "states " + choices + " choices in each reading of it, and this reading"
+                        + " stated " + read.stated();
+            }
+            if (read.merged() > 0) {
+                return "was merged, so nothing was distributed into anything";
+            }
+            // Every choice met with every other, so the tree the settlement walks is a full binary
+            // one of this many choices and its nodes are the places a branch stands. Written as the
+            // ratio the two figures stand in, which is the same however many readings were made.
+            if (read.placesMet() * choices != read.stated() * ((1L << choices) - 1)) {
+                return "put a branch in " + read.placesMet() + " places for " + read.stated()
+                        + " choices, which is not every place its neighbours put one";
+            }
+            return null;
+        };
+    }
+
+    /** Past the limit: the alternatives merged, and nothing left to distribute into. */
+    private static Claim merges() {
+        return read -> {
+            if (read.merged() == 0) {
+                return "held its alternatives apart, so it is not past the limit";
+            }
+            if (read.placesMet() > 0) {
+                return "distributed into " + read.placesMet() + " places, and a merged reading has"
+                        + " no branches left to put anywhere";
+            }
+            return null;
+        };
+    }
+
+    /** Clauses met with a choice, none of which multiplies where its branches stand. */
+    private static Claim multipliesNothing() {
+        return read -> {
+            if (read.stated() == 0) {
+                return "states no choice for the clauses to be met with";
+            }
+            if (read.placesMet() != read.stated()) {
+                return "put a branch in " + read.placesMet() + " places for " + read.stated()
+                        + " choices, so what it varies is not what it says it varies";
+            }
+            return null;
+        };
+    }
+
+    /** A fated shape: the fate reached, under a distribution rather than on its own. */
+    private static Claim reaches(Fate fate) {
+        return read -> {
+            long came = switch (fate) {
+                case BOTH_STAND -> read.everyAlternativeStood();
+                case ONE_STANDS -> read.oneAlternativeStood();
+                case NONE_STANDS -> read.noAlternativeStood();
+            };
+            if (came == 0) {
+                return "no choice of it came to the fate it is written for";
+            }
+            if (read.placesMet() == 0) {
+                return "distributed into nothing, and what a fate saves is the places it is not met"
+                        + " in";
+            }
+            return null;
+        };
+    }
+
+    // === The shapes ===
 
     /**
      * One choice of {@code alternatives} alternatives at one position.
@@ -110,7 +272,7 @@ final class Choices {
      * the reading takes in is the same either way — the alternatives are what stands between the
      * brackets — so the bracketing changes what a parser will accept and nothing a reading answers.
      */
-    static String wide(int alternatives) {
+    private static String wide(int alternatives) {
         List<String> written = new ArrayList<>();
         for (int i = 0; i < alternatives; i++) {
             written.add("a == " + i);
@@ -140,7 +302,7 @@ final class Choices {
      * between the conjunctions. At {@code choices} of nought this is the same declaration with a
      * rule that states no choice, which is the floor the rest are read against.
      */
-    static String deep(int choices) {
+    private static String deep(int choices) {
         StringBuilder fields = new StringBuilder();
         StringBuilder clauses = new StringBuilder();
         if (choices == 0) {
@@ -165,7 +327,7 @@ final class Choices {
      * two however many of them are written. That is the half of distribution the expansion series
      * holds still.
      */
-    static String conjuncts(int conjuncts) {
+    private static String conjuncts(int conjuncts) {
         StringBuilder clauses = new StringBuilder("    invariant chosen = a == 0 || a == 1%n"
                 .formatted());
         for (int i = 0; i < conjuncts; i++) {
@@ -178,15 +340,14 @@ final class Choices {
     }
 
     /**
-     * The three fates a choice can come to, each at the head of a declaration of {@code choices}
-     * choices met together.
+     * The three fates a choice can come to, each at the head of a declaration of choices met
+     * together.
      *
      * <p>Under a distribution rather than on its own. What a fate costs is not what deciding one
      * costs — every one of these is two alternatives and three equalities either way — but what the
      * decision saves the places the branch would otherwise have stood in: an alternative nobody can
-     * be in is one the clauses written beside it are never met with. Measured on a declaration
-     * whose one choice is the whole of it, the three come to the same figure, and the series says
-     * nothing.
+     * be in is one the clauses written beside it are never met with. Measured on a declaration whose
+     * one choice is the whole of it, the three come to the same figure and the series says nothing.
      *
      * <p>Held still across the three. Each alternative is a conjunction of two equalities whichever
      * fate it is, so what separates them is which values the equalities name and nothing about how
@@ -222,7 +383,7 @@ final class Choices {
         }
 
         /** This fate at the head of {@code choices} choices, the rest of them plain and alike. */
-        String source(int choices) {
+        private String source(int choices) {
             StringBuilder fields = new StringBuilder("a: Int, b: Int");
             StringBuilder clauses = new StringBuilder("    invariant chosen = %s%n"
                     .formatted(clause));

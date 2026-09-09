@@ -60,7 +60,9 @@ final class Phases {
                 phase, spent / 1000.0, 100.0 * spent / total));
     }
 
-    private static Map<String, Long> walk(Corpus corpus) {
+    /** One walk of what the phase figures are the times of, which is what a reader asking what they
+     *  cover runs. */
+    static Map<String, Long> walk(Corpus corpus) {
         Compilation compilation = Compilation.ofSources(corpus.sources(), ModulePath.EMPTY);
         Map<String, Long> micros = new LinkedHashMap<>();
         long mark = System.nanoTime();

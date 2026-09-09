@@ -3,10 +3,12 @@ package souther.bench;
 import souther.compiler.meta.ModulePath;
 import souther.compiler.query.Compilation;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
 
 /**
  * What an edit costs a store that already holds the answers — the latency an author feels between a
@@ -58,7 +60,35 @@ final class Incremental {
 
     private Incremental() {}
 
+    /**
+     * One edit that is timed, as the round that makes it.
+     *
+     * <p>What is timed and nothing standing for it. A reader asking what an edit figure covers runs
+     * this, and a reader taking the figure runs this, so the two cannot come to be about different
+     * edits — which is the whole of what {@code CorpusTest} needs to be able to say anything about
+     * what these numbers reach.
+     */
+    record Edit(String name, Consumer<Integer> round) {}
+
+    /**
+     * The store an edit figure is taken against, and the edits taken on it.
+     *
+     * <p>One store for all of them, as a language server has one: an edit is timed against answers
+     * that are already there, and a store per edit would be timing the first compile each time.
+     */
+    record Edits(Compilation compilation, List<Edit> edits) {}
+
     static void measure(Report report, Corpus corpus) {
+        Edits taken = edits(corpus);
+        for (Edit edit : taken.edits()) {
+            Timing timing = Timing.ofRounds(40, 40, edit.round());
+            report.line("EDIT  %-14s %-38s %6.2f ms", corpus.name(), edit.name(),
+                    timing.medianMillis());
+        }
+    }
+
+    /** The store warmed to the point an edit is timed from, and every edit that is timed on it. */
+    static Edits edits(Corpus corpus) {
         Map<String, String> byId = new LinkedHashMap<>();
         for (int i = 0; i < corpus.sources().size(); i++) {
             byId.put("f" + i, corpus.sources().get(i));
@@ -70,29 +100,25 @@ final class Incremental {
         String imported = ids.getFirst();
         String leaf = ids.getLast();
 
-        Timing reask = Timing.ofRounds(40, 40, _ -> {
+        List<Edit> edits = new ArrayList<>();
+        edits.add(new Edit("re-ask", _ -> {
             compilation.update(byId, Set.of());
             compilation.diagnostics();
-        });
-        Timing comment = Timing.ofRounds(40, 40, round ->
-                apply(compilation, byId, imported, byId.get(imported) + "\n// round " + round + "\n"));
-        Timing atImported = Timing.ofRounds(40, 40, round ->
-                apply(compilation, byId, imported, added(byId.get(imported), round)));
-        Timing atLeaf = Timing.ofRounds(40, 40, round ->
-                apply(compilation, byId, leaf, added(byId.get(leaf), round)));
-
-        report.line("EDIT  %-14s re-ask %6.2f ms   comment %6.2f ms   "
-                        + "definition in an imported module %6.2f ms   in a leaf %6.2f ms",
-                corpus.name(), reask.medianMillis(), comment.medianMillis(),
-                atImported.medianMillis(), atLeaf.medianMillis());
+        }));
+        edits.add(new Edit("comment", round ->
+                apply(compilation, byId, imported,
+                        byId.get(imported) + "\n// round " + round + "\n")));
+        edits.add(new Edit("definition in an imported module", round ->
+                apply(compilation, byId, imported, added(byId.get(imported), round))));
+        edits.add(new Edit("definition in a leaf", round ->
+                apply(compilation, byId, leaf, added(byId.get(leaf), round))));
 
         String stating = statingSource(byId);
         if (stating != null) {
-            Timing atRelation = Timing.ofRounds(40, 40, round ->
-                    apply(compilation, byId, stating, restated(byId.get(stating), round)));
-            report.line("EDIT  %-14s a rule of a relation its callers read %6.2f ms",
-                    corpus.name(), atRelation.medianMillis());
+            edits.add(new Edit("a rule of a relation its callers read", round ->
+                    apply(compilation, byId, stating, restated(byId.get(stating), round))));
         }
+        return new Edits(compilation, edits);
     }
 
     /** Which source states the rule, or null where this corpus states none. */
