@@ -789,6 +789,10 @@ public final class CoverageSites {
          * the tree answers; this is what a report about an arm of a fork no source here wrote has
          * instead of a file to point at, and it means a place only together with whose plan
          * counted it.
+         *
+         * <p>Counted over the places that get one, which are the arms whose fork no reader can
+         * open. An arm reported at the file its fork is written in is reported at a construct, so
+         * a number for it would be one nothing can ask about and a table entry nothing can reach.
          */
         private int controls;
 
@@ -842,9 +846,7 @@ public final class CoverageSites {
             // gives. The fork's own coordinate is what says which of the two it is — an arm's body
             // is what lowering rewrites and carries whatever position it was built from, so it is
             // the fork that is asked and not the arm.
-            int address = controls++;
-            ArmReportAnchor anchor = anchorOf(owner, origin, address);
-            reachedAt.put(address, Citation.of(owner.pos()));
+            ArmReportAnchor anchor = anchorOf(owner, origin);
             // The arm is made either way. Whether a run through it can be recorded is the second
             // question and only the probe turns on it — an arm nothing could record is still an arm,
             // and the readings that judge one need to be able to name it.
@@ -874,11 +876,21 @@ public final class CoverageSites {
          * about it that survives the code moving: a fork written in a file this compilation holds
          * goes on being one wherever in the file it ends up. So this is the last thing read off the
          * position, and what comes out says which of the two questions a report asks later.
+         *
+         * <p>Where the answer is an address of this plan, the address is issued here and the place
+         * it addresses is written down in the same act. So there is one number per place a report
+         * can ask about and none for the arms whose fork a reader can go and open, and the position
+         * is read off the fork once — a second reading of it to fill the table would be the same
+         * question asked again for an answer that was already in hand.
          */
-        private ArmReportAnchor anchorOf(Core fork, SourceConstructOrigin origin, int address) {
-            return Citation.of(fork.pos()) instanceof Citation.Written && origin.isWritten()
-                    ? new ArmReportAnchor.WhereItIsWritten(origin)
-                    : new ArmReportAnchor.WhereItWasReached(module, address);
+        private ArmReportAnchor anchorOf(Core fork, SourceConstructOrigin origin) {
+            Citation where = Citation.of(fork.pos());
+            if (where instanceof Citation.Written && origin.isWritten()) {
+                return new ArmReportAnchor.WhereItIsWritten(origin);
+            }
+            int address = controls++;
+            reachedAt.put(address, where);
+            return new ArmReportAnchor.WhereItWasReached(module, address);
         }
 
         /**
