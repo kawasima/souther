@@ -1,6 +1,5 @@
 package souther.bench;
 
-import java.io.IOException;
 import java.lang.classfile.Attributes;
 import java.lang.classfile.ClassModel;
 import java.util.ArrayDeque;
@@ -130,7 +129,7 @@ final class PositionReadings {
         }
     }
 
-    static Reading of(Over over) throws IOException {
+    static Reading of(Over over) {
         Map<String, ClassModel> models = new LinkedHashMap<>();
         for (ClassModel model : over.classes()) {
             models.put(model.thisClass().asInternalName().replace('/', '.'), model);

@@ -2,7 +2,6 @@ package souther.bench;
 
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
 import java.lang.classfile.ClassModel;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -85,7 +84,7 @@ class EveryFigureTheComposingStageStopsAtIsABudgetOrIsSaidNotToBeTest {
      * that is not there.
      */
     @Test
-    void aFigureIsThisCompilersBudgetOrIsSaidToBeSomethingElse() throws IOException {
+    void aFigureIsThisCompilersBudgetOrIsSaidToBeSomethingElse() {
         List<String> written = new ArrayList<>();
         for (ClassModel model : Reactor.classes()) {
             String from = model.thisClass().asInternalName().replace('/', '.').replace('$', '.');

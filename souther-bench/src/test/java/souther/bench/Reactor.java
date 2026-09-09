@@ -81,10 +81,9 @@ final class Reactor {
      * under {@code -am}.
      */
     static CompiledClasses mainOutputOf(Path module) {
-        return REPOSITORY.compiledOutputOf(module, "main").orElseGet(() -> {
-            throw new AssertionError(name(module) + " has no built classes: this check covers what"
-                    + " has been built, so a module that has not been is a hole rather than a pass");
-        });
+        return REPOSITORY.compiledOutputOf(module, "main").orElseThrow(() -> new AssertionError(
+                name(module) + " has no built classes: this check covers what has been built, so a"
+                        + " module that has not been is a hole rather than a pass"));
     }
 
     /** The same of what its tests compiled to, or nothing where it has none. */

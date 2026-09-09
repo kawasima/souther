@@ -179,24 +179,29 @@ final class Compiled {
     private static Reading theReactor() {
         if (EVERY == null) {
             EVERY = read(Reactor.classes());
-            DECODINGS++;
+            BUILDS++;
         }
         return EVERY;
     }
 
     /**
-     * How many times the reactor's code has been decoded in this fork, for the check that says
-     * once.
+     * How many times the reading the fork shares has been built, for the check that says once.
      *
-     * <p>Counted rather than compared. What a reading holds is a site for every call the reactor's
+     * <p>Counted rather than compared: what a reading holds is a site for every call the reactor's
      * code makes, and a check asking whether it was handed the same lists twice says so by printing
-     * all of them; and a count kept per answer would say one of each while the walk ran twice.
+     * all of them.
+     *
+     * <p><b>About the store and not about the walk.</b> A walk started anywhere else is not counted
+     * here — {@link #read} is a walk over whatever it is handed, and a caller handing it the
+     * reactor's classes is decoding them without filling this. What is true of one walk rather than
+     * two is asked of the answers themselves, where the site an invocation carries is the site the
+     * other answer holds.
      */
-    private static int DECODINGS;
+    private static int BUILDS;
 
-    /** How many times the reactor's code has been decoded in this fork. */
-    static int decodings() {
-        return DECODINGS;
+    /** How many times the reading the fork shares has been built in this fork. */
+    static int timesTheSharedReadingWasBuilt() {
+        return BUILDS;
     }
 
     /** The invocations of the classes named, so that what this reads can be asked of code written
@@ -289,8 +294,10 @@ final class Compiled {
                 }
             }
         }
-        assertFalse(sites.isEmpty(), "no compiled call was read at all");
-        assertFalse(invocations.isEmpty(), "no compiled call was read at all");
+        assertFalse(sites.isEmpty(), "these classes do nothing at all, so a rule read off what they"
+                + " do holds nothing");
+        assertFalse(invocations.isEmpty(), "these classes make no call at all, so a rule read off"
+                + " the text at a call holds nothing");
         return new Reading(sites, invocations);
     }
 

@@ -27,13 +27,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class WhatThisModuleMakesOfTheCompiledClassesIsMadeOnceTest {
 
     @Test
-    void theReactorsCodeIsDecodedOnceHoweverManyTimesItIsAsked() {
+    void theReadingTheForkSharesIsBuiltOnceHoweverManyTimesItIsAsked() {
         Compiled.sites();
         Compiled.sites();
 
-        assertEquals(1, Compiled.decodings(),
-                "the reactor's code was decoded more than once, so every check here decodes it for"
-                        + " itself and sharing the files bought nothing");
+        assertEquals(1, Compiled.timesTheSharedReadingWasBuilt(),
+                "the shared reading was built more than once, so every check here decodes the"
+                        + " reactor's code for itself and sharing the files bought nothing");
     }
 
     /**
