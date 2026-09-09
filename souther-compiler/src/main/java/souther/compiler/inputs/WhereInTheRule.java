@@ -18,16 +18,26 @@ import souther.compiler.diag.Citation;
  * the rule, once it is found — so a rule with a name has one of these that points inside it and is
  * still found by its name.
  *
- * <p><b>{@link Citation} and not a bare position.</b> A choice written in a helper and expanded
- * twice is one operator an author wrote and two places this compile met it, and the two are what a
- * reader is sent to: {@link Citation.Reached} carries the call each copy stands in, so the
- * expansions are told apart by where they were reached rather than by an identity a published
- * answer may not hold. A choice written in the clause itself is {@link Citation.Written} and is one
- * however often it is read.
+ * <h2>What makes two of them one</h2>
  *
- * <p>Which makes this the join between the two readings. Both are short at one choice, each says a
- * different thing about it, and both say it of the same place — so a consumer holding what the
- * values left and what the ends left knows they are one thing to fix.
+ * <p>An author's editing place, and not how many times a reading met the operator. How many times
+ * it was met is the reading's own answer ({@code check.ChoiceSite}), which is an identity two runs
+ * over one model give differently and which no published answer may hold. What an author is owed is
+ * how many places they have to go, and one operator written once is one place however often an
+ * expansion copies it: rewriting it there answers every copy.
+ *
+ * <p>So a place is one somebody can edit, and {@link #at} is the one thing that decides whether a
+ * citation is one. A citation whose code is written elsewhere — spliced in from a module this
+ * compile holds no file for — points at the call rather than at the operator, and an author sent
+ * there under a word meaning "inside the rule" would be looking for a {@code ||} that is not in
+ * front of them and could not edit it if it were. There is nothing inside such a rule to send them
+ * to, so what they get is the rule.
+ *
+ * <p>Which leaves this type with one thing to be wrong about and a constructor that refuses it.
+ * The alternative was to carry every citation and say in prose which of its five arms count, and
+ * prose is what was wrong here before: this file said expansions were told apart by where they were
+ * reached, which is the opposite of what {@link #at} does and of what the report was already
+ * measured to say.
  */
 public sealed interface WhereInTheRule {
 
@@ -37,8 +47,10 @@ public sealed interface WhereInTheRule {
     /**
      * One place inside the rule, which is where a reader is sent instead of to the rule.
      *
-     * <p>Told from another by the citation, which is where this compile met the code rather than an
-     * identity of it.
+     * <p>Told from another by the citation, which is where the code is written rather than an
+     * identity of it. Reached only through {@link #at}, which is why the refusal below cannot be
+     * met: a caller that could build one of these from any citation is a caller that can send an
+     * author inside a rule they do not have.
      */
     record APlaceInIt(Citation at) implements WhereInTheRule {
 
@@ -46,12 +58,29 @@ public sealed interface WhereInTheRule {
             if (at == null) {
                 throw new IllegalArgumentException("a place inside a rule is somewhere");
             }
+            if (at instanceof Citation.Elsewhere) {
+                throw new IllegalArgumentException("a place inside a rule is one an author can"
+                        + " edit, and code written elsewhere has none: " + at);
+            }
         }
     }
 
     /** The rule as a whole, for a reader with nothing inside it to point at. */
     static WhereInTheRule theRuleItself() {
         return THE_RULE_ITSELF;
+    }
+
+    /**
+     * The place {@code at} names, where an author wrote the code there, and the rule where they
+     * did not.
+     *
+     * <p>The one place the question is asked, so that the two readings short at one operator answer
+     * it alike. Asked twice, the day one of them treated a splice as a place inside the rule the
+     * other would still be sending readers to the rule, and the addresses a consumer joins on would
+     * have come apart for a reason nothing in the model says.
+     */
+    static WhereInTheRule at(Citation cited) {
+        return cited instanceof Citation.Elsewhere ? theRuleItself() : new APlaceInIt(cited);
     }
 
     /** The one of those, since it holds nothing and two of them say the same thing. */

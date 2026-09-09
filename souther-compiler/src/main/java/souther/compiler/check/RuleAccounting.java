@@ -288,13 +288,18 @@ public final class RuleAccounting {
          *
          * <p>The same value the reading of ends hands on for the same choice, so the two accounts
          * of one operator carry one address and a reader holding both knows they are one thing to
-         * fix. The identity inside {@code site} stays here, being one no published answer may hold.
+         * fix. Which is why the citation goes through {@link WhereInTheRule#at} rather than being
+         * wrapped here: whether a place is one an author can edit is one question, and two readers
+         * answering it apart is how two accounts of one operator would come to two addresses.
+         *
+         * <p>The identity inside {@code site} stays here, being one no published answer may hold —
+         * and being one about how often this compiler met the operator rather than about how many
+         * places its author has to go.
          */
         private static WhereInTheRule sentTo(RuleShortfall.Site site) {
             return switch (site) {
                 case RuleShortfall.Site.AtALeaf _ -> WhereInTheRule.theRuleItself();
-                case ChoiceSite it ->
-                        new WhereInTheRule.APlaceInIt(Citation.of(it.writtenAt()));
+                case ChoiceSite it -> WhereInTheRule.at(Citation.of(it.writtenAt()));
             };
         }
 

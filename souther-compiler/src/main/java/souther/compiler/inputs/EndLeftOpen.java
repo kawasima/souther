@@ -13,13 +13,17 @@ import souther.compiler.check.RuleRef;
  * are two — lifting one of them leaves the other exactly where it was. Filed as one fact answering
  * both, whichever question was asked second got the other's answer.
  *
- * <p><b>One of these per choice, and the multiplicity is the whole of what says how many.</b> Two
- * choices of one rule leaving one end open are two of these, and a helper holding one choice and
- * expanded twice is two as well — one operator at one place, and two things to lift. Which choice
- * each of them is stays inside the reading ({@code check.ChoiceSite}): it is told from every other
- * by being itself, and a published answer holding it would be an answer two runs over one model
- * give differently ({@code EveryAnswerThisCompilerDeclaresIsSettledTest}). What a document needs to
- * send an author to the clause is the place, and it is added where a document asks for it.
+ * <p><b>One of these per choice the reading met, which is not how many things an author is left
+ * with.</b> Which choice each of them is stays inside the reading ({@code check.ChoiceSite}): it is
+ * told from every other by being itself, and a published answer holding it would be an answer two
+ * runs over one model give differently ({@code EveryAnswerThisCompilerDeclaresIsSettledTest}). So
+ * these are as many as the reading met, and a helper holding one choice and expanded twice makes
+ * two of them for one operator somebody wrote.
+ *
+ * <p>How many an author has to go and look at is a different count, taken where a document is
+ * written: it is how many places they can edit ({@code WhereInTheRule}), and the two expansions
+ * above come to one of those. Read off the number of these instead, a report would tell an author
+ * to do twice what rewriting the operator once answers.
  *
  * @param rule      the rule whose end it is. What a reader is sent to, and what tells two of these
  *                  at one position apart when they are of different rules

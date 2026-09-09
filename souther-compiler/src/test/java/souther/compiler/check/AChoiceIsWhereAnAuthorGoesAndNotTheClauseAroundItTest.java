@@ -91,6 +91,55 @@ class AChoiceIsWhereAnAuthorGoesAndNotTheClauseAroundItTest {
                         + " go and two things they are told about it");
     }
 
+    /**
+     * And one choice an expansion put in two places is one place under either reading.
+     *
+     * <p>The two readings reach a document by seams of their own — one through the account of a
+     * standing question, the other through the findings about a rule with no line — so each answers
+     * for itself how many places an author has to go. Fixed on one of them, the other went on
+     * saying what its own producer happened to hand it.
+     *
+     * <p>What is asked is the address and not the number of lines. The readings say different
+     * things about the operator and are entitled to a line apiece; what they may not do is send an
+     * author to two places for one {@code ||}.
+     */
+    @Test
+    void oneChoiceExpandedTwiceIsOnePlaceUnderEitherReading() {
+        // A choice both readings are short at, written once and expanded twice.
+        String model = """
+                module m
+                %s
+                let alt (x: Int, y: String): Bool =
+                    x >= 2 || (Int.abs(x) >= 5 && String.reverse(y) /= "")
+
+                data N = { n: Int, s: String }
+                    invariant r = alt(n, s) && alt(n, s)
+
+                behavior f : (v: N) -> Answer
+                let f (v) = Yes
+                """.formatted(ANSWER);
+
+        assertEquals(List.of("4:12"), placesIn(model, "· not accounted for:"),
+                "the values reading is sent to the operator in the helper, once");
+        assertEquals(List.of("4:12"), placesIn(model, "· not read:"),
+                "and the reading of ends to the same one, so an author has one place to go");
+    }
+
+    /**
+     * Every place the report's {@code word} lines send a reader, in the order they are written.
+     *
+     * <p>Not deduplicated, which is the whole of what this reads. How many places an author is sent
+     * to is the fact under test; folded here, two entries pointing at one operator would read as
+     * one and an address made to compare by identity would go unnoticed.
+     */
+    private static List<String> placesIn(String model, String word) {
+        return linesOfModel(model).stream()
+                .filter(each -> each.startsWith(word))
+                .flatMap(line -> List.of(line.split(", at ")).stream().skip(1))
+                .map(each -> each.split(";")[0].strip())
+                .toList();
+    }
+
     /** The lines of the report about what may stand at {@code position} under {@code clause}. */
     private static List<String> accountedFor(String clause, String position) {
         return linesStartingWith(clause, "· not accounted for:").stream()
@@ -100,7 +149,7 @@ class AChoiceIsWhereAnAuthorGoesAndNotTheClauseAroundItTest {
 
     /** The lines of the report about {@code clause} that begin with {@code word}. */
     private static List<String> linesStartingWith(String clause, String word) {
-        String model = """
+        return linesOfModel("""
                 module m
                 %s
                 data N = { n: Int, s: String }
@@ -108,13 +157,18 @@ class AChoiceIsWhereAnAuthorGoesAndNotTheClauseAroundItTest {
 
                 behavior f : (v: N) -> Answer
                 let f (v) = Yes
-                """.formatted(ANSWER, clause);
+                """.formatted(ANSWER, clause)).stream()
+                .filter(each -> each.startsWith(word))
+                .toList();
+    }
+
+    /** Every line of the report about {@code model}, stripped. */
+    private static List<String> linesOfModel(String model) {
         Compilation compilation = Compilation.ofSource(model, "Main");
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
         return AdequacyReport.of(compilation).human(SourceNameResolver.identity()).lines()
                 .map(String::strip)
-                .filter(each -> each.startsWith(word))
                 .toList();
     }
 }

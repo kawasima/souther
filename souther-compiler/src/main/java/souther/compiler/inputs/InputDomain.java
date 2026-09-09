@@ -1804,7 +1804,7 @@ public final class InputDomain {
             // about everything else, so this is the whole of what keeps them two entries.
             out.add(new RuleCitation.Named(each.rule()),
                     filedAt(path, each.at(), type, source),
-                    new WhereInTheRule.APlaceInIt(Citation.of(each.byChoice().writtenAt())),
+                    WhereInTheRule.at(Citation.of(each.byChoice().writtenAt())),
                     new BlockReason.EndLeftOpenByAChoice());
         }
     }

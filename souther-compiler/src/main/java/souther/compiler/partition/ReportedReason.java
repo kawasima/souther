@@ -7,7 +7,9 @@ import souther.compiler.inputs.WhereInTheRule;
 import souther.compiler.publish.SourceOrdered;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * The word an adequacy document writes for a reason a derivation stopped.
@@ -91,14 +93,17 @@ public final class ReportedReason {
      * <p>Told apart by the word and by where it sends a reader. Two producers a document offers one
      * word for are one thing to lift where they are about the same part of the rule, and two where
      * they are not — folded on the word alone, a clause with two choices in it came out as one.
+     *
+     * <p>Kept in a set, because how many of these there are is how many parts of the rule a reader
+     * is sent to and not how many words the vocabulary has. A scan of what is already held was
+     * bounded while a member was a word; a member is now a word and a place, so the scan would grow
+     * with the choices somebody wrote. {@link Published#words()} keeps its scan for the opposite
+     * reason: it throws the places away, so what it holds is bounded by the vocabulary again.
      */
     private static List<Stop> distinct(List<RuleReasons.Said> these) {
-        List<Stop> out = new ArrayList<>();
+        Set<Stop> out = new LinkedHashSet<>();
         for (RuleReasons.Said each : these) {
-            Stop said = stop(each);
-            if (!out.contains(said)) {
-                out.add(said);
-            }
+            out.add(stop(each));
         }
         return List.copyOf(out);
     }
