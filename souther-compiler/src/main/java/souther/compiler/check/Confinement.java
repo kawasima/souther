@@ -268,13 +268,13 @@ sealed interface Confinement<A> {
          * itself refuses to be written with ({@link Admission}), so a verdict that moved is a new
          * one carrying nothing.
          */
-        Admission<A> admission() {
+        private Admission<A> admission() {
             souther.compiler.values.Emptiness held = leftUnbuilt.hold(walked.emptiness());
             return held == walked.emptiness() ? walked : Admission.left(held);
         }
 
         /** What the reading behind this could not build, for a caller composing readings. */
-        LeftUnbuilt leftUnbuilt() {
+        private LeftUnbuilt leftUnbuilt() {
             return leftUnbuilt;
         }
     }
