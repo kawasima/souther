@@ -3,7 +3,7 @@ package souther.compiler.examples;
 import souther.compiler.jvm.SoutherJvmAbi;
 import souther.compiler.ast.Hir;
 import souther.compiler.check.Boundary;
-import souther.compiler.check.DeclaredTypeEvidence;
+import souther.compiler.check.DeclarationFacts;
 import souther.compiler.check.Symbols;
 import souther.compiler.observe.FieldTypes;
 import souther.compiler.observe.Position;
@@ -334,7 +334,7 @@ final class NeutralForm {
      * an imported value's body names its own module's types, which the module reading the row need
      * not have imported, and a module of its own may declare something else of that spelling. */
     boolean isNewtype(TypeSymbol name) {
-        return DeclaredTypeEvidence.isNewtype(name, symbols);
+        return DeclarationFacts.isNewtype(name, symbols);
     }
 
     /** What a newtype wraps: the one field it is written with (spec §newtype), read like any other

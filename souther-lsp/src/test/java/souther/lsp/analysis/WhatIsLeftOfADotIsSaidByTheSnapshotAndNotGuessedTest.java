@@ -148,22 +148,116 @@ class WhatIsLeftOfADotIsSaidByTheSnapshotAndNotGuessedTest {
                 "a behavior carries no field for a `.` to name");
     }
 
+    /**
+     * A call of a helper is what the helper's body states, read at what it was applied to.
+     *
+     * <p>The helper declares nothing about its answer — a Souther helper never does — so what states
+     * the type is its body, read with its parameter standing for what arrived. That is the step the
+     * expansion below takes at every call, and until it was taken here a body that called something
+     * and took a field off the answer was unanswered from the {@code .} onwards.
+     */
+    @Test
+    void aCallOfAHelperIsWhatItsBodyStatesAtWhatItWasAppliedTo() {
+        MemberReceiver receiver = leftOfTheDot("""
+                module m
+
+                import lib as l ( Cost )
+
+                data Draft = { plannedCost: Cost }
+
+                behavior submit : (request: Draft) -> Int
+                let costOf (d) = d.plannedCost
+                let submit (request) = costOf(request).
+                """);
+
+        assertEquals("Cost",
+                assertInstanceOf(Type.Ref.class,
+                        assertInstanceOf(MemberReceiver.Value.class, receiver).type().type())
+                        .name().name(),
+                "`costOf(request)` is what its body takes off a `Draft`");
+    }
+
+    /**
+     * And a call of the behavior an implementation was handed is what that behavior answers.
+     *
+     * <p>The name itself was already a value the declarations spoke for — it arrives as what the
+     * behavior takes and answers — and nothing could spend that type on a call, so {@code price(x)}
+     * was unanswered while {@code price} alone was not.
+     */
+    @Test
+    void aCallOfAnInjectedBehaviorIsWhatThatBehaviorAnswers() {
+        MemberReceiver receiver = leftOfTheDot("""
+                module m
+
+                import lib as l ( Cost )
+
+                data Draft = { plannedCost: Cost }
+
+                behavior price : (draft: Draft) -> Cost
+
+                behavior submit : (request: Draft) -> Int
+                    depends on price
+                let submit (request, price) = price(request).
+                """);
+
+        assertEquals("Cost",
+                assertInstanceOf(Type.Ref.class,
+                        assertInstanceOf(MemberReceiver.Value.class, receiver).type().type())
+                        .name().name(),
+                "what the injected behavior answers is what the call is");
+    }
+
+    /**
+     * A call of a behavior is what that behavior's signature answers.
+     *
+     * <p>Which is a declaration, and the one the author wrote a line above. Read as a value nothing
+     * speaks for, everything from the {@code .} onwards was unanswered in a body that calls
+     * anything, however completely the declarations settled both halves of it.
+     */
+    @Test
+    void aCallOfABehaviorIsWhatItsSignatureAnswers() {
+        MemberReceiver receiver = leftOfTheDot("""
+                module m
+
+                import lib as l ( Cost )
+
+                data Draft = { plannedCost: Cost }
+
+                behavior make : () -> Draft
+                behavior submit : (request: Draft) -> Cost
+                let submit (request) = make().
+                """);
+
+        assertEquals("Draft",
+                assertInstanceOf(Type.Ref.class,
+                        assertInstanceOf(MemberReceiver.Value.class, receiver).type().type())
+                        .name().name(),
+                "`make()` answers what `behavior make` says it answers");
+    }
+
+    /**
+     * And a receiver the declarations really do say nothing about is still a value.
+     *
+     * <p>What is missing there is the type and not the receiver, and the two are different answers:
+     * a reader told the second knows the author is not writing a {@code .} on anything. A helper
+     * answering a fork is one such receiver — what a fork answers is the join of its arms, which is
+     * the elaboration's and not a declaration.
+     */
     @Test
     void aReceiverNoDeclarationSpeaksForIsStillAValue() {
-        // `submitted()` answers something no declaration read here states, so what is missing is the
-        // type and not the receiver.
         MemberReceiver receiver = leftOfTheDot("""
                 module m
 
                 data Draft = { plannedCost: Int }
 
-                behavior make : () -> Draft
+                let larger (a, b) = if a.plannedCost > b.plannedCost then a else b
+
                 behavior submit : (request: Draft) -> Int
-                let submit (request) = make().
+                let submit (request) = larger(request, request).
                 """);
 
         assertInstanceOf(MemberReceiver.UntypedValue.class, receiver,
-                "a call's answer is a value, and no declaration read here says what it is");
+                "the helper answers a fork, and no declaration read here says what that is");
     }
 
     @Test

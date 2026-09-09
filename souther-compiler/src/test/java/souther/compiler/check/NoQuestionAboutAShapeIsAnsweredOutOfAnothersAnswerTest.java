@@ -76,7 +76,7 @@ class NoQuestionAboutAShapeIsAnsweredOutOfAnothersAnswerTest {
      *  asks what may follow a {@code .}. Readers of one answer, so what a compiler accepts, what a
      *  measurement of a written value reads, and what an author is offered are the same names. */
     private static final List<String> CROSS_A_DOT = List.of(
-            "souther.compiler.check.DeclaredTypeEvidence",
+            "souther.compiler.check.DeclaredTypeReading",
             "souther.compiler.check.Elaborator",
             "souther.compiler.sites.SemanticSnapshot");
 

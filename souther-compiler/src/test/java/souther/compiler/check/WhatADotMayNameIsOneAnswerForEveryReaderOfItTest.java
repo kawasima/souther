@@ -192,8 +192,10 @@ class WhatADotMayNameIsOneAnswerForEveryReaderOfItTest {
         assertNotNull(ExampleExecutions.of(COMPILATION.db(), "demo"),
                 "the model under test is accepted, or these readers have no program to read");
         FieldTypes checked = ExampleExecutions.of(COMPILATION.db(), "demo").fieldTypes();
-        Type declared = new DeclaredTypeEvidence(
-                new FieldRead(symbols, checked, FieldRead.Unreadable.REFUSED), definitions())
+        Type declared = new DeclaredTypeReading(
+                new DeclarationFacts(
+                        new FieldRead(symbols, checked, FieldRead.Unreadable.REFUSED)),
+                definitions(), COMPILATION.db().ask(new Bodies.Reachable("demo")).value())
                 .declaredTypeOf(bodyOf("taken"));
         assertEquals(Type.STRING, declared,
                 "the walk over the declarations says `held.deal.id` is a `String`");

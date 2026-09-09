@@ -24,7 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Crossing a {@code .} asks the world the reading is being made in, and answers with what it says.
  *
- * <p>{@link DeclaredTypeEvidence} owns how evidence flows through an expression — a {@code let} it
+ * <p>{@link DeclaredTypeReading} owns how evidence flows through an expression — a {@code let} it
  * enters, a name it follows, a definition it steps into. What a field of a declaration holds is not
  * that walk's to work out: an accepted program has one answer to it and it is the check's, and a
  * walk deriving a second from the declarations would be the reading a comparison is made against
@@ -61,8 +61,7 @@ class AFieldAccessIsTypedByTheWorldsOwnAnswerTest {
     /** What the check settled, which is what an accepted program's readers are handed. */
     @Test
     void aFieldIsWhatTheCheckSettledItHolds() {
-        Type taken = new DeclaredTypeEvidence(reading(checked()), values)
-                .declaredTypeOf(bodyOf("taken"));
+        Type taken = readingIn(checked()).declaredTypeOf(bodyOf("taken"));
         assertEquals("Line", assertInstanceOf(Type.Ref.class, taken).name().name(),
                 "`sample.line` is declared to hold a `Line`");
     }
@@ -78,8 +77,7 @@ class AFieldAccessIsTypedByTheWorldsOwnAnswerTest {
     @Test
     void andNotWhatTheDeclarationsWouldSayBesideIt() {
         FieldTypes saysAString = _ -> Map.of("line", Type.STRING);
-        Type taken = new DeclaredTypeEvidence(reading(saysAString), values)
-                .declaredTypeOf(bodyOf("taken"));
+        Type taken = readingIn(saysAString).declaredTypeOf(bodyOf("taken"));
         assertEquals(Type.STRING, taken,
                 "the walk read the declarations rather than the world it was handed");
     }
@@ -119,8 +117,7 @@ class AFieldAccessIsTypedByTheWorldsOwnAnswerTest {
 
     /** The declaration {@code Order}, as the reading of this module names it. */
     private TypeSymbol orderOf() {
-        Type sample = new DeclaredTypeEvidence(reading(checked()), values)
-                .declaredTypeOf(bodyOf("sample"));
+        Type sample = readingIn(checked()).declaredTypeOf(bodyOf("sample"));
         return assertInstanceOf(Type.Ref.class, sample).name();
     }
 
@@ -159,6 +156,12 @@ class AFieldAccessIsTypedByTheWorldsOwnAnswerTest {
     /** The reading of a {@code .} this walk is handed, in {@code world}. */
     private FieldRead reading(FieldTypes world) {
         return new FieldRead(symbols, world, FieldRead.Unreadable.REFUSED);
+    }
+
+    /** What the declarations state about an expression, read in {@code world}. */
+    private DeclaredTypeReading readingIn(FieldTypes world) {
+        return new DeclaredTypeReading(new DeclarationFacts(reading(world)), values,
+                compilation.db().ask(new Bodies.Reachable(module)).value());
     }
 
     private FieldTypes checked() {
