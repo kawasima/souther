@@ -17,7 +17,10 @@ import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
@@ -58,11 +61,14 @@ public final class RepositoryLayout {
 
     private final Path root;
     private final List<Path> modules;
+    private final Map<String, Path> byTheNameTheRootPomWrites;
     private final List<Path> sourceTrees;
 
-    private RepositoryLayout(Path root, List<Path> modules, List<Path> sourceTrees) {
+    private RepositoryLayout(Path root, LinkedHashMap<String, Path> named, List<Path> sourceTrees) {
         this.root = root;
-        this.modules = List.copyOf(modules);
+        this.byTheNameTheRootPomWrites =
+                Collections.unmodifiableMap(new LinkedHashMap<>(named));
+        this.modules = List.copyOf(named.values());
         this.sourceTrees = List.copyOf(sourceTrees);
     }
 
@@ -91,7 +97,7 @@ public final class RepositoryLayout {
      */
     public static RepositoryLayout of(Path start) {
         Path root = rootAbove(start.toAbsolutePath().normalize());
-        List<Path> modules = new ArrayList<>();
+        LinkedHashMap<String, Path> modules = new LinkedHashMap<>();
         List<Path> sourceTrees = new ArrayList<>();
         for (String named : modulesNamedBy(root.resolve("pom.xml"))) {
             Path module = root.resolve(named).normalize();
@@ -101,7 +107,11 @@ public final class RepositoryLayout {
                         + " repository, and a check that walked one module fewer would answer"
                         + " about the rest and say nothing about this one");
             }
-            modules.add(module);
+            // Two entries under one name would leave whoever asked for it holding whichever came
+            // first, which is the reading answering a question it cannot tell apart.
+            if (modules.put(named, module) != null) {
+                throw new IllegalStateException("the root pom names the module " + named + " twice");
+            }
             Path src = module.resolve("src");
             if (Files.isDirectory(src)) {
                 sourceTrees.add(src);
@@ -129,18 +139,23 @@ public final class RepositoryLayout {
      * check working it out from where it happens to be standing answers about whatever directory
      * the build was invoked from, and that is what this takes off it.
      *
+     * <p>{@code named} as the root pom writes it, which is what a module is called in this reactor.
+     * A directory's own name is not that: the pom may reach a module through a directory above it,
+     * and two modules under different ones can end in the same name — so a lookup on the last step
+     * of the path would answer a question it cannot tell apart, and would answer it with whichever
+     * the pom happened to name first. The pom's names are unique because this reads them into one
+     * answer per name and refuses a second.
+     *
      * <p>Refused rather than resolved where the root pom names no such module, so a module renamed
      * out from under a check stops that check rather than handing it a directory that is not there.
      */
     public Path moduleNamed(String named) {
-        for (Path module : modules) {
-            if (module.getFileName().toString().equals(named)) {
-                return module;
-            }
+        Path module = byTheNameTheRootPomWrites.get(named);
+        if (module == null) {
+            throw new IllegalArgumentException("the root pom names no module called " + named
+                    + ": it names " + byTheNameTheRootPomWrites.keySet());
         }
-        throw new IllegalArgumentException("the root pom names no module called " + named
-                + ": it names " + modules.stream().map(each -> each.getFileName().toString())
-                        .toList());
+        return module;
     }
 
     /**
@@ -446,13 +461,20 @@ public final class RepositoryLayout {
         for (String each : said) {
             for (String step : each.split("[/\\\\]")) {
                 walksOut |= step.equals("..");
-                lands |= isAModuleName(step);
+                lands |= isAModuleDirectory(step);
             }
         }
         return walksOut && lands;
     }
 
-    private boolean isAModuleName(String step) {
+    /**
+     * Whether {@code step} is what a module's directory is called.
+     *
+     * <p>The directory's own name and not the name the root pom writes, which is what
+     * {@link #moduleNamed} takes: this is asked of one step of a path, and a path reaches a module
+     * through the directory it is in whatever the pom calls the module.
+     */
+    private boolean isAModuleDirectory(String step) {
         for (Path module : modules) {
             if (module.getFileName().toString().equals(step)) {
                 return true;

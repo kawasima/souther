@@ -95,16 +95,23 @@ class TheRepositoryIsReadTheWayTheReactorReadsItTest {
     }
 
     /**
-     * A module is reached by the name the root pom gives it, and by no other.
+     * A module is reached by the name the root pom writes, and by no other.
      *
      * <p>What a check reaching another module's files says. A name the reactor does not have is
      * refused rather than resolved, so a module renamed out from under a check stops it instead of
      * handing it a directory that is not there.
+     *
+     * <p>Every module of this reactor is written as a bare directory name, which is why looking one
+     * up by the name of its directory is looking it up by the name the pom writes. Written through
+     * a directory above it, the pom's name would be the path it wrote and this would refuse the
+     * directory's own name — loudly, at every check that asked, rather than by handing back
+     * whichever module happened to end in it.
      */
     @Test
-    void aModuleIsFoundByTheNameTheRootPomGivesIt() {
+    void aModuleIsFoundByTheNameTheRootPomWrites() {
         for (Path module : REPOSITORY.modules()) {
-            assertEquals(module, REPOSITORY.moduleNamed(module.getFileName().toString()));
+            assertEquals(module, REPOSITORY.moduleNamed(module.getFileName().toString()),
+                    "each module of this reactor is written as its own directory name");
         }
         assertThrows(IllegalArgumentException.class,
                 () -> REPOSITORY.moduleNamed("souther-there-is-no-such-module"));
