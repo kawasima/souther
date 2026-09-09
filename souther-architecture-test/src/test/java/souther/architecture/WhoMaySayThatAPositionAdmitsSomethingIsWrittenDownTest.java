@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.function.BiFunction;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
@@ -89,14 +90,6 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
 
     private static final String EMPTINESS = "souther/compiler/values/Emptiness";
 
-    /** Which of two alternatives still stand, which is one reading of the classification below and
-     *  is published beside the word. */
-    private static final String STANDING = Word.STANDING.internalName();
-
-    /** Which of two answers were shown empty, which is the observation every reader of two of them
-     *  at once shares and no connective's reading of it. */
-    private static final String SIDES_SHOWN_EMPTY = Word.SIDES_SHOWN_EMPTY.internalName();
-
     /** The two answers that settle something, which is what these rules are about.
      *  {@code UNDECIDED} settles nothing and is named freely. */
     private static final Set<String> SETTLED = Set.of("EMPTY", "NONEMPTY");
@@ -105,7 +98,7 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
      *  these holds a settled answer without naming one, which is why calling them counts as saying
      *  it. */
     private static final Set<String> OBSERVES_OR_COMPOSES =
-            Set.of("isEmpty", "isDecided", "met", "joined", "of", "from", "bothStand");
+            Set.of("isEmpty", "isDecided", "met", "joined", "of", "bothStand");
 
     /** What javac writes for a switch over this word: a synthetic table of its constants, read by
      *  whoever switched. Taking the answer apart by which of the three it is, under a spelling that
@@ -184,6 +177,37 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
             }
             return null;
         }
+    }
+
+    /**
+     * The body beside this test that compares a constant of {@code word}, and what it answered.
+     *
+     * <p>Called and not only read. Every detector here is held to a body that exercises it, and a
+     * body nothing calls is one whose behaviour nothing checked: it could compare the wrong constant,
+     * or hold two references apart some other way, and the walk would go on reporting that it found a
+     * comparison of this word. So the control is asked what it says, both of the ways below.
+     *
+     * <p>A switch over every word, for the same reason {@link #mayCompare} is one: a word added to
+     * the vocabulary cannot compile until something beside this test compares one of its constants,
+     * and a rule with no control is a rule whose green is about the detector and not about production.
+     */
+    private static boolean comparesAConstantOf(Word word) {
+        return switch (word) {
+            case ANSWERS -> Comparing.itIsEmpty(Emptiness.EMPTY);
+            case STANDING -> Comparing.onlyTheLeftStands(Emptiness.Alternatives.ONLY_THE_LEFT);
+            case SIDES_SHOWN_EMPTY ->
+                    Comparing.theLeftWasShownEmpty(Emptiness.SidesShownEmpty.THE_LEFT);
+        };
+    }
+
+    /** The same control handed something the constant is not, which is what says it compares. */
+    private static boolean comparesAConstantOfAgainstAnother(Word word) {
+        return switch (word) {
+            case ANSWERS -> Comparing.itIsEmpty(Emptiness.NONEMPTY);
+            case STANDING -> Comparing.onlyTheLeftStands(Emptiness.Alternatives.BOTH_STAND);
+            case SIDES_SHOWN_EMPTY ->
+                    Comparing.theLeftWasShownEmpty(Emptiness.SidesShownEmpty.NEITHER);
+        };
     }
 
     /**
@@ -605,6 +629,11 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
                         + " comparison from the making of an answer and not the walk missing it");
 
         for (Word word : Word.values()) {
+            assertTrue(comparesAConstantOf(word),
+                    () -> "the body beside this test answers for a constant of " + word);
+            assertFalse(comparesAConstantOfAgainstAnother(word),
+                    () -> "and it is a comparison, so a body of " + word + " that only looked like"
+                            + " one would hold the detector to nothing");
             assertTrue(saidHere().stream().anyMatch(use -> use.said().equals(word.compared())),
                     () -> "the bodies beside this test compare a constant of " + word + ", so a"
                             + " detector that cannot find one there is one that would report none of"
@@ -614,7 +643,7 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
                     () -> "a reading that compares is one no owned meaning answered, so what is"
                             + " written here is the readings of " + word + " whose meaning nobody has"
                             + " decided yet, each with where it is being decided:\n"
-                            + questionsBeingDecided());
+                            + questionsBeingDecided(word));
         }
     }
 
@@ -639,6 +668,35 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
                 "which the walk finds as well: the two are one word between them, and a rule that"
                         + " read a reference to one and not the other would be about which of them"
                         + " a caller happened to name");
+
+        assertEquals(Emptiness.SidesShownEmpty.NEITHER,
+                Referring.SORTS.apply(Emptiness.NONEMPTY, Emptiness.UNDECIDED),
+                "and the fixture sorts two answers by handle");
+        assertTrue(saidHere().stream().anyMatch(use -> use.said().equals("of")),
+                "and that as well, which is what says the branch asks the words and not the two of"
+                        + " them somebody wrote into it");
+    }
+
+    /**
+     * And every word of the vocabulary is in the nest the walk's two coarse questions name.
+     *
+     * <p>Two of the walk's questions are about a nest and not about a word: which classes are worth
+     * reading at all ({@code holdsTheWord}), and whose own code works out the meanings and is
+     * therefore passed over ({@code isTheWord}). Both name {@code Emptiness}, which answers for every
+     * word today because each of them is written inside it.
+     *
+     * <p>So the assumption is checked rather than relied on. A word put beside the answers instead of
+     * inside them would be read by neither question — its classes skipped by the first and its
+     * meanings counted as somebody else's by the second — and every list above would go on matching.
+     */
+    @Test
+    void andEveryWordIsWrittenInsideTheNestThoseQuestionsName() {
+        for (Word word : Word.values()) {
+            assertEquals(EMPTINESS, nestOf(word.internalName()),
+                    () -> word + " is not written inside the nest the walk reads and passes over, so"
+                            + " a rule about it would be about whichever of the two questions its"
+                            + " author noticed");
+        }
     }
 
     /**
@@ -751,6 +809,12 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
          *  writes an ask and not about the ask. */
         static final Predicate<Emptiness.Alternatives> STANDS =
                 Emptiness.Alternatives::bothStand;
+
+        /** And the classification the connectives read, for the same reason: a handle names a word
+         *  the same ways a call does, and a branch that knew two of the words would read a reference
+         *  to the third as naming nothing. */
+        static final BiFunction<Emptiness, Emptiness, Emptiness.SidesShownEmpty> SORTS =
+                Emptiness.SidesShownEmpty::of;
     }
 
     /**
@@ -899,9 +963,9 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
     /** Where each reading that compares is being decided, for whoever the rule above stopped: an
      *  entry added to that list is a question somebody is deciding, and an entry that has gone is
      *  one that was. */
-    private static String questionsBeingDecided() {
+    private static String questionsBeingDecided(Word word) {
         StringBuilder out = new StringBuilder();
-        COMPARED_IN_PRODUCTION.forEach(open ->
+        mayCompare(word).forEach(open ->
                 out.append("  ").append(open.place()).append("  ").append(open.question())
                         .append('\n'));
         return out.toString();
@@ -1040,8 +1104,7 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
             List<String> out = new ArrayList<>();
             for (var argument : lambda.bootstrapArgs()) {
                 if (argument instanceof DirectMethodHandleDesc handle
-                        && (named(handle.owner()).equals(EMPTINESS)
-                                || named(handle.owner()).equals(STANDING))) {
+                        && Word.of(named(handle.owner())) != null) {
                     // Whichever kind of handle it is, what it names is what the code would have
                     // said had it been written out: a field for a constant, a method for the rest.
                     out.add(handle.methodName());

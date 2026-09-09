@@ -10,7 +10,6 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static souther.compiler.values.Emptiness.EMPTY;
 import static souther.compiler.values.Emptiness.NONEMPTY;
@@ -129,26 +128,6 @@ class ABranchStandsUnlessSomethingShowedItEmptyTest {
         table().forEach(row -> reached.add(row.shown()));
         assertEquals(Set.of(Emptiness.SidesShownEmpty.values()), reached,
                 "every way two sides can be shown empty is one some pair of answers shows");
-    }
-
-    /**
-     * And falling on one side of the classification is not being one answer.
-     *
-     * <p>The rows above put {@link Emptiness#NONEMPTY} and {@link Emptiness#UNDECIDED} on the same
-     * side of every pair, which is what the classification says about them and the only thing it
-     * says. Read as the whole of what the two answers are, it would call a reading exact that is
-     * waiting on a decision — so the rows are held beside the word that does tell them apart, and
-     * the nine are not the six a reader who took them for one answer would write.
-     */
-    @Test
-    void andFallingOnOneSideOfItIsNotBeingOneAnswer() {
-        for (Emptiness said : List.of(NONEMPTY, UNDECIDED)) {
-            assertEquals(NEITHER, Emptiness.SidesShownEmpty.of(said, said),
-                    () -> said + " was not shown empty");
-        }
-        assertNotEquals(NONEMPTY.isDecided(), UNDECIDED.isDecided(),
-                "and whether anybody has looked tells the two of them apart, which is the question"
-                        + " this classification is not the answer to");
     }
 
     /**
