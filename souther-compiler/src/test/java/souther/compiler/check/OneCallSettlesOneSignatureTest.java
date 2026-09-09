@@ -112,13 +112,12 @@ class OneCallSettlesOneSignatureTest {
                 Type.fn(List.of(new Type.Var("a", false)), Type.BOOL),
                 Type.list(new Type.Var("a", false)));
         int[] reads = new int[params.size()];
-        Hir.Apply call = (Hir.Apply) filterOverAnEmptyList();
 
-        CallElaborator.settledByValues(call, params, Type.list(new Type.Var("a", false)),
+        SignatureApplication.settledByValues(params, Type.list(new Type.Var("a", false)),
                 Type.list(Type.INT), i -> {
                     reads[i]++;
                     return Type.list(Type.INT);
-                }, CheckContext.of(Symbols.none(DefaultStdlib.get())));
+                }, Symbols.none(DefaultStdlib.get()));
 
         assertEquals(0, reads[0], "a function argument is typed after the values, not here");
         assertEquals(1, reads[1], "and a value argument is read once, however it is ordered");
