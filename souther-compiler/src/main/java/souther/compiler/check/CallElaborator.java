@@ -238,7 +238,8 @@ public final class CallElaborator {
         if (call.args().size() != params.size()) {
             arity(call, params.size());
         }
-        Map<String, Type> bind = settledByValues(call, params, kept.result(), expected, ca::type, ctx);
+        Map<String, Type> bind = SignatureApplication.settledByValues(
+                params, kept.result(), expected, ca::type, ctx.symbols());
         requireValueArgs(call, params, ca, bind);
         for (int i = 0; i < params.size(); i++) {
             if (params.get(i) instanceof Type.FnOf declared) {
@@ -271,65 +272,6 @@ public final class CallElaborator {
         return new Core.PreservedCall(kept.declaring(), ca.cores(),
                 new Core.KeptCallPlace(call.answered().origin(), call.application()),
                 TypeOps.substitute(kept.result(), bind), call.pos());
-    }
-
-    /**
-     * What a call settles of the signature it applies, before any function argument is typed.
-     *
-     * <p>Two things state something about a polymorphic signature's variables, and they are asked in
-     * this order because the order is the whole of the rule.
-     *
-     * <ol>
-     *   <li>What the context expects of the result, where the signature takes a function at all. A
-     *       variable a function parameter mentions has to be decided before that function is typed,
-     *       and where no argument decides it the position the call stands in is the only thing that
-     *       does.</li>
-     *   <li>What each value argument states, the ones that state something first. An argument that
-     *       answers no value — an empty collection carries a bottom — says nothing about what it
-     *       holds, and letting it settle a variable would hold every other argument to the element
-     *       type of nothing. A bottom then widens to what the others settled instead of the other way
-     *       round.</li>
-     * </ol>
-     *
-     * <p>Every reader of a declared signature asks this: the call that expands one, the call that
-     * keeps one standing, and the walk that reads one to learn what a function it was handed takes.
-     * They differ in what they do with a function argument afterwards — a fold reads its result as
-     * the accumulator to grow, an ordinary application does not — and in nothing before it. Said once
-     * because a difference here is not a failure but a variable settled to the wrong type, which is
-     * reported somewhere else as something else.
-     */
-    static Map<String, Type> settledByValues(Hir.Apply call, List<Type> params, Type result,
-                                             Type expected,
-                                             java.util.function.IntFunction<Type> argType,
-                                             CheckContext ctx) {
-        Map<String, Type> bind = new HashMap<>();
-        if (params.stream().anyMatch(Type.FnOf.class::isInstance)) {
-            BottomInfer.pinResultTypeVars(result, expected, bind, ctx.symbols());
-        }
-        // Each value argument is asked once, here, in the order it is written. What the ordering
-        // below decides is which of them settles a variable first, and nothing about how many times
-        // an argument is read: typing one can decide a variable of the application it stands in, so a
-        // second reading is a second answer, and then the argument classified and the argument
-        // unified are not the same reading of it.
-        Type[] stated = new Type[params.size()];
-        List<Integer> stating = new ArrayList<>();
-        List<Integer> bottoms = new ArrayList<>();
-        for (int i = 0; i < params.size(); i++) {
-            if (params.get(i) instanceof Type.FnOf) {
-                continue;
-            }
-            stated[i] = argType.apply(i);
-            (Type.mentions(stated[i], BottomInfer::answersNoValue) ? bottoms : stating).add(i);
-        }
-        stating.addAll(bottoms);
-        // What an argument settles, and not whether it fits: that is required of each argument once
-        // the substitution is complete, and required there because that is where the argument itself
-        // is in hand. A refusal from here would name the argument in words and point at the callee,
-        // the two being as far apart as an argument list is long.
-        for (int i : stating) {
-            TypeOps.bindVars(params.get(i), stated[i], bind, ctx.symbols());
-        }
-        return bind;
     }
 
     /**
@@ -537,8 +479,8 @@ public final class CallElaborator {
             throw new IllegalStateException("`" + call.written() + "` reached signature application"
                     + " with " + args.size() + " argument(s) against " + signature.params().size());
         }
-        Map<String, Type> bind = settledByValues(call, signature.params(), signature.result(),
-                expected, ca::type, ctx);
+        Map<String, Type> bind = SignatureApplication.settledByValues(
+                signature.params(), signature.result(), expected, ca::type, ctx.symbols());
         requireValueArgs(call, signature.params(), ca, bind);
         try {
             for (int i = 0; i < args.size(); i++) {
@@ -569,7 +511,8 @@ public final class CallElaborator {
     }
 
     /** Each value argument held to the parameter it was given to, at its own position — the
-     * refusal {@link #settledByValues} leaves to whoever has the argument in hand. */
+     * refusal {@link SignatureApplication#settledByValues} leaves to whoever has the argument in
+     * hand. */
     private static void requireValueArgs(Hir.Apply call, List<Type> params, CallArgs ca,
                                          Map<String, Type> bind) {
         for (int i = 0; i < params.size(); i++) {
