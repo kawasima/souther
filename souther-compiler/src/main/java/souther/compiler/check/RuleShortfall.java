@@ -74,6 +74,12 @@ record RuleShortfall(FactSubject position, UnreadReason why, RuleShortfall.Site 
          * answerable for is filed under that rule ({@link ReadingEvidence}) and never met with
          * another's — and this says the rest.
          *
+         * <p>The place is the part with the denials above it taken off, which is one of the two
+         * spellings the shape holds ({@link ClauseExpr#spelled}). Which of them an author is shown
+         * — the comparison, or the {@code not} written over it — is a question about what a report
+         * points at and is answered where the site is made, so it stays a choice among what the
+         * clause was written as rather than becoming a fact read off whatever tree was in hand.
+         *
          * @param at which part of the clause it is, in the clause's own numbering
          * @param writtenAt where that part stands, which is settled by {@code at} and carried
          *                  because the reader that puts these in the author's order has no clause

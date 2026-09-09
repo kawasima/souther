@@ -2,12 +2,14 @@ package souther.compiler.check;
 
 import org.junit.jupiter.api.Test;
 
+import souther.compiler.diag.SourcePos;
 import souther.compiler.query.Compilation;
 import souther.compiler.query.Scopes;
 import souther.compiler.types.TypeKey;
 import souther.compiler.types.TypeSymbol;
 import souther.compiler.types.TypeSymbols;
 
+import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -57,6 +59,30 @@ class WhereAReadingGaveUpIsAPartOfTheClauseAndNotATreeItWasReadOverTest {
     void andTwoPartsOfOneClauseAreTwoPlaces() {
         assertEquals(2, sitesIn(TWO_PARTS_NOTHING_READS).size(),
                 "an author wrote two of them and has two things to look at");
+    }
+
+    /**
+     * And each of them stands where it stood, which the sites above do not say.
+     *
+     * <p>Said separately because a site is told from another by which part of the clause it is and
+     * by nothing else ({@code AtALeaf.equals}), so comparing sites compares the identities and
+     * leaves what an author is shown unasked. The two halves of a site are two claims and one
+     * comparison would carry only the first.
+     */
+    @Test
+    void andEachOfThemStandsWhereItStood() {
+        assertEquals(placesIn(TWO_PARTS_NOTHING_READS), placesIn(TWO_PARTS_NOTHING_READS),
+                "where a part was written is the source's answer, and two compiles read one"
+                        + " source");
+    }
+
+    /** Where each of them stands, in the order the clause numbers them. */
+    private static List<SourcePos> placesIn(String source) {
+        return sitesIn(source).stream()
+                .map(RuleShortfall.Site.AtALeaf.class::cast)
+                .sorted(Comparator.comparingInt(each -> each.at().ordinal()))
+                .map(RuleShortfall.Site::writtenAt)
+                .toList();
     }
 
     /** Everywhere the reading of values gave up, of every rule of {@code N}. */
