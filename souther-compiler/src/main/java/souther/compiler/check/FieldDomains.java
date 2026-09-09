@@ -2145,9 +2145,11 @@ public final class FieldDomains {
                 // boundary beside it down with it.
                 // The rule as well as the place: a place is a coordinate of one clause and every
                 // clause has a first one, so an end another rule placed at its own opening would
-                // answer here for a conjunct that placed nothing.
-                if (directs.stream().anyMatch(d -> d.part().rule().equals(rule)
-                        && d.stands().equals(shape.at()))) {
+                // answer here for a conjunct that placed nothing. The place first, because it is
+                // a number and a rule is a declaration, a clause of it and a number of that.
+                ClauseExpr.Occurrence stands = shape.at();
+                if (directs.stream().anyMatch(d -> d.stands().equals(stands)
+                        && d.part().rule().equals(rule))) {
                     return;
                 }
                 // What this part is about, and not what the rule is. A conjunction is one rule the
