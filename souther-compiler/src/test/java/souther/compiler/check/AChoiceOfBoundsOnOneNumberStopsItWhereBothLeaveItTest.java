@@ -62,30 +62,38 @@ class AChoiceOfBoundsOnOneNumberStopsItWhereBothLeaveItTest {
                         + " least three is one alternative's business alone");
     }
 
-    /** And it does not turn on which of them was written first. */
+    /**
+     * And it does not turn on which of them was written first.
+     *
+     * <p>Both answers are pinned and not merely held against each other. Two readings that agree
+     * are two readings that agree, and a change leaving them both saying the model draws no line
+     * would pass a test asking only that.
+     */
     @Test
     void andNotOnWhichWasWrittenFirst() {
-        assertEquals(borderIn("String.length(s) >= 2 || String.length(s) >= 3"),
-                borderIn("String.length(s) >= 3 || String.length(s) >= 2"),
+        assertEquals(List.of(A_LINE_AT_TWO, A_LINE_AT_TWO),
+                List.of(borderIn("String.length(s) >= 2 || String.length(s) >= 3"),
+                        borderIn("String.length(s) >= 3 || String.length(s) >= 2")),
                 "a choice is between its alternatives and not between their order");
     }
 
     /** Nor on how the alternatives were bracketed. */
     @Test
     void norOnHowTheyWereBracketed() {
-        assertEquals(
-                borderIn("(String.length(s) >= 2 || String.length(s) >= 3)"
-                        + " || String.length(s) >= 4"),
-                borderIn("String.length(s) >= 2"
-                        + " || (String.length(s) >= 3 || String.length(s) >= 4)"),
+        assertEquals(List.of(A_LINE_AT_TWO, A_LINE_AT_TWO),
+                List.of(borderIn("(String.length(s) >= 2 || String.length(s) >= 3)"
+                                + " || String.length(s) >= 4"),
+                        borderIn("String.length(s) >= 2"
+                                + " || (String.length(s) >= 3 || String.length(s) >= 4)")),
                 "the same three alternatives, and the brackets are not a fact about the rule");
     }
 
     /** And one bound written twice is that bound. */
     @Test
     void andOneBoundWrittenTwiceIsThatBound() {
-        assertEquals(borderIn("String.length(s) >= 2"),
-                borderIn("String.length(s) >= 2 || String.length(s) >= 2"),
+        assertEquals(List.of(A_LINE_AT_TWO, A_LINE_AT_TWO),
+                List.of(borderIn("String.length(s) >= 2"),
+                        borderIn("String.length(s) >= 2 || String.length(s) >= 2")),
                 "the same rule on both sides holds the length where the rule holds it");
     }
 
@@ -130,8 +138,9 @@ class AChoiceOfBoundsOnOneNumberStopsItWhereBothLeaveItTest {
      */
     @Test
     void andADenialReachingTheSameNumberIsTheSameRule() {
-        assertEquals(borderIn("String.length(s) >= 2 || String.length(s) >= 3"),
-                borderIn("String.length(s) >= 2 || Bool.not(String.length(s) < 3)"),
+        assertEquals(List.of(A_LINE_AT_TWO, A_LINE_AT_TWO),
+                List.of(borderIn("String.length(s) >= 2 || String.length(s) >= 3"),
+                        borderIn("String.length(s) >= 2 || Bool.not(String.length(s) < 3)")),
                 "one rule about the length, written two ways");
     }
 
@@ -228,6 +237,29 @@ class AChoiceOfBoundsOnOneNumberStopsItWhereBothLeaveItTest {
                         borderIn(crossed + " || (" + crossed + " || " + unplaced + ")")),
                 "no value of the crossed alternatives exists, so every value is in the third —"
                         + " whose line is one nothing placed, whichever way the brackets fall");
+    }
+
+    /**
+     * And a single rule stating an end past the order is such a branch too.
+     *
+     * <p>No string is longer than the largest whole number, so no value is in that alternative and
+     * every value of the choice is in the one beside it — a line at two where that one places one,
+     * and an end nobody worked out where it does not.
+     *
+     * <p>Which is the same fact as the pair above and reaches it another way: there two rules of a
+     * conjunction stopped the length past each other, and here one rule stops it past the order.
+     * Read as a rule that says nothing about the length, the alternative beside it settles nothing
+     * and the choice comes back as a model that draws no line.
+     */
+    @Test
+    void andSoIsOneRuleStatingAnEndPastTheOrder() {
+        assertEquals(List.of(A_LINE_AT_TWO, NOT_MEASURED),
+                List.of(borderIn("String.length(s) > 9223372036854775807"
+                                + " || String.length(s) >= 2"),
+                        borderIn("String.length(s) > 9223372036854775807"
+                                + " || String.length(s) * 2 >= 4")),
+                "nobody is in the first alternative, so the choice is the second — which draws a"
+                        + " line in one and states one nothing placed in the other");
     }
 
     /** What the document says the line was read as. */

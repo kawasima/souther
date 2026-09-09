@@ -75,6 +75,22 @@ interface StatedLines {
         /** Several of them, held to each other: the line runs between them and falls at none. */
         record Between() implements Statement {}
 
+        /**
+         * None of them, and no row either: the rule's numbers cancel to something no value meets.
+         *
+         * <p>{@code n - n >= 1} is {@code 0 >= 1}. It states no line, as a rule holding of every
+         * row does, and the two are opposite — the first leaves an alternative beside it standing
+         * alone and the second takes every value of the choice into itself. Which of them a branch
+         * is decides whether an end the alternative beside it left open is still open, so they are
+         * not one answer.
+         *
+         * <p>That nobody is in such a branch is not something this reading may act on: whether
+         * anybody is in one is the values' and the orders', and neither of them reads the
+         * arithmetic that shows it. So what is said here is only that the branch settles nothing
+         * for its neighbour.
+         */
+        record AdmitsNothing() implements Statement {}
+
         /** One this reading cannot name — an absolute value, a difference. */
         record OnANumberNotNamed() implements Statement {}
     }

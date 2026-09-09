@@ -2084,6 +2084,7 @@ public final class InvariantChecker {
                             Set.of(found.number().asNumber());
                     case StatedLines.Statement.NoLine _,
                          StatedLines.Statement.Between _,
+                         StatedLines.Statement.AdmitsNothing _,
                          StatedLines.Statement.OnANumberNotNamed _ -> Set.of();
                 };
             }
@@ -2140,6 +2141,11 @@ public final class InvariantChecker {
                     // Which position it is about is what reading further would say, so every
                     // position the leaf writes is one whose end waits on a reader.
                     case StatedLines.Statement.OnANumberNotNamed _ -> named;
+                    // And a rule no row meets settles nothing for the alternative beside it. What
+                    // the choice comes to is that alternative, whose end is where it was — so the
+                    // positions this rule writes stay waiting, and nothing here strikes them off
+                    // on the strength of a branch nobody is in.
+                    case StatedLines.Statement.AdmitsNothing _ -> named;
                     case StatedLines.Statement.OnWhatStandsAtAPosition it ->
                             ownValuesAmong(named, it.number(), byName);
                     // A line on a number an operation answers leaves the position's own order
@@ -2169,6 +2175,8 @@ public final class InvariantChecker {
     private static final StatedLines.Statement BETWEEN = new StatedLines.Statement.Between();
     private static final StatedLines.Statement ELSEWHERE =
             new StatedLines.Statement.OnANumberNotNamed();
+    private static final StatedLines.Statement ADMITS_NOTHING =
+            new StatedLines.Statement.AdmitsNothing();
 
     /**
      * Which of this value's numbers one leaf says the values stop on.
@@ -2214,11 +2222,11 @@ public final class InvariantChecker {
             // reading further would say — and every number the leaf writes about is one waiting on
             // that reading, the numbers an operation answers among them.
             case CanonicalForm.NotRead _ -> ELSEWHERE;
-            // The positions cancelled. Read as written, which is what the residue is a residue of:
-            // under a denial the same form states the opposite of what it reads as, and a rule
-            // holding of every row denied is one holding of none — which states no line either, and
-            // whether anybody can be in a branch of it is the fates' to say and not this reading's.
-            case CanonicalForm.CutsNothing _ -> NO_LINE;
+            // The positions cancelled, and what is left is a number against a number. Read as
+            // written, which is what the residue is a residue of: under a denial the same form
+            // states the opposite of what it reads as, and both answers are here.
+            case CanonicalForm.CutsNothing form ->
+                    form.holdsOfEveryRow() == positive ? NO_LINE : ADMITS_NOTHING;
             // Over one number, which is the line's. Over several, and holding no position to a
             // position, the rule stops the values somewhere on one of them and which is what
             // reading further would say — the same answer as a number with no name at all.

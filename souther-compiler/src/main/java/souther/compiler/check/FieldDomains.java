@@ -1928,7 +1928,13 @@ public final class FieldDomains {
             return held;
         }
         OrderedInterval settled = derived.at(number);
-        return held.meet(new NumericDomain.Bounds(settled.low(), settled.high()));
+        // And no line where the rules leave the number no value. What has been read then is that
+        // they contradict at it, which is what a reader of that is told by whoever answers it —
+        // here it is an envelope with no line in it, and a line drawn from its ends would fall
+        // where the order does not reach.
+        return Endpoint.someValueLiesBetween(settled.low(), settled.high())
+                ? held.meet(new NumericDomain.Bounds(settled.low(), settled.high()))
+                : held;
     }
 
     /**

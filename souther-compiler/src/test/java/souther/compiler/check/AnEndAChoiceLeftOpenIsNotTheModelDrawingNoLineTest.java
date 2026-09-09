@@ -266,6 +266,26 @@ class AnEndAChoiceLeftOpenIsNotTheModelDrawingNoLineTest {
     }
 
     /**
+     * And an alternative no row meets settles nothing for the one beside it.
+     *
+     * <p>{@code n - n >= 1} is {@code 0 >= 1}, which no value satisfies — so every value of the
+     * choice is in the alternative beside it, and the end that one leaves unknown is the rule's.
+     *
+     * <p>The counterpart of {@link #andAnAlternativeHoldingOfEveryRowSettlesTheChoice} and its
+     * opposite: one rule takes every value into itself and the other takes none, and both are
+     * comparisons whose positions cancel. Read as one answer — a rule that states no line — the
+     * first settles the choice and the second was made to settle it too, about a model whose line
+     * nobody has worked out.
+     */
+    @Test
+    void andAnAlternativeNoRowMeetsSettlesNothingForTheOneBesideIt() {
+        assertEquals(List.of("border      not measured (no line was derived at any position)"),
+                borderIn("Int.abs(n) >= 5 || n - n >= 1"),
+                "no value is in the second alternative, so what the rule leaves `n` is what the"
+                        + " first leaves it — and nothing worked that out");
+    }
+
+    /**
      * And a rule that cancels against a side this reading names a position in does too.
      *
      * <p>{@code n + 1 >= n} holds every row, and one whole side of it is a position — so the lookup

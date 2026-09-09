@@ -1,7 +1,6 @@
 package souther.compiler.check;
 
 import souther.compiler.core.Core;
-import souther.compiler.numeric.Endpoint;
 import souther.compiler.numeric.OrderedInterval;
 
 import java.util.LinkedHashMap;
@@ -134,15 +133,12 @@ final class BoundaryReading {
                 || !it.number().equals(said.number())) {
             return new Read.LeftOpen(new OpenEnd(said.number()), subject);
         }
-        OrderedInterval left = it.stated();
-        // And a rule whose ends have crossed states no end of this number. What it says is that
-        // nothing satisfies it there, which is a fact about whether a value exists — the question
-        // this reading has no half of and the readings that decide it already answer. Put in the
-        // envelope, it would be a line at a place the order does not reach, and every reader of the
-        // envelope would have to know not to draw it.
-        return Endpoint.someValueLiesBetween(left.low(), left.high())
-                ? new Read.Bounded(it.number(), subject, left)
-                : NOTHING_STATED;
+        // Whatever the ends came to, crossed ones included. That a rule leaves the number no value
+        // is not that no rule spoke of it: the first takes every value of a choice into the
+        // alternative beside it, and the second leaves that alternative saying nothing about the
+        // number at all. Told apart where they compose ({@link BoundaryState}), and collapsed here
+        // they would arrive there as one.
+        return new Read.Bounded(it.number(), subject, it.stated());
     }
 
     /** What the clauses call {@code number}, which is the name every other reader files it
