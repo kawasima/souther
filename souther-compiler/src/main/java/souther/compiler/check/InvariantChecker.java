@@ -785,7 +785,8 @@ public final class InvariantChecker {
                                  Map<PartId<RuleRef.Invariant>,
                                          Map<ClauseExpr.Occurrence, PartAsRead>> constrained,
                                  Set<FactSubject> spokenFor) {
-                written.add(Written.of(clause, parts, reach.withoutParts(), constrained));
+                written.add(Written.of(new ReadingId(written.size()), clause, parts,
+                        reach.withoutParts(), constrained));
                 spokenFor.forEach(spoken -> took.record(from, spoken));
             }
 
@@ -842,8 +843,11 @@ public final class InvariantChecker {
             }
             // The clause as one reading, and the parts its author wrote as subtrees of it. Which
             // parts there are was settled where the clause was split; nothing here decides it.
-            ClauseView view =
-                    reach.withoutParts().viewOf(declared.shape().onto(stated, origin));
+            // The shape of the whole clause, read out of the tree once. The parts are subtrees of
+            // it, so what a reader says about an occurrence of one is said in the numbering the
+            // clause hands out rather than in a numbering that starts wherever a part does.
+            ClauseView view = reach.withoutParts()
+                    .viewOf(declared.shape().onto(ClauseExpr.of(stated, true), origin));
             // A part at a time, and the ones this world holds. Which parts a clause has was settled
             // where it was split, so a part left out is one left out of the list — never a node a
             // walk was told to step over.
@@ -856,13 +860,14 @@ public final class InvariantChecker {
                     new LinkedHashMap<>();
             Predicates.Owed owed = null;
             for (Clauses.StatedPart part : view.present()) {
-                Predicates.Owed said = c.predicates.assumed(part.expr(), at, false,
+                Predicates.Owed said = c.predicates.assumed(part.of(), at, false,
                         (of, _, came) -> constrained
                                 .computeIfAbsent(part.id(), _ -> new LinkedHashMap<>())
                                 .put(of.at(), new PartAsRead(of, partRead(came))));
                 owed = owed == null ? said : owed.and(said);
             }
-            written.add(new Written(stated, view, constrained));
+            written.add(new Written(new ReadingId(written.size()), stated, view, constrained,
+                    Map.of()));
             if (owed == null) {
                 owed = Predicates.Owed.unread();
             }
@@ -928,7 +933,6 @@ public final class InvariantChecker {
         // the two went unanswered would turn on the order they were written in.
         Allowance<FactSubject> allowed =
                 policy.allowanceForAdmittedValues(c.answers.lending());
-        Map<RuleRef.Invariant, Map<Core, ReadByClauses.OfAPart>> adoptedBy = new LinkedHashMap<>();
         Map<RuleRef.Invariant, ReadByClauses.OfARule> narrowedBy = new LinkedHashMap<>();
         // The numbers this value's clauses can be about, read before any of them is. Both the fold
         // below and the walk that classifies a comparison are given this one table.
@@ -999,11 +1003,15 @@ public final class InvariantChecker {
                     boundsLeftOpen.computeIfAbsent(each.from(), _ -> new LinkedHashMap<>())
                             .merge(number, behind, EndsLeftOpen.Behind::and));
         });
-        answered.perPart().forEach((each, parts) -> {
-            Map<Core, ReadByClauses.OfAPart> out = adoptedBy
-                    .computeIfAbsent(each.from(), _ -> new java.util.IdentityHashMap<>());
-            parts.forEach(part -> out.put(part.getKey(), part.getValue()));
-        });
+        // And each reading with the account of its own parts, which is what the walk below reads
+        // them off. One rule is read once per place the walk opens a value at, and each of those
+        // readings walks the tree a substitution built for it — so an account of every reading
+        // together is one whose entries are told apart by which objects those substitutions
+        // allocated, and a reader walking one reading finds another reading's answer as readily.
+        List<Written> accounted = new ArrayList<>(written.size());
+        for (Written each : written) {
+            accounted.add(each.alsoAdopting(answered.perPart().getOrDefault(each, List.of())));
+        }
         // And the same after it. Reading the account is reading an answer: the whole was worked
         // out once above, and what each clause and each part of it took in is looked up in
         // that. Worked out again per clause instead, asking what a rule adopted bought machines
@@ -1032,8 +1040,8 @@ public final class InvariantChecker {
                         + " alternatives past a counted " + expansion;
         // And which of the clauses place an edge, asked once the positions have names to be
         // recognised by.
-        Reading reading = c.directsIn(written, at, numbers, typeAt, took,
-                new PartsRead(adoptedBy, narrowedBy));
+        Reading reading = c.directsIn(accounted, at, numbers, typeAt, took,
+                new RulesRead(narrowedBy));
         ConstraintState<FactSubject> constraints = k.constraints()
                 .takingRead(answered.whole().confinement(), allowed, c.answers);
         // How each atom's values are spaced, kept so that settling one afterwards states the
@@ -1350,6 +1358,33 @@ public final class InvariantChecker {
     }
 
     /**
+     * Which of the readings this walk opened one is.
+     *
+     * <p>Issued by the walk that opens them, counted from nought, and meaning nothing away from it
+     * — a reading of one declaration and a reading of another are both the first thing their walk
+     * did. What pairs it with the declaration is the walk holding both.
+     *
+     * <p>Here so that two readings are two because the walk opened two, and not because the trees
+     * a substitution built for them happen to differ. A clause is read once per place the walk
+     * opens a value at, and what each of those made of a part is the reading's own; told apart by
+     * the representation instead, two readings that arrived at the same tree would be one, and
+     * which of them that was would be a fact about the substitution.
+     */
+    record ReadingId(int ordinal) {
+
+        ReadingId {
+            if (ordinal < 0) {
+                throw new IllegalArgumentException("a reading is counted from zero: " + ordinal);
+            }
+        }
+
+        @Override
+        public String toString() {
+            return "reading #" + ordinal;
+        }
+    }
+
+    /**
      * One clause reaching a value, rebased onto the positions of that value, which clause it is,
      * and the parts its author wrote it in.
      *
@@ -1357,10 +1392,14 @@ public final class InvariantChecker {
      * inside one reading, and a branch one of them rules out is ruled out there. The parts are what
      * a line drawn on a position is attributed to, and each of them is a subtree of that same
      * reading — carrying which part of the clause it is, settled where the clause was split.
+     *
+     * <p>And which reading of them this is ({@link ReadingId}), because what it made of each part
+     * is its own and a rule is read once per place the walk opens a value at.
      */
-    record Written(Core clause, ClauseView view,
+    record Written(ReadingId opened, Core clause, ClauseView view,
                    Map<PartId<RuleRef.Invariant>, Map<ClauseExpr.Occurrence, PartAsRead>>
-                           constrained) {
+                           constrained,
+                   Map<ClauseExpr.Occurrence, ReadByClauses.OfAPart> adopted) {
 
         Written {
             constrained = Map.copyOf(constrained);
@@ -1368,13 +1407,36 @@ public final class InvariantChecker {
 
         /** The clause {@code authored} was written in, as {@code world} holds it, with what the
          *  reading that built it made of each occurrence of each part it holds. */
-        static Written of(Core clause, List<Clauses.StatedPart> authored, PartsLeftOut world,
+        static Written of(ReadingId opened, Core clause, List<Clauses.StatedPart> authored,
+                          PartsLeftOut world,
                           Map<PartId<RuleRef.Invariant>,
                                   Map<ClauseExpr.Occurrence, PartAsRead>> constrained) {
             if (authored.isEmpty()) {
                 throw new IllegalArgumentException("a clause reaching a value is written in parts");
             }
-            return new Written(clause, world.viewOf(authored), constrained);
+            return new Written(opened, clause, world.viewOf(authored), constrained, Map.of());
+        }
+
+        /**
+         * The same reading, with the account it came to once every branch of the value was decided.
+         *
+         * <p>Held by the reading it is an account of. A clause is read once per place the walk
+         * opens a value at, and the readings of one rule walk trees a substitution built for each
+         * of them — so an account of all of them together is told apart by nothing but which
+         * objects those substitutions happened to allocate.
+         */
+        Written alsoAdopting(
+                List<Map.Entry<ClauseExpr.Occurrence, ReadByClauses.OfAPart>> account) {
+            Map<ClauseExpr.Occurrence, ReadByClauses.OfAPart> out = new LinkedHashMap<>();
+            account.forEach(each -> out.put(each.getKey(), each.getValue()));
+            return new Written(opened, clause, view, constrained,
+                    Collections.unmodifiableMap(out));
+        }
+
+        /** What this reading made of the part at {@code at}, or null where it read no such part —
+         *  which is not the same as having read it and made nothing of it. */
+        ReadByClauses.OfAPart adoptedAt(ClauseExpr.Occurrence at) {
+            return adopted.get(at);
         }
 
         /**
@@ -1529,35 +1591,19 @@ public final class InvariantChecker {
     }
 
     /**
-     * What each reading made of each part of each rule, as each of them said so while reading it.
+     * What each rule's own tree came to, once every branch of the value is decided.
      *
-     * <p>Per part, because a conjunction is one rule read a conjunct at a time and evidence gathered
-     * for the whole answers a clause half of which nothing read on the strength of the half that
-     * was. Keyed by the part as the tree holds it, so the walk that reads the clause afterwards
-     * finds this reading's own answer about the very node it holds rather than reading it again.
+     * <p>What a part of a rule came to is not here. That is the reading's own and is held by the
+     * reading that made it ({@link Written#adoptedAt}), because a rule is read once per place the
+     * walk opens a value at and an answer about a part means nothing without saying which of those
+     * readings said it.
      *
-     * @param account what each reading made of each part, as each of them wrote it down. The
-     *                account itself and not one projection of it: what a part adopted and what it
-     *                put a constraint on are two questions, and a walk handed the first alone
-     *                answers the second by reading a set that holds more than it
      * @param byRule  what each rule's own tree came to, which is the only thing that answers what
      *                that rule did to a position. The declaration's answer is met from every rule
      *                reaching the position, so a reader taking it for one rule's would lend a rule
      *                that narrows nothing whatever its neighbours narrowed
      */
-    record PartsRead(Map<RuleRef.Invariant, Map<Core, ReadByClauses.OfAPart>> account,
-                     Map<RuleRef.Invariant, ReadByClauses.OfARule> byRule) {
-
-        /** What every reading made of {@code part} of {@code rule}, or null where none read it. */
-        ReadByClauses.OfAPart accountIn(RuleRef rule, Core part) {
-            Map<Core, ReadByClauses.OfAPart> said = account.get(rule);
-            return said == null ? null : said.get(part);
-        }
-
-        Set<FactSubject> adoptedIn(RuleRef rule, Core part) {
-            ReadByClauses.OfAPart said = accountIn(rule, part);
-            return said == null ? null : said.adopted();
-        }
+    record RulesRead(Map<RuleRef.Invariant, ReadByClauses.OfARule> byRule) {
 
         /** What {@code rule}'s own tree left, or null where no reading answered over it. */
         ReadByClauses.OfARule ruleIn(RuleRef rule) {
@@ -1729,7 +1775,7 @@ public final class InvariantChecker {
     private Reading directsIn(List<Written> stated, Denotations at,
                                    Map<FactSubject, Coordinate> byName,
                                    Map<RuleKey, Type> typeAt,
-                                   ReadingEvidence took, PartsRead parts) {
+                                   ReadingEvidence took, RulesRead rules) {
         List<Direct> out = new ArrayList<>();
         List<FieldDomains.NoLine> noLines = new ArrayList<>();
         List<FieldDomains.WithoutAnEnd> withoutAnEnd = new ArrayList<>();
@@ -1744,13 +1790,13 @@ public final class InvariantChecker {
         // not gathered ({@link APartNoReadingSaw}). One list and not one rule each of them
         // consults, so the agreement is not something a walk has to be written to keep.
         stated.forEach(each -> each.parts().forEach(part ->
-                // The shape of the whole part, read out of the tree once and walked from there.
-                // Read again at each step, the occurrences under one part would be numbered afresh
-                // from wherever this reader happened to stop, and an answer filed by the reading
-                // that seeded it would be asked for under a number this walk made up.
-                direct(ClauseExpr.of(part.expr(), true), each, part.id(), at, byName, out, noLines,
+                // The part as the clause was read into, walked from there. Read out of the tree
+                // again, the occurrences under one part would be numbered afresh from wherever the
+                // part begins, and an answer filed by the reading that seeded it would be asked
+                // for under a number this walk made up.
+                direct(part.of(), each, part.id(), at, byName, out, noLines,
                         withoutAnEnd, aboutOneCoordinate, narrowers,
-                        raised, took, typeAt, parts, raisedByPart, standing)));
+                        raised, took, typeAt, rules, raisedByPart, standing)));
         // Insertion order, kept: `Map.copyOf` iterates in an order salted once per JVM run, and
         // what a report prints for a position is these in the order the declaration writes them.
         return new Reading(List.copyOf(out), List.copyOf(noLines), List.copyOf(withoutAnEnd),
@@ -1781,7 +1827,6 @@ public final class InvariantChecker {
                         ClauseStates states, InvariantBound.Read placed,
                         Map<FactSubject, Coordinate> byName, Map<RuleRef.Invariant, Required> raised,
                         ReadingEvidence took,
-                        PartsRead parts,
                         Map<RuleRef.Invariant, Map<Core, Required>> raisedByPart) {
         raises(raised, rule, states);
         // And what this part of it raises, kept apart from what the rule raises. A reader that found
@@ -1815,7 +1860,8 @@ public final class InvariantChecker {
         if (about.isEmpty()) {
             return;
         }
-        Set<FactSubject> here = parts.adoptedIn(rule, part);
+        ReadByClauses.OfAPart adopted = of.adoptedAt(at);
+        Set<FactSubject> here = adopted == null ? null : adopted.adopted();
         // What this very reading made of this very part, as it said so when it read it. Asked
         // again here, the part was read a second time, and two readings of one conjunct agree only
         // for as long as nobody changes one of them.
@@ -1868,7 +1914,7 @@ public final class InvariantChecker {
                         Map<RuleKey, List<TypeSymbol.AtModule>> narrowers,
                         Map<RuleRef.Invariant, Required> raised, ReadingEvidence took,
                         Map<RuleKey, Type> typeAt,
-                        PartsRead parts,
+                        RulesRead rules,
                         Map<RuleRef.Invariant, Map<Core, Required>> raisedByPart,
                         Map<FieldDomains.BoundaryQuestion,
                                 FieldDomains.BoundaryStanding> standing) {
@@ -1881,7 +1927,7 @@ public final class InvariantChecker {
         if (saidAs instanceof ClauseExpr.Scoped scoped
                 && scoped.spelled().get(0) == scoped.binding()) {
             direct(scoped.body(), of, part, terms.inside(scoped.binding(), at), byName, out,
-                    noLines, withoutAnEnd, naming, narrowers, raised, took, typeAt, parts,
+                    noLines, withoutAnEnd, naming, narrowers, raised, took, typeAt, rules,
                     raisedByPart, standing);
             return;
         }
@@ -1901,9 +1947,9 @@ public final class InvariantChecker {
         if (saidAs instanceof ClauseExpr.Joined joined
                 && joined.how() == ConditionJoin.BOTH && joined.positive()) {
             direct(joined.left(), of, part, at, byName, out, noLines, withoutAnEnd, naming,
-                    narrowers, raised, took, typeAt, parts, raisedByPart, standing);
+                    narrowers, raised, took, typeAt, rules, raisedByPart, standing);
             direct(joined.right(), of, part, at, byName, out, noLines, withoutAnEnd, naming,
-                    narrowers, raised, took, typeAt, parts, raisedByPart, standing);
+                    narrowers, raised, took, typeAt, rules, raisedByPart, standing);
             return;
         }
         // The node the author wrote this as, which is the outermost of what the shape is spelled
@@ -1916,15 +1962,15 @@ public final class InvariantChecker {
         //
         // Before the reading below, which needs to know: a conjunct that stated where the values
         // stop has a line, and is not one an author is owed a sentence about for having drawn none.
-        RunsRead runs = runsOf(clause, from, part, byName, parts, out);
-        restricting(clause, from, part, byName, parts, noLines, runs);
+        RunsRead runs = runsOf(clause, saidAs.at(), of, part, byName, out);
+        restricting(clause, saidAs.at(), from, of, part, byName, rules, noLines, runs);
         aChoiceAboutOneCoordinate(clause, part, at, byName, naming);
         if (!(clause instanceof Core.Binary bin)) {
             // Nothing but a binary is written as a comparison, so there is no reading of one for
             // the classification to be handed.
             settle(clause, from, of, part, saidAs.at(), states(clause, at, byName, null, runs),
                     new InvariantBound.Read.NoEnd(),
-                    byName, raised, took, parts, raisedByPart);
+                    byName, raised, took, raisedByPart);
             return;
         }
         // Where this clause is recognised as a comparison, and the one place it is. What each
@@ -1947,7 +1993,7 @@ public final class InvariantChecker {
         if (asWritten == null) {
             settle(bin, from, of, part, saidAs.at(), states(bin, at, byName, read, runs),
                     new InvariantBound.Read.NoEnd(),
-                    byName, raised, took, parts, raisedByPart);
+                    byName, raised, took, raisedByPart);
             return;
         }
         // Which number this conjunct is about, written down before anything is asked about what it
@@ -1973,7 +2019,7 @@ public final class InvariantChecker {
         if (asWritten instanceof ComparisonClaim.Singled named && !named.holdsAtTheValue()) {
             settle(bin, from, of, part, saidAs.at(), states(bin, at, byName, read, runs),
                     new InvariantBound.Read.NoEnd(),
-                    byName, raised, took, parts, raisedByPart);
+                    byName, raised, took, raisedByPart);
             // And handed on, which is not the same as being reported. A rule that rules one value
             // out places no end and is no failure of this reading, so there is nothing here for an
             // author to lift and there is a conjunct for the reading that draws lines to make what
@@ -2036,7 +2082,7 @@ public final class InvariantChecker {
                                             List.of(part))
                                     : had.and(part)));
         }
-        settle(bin, from, of, part, saidAs.at(), shape, end, byName, raised, took, parts,
+        settle(bin, from, of, part, saidAs.at(), shape, end, byName, raised, took,
                 raisedByPart);
         if (end instanceof InvariantBound.Read.NoEnd) {
             // A rule saying where the values stop that no end came out of, said as that. Here,
@@ -2663,11 +2709,12 @@ public final class InvariantChecker {
      * beside a rule that says nothing lends the second its narrowing — and the reason goes out
      * against the one rule that holds the position to nothing.
      */
-    private void restricting(Core clause, RuleRef.Invariant from, PartId<RuleRef.Invariant> part,
-                             Map<FactSubject, Coordinate> byName, PartsRead parts,
+    private void restricting(Core clause, ClauseExpr.Occurrence at, RuleRef.Invariant from,
+                             Written of, PartId<RuleRef.Invariant> part,
+                             Map<FactSubject, Coordinate> byName, RulesRead rules,
                              List<FieldDomains.NoLine> noLines, RunsRead runs) {
-        ReadByClauses.OfAPart account = parts.accountIn(from, clause);
-        ReadByClauses.OfARule rule = parts.ruleIn(from);
+        ReadByClauses.OfAPart account = of.adoptedAt(at);
+        ReadByClauses.OfARule rule = rules.ruleIn(from);
         if (account == null || rule == null) {
             return;
         }
@@ -2762,9 +2809,10 @@ public final class InvariantChecker {
      * characters they hold; a rule about the length is a rule about a whole number and is read
      * where whole numbers are.
      */
-    private RunsRead runsOf(Core clause, RuleRef.Invariant from, PartId<RuleRef.Invariant> part,
-                        Map<FactSubject, Coordinate> byName, PartsRead parts, List<Direct> out) {
-        ReadByClauses.OfAPart account = parts.accountIn(from, clause);
+    private RunsRead runsOf(Core clause, ClauseExpr.Occurrence at,
+                        Written of, PartId<RuleRef.Invariant> part,
+                        Map<FactSubject, Coordinate> byName, List<Direct> out) {
+        ReadByClauses.OfAPart account = of.adoptedAt(at);
         if (account == null) {
             return RunsRead.NOTHING;
         }

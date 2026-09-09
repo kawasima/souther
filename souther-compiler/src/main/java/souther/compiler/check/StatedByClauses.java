@@ -19,7 +19,6 @@ import souther.compiler.values.ValueSet;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -119,11 +118,13 @@ sealed interface StatedByClauses {
      * pushed down into the branches of a choice would be a part of each of them, and every question
      * the choice asks of an alternative would be answerable from a clause written above it.
      */
-    record CameFrom(Core node, StatedByClauses of) implements StatedByClauses {
+    record CameFrom(Core node, ClauseExpr.Occurrence at, StatedByClauses of)
+            implements StatedByClauses {
 
         public CameFrom {
-            if (node == null || of == null) {
-                throw new IllegalArgumentException("a part is some node, read into something");
+            if (node == null || at == null || of == null) {
+                throw new IllegalArgumentException(
+                        "a part is some node, somewhere in its clause, read into something");
             }
         }
     }
@@ -848,8 +849,8 @@ sealed interface StatedByClauses {
          * the author wrote.
          */
         @Override
-        public StatedByClauses from(Core e, StatedByClauses out) {
-            return new CameFrom(e, out);
+        public StatedByClauses from(ClauseExpr shape, Core e, StatedByClauses out) {
+            return new CameFrom(e, shape.at(), out);
         }
 
         /**
@@ -1274,14 +1275,14 @@ sealed interface StatedByClauses {
             return out;
         }
 
-        private Map<Core, PartAccount> partsOf(Taken took, Settlement made,
-                                               Set<OpenEnd> stillOpen) {
+        private Map<ClauseExpr.Occurrence, PartAccount> partsOf(Taken took, Settlement made,
+                                                               Set<OpenEnd> stillOpen) {
             Set<FactSubject> unbuilt = made.made().unbuilt();
             // And what could not be built is given up on here too. What a leaf said it adopted was
             // said before any machine was made, so a position whose answer the whole reading did
             // not work out is one the account still calls taken in — while the values beside it
             // say it holds every value because nobody worked it out.
-            Map<Core, PartAccount> parts = new IdentityHashMap<>();
+            Map<ClauseExpr.Occurrence, PartAccount> parts = new LinkedHashMap<>();
             took.parts().forEach((each, part) -> parts.put(each, new PartAccount(
                     part.byValues().unbuiltAt(unbuilt),
                     part.byOrder().unbuiltAt(unbuilt),
@@ -1312,7 +1313,7 @@ sealed interface StatedByClauses {
                                 Map<ChoiceId, Settlement.OfAChoice> outcomes) {
             return switch (read) {
                 case Said it -> new Taken(it.took(), Map.of(), Set.of());
-                case CameFrom it -> accounted(it.of(), outcomes).alsoAt(it.node());
+                case CameFrom it -> accounted(it.of(), outcomes).alsoAt(it.at());
                 case Both it -> accounted(it.left(), outcomes)
                         .both(accounted(it.right(), outcomes));
                 case Either it -> {
@@ -1365,12 +1366,12 @@ sealed interface StatedByClauses {
      * nothing is written under two branches of a tree — so putting two of these together is a union
      * and never a merge, which is what the tree keeping the author's shape buys.
      */
-    record Taken(Part took, Map<Core, Part> parts, Set<FactSubject> opened) {
+    record Taken(Part took, Map<ClauseExpr.Occurrence, Part> parts, Set<FactSubject> opened) {
 
-        /** The same, with what a written part came to filed under it. */
-        Taken alsoAt(Core node) {
-            Map<Core, Part> out = new IdentityHashMap<>(parts);
-            out.put(node, took);
+        /** The same, with what a written part came to filed under where in the clause it is. */
+        Taken alsoAt(ClauseExpr.Occurrence at) {
+            Map<ClauseExpr.Occurrence, Part> out = new LinkedHashMap<>(parts);
+            out.put(at, took);
             return new Taken(took, out, opened);
         }
 
@@ -1390,7 +1391,7 @@ sealed interface StatedByClauses {
 
         /** Every part of this, answered again — for what a settlement could not build in it. */
         Taken mapped(UnaryOperator<Part> answer) {
-            Map<Core, Part> out = new IdentityHashMap<>();
+            Map<ClauseExpr.Occurrence, Part> out = new LinkedHashMap<>();
             parts.forEach((each, part) -> out.put(each, answer.apply(part)));
             return new Taken(answer.apply(took), out, opened);
         }
@@ -1495,11 +1496,12 @@ sealed interface StatedByClauses {
                     opened(opened(opened, other.opened()), opening.byValues().positions()));
         }
 
-        private static Map<Core, Part> joined(Map<Core, Part> these, Map<Core, Part> those) {
+        private static Map<ClauseExpr.Occurrence, Part> joined(
+                Map<ClauseExpr.Occurrence, Part> these, Map<ClauseExpr.Occurrence, Part> those) {
             if (those.isEmpty()) {
                 return these;
             }
-            Map<Core, Part> out = new IdentityHashMap<>(these);
+            Map<ClauseExpr.Occurrence, Part> out = new LinkedHashMap<>(these);
             out.putAll(those);
             return out;
         }
@@ -1593,17 +1595,23 @@ sealed interface StatedByClauses {
      */
     final class Asked<K> {
 
-        private final Map<K, Core> byClause = new LinkedHashMap<>();
-        private final Map<K, List<Core>> byPart = new LinkedHashMap<>();
+        private final Map<K, List<ClauseExpr.Occurrence>> byPart = new LinkedHashMap<>();
         private final Map<K, StatedByClauses> trees = new LinkedHashMap<>();
 
         /** One clause read from {@code at} in the world {@code view} describes
          *  ({@link ClauseView}), with the parts of it noted in the order the reading reached
          *  them. */
         StatedByClauses read(Reading reader, Denotations at, K key, Core clause, ClauseView view) {
-            List<Core> parts = new ArrayList<>();
+            // Where in the clause each part is, in the order the reading reached them, and once
+            // however many nodes one of them was spelled as: a part written `!(x)` and read at the
+            // denial and at what it denies is one part of the clause, in one place.
+            List<ClauseExpr.Occurrence> parts = new ArrayList<>();
             StatedByClauses one = reader.read(clause, true, at, reader.scope(),
-                    (_, part, _) -> parts.add(part), view);
+                    (shape, _, _) -> {
+                        if (parts.isEmpty() || !parts.getLast().equals(shape.at())) {
+                            parts.add(shape.at());
+                        }
+                    }, view);
             // An assertion because it is about this compiler and not about any model, and here
             // rather than in one test because every clause a corpus holds is read through it.
             //
@@ -1613,7 +1621,6 @@ sealed interface StatedByClauses {
             // to a shape it no longer states.
             assert mirrors(clause, one, view)
                     : "the reading of a clause is not the tree its author wrote it as";
-            byClause.put(key, clause);
             byPart.put(key, parts);
             trees.put(key, one);
             return one;
@@ -1651,7 +1658,7 @@ sealed interface StatedByClauses {
             // written elsewhere shows dead takes what it could not read with it, and which branches
             // those are is what the settlement above answers.
             Set<FactSubject> opened = new LinkedHashSet<>();
-            Map<Core, PartAccount> said = new IdentityHashMap<>();
+            Map<K, Map<ClauseExpr.Occurrence, PartAccount>> said = new LinkedHashMap<>();
             Map<K, Set<FactSubject>> narrowed = new LinkedHashMap<>();
             Adoption<FactSubject, ReadingLanguage.Values> byValues = Adoption.nothing();
             Adoption<FactSubject, ReadingLanguage.Order> byOrder = Adoption.nothing();
@@ -1672,9 +1679,9 @@ sealed interface StatedByClauses {
                 // with a narrowing it did not do.
                 Account mine = reader.accountOf(each.getValue(),
                         projected.get(each.getKey()), made, by);
-                said.putAll(mine.parts());
+                said.put(each.getKey(), mine.parts());
                 opened.addAll(mine.opened());
-                PartAccount clause = mine.parts().get(byClause.get(each.getKey()));
+                PartAccount clause = mine.parts().get(ClauseExpr.Occurrence.ofTheClause());
                 narrowed.put(each.getKey(), mine.narrowed());
                 byValues = byValues.both(clause.byValues());
                 byOrder = byOrder.both(clause.byOrder());
@@ -1698,7 +1705,7 @@ sealed interface StatedByClauses {
             // on its own, which the answer had no use for — charged to it, what a position is read
             // to admit would turn on what a reader downstream was promised, and the assertion above
             // would be true of the accounts and false of the reading as a whole.
-            Map<Core, ReadByClauses.OfAPart> published =
+            Map<K, Map<ClauseExpr.Occurrence, ReadByClauses.OfAPart>> published =
                     published(said, handingOn, answered.values());
             // And the answer's allowance is where it was. What a position admits is answered under
             // the allowance for it and nothing else reaches that allowance, so what this
@@ -1709,16 +1716,17 @@ sealed interface StatedByClauses {
                     : "handing the rules of " + made.made().values().subjects()
                             + " on spent the allowance for what they admit";
             Map<K, ReadByClauses.OfARule> clauses = new LinkedHashMap<>();
-            narrowed.forEach((key, these) -> clauses.put(key,
-                    new ReadByClauses.OfARule(these, published.get(byClause.get(key)))));
-            ReadByClauses read = new ReadByClauses(answered, byValues, byOrder, published);
-            Map<K, List<Map.Entry<Core, ReadByClauses.OfAPart>>> parts =
+            narrowed.forEach((key, these) -> clauses.put(key, new ReadByClauses.OfARule(these,
+                    published.get(key).get(ClauseExpr.Occurrence.ofTheClause()))));
+            ReadByClauses read = new ReadByClauses(answered, byValues, byOrder);
+            Map<K, List<Map.Entry<ClauseExpr.Occurrence, ReadByClauses.OfAPart>>> parts =
                     new LinkedHashMap<>();
             byPart.forEach((key, these) -> {
-                List<Map.Entry<Core, ReadByClauses.OfAPart>> out =
+                Map<ClauseExpr.Occurrence, ReadByClauses.OfAPart> mine = published.get(key);
+                List<Map.Entry<ClauseExpr.Occurrence, ReadByClauses.OfAPart>> out =
                         new ArrayList<>();
                 these.forEach(each -> {
-                    ReadByClauses.OfAPart one = published.get(each);
+                    ReadByClauses.OfAPart one = mine == null ? null : mine.get(each);
                     if (one != null) {
                         out.add(Map.entry(each, one));
                     }
@@ -1765,15 +1773,18 @@ sealed interface StatedByClauses {
          *
          * @param answered what the positions came to, asked whether each of them is exact
          */
-        private Map<Core, ReadByClauses.OfAPart> published(
-                Map<Core, PartAccount> said, Allowance<FactSubject> handingOn,
+        private Map<K, Map<ClauseExpr.Occurrence, ReadByClauses.OfAPart>> published(
+                Map<K, Map<ClauseExpr.Occurrence, PartAccount>> said,
+                Allowance<FactSubject> handingOn,
                 AdmissibleValues<FactSubject> answered) {
             Map<FactSubject, Set<AdmittedPlan>> asked = new LinkedHashMap<>();
-            said.values().forEach(part -> part.aboutStrings().forEach((position, stated) -> {
-                if (stated instanceof StringRestriction.Admitting it) {
-                    asked.computeIfAbsent(position, _ -> new LinkedHashSet<>()).add(it.plan());
-                }
-            }));
+            said.values().forEach(mine -> mine.values().forEach(part ->
+                    part.aboutStrings().forEach((position, stated) -> {
+                        if (stated instanceof StringRestriction.Admitting it) {
+                            asked.computeIfAbsent(position, _ -> new LinkedHashSet<>())
+                                    .add(it.plan());
+                        }
+                    })));
             Map<FactSubject, Realizations> answers = new LinkedHashMap<>();
             // Built for the block the position is on, which is what the machine is being made for:
             // positions the rules hold as one value have one answer between them, and one purse.
@@ -1781,11 +1792,15 @@ sealed interface StatedByClauses {
                     answered.speaksFor(position)
                             ? handingOn.realizeAll(answered.blockOf(position), plans)
                             : new Realizations.NotBuilt()));
-            Map<Core, ReadByClauses.OfAPart> out = new IdentityHashMap<>();
-            said.forEach((each, part) -> out.put(each, new ReadByClauses.OfAPart(
-                    part.byValues(), part.byOrder(), part.stopped(), part.aboutARule(),
-                    admitted(part.aboutStrings(), answers), part.endsLeftOpen(),
-                    part.boundsLeftOpen())));
+            Map<K, Map<ClauseExpr.Occurrence, ReadByClauses.OfAPart>> out = new LinkedHashMap<>();
+            said.forEach((key, mine) -> {
+                Map<ClauseExpr.Occurrence, ReadByClauses.OfAPart> here = new LinkedHashMap<>();
+                mine.forEach((each, part) -> here.put(each, new ReadByClauses.OfAPart(
+                        part.byValues(), part.byOrder(), part.stopped(), part.aboutARule(),
+                        admitted(part.aboutStrings(), answers), part.endsLeftOpen(),
+                        part.boundsLeftOpen())));
+                out.put(key, here);
+            });
             return out;
         }
 
@@ -1827,7 +1842,8 @@ sealed interface StatedByClauses {
      * nothing, because the work was done once and what is here is what it came to.
      */
     record Answered<K>(ReadByClauses whole, Map<K, ReadByClauses.OfARule> perClause,
-                       Map<K, List<Map.Entry<Core, ReadByClauses.OfAPart>>> perPart) {}
+                       Map<K, List<Map.Entry<ClauseExpr.Occurrence, ReadByClauses.OfAPart>>>
+                               perPart) {}
 
     /**
      * What one rule's own tree came to: what it leaves narrowed, what each of its parts took in,
@@ -1841,7 +1857,7 @@ sealed interface StatedByClauses {
      *               walked ({@code AdmissibleValues.alsoOpenedAt}). The account of the rule hears
      *               the same decision as a shortfall at the choice
      */
-    record Account(Set<FactSubject> narrowed, Map<Core, PartAccount> parts,
+    record Account(Set<FactSubject> narrowed, Map<ClauseExpr.Occurrence, PartAccount> parts,
                    Set<FactSubject> opened) {}
 
     /**
