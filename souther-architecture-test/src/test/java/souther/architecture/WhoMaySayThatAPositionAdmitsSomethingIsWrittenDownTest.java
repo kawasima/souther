@@ -329,8 +329,18 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
      * its branches were probed. Both leave the branch that stands where one of them does, and both
      * have a settlement of their own for a choice nobody can take, so neither is composed out of
      * the other three ways.
+     *
+     * <p>And one that is owed a different number rather than a different reading: how many
+     * alternatives each of a declaration's choices was left with, which is what a reader asking
+     * what a compile did with them counts. It is here because the counting has to happen once —
+     * the four ways two branches fall divide into three a count is kept for, and a reader given
+     * the fates and left to sort them would be a second place holding that division, to be told
+     * again the day a fifth way is written. It leaves no branch and reads no position, and it is
+     * written where the fates are.
      */
     private static final List<String> TAKES_IT_APART_BY_STANDING = List.of(
+            "souther/compiler/check/Settlement#howTheChoicesFell"
+                    + "()Lsouther/compiler/check/Settlement$HowTheChoicesFell;",
             "souther/compiler/check/StatedByClauses$Reading#chosen"
                     + "(Lsouther/compiler/check/StatedByClauses$Either;Ljava/util/Map;)"
                     + "Lsouther/compiler/check/StatedTogether;",

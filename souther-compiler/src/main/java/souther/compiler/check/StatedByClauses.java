@@ -1029,21 +1029,22 @@ sealed interface StatedByClauses {
          * for every choice its rule wrote.
          */
         Settlement settle(StatedTogether read, Allowance<FactSubject> by,
-                          Map<ChoiceId, Settlement.OfAChoice> decided) {
+                          Map<ChoiceId, Settlement.OfAChoice> decided, ChoicesRead.Tally tally) {
             Map<ChoiceId, Settlement.OfAChoice> outcomes = new LinkedHashMap<>(decided);
-            StatedTogether.Said said = settling(read, by, outcomes);
+            StatedTogether.Said said = settling(read, by, outcomes, tally);
             return new Settlement(said.confinement().resolve(by), outcomes);
         }
 
         /** The same reading with every choice in it decided, each occurrence noting its fate. */
         private StatedTogether.Said settling(StatedTogether read, Allowance<FactSubject> by,
-                                             Map<ChoiceId, Settlement.OfAChoice> outcomes) {
+                                             Map<ChoiceId, Settlement.OfAChoice> outcomes,
+                                             ChoicesRead.Tally tally) {
             return switch (read) {
                 case StatedTogether.Said it -> it;
                 case StatedTogether.Choice it -> {
-                    ChoicesRead.placeMet();
-                    StatedTogether.Said one = settling(it.left(), by, outcomes);
-                    StatedTogether.Said other = settling(it.right(), by, outcomes);
+                    tally.placeMet();
+                    StatedTogether.Said one = settling(it.left(), by, outcomes, tally);
+                    StatedTogether.Said other = settling(it.right(), by, outcomes, tally);
                     Settlement.Sided here = probed(one, by);
                     Settlement.Sided there = probed(other, by);
                     outcomes.merge(it.id(), outcome(one, here, other, there),
@@ -1646,9 +1647,11 @@ sealed interface StatedByClauses {
                 projected.put(each.getKey(), one);
                 whole = whole.meet(one);
             }
+            ChoicesRead.Tally tally = new ChoicesRead.Tally();
             int settledOffDescriptions = decided.size();
-            Settlement made = reader.settle(whole, by, decided);
-            ChoicesRead.settled(made, settledOffDescriptions);
+            Settlement made = reader.settle(whole, by, decided, tally);
+            tally.settled(made, settledOffDescriptions);
+            tally.publish();
             // What the choices of every rule left open, gathered as each rule is accounted for and
             // told to the positions once they all are. It cannot be known before: a branch a clause
             // written elsewhere shows dead takes what it could not read with it, and which branches
