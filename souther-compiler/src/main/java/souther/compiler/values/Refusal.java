@@ -1,11 +1,11 @@
 package souther.compiler.values;
 
-import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashSet;
+import java.util.Map;
 import java.util.Set;
+import java.util.function.BiPredicate;
 import java.util.function.Function;
-import java.util.function.Predicate;
 
 /**
  * Where a reading was left nothing, and what kind of lack it is.
@@ -131,21 +131,27 @@ public final class Refusal<A> {
      * here, an alternative whose only empty side is one position would be refused by nothing at
      * all, and a reader that took this for the answer would have it standing.
      *
-     * @param blocks every block the alternative is a product over
+     * <p>What the alternative says each block holds, and not the blocks alone. Every reading that
+     * asks this holds the two together, and each of them is about what a block was left — so
+     * blocks on their own would be blocks with what they hold looked up again, once per block, on
+     * the walk a conjunction takes for every pair of two readings' alternatives.
+     *
+     * @param at what the alternative says each of its blocks holds
      * @param refusedAt whether the alternative is left nothing at one of them, which is what the
      *                  block holds met with whatever the reader asking is holding it against
      * @param relating what the denials between them show, asked whatever the blocks answered
+     * @param <V> what a block is left, which is a set of values or a description of one
      */
-    public static <A> Refusal<A> ofAnAlternative(Collection<Sameness.Block<A>> blocks,
-                                                 Predicate<Sameness.Block<A>> refusedAt,
-                                                 WhatARelationShows<A> relating) {
+    public static <A, V> Refusal<A> ofAnAlternative(Map<Sameness.Block<A>, V> at,
+                                                    BiPredicate<Sameness.Block<A>, V> refusedAt,
+                                                    WhatARelationShows<A> relating) {
         Set<Sameness.Block<A>> atEachOf = null;
-        for (Sameness.Block<A> block : blocks) {
-            if (refusedAt.test(block)) {
+        for (Map.Entry<Sameness.Block<A>, V> each : at.entrySet()) {
+            if (refusedAt.test(each.getKey(), each.getValue())) {
                 if (atEachOf == null) {
-                    atEachOf = new LinkedHashSet<>();
+                    atEachOf = LinkedHashSet.newLinkedHashSet(at.size());
                 }
-                atEachOf.add(block);
+                atEachOf.add(each.getKey());
             }
         }
         Lacks<A> together = relating.shows();
@@ -202,14 +208,21 @@ public final class Refusal<A> {
      * account of what a position's own rules say.
      */
     public Refusal<A> withoutWhatAPositionAnswers() {
-        Set<Sameness.Block<A>> out = new LinkedHashSet<>();
+        boolean anyToGiveUp = false;
+        for (Sameness.Block<A> block : atEachOf()) {
+            if (block.isOne()) {
+                anyToGiveUp = true;
+                break;
+            }
+        }
+        if (!anyToGiveUp) {
+            return this;
+        }
+        Set<Sameness.Block<A>> out = LinkedHashSet.newLinkedHashSet(atEachOf().size());
         for (Sameness.Block<A> block : atEachOf()) {
             if (!block.isOne()) {
                 out.add(block);
             }
-        }
-        if (out.size() == atEachOf().size()) {
-            return this;
         }
         return out.isEmpty() && together().isEmpty()
                 ? nowhere() : new Refusal<>(new Parts<>(out, together()));

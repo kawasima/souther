@@ -2,7 +2,7 @@ package souther.compiler.values;
 
 import org.junit.jupiter.api.Test;
 
-import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -38,6 +38,11 @@ class AnAlternativeRefusedTwoWaysSaysBothOfThemTest {
         return Lacks.of(new RelationalLack.ABlockApartFromItself<>(block));
     }
 
+    /** An alternative over one block, whose values the question below it answers about. */
+    private static Map<Sameness.Block<String>, ValueSet> over(Sameness.Block<String> block) {
+        return Map.of(block, ValueSet.NONE);
+    }
+
     /**
      * An alternative refused at a block and about blocks together carries both.
      *
@@ -46,8 +51,8 @@ class AnAlternativeRefusedTwoWaysSaysBothOfThemTest {
      */
     @Test
     void anAlternativeRefusedAtABlockAndAboutBlocksTogetherCarriesBoth() {
-        Refusal<String> shown = Refusal.ofAnAlternative(List.of(BOTH),
-                _ -> true, () -> apartFromItself(BOTH));
+        Refusal<String> shown = Refusal.ofAnAlternative(over(BOTH),
+                (_, _) -> true, () -> apartFromItself(BOTH));
 
         assertEquals(Set.of(BOTH), shown.atEachOf(), "the block it was left nothing at");
         assertEquals(apartFromItself(BOTH), shown.together(),
@@ -57,7 +62,7 @@ class AnAlternativeRefusedTwoWaysSaysBothOfThemTest {
     /** And a relation is read where every block of the alternative is refused. */
     @Test
     void andTheRelationIsReadWhereEveryBlockIsRefused() {
-        assertFalse(Refusal.ofAnAlternative(List.of(BOTH), _ -> true,
+        assertFalse(Refusal.ofAnAlternative(over(BOTH), (_, _) -> true,
                 () -> apartFromItself(BOTH)).together().isEmpty(),
                 "a block left nothing is not a reason to leave the denials unread");
     }
@@ -65,14 +70,14 @@ class AnAlternativeRefusedTwoWaysSaysBothOfThemTest {
     /** And the blocks are read where the relation refuses. */
     @Test
     void andTheBlocksAreReadWhereTheRelationRefuses() {
-        assertEquals(Set.of(BOTH), Refusal.ofAnAlternative(List.of(BOTH), _ -> true,
+        assertEquals(Set.of(BOTH), Refusal.ofAnAlternative(over(BOTH), (_, _) -> true,
                 () -> apartFromItself(BOTH)).atEachOf());
     }
 
     /** Where neither refuses, the alternative is refused by nothing anything can name. */
     @Test
     void andWhereNeitherRefusesTheAlternativeIsRefusedByNothing() {
-        assertTrue(Refusal.ofAnAlternative(List.of(BOTH), _ -> false, Lacks::none).isNowhere());
+        assertTrue(Refusal.ofAnAlternative(over(BOTH), (_, _) -> false, Lacks::none).isNowhere());
     }
 
     /**
@@ -85,7 +90,7 @@ class AnAlternativeRefusedTwoWaysSaysBothOfThemTest {
      */
     @Test
     void aLonePositionLeftNothingIsAWitnessOfTheProofAndNotOfTheReading() {
-        Refusal<String> shown = Refusal.ofAnAlternative(List.of(P), _ -> true, Lacks::none);
+        Refusal<String> shown = Refusal.ofAnAlternative(over(P), (_, _) -> true, Lacks::none);
 
         assertEquals(Set.of(P), shown.atEachOf(), "the proof names where it was refused");
         assertFalse(shown.isNowhere(), "so the alternative is refused, and by something");
@@ -97,7 +102,7 @@ class AnAlternativeRefusedTwoWaysSaysBothOfThemTest {
     /** And what the denials showed survives a lone position being given up. */
     @Test
     void andWhatTheDenialsShowedSurvivesALonePositionBeingGivenUp() {
-        Refusal<String> kept = Refusal.ofAnAlternative(List.of(P), _ -> true,
+        Refusal<String> kept = Refusal.ofAnAlternative(over(P), (_, _) -> true,
                 () -> apartFromItself(BOTH)).withoutWhatAPositionAnswers();
 
         assertEquals(Set.of(), kept.atEachOf());
@@ -109,7 +114,7 @@ class AnAlternativeRefusedTwoWaysSaysBothOfThemTest {
     /** A block of several positions is kept, since no position answers for it on its own. */
     @Test
     void andABlockOfSeveralPositionsIsKept() {
-        Refusal<String> shown = Refusal.ofAnAlternative(List.of(BOTH), _ -> true, Lacks::none);
+        Refusal<String> shown = Refusal.ofAnAlternative(over(BOTH), (_, _) -> true, Lacks::none);
 
         assertSame(shown, shown.withoutWhatAPositionAnswers(),
                 "nothing is given up, so it is the same proof");

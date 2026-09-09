@@ -344,8 +344,8 @@ public sealed interface PlannedValues<A> {
                                             AskedOfEachBlock<A> asked) {
         Map<Sameness.Block<A>, AdmittedPlan> at = box.at();
         // The block and not its positions — see {@link AdmissibleValues}.
-        return Refusal.ofAnAlternative(at.keySet(),
-                block -> askedOf(block, at.get(block), asked).isEmpty(),
+        return Refusal.ofAnAlternative(at,
+                (block, plan) -> askedOf(block, plan, asked).isEmpty(),
                 box.apart()::apartFromThemselves);
     }
 
@@ -445,8 +445,8 @@ public sealed interface PlannedValues<A> {
         Refusal<A> everywhere = null;
         for (PlannedHeld.Alternative<A> box : boxes.boxes()) {
             Map<Sameness.Block<A>, AdmittedPlan> at = box.at();
-            Refusal<A> said = Refusal.ofAnAlternative(at.keySet(),
-                    block -> at.get(block) instanceof AdmittedPlan.Nothing,
+            Refusal<A> said = Refusal.ofAnAlternative(at,
+                    (_, plan) -> plan instanceof AdmittedPlan.Nothing,
                     box.apart()::apartFromThemselves);
             everywhere = everywhere == null ? said : Refusal.shownByBoth(everywhere, said);
             if (everywhere.isNowhere()) {

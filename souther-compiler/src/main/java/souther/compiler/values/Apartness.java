@@ -109,7 +109,7 @@ public final class Apartness<A> {
     private final boolean holdsABlockApartFromItself;
 
     private Apartness(Set<Edge<A>> edges) {
-        Set<Edge<A>> copied = new LinkedHashSet<>();
+        Set<Edge<A>> copied = LinkedHashSet.newLinkedHashSet(edges.size());
         boolean apartFromItself = false;
         for (Edge<A> edge : edges) {
             copied.add(edge);
