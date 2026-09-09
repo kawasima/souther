@@ -34,12 +34,69 @@ class EveryShapeThatIsTimedStillCompilesTest {
     /** Enough values that a fan-out fans and a chain has links that are not its ends. */
     private static final int VALUES = 8;
 
+    /** What the compiler says about a declaration no value satisfies, which is what the shape
+     *  written to reach that fate is refused for. */
+    private static final String REFUSING_A_DECLARATION_NOTHING_SATISFIES = "E1013";
+
     @Test
     void everyWorkspaceShapeCompiles() {
         compiles("independent", Scale.independent(MODULES));
         compiles("chain", Scale.chain(MODULES));
         for (int width : Scale.WIDTHS) {
             compiles("imports=" + width, Scale.imports(MODULES, width));
+        }
+    }
+
+    /**
+     * And every shape the choice measurement times comes to what its point says it comes to.
+     *
+     * <p>At the sizes it is timed at, unlike the shapes above: what a choice shape comes to is what
+     * the sizes vary — one side of the guardrail holds its alternatives apart and the other merges
+     * them — so a smaller one is a different shape rather than the same shape smaller.
+     *
+     * <p>Both answers, because one of them is a shape written to be refused. A fate a reading only
+     * reaches where a declaration admits nothing is a fate that comes with a refusal, and a claim
+     * that every shape compiles would be a claim this measurement could only meet by not reaching
+     * the fate. What is held is that each shape comes to the one its line was written for, so a
+     * shape that started being refused is caught either way round.
+     */
+    @Test
+    void everyChoiceShapeComesToWhatItsPointSays() {
+        for (Choices.Point point : Choices.points()) {
+            String where = point.series() + " " + point.label();
+            switch (point.completion()) {
+                case MAKES_CLASSES -> compiles(where, List.of(point.source()));
+                case IS_REFUSED -> refused(where, List.of(point.source()));
+            }
+        }
+    }
+
+    /**
+     * That a shape written to be refused is refused for the reason it was written for, and leaves
+     * the back end nothing.
+     *
+     * <p>The reason as well as the refusal, because a shape refused for anything else is a shape
+     * that stopped somewhere the line is not about — a source with a typo in it is refused too, and
+     * would be timed as a parse. And the classes, because that is what the point promises about it
+     * and what makes its figure not comparable with the ones beside it.
+     */
+    private static void refused(String shape, List<String> sources) {
+        Compilation compilation = Compilation.ofSources(sources, ModulePath.EMPTY);
+        List<String> said = new ArrayList<>();
+        for (List<Diagnostic> found : Located.diagnosticsOf(compilation.diagnostics()).values()) {
+            for (Diagnostic diagnostic : found) {
+                if (diagnostic.severity() == Severity.ERROR) {
+                    said.add(diagnostic.code());
+                }
+            }
+        }
+        if (!said.contains(REFUSING_A_DECLARATION_NOTHING_SATISFIES)) {
+            throw new AssertionError(shape + " is written to be refused because nothing satisfies"
+                    + " it, and what was said about it was " + said);
+        }
+        if (!compilation.classes().isEmpty()) {
+            throw new AssertionError(shape + " was refused and made classes all the same, so its"
+                    + " figure is a compile that reached the back end after all");
         }
     }
 

@@ -68,8 +68,13 @@ import example.pipeline ( OpportunityId, QuoteNumber, PerceptionAnalysis )
 
 // === Values ===
 
+// Two shapes of code are quotable: the SKU the catalogue issues — two letters, a dash, four digits —
+// and the six-digit number a part carries when it comes from the parts catalogue instead. Both name a
+// line item and neither is a state of one, so this is one attribute stated with two alternatives
+// rather than two types every reader of a line would have to tell apart.
 data ProductCode = String
     invariant String.matches("[A-Z]{2}-[0-9]{4}", value)
+           || String.matches("[0-9]{6}", value)
 
 data ProductName = String
     invariant String.length(value) >= 1

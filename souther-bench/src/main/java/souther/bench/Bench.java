@@ -18,6 +18,7 @@ import java.util.List;
  *   run     what the generated code costs to run, per element
  *   scale   how a whole-workspace compile grows with the number of modules
  *   values  how one module's compile grows with the number of values it declares
+ *   choice  what settling a choice costs, and what makes it cost that
  *   report  how what a source has against its canonical form grows with the source
  * </pre>
  *
@@ -32,7 +33,8 @@ public final class Bench {
     public static void main(String[] args) {
         Report report = new Report(System.out);
         List<String> wanted = args.length == 0
-                ? List.of("cold", "warm", "phase", "edit", "run", "scale", "values", "report")
+                ? List.of("cold", "warm", "phase", "edit", "run", "scale", "values", "choice",
+                        "report")
                 : new ArrayList<>(List.of(args));
 
         List<Corpus> corpora = Corpus.all();
@@ -79,6 +81,10 @@ public final class Bench {
         }
         if (wanted.contains("values")) {
             Values.measure(report);
+            report.blank();
+        }
+        if (wanted.contains("choice")) {
+            Choices.measure(report);
             report.blank();
         }
         if (wanted.contains("report")) {

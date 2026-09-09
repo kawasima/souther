@@ -1030,20 +1030,22 @@ sealed interface StatedByClauses {
          * for every choice its rule wrote.
          */
         Settlement settle(StatedTogether read, Allowance<FactSubject> by,
-                          Map<ChoiceId, Settlement.OfAChoice> decided) {
+                          Map<ChoiceId, Settlement.OfAChoice> decided, ChoicesRead.Tally tally) {
             Map<ChoiceId, Settlement.OfAChoice> outcomes = new LinkedHashMap<>(decided);
-            StatedTogether.Said said = settling(read, by, outcomes);
+            StatedTogether.Said said = settling(read, by, outcomes, tally);
             return new Settlement(said.confinement().resolve(by), outcomes);
         }
 
         /** The same reading with every choice in it decided, each occurrence noting its fate. */
         private StatedTogether.Said settling(StatedTogether read, Allowance<FactSubject> by,
-                                             Map<ChoiceId, Settlement.OfAChoice> outcomes) {
+                                             Map<ChoiceId, Settlement.OfAChoice> outcomes,
+                                             ChoicesRead.Tally tally) {
             return switch (read) {
                 case StatedTogether.Said it -> it;
                 case StatedTogether.Choice it -> {
-                    StatedTogether.Said one = settling(it.left(), by, outcomes);
-                    StatedTogether.Said other = settling(it.right(), by, outcomes);
+                    tally.placeMet();
+                    StatedTogether.Said one = settling(it.left(), by, outcomes, tally);
+                    StatedTogether.Said other = settling(it.right(), by, outcomes, tally);
                     Settlement.Sided here = probed(one, by);
                     Settlement.Sided there = probed(other, by);
                     outcomes.merge(it.id(), outcome(one, here, other, there),
@@ -1145,8 +1147,8 @@ sealed interface StatedByClauses {
          * neighbouring rule stated: no neighbouring rule is in the tree.
          */
         Account accountOf(StatedByClauses rule, StatedTogether projected, Settlement made,
-                          Allowance<FactSubject> by) {
-            Taken took = accounted(rule, made.outcomes());
+                          Allowance<FactSubject> by, ChoicesRead.Tally tally) {
+            Taken took = accounted(rule, made.outcomes(), tally);
             // This rule's own settled reading, which is what an account of it rests on. The
             // derived numbers it still leaves open are read off the same one: which of them a
             // choice settled is that reading's answer, worked out where the branches were, and
@@ -1310,15 +1312,16 @@ sealed interface StatedByClauses {
          * alternatives, and a choice would be answerable for what a clause outside it left open.
          */
         private Taken accounted(StatedByClauses read,
-                                Map<ChoiceId, Settlement.OfAChoice> outcomes) {
+                                Map<ChoiceId, Settlement.OfAChoice> outcomes,
+                                ChoicesRead.Tally tally) {
             return switch (read) {
                 case Said it -> new Taken(it.took(), Map.of(), Set.of());
-                case CameFrom it -> accounted(it.of(), outcomes).alsoAt(it.at());
-                case Both it -> accounted(it.left(), outcomes)
-                        .both(accounted(it.right(), outcomes));
+                case CameFrom it -> accounted(it.of(), outcomes, tally).alsoAt(it.at());
+                case Both it -> accounted(it.left(), outcomes, tally)
+                        .both(accounted(it.right(), outcomes, tally));
                 case Either it -> {
-                    Taken one = accounted(it.left(), outcomes);
-                    Taken other = accounted(it.right(), outcomes);
+                    Taken one = accounted(it.left(), outcomes, tally);
+                    Taken other = accounted(it.right(), outcomes, tally);
                     Settlement.OfAChoice fate = outcomes.get(it.id());
                     if (fate == null) {
                         // Every choice of a rule is either settled off the descriptions or stands
@@ -1334,8 +1337,14 @@ sealed interface StatedByClauses {
                     // is answerable for what a branch of a branch it has already lost ever reached.
                     Taken left = one.under(fate.left());
                     Taken right = other.under(fate.right());
-                    if (!souther.compiler.values.Emptiness.Alternatives.from(SidesShownEmpty.of(
-                            fate.left().emptiness(), fate.right().emptiness())).bothStand()) {
+                    souther.compiler.values.Emptiness.Alternatives standing =
+                            souther.compiler.values.Emptiness.Alternatives.from(SidesShownEmpty.of(
+                                    fate.left().emptiness(), fate.right().emptiness()));
+                    // This walk reaches every written choice of the rule exactly once and has just
+                    // worked out how its alternatives fell, so what a reader of the reading counts
+                    // is said from here rather than found again.
+                    tally.choiceCame(standing);
+                    if (!standing.bothStand()) {
                         // What is left of a dead alternative is an account and not an alternative,
                         // so the two are accumulated and not composed as a choice. Which of them
                         // was the dead one is asked here and nowhere below: both sides arrive with
@@ -1652,7 +1661,12 @@ sealed interface StatedByClauses {
                 projected.put(each.getKey(), one);
                 whole = whole.meet(one);
             }
-            Settlement made = reader.settle(whole, by, decided);
+            // What this reading did with the choices it read, gathered as the walks below do their
+            // own work and added to the totals once. Nothing here asks a question of its own.
+            ChoicesRead.Tally tally =
+                    new ChoicesRead.Tally(reader.alternatives() == Alternatives.MERGED);
+            tally.settledOffDescriptions(decided.size());
+            Settlement made = reader.settle(whole, by, decided, tally);
             // What the choices of every rule left open, gathered as each rule is accounted for and
             // told to the positions once they all are. It cannot be known before: a branch a clause
             // written elsewhere shows dead takes what it could not read with it, and which branches
@@ -1678,7 +1692,7 @@ sealed interface StatedByClauses {
                 // its neighbours first, a branch they refuse is dropped and the rule is credited
                 // with a narrowing it did not do.
                 Account mine = reader.accountOf(each.getValue(),
-                        projected.get(each.getKey()), made, by);
+                        projected.get(each.getKey()), made, by, tally);
                 said.put(each.getKey(), mine.parts());
                 opened.addAll(mine.opened());
                 PartAccount clause = mine.parts().get(ClauseExpr.Occurrence.ofTheClause());
@@ -1686,6 +1700,9 @@ sealed interface StatedByClauses {
                 byValues = byValues.both(clause.byValues());
                 byOrder = byOrder.both(clause.byOrder());
             }
+            // Every choice of every rule has now been walked with its fate applied, so what this
+            // reading did is a value and is added to what every reading before it did.
+            tally.publish();
             // An assertion because it is about this compiler and not about any model, and here
             // rather than in one test because every declaration a corpus holds goes through it.
             assert unspent == spentBy(by)

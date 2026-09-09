@@ -51,6 +51,7 @@ record Settlement(Confinement.Worked<FactSubject> confinement,
         return confinement.made();
     }
 
+
     /**
      * Both branches of one written choice, each aggregated over its occurrences, beside what the
      * width of the choice depends on and what each alternative holds down.

@@ -324,8 +324,17 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
      * its branches were probed. Both leave the branch that stands where one of them does, and both
      * have a settlement of their own for a choice nobody can take, so neither is composed out of
      * the other three ways.
+     *
+     * <p>And one that is owed a different number rather than a different reading: what a compile
+     * did with a choice, which is counted for three of the four ways and asks nothing of which side
+     * fell. It is told how the alternatives fell by the walk that had just worked that out for its
+     * own answer, so it neither walks the choices again nor reads a position; what makes it a
+     * reading of the word all the same is that it sorts the four into three, and a fifth way
+     * arriving is a case here with nowhere to go.
      */
     private static final List<String> TAKES_IT_APART_BY_STANDING = List.of(
+            "souther/compiler/check/ChoicesRead$Tally#choiceCame"
+                    + "(Lsouther/compiler/values/Emptiness$Alternatives;)V",
             "souther/compiler/check/StatedByClauses$Reading#chosen"
                     + "(Lsouther/compiler/check/StatedByClauses$Either;Ljava/util/Map;)"
                     + "Lsouther/compiler/check/StatedTogether;",
