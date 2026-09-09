@@ -187,11 +187,35 @@ final class Clauses {
         // Fail-open: a clause with no form leaves its run-time check standing, whichever way the
         // form went missing. Which of the two it was matters to a reader that publishes a sentence
         // about the clause, and this is not one.
-        if (!(stated(clause) instanceof ClauseMeaning.Stated it)) {
+        if (!(meaningOf(clause) instanceof ClauseMeaning.Stated it)) {
             return null;
         }
         return everyFieldRead(given, named, it.fieldsRead())
                 ? substituted(it.states().termForClauseReading(), given) : null;
+    }
+
+    /**
+     * What {@code clause} states as this reading's own tree, with nothing put in for the fields, or
+     * {@code null} where its declaration has no form for it.
+     *
+     * <p>For the reader that seeds a declaration's own fields, where each field stands for itself
+     * and there is nothing to substitute. The same statement the reading above puts a
+     * construction's values into, taken the same way and from the same place.
+     */
+    Core stated(TypeOps.Declared clause) {
+        return meaningOf(clause) instanceof ClauseMeaning.Stated it
+                ? it.states().termForClauseReading() : null;
+    }
+
+    /**
+     * The rules {@code clause}'s author wrote it as, as its declaration published them.
+     *
+     * <p>Asked of the declaration and not worked out from a tree. Which parts a clause has was
+     * settled where it was split, and a reader that recovered them from what it typed would be a
+     * second answer to how many there are.
+     */
+    ClauseMeaning.Parts partsOf(TypeOps.Declared clause) {
+        return meaningOf(clause) instanceof ClauseMeaning.Stated it ? it.parts() : null;
     }
 
     /**
@@ -203,7 +227,7 @@ final class Clauses {
      * reading that asked the declaration in hand would be asking a declaration about a clause it
      * did not write.
      */
-    private ClauseMeaning stated(TypeOps.Declared clause) {
+    private ClauseMeaning meaningOf(TypeOps.Declared clause) {
         Clause.Id wanted = Clause.Ref.of(clause).id();
         for (ClauseMeaning each : meanings.of(clause.declaredOn().key())) {
             if (each.ref().id().equals(wanted)) {
@@ -246,8 +270,7 @@ final class Clauses {
                 // very reading. Read apart instead, a conjunct would be read without the conjunct
                 // beside it, and a branch one of them rules out would stand.
                 stated.add(new Stated(clause, one,
-                        inv.shape().onto(ClauseExpr.of(one, true),
-                                new RuleRef.Invariant(clause))));
+                        partsOf(inv).onto(ClauseExpr.of(one, true))));
             } else {
                 lost.add(new RuleRef.Invariant(clause));
             }

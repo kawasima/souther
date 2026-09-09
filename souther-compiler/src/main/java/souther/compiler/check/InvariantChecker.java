@@ -838,7 +838,7 @@ public final class InvariantChecker {
                 skipped = true;
                 continue;
             }
-            Core stated = c.clauses.typed(declared.asExpanded(), named).orNull();
+            Core stated = c.clauses.stated(declared);
             if (stated == null) {
                 read = false;
                 gathering.missed(RuleKey.THE_VALUE, new RulesMissed.ClauseNotTyped());
@@ -850,7 +850,7 @@ public final class InvariantChecker {
             // it, so what a reader says about an occurrence of one is said in the numbering the
             // clause hands out rather than in a numbering that starts wherever a part does.
             ClauseView view = reach.withoutParts()
-                    .viewOf(declared.shape().onto(ClauseExpr.of(stated, true), origin));
+                    .viewOf(c.clauses.partsOf(declared).onto(ClauseExpr.of(stated, true)));
             // A part at a time, and the ones this world holds. Which parts a clause has was settled
             // where it was split, so a part left out is one left out of the list — never a node a
             // walk was told to step over.
