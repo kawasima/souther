@@ -4,6 +4,7 @@ import souther.compiler.ast.Hir;
 import souther.compiler.check.ClauseDischarge;
 import souther.compiler.check.ClauseLocations;
 import souther.compiler.check.DeclarationMeaning;
+import souther.compiler.check.PublishedDeclarations;
 import souther.compiler.check.ExpandedClauseLookup;
 import souther.compiler.check.ExpandedClauseResult;
 import souther.compiler.check.ExpandedClauses;
@@ -800,6 +801,21 @@ public final class Shapes {
             return at instanceof DiagnosticPlace.Unavailable out
                     ? new DiagnosticPlace.Unavailable(out.provenance().asDeclared()) : at;
         }
+    }
+
+    /**
+     * What any declaration says, for a reader in another module.
+     *
+     * <p>One of these for the whole compilation, for the reason {@link #expandedClauses} gives:
+     * which declaration is being asked about is the only input there is. What a reader that takes
+     * one depends on is the declarations it asks about, so a reader asking about none depends on
+     * nothing.
+     */
+    public static PublishedDeclarations publishedDeclarations(Db db) {
+        return declaration -> {
+            Answer<DeclarationMeaning> said = db.ask(new MeaningOf(declaration));
+            return said.present() ? said.value() : null;
+        };
     }
 
     /**

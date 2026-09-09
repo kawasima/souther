@@ -7,7 +7,6 @@ import souther.compiler.check.CheckedEnsures;
 import souther.compiler.check.Prepared;
 import souther.compiler.check.Sig;
 import souther.compiler.check.DerivedSymbols;
-import souther.compiler.check.Symbols;
 import souther.compiler.core.Contract;
 import souther.compiler.core.ValueShape;
 import souther.compiler.execute.ExampleExecution;
@@ -94,7 +93,7 @@ public final class ExampleExecutions {
         // reaches none by name, which is a module rather than an unanswered question.
         Map<String, Hir.FnDef> values = db.ask(new Bodies.ModuleDefinitions(module)).value();
         return new ExampleExecution(prepared.value(), scope.value(),
-                checkedFieldTypes(db, scope.value()), sigs.value(),
+                checkedFieldTypes(db), sigs.value(),
                 requirements, values == null ? Map.of() : values, contracts,
                 Output.policyOf(db),
                 withDeclaring ? declaringOf(db, prepared.value()) : Map.of());
@@ -115,8 +114,8 @@ public final class ExampleExecutions {
      * module's shapes say what a value of it is made of. So there is no order in which one module's
      * declarations are tried before another's, and nothing is gathered into a table beforehand.
      */
-    private static FieldTypes checkedFieldTypes(Db db, Symbols symbols) {
-        return FieldTypes.over(new CheckedDeclarations(symbols, declared -> {
+    private static FieldTypes checkedFieldTypes(Db db) {
+        return FieldTypes.over(new CheckedDeclarations(Shapes.publishedDeclarations(db), declared -> {
             Map<TypeSymbol.AtModule, ValueShape> shapes =
                     db.ask(new Shapes.ValueShapes(declared.module())).value();
             return shapes == null ? null : shapes.get(declared);

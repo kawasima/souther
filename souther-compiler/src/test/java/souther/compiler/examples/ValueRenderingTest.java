@@ -31,7 +31,7 @@ class ValueRenderingTest {
         Symbols symbols = Symbols.none(DefaultStdlib.get());
         // No module is being read, so nothing here declares a data whose fields could be asked for.
         return new ValueRendering(new NeutralForm(symbols,
-                FieldTypes.over(new CheckedDeclarations(symbols, _ -> null))));
+                FieldTypes.over(new CheckedDeclarations(_ -> null, _ -> null))));
     }
 
     private static String show(ObservedValue v) {

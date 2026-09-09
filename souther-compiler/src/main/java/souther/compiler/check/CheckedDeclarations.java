@@ -1,6 +1,5 @@
 package souther.compiler.check;
 
-import souther.compiler.ast.Hir;
 import souther.compiler.core.ValueShape;
 import souther.compiler.observe.Composed;
 import souther.compiler.types.Type;
@@ -33,27 +32,30 @@ public final class CheckedDeclarations implements souther.compiler.observe.Decla
         ValueShape of(TypeSymbol.AtModule declared);
     }
 
-    private final Symbols symbols;
+    private final PublishedDeclarations published;
     private final Shapes shapes;
 
-    public CheckedDeclarations(Symbols symbols, Shapes shapes) {
-        if (symbols == null || shapes == null) {
+    public CheckedDeclarations(PublishedDeclarations published, Shapes shapes) {
+        if (published == null || shapes == null) {
             throw new IllegalArgumentException("a checked declaration is what a module wrote and"
-                    + " what the check said about it: " + symbols + " " + shapes);
+                    + " what the check said about it: " + published + " " + shapes);
         }
-        this.symbols = symbols;
+        this.published = published;
         this.shapes = shapes;
     }
 
     @Override
     public Composed of(TypeSymbol.AtModule declared) {
-        return switch (symbols.declaredNode(declared)) {
+        // What the declaration says, and not the tree the module that wrote it holds. Which of the
+        // three it is, is the whole of what is read here, and where it was written is not among the
+        // answers — so a declaration moved in its file leaves every row read against it alone.
+        return switch (published.of(declared.key())) {
             // A module wrote this one and this reading cannot see it. Said as what it is: a
             // declaration out of reach is not a declaration with nothing under it.
             case null -> throw new IllegalStateException("`" + declared + "` is declared by a module"
                     + " and this reading cannot reach what it declares");
-            case Hir.Data _ -> new Composed.OfFields(fieldsOf(declared));
-            case Hir.SumData _, Hir.UnitData _ -> Composed.NOTHING;
+            case DeclarationMeaning.Product _ -> new Composed.OfFields(fieldsOf(declared));
+            case DeclarationMeaning.Sum _, DeclarationMeaning.Unit _ -> Composed.NOTHING;
         };
     }
 
