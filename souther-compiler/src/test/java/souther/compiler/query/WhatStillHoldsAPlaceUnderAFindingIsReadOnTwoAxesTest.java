@@ -4,7 +4,10 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import souther.compiler.coverage.CoverageSites;
 import souther.compiler.meta.ModulePath;
+import souther.test.RepositoryLayout;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.ParameterizedType;
@@ -416,16 +419,22 @@ class WhatStillHoldsAPlaceUnderAFindingIsReadOnTwoAxesTest {
      * from was taken over these, so a check over fewer would be answering about a different set
      * than the one somebody measured.
      */
-    private static final List<String> THE_MODELS = List.of(
-            "src/test/resources/souther/compiler/conformance/catalog",
-            "src/test/resources/souther/compiler/conformance/staffing",
-            "../souther-bench/src/main/resources/souther/bench/corpus/crm",
-            "../souther-bench/src/main/resources/souther/bench/corpus/issuetracker");
+    private static final RepositoryLayout REPOSITORY = RepositoryLayout.ofWorkingDirectory();
+
+    private static final List<Path> THE_MODELS = List.of(
+            REPOSITORY.moduleNamed("souther-compiler")
+                    .resolve("src/test/resources/souther/compiler/conformance/catalog"),
+            REPOSITORY.moduleNamed("souther-compiler")
+                    .resolve("src/test/resources/souther/compiler/conformance/staffing"),
+            REPOSITORY.moduleNamed("souther-bench")
+                    .resolve("src/main/resources/souther/bench/corpus/crm"),
+            REPOSITORY.moduleNamed("souther-bench")
+                    .resolve("src/main/resources/souther/bench/corpus/issuetracker"));
 
     /** Every instance of a registered carrier the models reach, by carrier. */
     private static Map<String, List<Object>> carriersInTheModels() {
         Map<String, List<Object>> out = new LinkedHashMap<>();
-        for (String model : THE_MODELS) {
+        for (Path model : THE_MODELS) {
             carriersIn(compiled(model)).forEach((carrier, held) ->
                     out.computeIfAbsent(carrier, _ -> new ArrayList<>()).addAll(held));
         }
@@ -433,15 +442,14 @@ class WhatStillHoldsAPlaceUnderAFindingIsReadOnTwoAxesTest {
     }
 
     /** A compile of one model, with its findings asked for. */
-    private static Db compiled(String model) {
+    private static Db compiled(Path model) {
         Map<String, String> byId = new LinkedHashMap<>();
-        Path root = Path.of(model);
-        try (Stream<Path> files = Files.walk(root)) {
+        try (Stream<Path> files = Files.walk(model)) {
             for (Path each : files.filter(p -> p.toString().endsWith(".sou")).sorted().toList()) {
                 byId.put(each.getFileName().toString(), Files.readString(each));
             }
-        } catch (java.io.IOException unreadable) {
-            throw new java.io.UncheckedIOException(unreadable);
+        } catch (IOException unreadable) {
+            throw new UncheckedIOException(unreadable);
         }
         Compilation c = Compilation.ofDocuments(byId, Set.of(), ModulePath.EMPTY);
         c.answerEverything();

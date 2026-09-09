@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import souther.test.RepositoryLayout;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -54,11 +55,10 @@ class CstLexerRoundTripTest {
         assertEquals(source, relex(source));
     }
 
-    static Stream<Path> preludeSources() throws IOException {
-        Path prelude = Path.of("..", "souther-compiler", "src", "main", "resources", "souther");
-        try (Stream<Path> walk = Files.walk(prelude)) {
-            return walk.filter(p -> p.toString().endsWith(".sou")).toList().stream();
-        }
+    private static final RepositoryLayout REPOSITORY = RepositoryLayout.ofWorkingDirectory();
+
+    static Stream<Path> preludeSources() {
+        return REPOSITORY.preludeSources().stream();
     }
 
     @ParameterizedTest

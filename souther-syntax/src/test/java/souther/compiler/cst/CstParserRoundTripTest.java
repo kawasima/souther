@@ -3,14 +3,13 @@ package souther.compiler.cst;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import souther.test.RepositoryLayout;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -23,22 +22,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class CstParserRoundTripTest {
 
-    static Stream<Path> exampleSources() throws IOException {
-        // The bundled prelude — the hardest corpus. It is the compiler's resource, named where it
-        // is rather than where this module happens to stand, so the sweep is over the same sources
-        // wherever the check that reads them is written.
-        List<Path> roots = List.of(
-                Path.of("..", "souther-compiler", "src", "main", "resources", "souther"));
-        List<Path> sources = new ArrayList<>();
-        for (Path root : roots) {
-            if (!Files.isDirectory(root)) {
-                continue;
-            }
-            try (Stream<Path> walk = Files.walk(root)) {
-                walk.filter(p -> p.toString().endsWith(".sou")).forEach(sources::add);
-            }
-        }
-        return sources.stream();
+    private static final RepositoryLayout REPOSITORY = RepositoryLayout.ofWorkingDirectory();
+
+    /** The bundled prelude — the hardest corpus, and asked for rather than gone looking for, so a
+     *  source added to it is swept here without this being edited and a corpus that is not there
+     *  refuses rather than leaving a sweep of nothing to pass. */
+    static Stream<Path> exampleSources() {
+        return REPOSITORY.preludeSources().stream();
     }
 
     private static String read(Path p) {

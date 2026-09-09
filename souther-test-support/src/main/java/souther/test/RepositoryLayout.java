@@ -17,7 +17,10 @@ import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
@@ -58,11 +61,16 @@ public final class RepositoryLayout {
 
     private final Path root;
     private final List<Path> modules;
+    private final Map<String, Path> byTheNameTheRootPomWrites;
     private final List<Path> sourceTrees;
 
-    private RepositoryLayout(Path root, List<Path> modules, List<Path> sourceTrees) {
+    /** {@code named} in the order the root pom names them, which is the order {@link #modules}
+     *  answers in: the pom is what that order is read from, and nothing here sorts it again. */
+    private RepositoryLayout(Path root, Map<String, Path> named, List<Path> sourceTrees) {
         this.root = root;
-        this.modules = List.copyOf(modules);
+        this.byTheNameTheRootPomWrites =
+                Collections.unmodifiableMap(new LinkedHashMap<>(named));
+        this.modules = List.copyOf(named.values());
         this.sourceTrees = List.copyOf(sourceTrees);
     }
 
@@ -91,7 +99,7 @@ public final class RepositoryLayout {
      */
     public static RepositoryLayout of(Path start) {
         Path root = rootAbove(start.toAbsolutePath().normalize());
-        List<Path> modules = new ArrayList<>();
+        LinkedHashMap<String, Path> modules = new LinkedHashMap<>();
         List<Path> sourceTrees = new ArrayList<>();
         for (String named : modulesNamedBy(root.resolve("pom.xml"))) {
             Path module = root.resolve(named).normalize();
@@ -101,7 +109,11 @@ public final class RepositoryLayout {
                         + " repository, and a check that walked one module fewer would answer"
                         + " about the rest and say nothing about this one");
             }
-            modules.add(module);
+            // Two entries under one name would leave whoever asked for it holding whichever came
+            // first, which is the reading answering a question it cannot tell apart.
+            if (modules.put(named, module) != null) {
+                throw new IllegalStateException("the root pom names the module " + named + " twice");
+            }
             Path src = module.resolve("src");
             if (Files.isDirectory(src)) {
                 sourceTrees.add(src);
@@ -118,6 +130,34 @@ public final class RepositoryLayout {
     /** Every module directory the root pom names, in the order it names them. */
     public List<Path> modules() {
         return modules;
+    }
+
+    /**
+     * The directory of the module called {@code named}.
+     *
+     * <p>What a check reaching another module's files wants, and the whole of what it should have
+     * to say. Naming the module is naming a subject — which module's fixtures, which module's
+     * corpus — and it stays written where the check is. Where that module is, is not a subject: a
+     * check working it out from where it happens to be standing answers about whatever directory
+     * the build was invoked from, and that is what this takes off it.
+     *
+     * <p>{@code named} as the root pom writes it, which is what a module is called in this reactor.
+     * A directory's own name is not that: the pom may reach a module through a directory above it,
+     * and two modules under different ones can end in the same name — so a lookup on the last step
+     * of the path would answer a question it cannot tell apart, and would answer it with whichever
+     * the pom happened to name first. The pom's names are unique because this reads them into one
+     * answer per name and refuses a second.
+     *
+     * <p>Refused rather than resolved where the root pom names no such module, so a module renamed
+     * out from under a check stops that check rather than handing it a directory that is not there.
+     */
+    public Path moduleNamed(String named) {
+        Path module = byTheNameTheRootPomWrites.get(named);
+        if (module == null) {
+            throw new IllegalArgumentException("the root pom names no module called " + named
+                    + ": it names " + byTheNameTheRootPomWrites.keySet());
+        }
+        return module;
     }
 
     /**
@@ -325,6 +365,124 @@ public final class RepositoryLayout {
     /** Every {@code .sou} in a source tree, sorted. */
     public List<Path> southerSources() {
         return filesUnderSourceTrees(".sou");
+    }
+
+    /** The module that ships the default library, and where under its resources it keeps it. */
+    private static final String SHIPS_THE_PRELUDE = "souther-compiler";
+    private static final String THE_PRELUDE_IS_UNDER = "souther";
+
+    /**
+     * The Souther sources this repository ships as its default library, sorted.
+     *
+     * <p>A population and not a directory. Three checks swept it and each had worked out where it
+     * was, so a source added to it reached whichever of them had been edited and the rest went on
+     * reporting a pass over the sources they knew about. Asked here, they sweep the same population
+     * or none of them does.
+     *
+     * <p>Narrower than {@link #southerSources}, which is every Souther source the repository holds:
+     * the models written to ask one question are sources too, and a check about the library is not
+     * about those. Filtering the wider answer down would be a second account of which of them are
+     * the library, kept beside the one the compiler ships by.
+     *
+     * <p>A corpus that is not there is refused rather than swept over. A sweep of no sources is a
+     * sweep every row of which holds, and a round trip over nothing reproduces everything it was
+     * given: the check reports a pass. That refusal belongs with the answer, because the place that
+     * hands the sources over is the only one that can tell a missing corpus from an empty one.
+     *
+     * <p>Walked once, because the repository does not move while a run happens. The checks that
+     * sweep the library ask for it once per property they hold over it, and the library is the same
+     * answer each time; only where the sources are is held, so what each check makes of them stays
+     * its own.
+     */
+    public List<Path> preludeSources() {
+        if (prelude == null) {
+            prelude = walkThePrelude();
+        }
+        return prelude;
+    }
+
+    private List<Path> prelude;
+
+    private List<Path> walkThePrelude() {
+        Path at = moduleNamed(SHIPS_THE_PRELUDE)
+                .resolve("src").resolve("main").resolve("resources").resolve(THE_PRELUDE_IS_UNDER);
+        if (!isThere(at)) {
+            throw new IllegalStateException(at + " is not there, so a sweep of the default library"
+                    + " would be a sweep of no sources and would report a pass over all of them");
+        }
+        List<Path> found = new ArrayList<>();
+        try (Stream<Path> walk = Files.walk(at)) {
+            walk.filter(Files::isRegularFile)
+                    .filter(each -> each.getFileName().toString().endsWith(".sou"))
+                    .forEach(found::add);
+        } catch (IOException unreadable) {
+            throw new UncheckedIOException(unreadable);
+        }
+        if (found.isEmpty()) {
+            throw new IllegalStateException(at + " holds no Souther source: the default library is"
+                    + " what the checks that sweep it are about, and there is none here");
+        }
+        found.sort(Path::compareTo);
+        return List.copyOf(found);
+    }
+
+    /**
+     * The one source of the default library that {@code module} names, without its suffix.
+     *
+     * <p>Looked for among {@link #preludeSources} rather than built from the same steps, so that
+     * what this hands back is one of the population above and not a path that would be one if it
+     * were there. A name the library does not have is refused with what it does have.
+     */
+    public Path preludeSourceOf(String module) {
+        List<Path> sources = preludeSources();
+        List<Path> named = sources.stream()
+                .filter(each -> each.getFileName().toString().equals(module + ".sou")).toList();
+        if (named.size() != 1) {
+            throw new IllegalArgumentException("the default library has " + named.size()
+                    + " sources called " + module + ".sou, among "
+                    + sources.stream().map(each -> each.getFileName().toString()).toList());
+        }
+        return named.getFirst();
+    }
+
+    /**
+     * Whether {@code said}, taken together, reaches a module by walking out of where it stands.
+     *
+     * <p>For a rule about a check that works out where another module's files are. What such a
+     * check says is a step out of its own directory and the name of the module it means to land in,
+     * and it says them as whatever a path is built out of — one text with both steps, or a step at
+     * a time — so they are asked of everything one method says rather than of one text.
+     *
+     * <p>The module's name is not what this refuses. Naming a module is naming a subject, and a
+     * check reaching for one asks {@link #moduleNamed} where it is; the {@code ..} beside it is the
+     * check answering that for itself, out of the directory the build was invoked from.
+     */
+    public boolean reachesAModuleThroughAParent(Collection<String> said) {
+        boolean walksOut = false;
+        boolean lands = false;
+        for (String each : said) {
+            for (String step : each.split("[/\\\\]")) {
+                walksOut |= step.equals("..");
+                lands |= isAModuleDirectory(step);
+            }
+        }
+        return walksOut && lands;
+    }
+
+    /**
+     * Whether {@code step} is what a module's directory is called.
+     *
+     * <p>The directory's own name and not the name the root pom writes, which is what
+     * {@link #moduleNamed} takes: this is asked of one step of a path, and a path reaches a module
+     * through the directory it is in whatever the pom calls the module.
+     */
+    private boolean isAModuleDirectory(String step) {
+        for (Path module : modules) {
+            if (module.getFileName().toString().equals(step)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

@@ -28,9 +28,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * could be. It names what it caught, so the reply to it is to ask {@link RepositoryLayout} rather
  * than to spell the same derivation differently.
  *
- * <p>Deliberately not covered: a path that names one directory of another module, as four checks
- * spell the default library. That is a source this repository holds and not the shape of the
- * repository, so no answer here would be the one they want.
+ * <p>A path that steps out of a check's own directory to name another module is not covered here
+ * and is not allowed either. It is refused where it can be seen as one thing rather than as a
+ * spelling — over what a compiled method says, by
+ * {@code NoCheckReachesAModuleByWalkingOutOfWhereItStandsTest}.
  */
 class TheRepositorysShapeIsWorkedOutInOnePlaceTest {
 

@@ -11,6 +11,7 @@ import souther.compiler.cst.SyntaxElement;
 import souther.compiler.cst.SyntaxKind;
 import souther.compiler.cst.SyntaxNode;
 import souther.compiler.cst.SyntaxToken;
+import souther.test.RepositoryLayout;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -275,20 +276,22 @@ class WhatGoesBetweenTwoTokensOnALineTest {
                 | _ -> 0
             """);
 
+    /** Read once, because the repository does not move while a run happens: reading it is a pom to
+     *  parse and a walk, and {@link #corpus} is asked for by every rule this module holds. */
+    private static final RepositoryLayout REPOSITORY = RepositoryLayout.ofWorkingDirectory();
+
     /**
-     * One bundled standard-library source, read from where the compiler keeps it.
+     * One bundled standard-library source, asked for by the name the library gives it.
      *
-     * <p>Named by path rather than looked up on the class path. The formatter depends on the syntax
-     * and not on the compiler, so the sources the compiler bundles are not on this module's class
-     * path — and a corpus that quietly came up short would leave every rule below holding over less
-     * text than it says it does.
+     * <p>Read from the repository rather than looked up on the class path. The formatter depends on
+     * the syntax and not on the compiler, so the sources the compiler bundles are not on this
+     * module's class path — and a corpus that quietly came up short would leave every rule below
+     * holding over less text than it says it does. A name the library does not have is refused
+     * where the library is handed out.
      */
     private static String stdlib(String module) {
-        Path source = Path.of("..", "souther-compiler", "src", "main", "resources", "souther",
-                module + ".sou");
+        Path source = REPOSITORY.preludeSourceOf(module);
         try {
-            assertTrue(Files.isRegularFile(source),
-                    "missing bundled source " + source.toAbsolutePath());
             return Files.readString(source, StandardCharsets.UTF_8);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
