@@ -12,9 +12,12 @@ import javax.xml.parsers.ParserConfigurationException;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Stream;
 
 /**
@@ -149,6 +152,50 @@ public final class RepositoryLayout {
     }
 
     /**
+     * What {@code module} compiled its {@code phase} sources to, or nothing where it built none.
+     *
+     * <p>A reading and not a place. What a caller does with a compiled output is ask what it holds,
+     * and what it would do with the path is walk it — which reads once more the files the reading
+     * exists to read once. So where a module's output is stays worked out here, beside the rest of
+     * what this knows about how the repository is laid out.
+     *
+     * <p>Nothing where the module built none, because that is two different things to two callers.
+     * A check about every module is entitled to treat a module that has sources and no output as a
+     * hole; a check about whichever module holds a name is entitled to look in the next one.
+     *
+     * @param phase {@code main} or {@code test}, as {@link #javaTreeOf} takes it
+     */
+    public Optional<CompiledClasses> compiledOutputOf(Path module, String phase) {
+        Path at = module.resolve(whereABuildWrites()).resolve(switch (phase) {
+            case "main" -> "classes";
+            case "test" -> "test-classes";
+            default -> throw new IllegalArgumentException(
+                    phase + " is not a phase a module compiles: main and test are");
+        });
+        return isThere(at) ? Optional.of(CompiledClasses.at(at)) : Optional.empty();
+    }
+
+    /**
+     * Whether {@code at} is a directory, where not being able to tell is not the same as no.
+     *
+     * <p>Nothing where a module built none is a fact a caller acts on — a check reads the next
+     * output, or passes over a module with no tests of its own. That this process could not look is
+     * not that fact, and answering both with the same no hands a caller the one it asked for
+     * whichever it met. What is not there is an answer; anything else that stops the look is a
+     * failure and says so.
+     */
+    private static boolean isThere(Path at) {
+        try {
+            return Files.readAttributes(at, BasicFileAttributes.class).isDirectory();
+        } catch (NoSuchFileException e) {
+            return false;
+        } catch (IOException e) {
+            throw new UncheckedIOException(at + " cannot be looked at, so whether a build wrote"
+                    + " anything there is a question this cannot answer", e);
+        }
+    }
+
+    /**
      * Whether {@code file} is something a build wrote rather than something somebody did.
      *
      * <p>Asked of a walk that means to read what the repository holds: what a build wrote is a copy
@@ -211,10 +258,12 @@ public final class RepositoryLayout {
         return treeOf(module, phase, "java");
     }
 
-    /** Where a module keeps one kind of source, or null where it keeps none of that kind. */
+    /** Where a module keeps one kind of source, or null where it keeps none of that kind. Beside
+     *  {@link #isThere} and for its reason: a tree this cannot look at is not a tree that is not
+     *  there. */
     private static Path treeOf(Path module, String phase, String kind) {
         Path tree = module.resolve("src").resolve(phase).resolve(kind);
-        return Files.isDirectory(tree) ? tree : null;
+        return isThere(tree) ? tree : null;
     }
 
     /**

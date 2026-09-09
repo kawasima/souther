@@ -46,10 +46,10 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
  */
 class NoCheckOfThisModuleGoesLookingForTheCompiledOutputTest {
 
-    /** Naming an output: the two ways the shared reading is handed one. */
+    /** Naming an output: what a check outside {@code souther.test} can be handed one by. */
     private static final Set<String> NAMES_AN_OUTPUT = Set.of(
             "souther/test/CompiledClasses.ofModule",
-            "souther/test/CompiledClasses.at");
+            "souther/test/RepositoryLayout.compiledOutputOf");
 
     /** The one place this module's outputs are named, which is what the rule is that there is one. */
     private static final String THE_ONE_PLACE = WhatWasCompiled.class.getName();
