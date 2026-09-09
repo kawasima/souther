@@ -1,22 +1,16 @@
 package souther.compiler.check;
 
 import org.junit.jupiter.api.Test;
+import souther.compiler.WhatWasCompiled;
 
-import java.io.IOException;
-import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassModel;
 import java.lang.classfile.MethodModel;
 import java.lang.classfile.instruction.InvokeInstruction;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 
 /**
  * Who may make a {@link PartId}, and how often.
@@ -47,7 +41,7 @@ class OnePlaceMakesThePartIdEverybodyElseHoldsTest {
                             + " assigned"));
 
     @Test
-    void onlyTheSplitThatNumberedThePartsNamesOne() throws IOException {
+    void onlyTheSplitThatNumberedThePartsNamesOne() {
         assertEquals(declared(MAY_MAKE), callsTo(PART_ID, "<init>"),
                 "a part named anywhere else is a number somebody counted for themselves put beside"
                         + " whichever rule they were holding. What may make one, and why: "
@@ -67,12 +61,9 @@ class OnePlaceMakesThePartIdEverybodyElseHoldsTest {
     }
 
     /** How many times each method of the compiler calls {@code owner.name}. */
-    private static Map<String, Integer> callsTo(String owner, String name) throws IOException {
+    private static Map<String, Integer> callsTo(String owner, String name) {
         Map<String, Integer> calls = new TreeMap<>();
-        int read = 0;
-        for (Path each : classes()) {
-            ClassModel model = ClassFile.of().parse(Files.readAllBytes(each));
-            read++;
+        for (ClassModel model : WhatWasCompiled.compiled().all()) {
             String from = model.thisClass().asInternalName().replace('/', '.').replace('$', '.');
             for (MethodModel method : model.methods()) {
                 method.code().ifPresent(code -> code.forEach(element -> {
@@ -84,14 +75,6 @@ class OnePlaceMakesThePartIdEverybodyElseHoldsTest {
                 }));
             }
         }
-        assertFalse(read == 0, "no compiled class was read at all, so this says nothing");
         return calls;
-    }
-
-    private static List<Path> classes() throws IOException {
-        Path root = Path.of("target", "classes").toAbsolutePath();
-        try (Stream<Path> walk = Files.walk(root)) {
-            return new ArrayList<>(walk.filter(p -> p.toString().endsWith(".class")).toList());
-        }
     }
 }

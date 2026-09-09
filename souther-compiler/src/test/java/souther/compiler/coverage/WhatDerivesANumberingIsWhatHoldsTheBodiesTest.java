@@ -1,23 +1,17 @@
 package souther.compiler.coverage;
 
 import org.junit.jupiter.api.Test;
+import souther.compiler.WhatWasCompiled;
 
-import java.io.IOException;
-import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassModel;
 import java.lang.classfile.MethodModel;
 import java.lang.classfile.instruction.InvokeInstruction;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 
 /**
  * A module's numbering is derived where its bodies are held, and nowhere else in the compiler.
@@ -105,7 +99,7 @@ class WhatDerivesANumberingIsWhatHoldsTheBodiesTest {
                             + " in for one"));
 
     @Test
-    void onlyTheCheckThatHoldsThemDerivesAModulesNumbering() throws IOException {
+    void onlyTheCheckThatHoldsThemDerivesAModulesNumbering() {
         assertEquals(declared(MAY_DERIVE), derivations(),
                 "a numbering derived anywhere else is a second answer about one module's arms, and"
                         + " a reader holding it is reading a run against numbers nothing wrote."
@@ -129,7 +123,7 @@ class WhatDerivesANumberingIsWhatHoldsTheBodiesTest {
      * {@code souther-cli} or {@code souther-lsp} is outside what this can answer for.
      */
     @Test
-    void nothingElseInTheCompilerMakesANumbering() throws IOException {
+    void nothingElseInTheCompilerMakesANumbering() {
         Map<String, Map<String, Integer>> declared = new TreeMap<>();
         Map<String, String> why = new LinkedHashMap<>();
         for (Door each : DOORS) {
@@ -163,14 +157,14 @@ class WhatDerivesANumberingIsWhatHoldsTheBodiesTest {
     /** How many times each method of the compiler decides a numbering from bodies. Only the call
      *  that decides one: a walk taking a numbering already issued asks for it by another name, and
      *  hands out addresses of what it was given. */
-    private static Map<String, Integer> derivations() throws IOException {
+    private static Map<String, Integer> derivations() {
         return calls(call -> call.owner().asInternalName().equals(SITES)
                 && call.name().stringValue().equals("of"));
     }
 
     /** How many times each method of the compiler goes through {@code door}, which is written the
      *  way the classes name a method: the owning class, then the method. */
-    private static Map<String, Integer> callersOf(String door) throws IOException {
+    private static Map<String, Integer> callersOf(String door) {
         int split = door.lastIndexOf('.');
         String owner = door.substring(0, split).replace('.', '/');
         String method = door.substring(split + 1);
@@ -179,12 +173,9 @@ class WhatDerivesANumberingIsWhatHoldsTheBodiesTest {
     }
 
     private static Map<String, Integer> calls(java.util.function.Predicate<InvokeInstruction> what)
-            throws IOException {
+            {
         Map<String, Integer> calls = new TreeMap<>();
-        int read = 0;
-        for (Path each : classes()) {
-            ClassModel model = ClassFile.of().parse(Files.readAllBytes(each));
-            read++;
+        for (ClassModel model : WhatWasCompiled.compiled().all()) {
             String from = model.thisClass().asInternalName().replace('/', '.').replace('$', '.');
             for (MethodModel method : model.methods()) {
                 method.code().ifPresent(code -> code.forEach(element -> {
@@ -194,14 +185,6 @@ class WhatDerivesANumberingIsWhatHoldsTheBodiesTest {
                 }));
             }
         }
-        assertFalse(read == 0, "no compiled class was read at all, so this says nothing");
         return calls;
-    }
-
-    private static List<Path> classes() throws IOException {
-        Path root = Path.of("target", "classes").toAbsolutePath();
-        try (Stream<Path> walk = Files.walk(root)) {
-            return new ArrayList<>(walk.filter(p -> p.toString().endsWith(".class")).toList());
-        }
     }
 }

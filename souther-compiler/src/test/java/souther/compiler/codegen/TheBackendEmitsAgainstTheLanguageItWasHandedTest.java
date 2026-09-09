@@ -1,17 +1,13 @@
 package souther.compiler.codegen;
 
 import org.junit.jupiter.api.Test;
+import souther.compiler.WhatWasCompiled;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.lang.classfile.ClassFile;
+import java.lang.classfile.ClassModel;
 import java.lang.classfile.constantpool.PoolEntry;
 import java.lang.classfile.constantpool.Utf8Entry;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -36,8 +32,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class TheBackendEmitsAgainstTheLanguageItWasHandedTest {
 
-    private static final Path COMPILED = Path.of("target", "classes", "souther", "compiler",
-            "codegen");
+    private static final String THE_BACKEND = "souther.compiler.codegen";
 
     /** What the backend may not name, as the constant pool spells it. */
     private static final String THE_LIBRARY = "souther/compiler/stdlib/";
@@ -45,17 +40,17 @@ class TheBackendEmitsAgainstTheLanguageItWasHandedTest {
     @Test
     void nothingInTheBackendNamesTheStandardLibrary() {
         List<String> reaching = new ArrayList<>();
-        List<Path> classes = compiledClasses();
+        List<ClassModel> classes = WhatWasCompiled.compiled().inPackage(THE_BACKEND);
 
-        // A walk that found nothing because it read nothing answers the same as one that read
-        // everything and found nothing.
+        // A walk that found nothing because it read next to nothing answers the same as one that
+        // read everything and found nothing.
         assertTrue(classes.size() > 10,
-                () -> "read only " + classes.size() + " compiled classes under " + COMPILED);
+                () -> "read only " + classes.size() + " compiled classes of " + THE_BACKEND);
 
-        for (Path each : classes) {
-            for (PoolEntry entry : constantPoolOf(each)) {
+        for (ClassModel each : classes) {
+            for (PoolEntry entry : each.constantPool()) {
                 if (entry instanceof Utf8Entry utf8 && utf8.stringValue().contains(THE_LIBRARY)) {
-                    reaching.add(each.getFileName() + " names " + utf8.stringValue());
+                    reaching.add(each.thisClass().asInternalName() + " names " + utf8.stringValue());
                     break;
                 }
             }
@@ -64,21 +59,5 @@ class TheBackendEmitsAgainstTheLanguageItWasHandedTest {
         assertEquals(List.of(), reaching,
                 "the backend emits against the kernel declarations it is handed; these reach the"
                         + " library for an answer of their own");
-    }
-
-    private static List<Path> compiledClasses() {
-        try (Stream<Path> found = Files.walk(COMPILED)) {
-            return found.filter(each -> each.toString().endsWith(".class")).toList();
-        } catch (IOException e) {
-            throw new UncheckedIOException("the backend's classes are not compiled at " + COMPILED, e);
-        }
-    }
-
-    private static Iterable<PoolEntry> constantPoolOf(Path each) {
-        try {
-            return ClassFile.of().parse(Files.readAllBytes(each)).constantPool();
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
     }
 }

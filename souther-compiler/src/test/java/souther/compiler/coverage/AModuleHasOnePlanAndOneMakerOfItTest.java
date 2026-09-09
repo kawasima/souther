@@ -1,9 +1,8 @@
 package souther.compiler.coverage;
 
 import org.junit.jupiter.api.Test;
+import souther.compiler.WhatWasCompiled;
 
-import java.io.IOException;
-import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassModel;
 import java.lang.classfile.MethodModel;
 import java.lang.classfile.instruction.InvokeInstruction;
@@ -11,10 +10,6 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
@@ -22,7 +17,6 @@ import java.util.TreeSet;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 
 /**
  * A module's places are walked once, by the answer that holds its bodies.
@@ -72,7 +66,7 @@ class AModuleHasOnePlanAndOneMakerOfItTest {
                     + " is refused");
 
     @Test
-    void onlyTheCheckThatHoldsTheBodiesWalksThemForAPlan() throws IOException {
+    void onlyTheCheckThatHoldsTheBodiesWalksThemForAPlan() {
         assertEquals(once(MAY_WALK), calling(SITES, "of"),
                 () -> "a second walk of one module's bodies makes a second plan of it, addressing"
                         + " objects the first plan does not — and a second walk written where the"
@@ -81,7 +75,7 @@ class AModuleHasOnePlanAndOneMakerOfItTest {
     }
 
     @Test
-    void andOnlyTheEndOfThatWalkPutsOneTogether() throws IOException {
+    void andOnlyTheEndOfThatWalkPutsOneTogether() {
         assertEquals(once(MAY_CONSTRUCT), calling(A_PLAN, "<init>"),
                 () -> "a plan assembled out of parts is an index into a graph its assembler does"
                         + " not own. What builds one today, and what makes it the one that may: "
@@ -194,12 +188,12 @@ class AModuleHasOnePlanAndOneMakerOfItTest {
      * read and every instruction of it decoded, which is not what a run somebody is waiting on
      * should do twice to answer two questions about the same compiled code.
      */
-    private static Map<String, Integer> calling(String owner, String name) throws IOException {
+    private static Map<String, Integer> calling(String owner, String name) {
         return counted().getOrDefault(owner + "." + name, Map.of());
     }
 
     /** What each door is called by, read once. */
-    private static Map<String, Map<String, Integer>> counted() throws IOException {
+    private static Map<String, Map<String, Integer>> counted() {
         if (COUNTED == null) {
             COUNTED = count();
         }
@@ -208,12 +202,9 @@ class AModuleHasOnePlanAndOneMakerOfItTest {
 
     private static Map<String, Map<String, Integer>> COUNTED;
 
-    private static Map<String, Map<String, Integer>> count() throws IOException {
+    private static Map<String, Map<String, Integer>> count() {
         Map<String, Map<String, Integer>> calls = new TreeMap<>();
-        int read = 0;
-        for (Path each : classes()) {
-            ClassModel model = ClassFile.of().parse(Files.readAllBytes(each));
-            read++;
+        for (ClassModel model : WhatWasCompiled.compiled().all()) {
             String from = model.thisClass().asInternalName().replace('/', '.').replace('$', '.');
             for (MethodModel method : model.methods()) {
                 method.code().ifPresent(code -> code.forEach(element -> {
@@ -229,17 +220,9 @@ class AModuleHasOnePlanAndOneMakerOfItTest {
                 }));
             }
         }
-        assertFalse(read == 0, "no compiled class was read at all, so this says nothing");
         return calls;
     }
 
     /** The two ways to a plan, as an invocation names them. */
     private static final Set<String> DOORS = Set.of(SITES + ".of", A_PLAN + ".<init>");
-
-    private static List<Path> classes() throws IOException {
-        Path root = Path.of("target", "classes").toAbsolutePath();
-        try (Stream<Path> walk = Files.walk(root)) {
-            return new ArrayList<>(walk.filter(p -> p.toString().endsWith(".class")).toList());
-        }
-    }
 }

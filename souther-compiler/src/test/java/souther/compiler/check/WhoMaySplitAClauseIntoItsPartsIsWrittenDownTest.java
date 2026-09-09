@@ -1,22 +1,16 @@
 package souther.compiler.check;
 
 import org.junit.jupiter.api.Test;
+import souther.compiler.WhatWasCompiled;
 
-import java.io.IOException;
-import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassModel;
 import java.lang.classfile.MethodModel;
 import java.lang.classfile.instruction.InvokeInstruction;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 
 /**
  * Who splits a clause into the parts its author wrote, and where such a split may happen.
@@ -58,7 +52,7 @@ class WhoMaySplitAClauseIntoItsPartsIsWrittenDownTest {
                             + " which splits the written tree and expands one part at a time"));
 
     @Test
-    void onlyAnExpansionSplitsAClauseIntoTheParts() throws IOException {
+    void onlyAnExpansionSplitsAClauseIntoTheParts() {
         assertEquals(declared(MAY_SPLIT), callsTo(HELPERS, "shapeOf"),
                 "a clause split anywhere else is a second answer to which parts it has, and the"
                         + " tree such a reader holds is one an expansion has been over. What may"
@@ -81,12 +75,9 @@ class WhoMaySplitAClauseIntoItsPartsIsWrittenDownTest {
     }
 
     /** How many times each method of the compiler calls {@code owner.name}. */
-    private static Map<String, Integer> callsTo(String owner, String name) throws IOException {
+    private static Map<String, Integer> callsTo(String owner, String name) {
         Map<String, Integer> calls = new TreeMap<>();
-        int read = 0;
-        for (Path each : classes()) {
-            ClassModel model = ClassFile.of().parse(Files.readAllBytes(each));
-            read++;
+        for (ClassModel model : WhatWasCompiled.compiled().all()) {
             String from = model.thisClass().asInternalName().replace('/', '.').replace('$', '.');
             for (MethodModel method : model.methods()) {
                 method.code().ifPresent(code -> code.forEach(element -> {
@@ -98,14 +89,6 @@ class WhoMaySplitAClauseIntoItsPartsIsWrittenDownTest {
                 }));
             }
         }
-        assertFalse(read == 0, "no compiled class was read at all, so this says nothing");
         return calls;
-    }
-
-    private static List<Path> classes() throws IOException {
-        Path root = Path.of("target", "classes").toAbsolutePath();
-        try (Stream<Path> walk = Files.walk(root)) {
-            return new ArrayList<>(walk.filter(p -> p.toString().endsWith(".class")).toList());
-        }
     }
 }

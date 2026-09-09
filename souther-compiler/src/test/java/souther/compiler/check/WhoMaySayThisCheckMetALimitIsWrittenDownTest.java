@@ -1,22 +1,17 @@
 package souther.compiler.check;
 
 import org.junit.jupiter.api.Test;
+import souther.compiler.WhatWasCompiled;
 
-import java.io.IOException;
-import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassModel;
 import java.lang.classfile.MethodModel;
 import java.lang.classfile.instruction.InvokeInstruction;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -127,7 +122,7 @@ class WhoMaySayThisCheckMetALimitIsWrittenDownTest {
                     "reads which of a plan's comparisons the walk settled nothing about"));
 
     @Test
-    void everyMethodThatHandsBackALimitIsWrittenDownAsOneOfTheTwo() throws IOException {
+    void everyMethodThatHandsBackALimitIsWrittenDownAsOneOfTheTwo() {
         assertEquals(declared(WAYS_IN, HANDS_ON), shown(producers()),
                 "a method handing back a limit either makes one or hands on one that was made, and"
                         + " which it is has to be said before anything asks who may call it. What"
@@ -136,7 +131,7 @@ class WhoMaySayThisCheckMetALimitIsWrittenDownTest {
 
     /** And that a limit is made only on the limit itself, so the ways in are all of them. */
     @Test
-    void nothingMakesOneExceptTheWaysIn() throws IOException {
+    void nothingMakesOneExceptTheWaysIn() {
         assertEquals(declared(WAYS_IN), shown(assembling()),
                 "a limit made anywhere else is one whose making nothing decided");
     }
@@ -160,9 +155,9 @@ class WhoMaySayThisCheckMetALimitIsWrittenDownTest {
             "Lsouther/compiler/diag/SourcePos;");
 
     @Test
-    void aWayInTakesWhatThisReadingMetAndNothingItWasHanded() throws IOException {
+    void aWayInTakesWhatThisReadingMetAndNothingItWasHanded() {
         Map<String, String> taking = new TreeMap<>();
-        for (ClassModel model : compiled()) {
+        for (ClassModel model : WhatWasCompiled.compiled().all()) {
             if (!model.thisClass().asInternalName().equals(LIMIT)) {
                 continue;
             }
@@ -183,7 +178,7 @@ class WhoMaySayThisCheckMetALimitIsWrittenDownTest {
     }
 
     @Test
-    void onlyAReaderThatMetOneSaysThisCheckMetALimit() throws IOException {
+    void onlyAReaderThatMetOneSaysThisCheckMetALimit() {
         assertEquals(declared(MAY_SAY), callers(assembling()),
                 "a limit is made where one was met and nowhere else. What each of these met: "
                         + why(MAY_SAY));
@@ -191,7 +186,7 @@ class WhoMaySayThisCheckMetALimitIsWrittenDownTest {
 
     /** And that something does make one, so the rule above is not read over no classes at all. */
     @Test
-    void andSomethingDoesSaySo() throws IOException {
+    void andSomethingDoesSaySo() {
         assertFalse(callers(assembling()).isEmpty(),
                 "nothing makes a limit, so the rule above saw nothing");
     }
@@ -206,7 +201,7 @@ class WhoMaySayThisCheckMetALimitIsWrittenDownTest {
     }
 
     /** The ways in, which are the methods declared on the limit itself. */
-    private static Set<Producer> assembling() throws IOException {
+    private static Set<Producer> assembling() {
         return new TreeSet<>(producers().stream()
                 .filter(each -> each.owner().equals(LIMIT)).toList());
     }
@@ -227,9 +222,9 @@ class WhoMaySayThisCheckMetALimitIsWrittenDownTest {
     }
 
     /** Everything the compiler declares that hands one back. */
-    private static Set<Producer> producers() throws IOException {
+    private static Set<Producer> producers() {
         Set<Producer> out = new TreeSet<>();
-        for (ClassModel model : compiled()) {
+        for (ClassModel model : WhatWasCompiled.compiled().all()) {
             String owner = model.thisClass().asInternalName();
             for (MethodModel method : model.methods()) {
                 if (method.methodTypeSymbol().returnType().descriptorString()
@@ -244,10 +239,10 @@ class WhoMaySayThisCheckMetALimitIsWrittenDownTest {
     }
 
     /** Which methods call any of {@code watched}. */
-    private static Map<String, String> callers(Set<Producer> watched) throws IOException {
+    private static Map<String, String> callers(Set<Producer> watched) {
         assertFalse(watched.isEmpty(), "no producer was watched, so this says nothing");
         Map<String, String> calls = new TreeMap<>();
-        for (ClassModel model : compiled()) {
+        for (ClassModel model : WhatWasCompiled.compiled().all()) {
             String from = model.thisClass().asInternalName().replace('/', '.').replace('$', '.');
             for (MethodModel method : model.methods()) {
                 method.code().ifPresent(code -> code.forEach(element -> {
@@ -275,15 +270,4 @@ class WhoMaySayThisCheckMetALimitIsWrittenDownTest {
         return out.append(')').toString();
     }
 
-    private static List<ClassModel> compiled() throws IOException {
-        Path root = Path.of("target", "classes").toAbsolutePath();
-        List<ClassModel> out = new ArrayList<>();
-        try (Stream<Path> walk = Files.walk(root)) {
-            for (Path each : walk.filter(p -> p.toString().endsWith(".class")).toList()) {
-                out.add(ClassFile.of().parse(Files.readAllBytes(each)));
-            }
-        }
-        assertFalse(out.isEmpty(), "no compiled class was read at all, so this says nothing");
-        return out;
-    }
 }

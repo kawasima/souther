@@ -1,5 +1,6 @@
 package souther.compiler.check;
 
+import souther.compiler.WhatWasCompiled;
 import souther.compiler.core.Core;
 import souther.compiler.diag.SourcePos;
 import souther.compiler.types.ApplicationOrigin;
@@ -8,14 +9,10 @@ import souther.compiler.types.ReferenceOrigin;
 
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
-import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassModel;
 import java.lang.classfile.MethodModel;
 import java.lang.classfile.instruction.InvokeInstruction;
 import java.lang.reflect.RecordComponent;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -51,6 +48,9 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
  */
 class AReadingReadsEverythingATermSaysAndNothingOfWhereItStandsTest {
 
+    /** The reading whose identity this is about. */
+    private static final String THE_READING = "souther.compiler.check.TermMeaning";
+
     /** What a component of this type says is where the node stands, and not what it says. */
     private static final Set<Class<?>> WHERE_IT_STANDS = Set.of(
             SourcePos.class,
@@ -77,7 +77,7 @@ class AReadingReadsEverythingATermSaysAndNothingOfWhereItStandsTest {
     }
 
     @Test
-    void everythingATermSaysIsRead() throws IOException {
+    void everythingATermSaysIsRead() {
         Set<String> unread = new TreeSet<>();
         Set<String> called = componentsReadByTheIdentity();
         for (Class<?> kind : walked()) {
@@ -95,7 +95,7 @@ class AReadingReadsEverythingATermSaysAndNothingOfWhereItStandsTest {
     }
 
     @Test
-    void andNothingOfWhereItStandsIs() throws IOException {
+    void andNothingOfWhereItStandsIs() {
         Set<String> read = new TreeSet<>();
         Set<String> called = componentsReadByTheIdentity();
         for (Class<?> kind : walked()) {
@@ -122,7 +122,7 @@ class AReadingReadsEverythingATermSaysAndNothingOfWhereItStandsTest {
      * comparison stands while nothing above sees a place component being read.
      */
     @Test
-    void andWhatItReadsOfATermAreItsComponents() throws IOException {
+    void andWhatItReadsOfATermAreItsComponents() {
         Set<String> components = new TreeSet<>();
         for (Class<?> kind : walked()) {
             for (RecordComponent component : kind.getRecordComponents()) {
@@ -167,8 +167,10 @@ class AReadingReadsEverythingATermSaysAndNothingOfWhereItStandsTest {
      * component the identity leaves out is exactly the one that makes two readings the store called
      * one answer differently, whoever else reads it.
      */
-    private static Set<String> componentsReadByTheIdentity() throws IOException {
-        ClassModel model = ClassFile.of().parse(Files.readAllBytes(compiledReading()));
+    private static Set<String> componentsReadByTheIdentity() {
+        ClassModel model = WhatWasCompiled.compiled().find(THE_READING)
+                .orElseThrow(() -> new IllegalStateException(
+                        THE_READING + " is not a class this module compiled"));
         Set<String> read = new LinkedHashSet<>();
         Set<String> walked = new LinkedHashSet<>();
         Deque<MethodModel> pending = new ArrayDeque<>();
@@ -208,8 +210,4 @@ class AReadingReadsEverythingATermSaysAndNothingOfWhereItStandsTest {
         return read;
     }
 
-    private static Path compiledReading() {
-        return Path.of("target", "classes", "souther", "compiler", "check", "TermMeaning.class")
-                .toAbsolutePath();
-    }
 }

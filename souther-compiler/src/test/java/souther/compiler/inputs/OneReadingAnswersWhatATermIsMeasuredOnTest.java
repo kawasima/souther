@@ -1,20 +1,14 @@
 package souther.compiler.inputs;
 
 import org.junit.jupiter.api.Test;
+import souther.compiler.WhatWasCompiled;
 
-import java.io.IOException;
-import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassModel;
 import java.lang.classfile.CodeModel;
 import java.lang.classfile.instruction.InvokeInstruction;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -53,10 +47,9 @@ class OneReadingAnswersWhatATermIsMeasuredOnTest {
      * own. What the class files carry is the call, whatever it was written as.
      */
     @Test
-    void oneProductionPlaceDerivesATermsOrders() throws IOException {
+    void oneProductionPlaceDerivesATermsOrders() {
         Set<String> derives = new TreeSet<>();
-        for (Path each : classes()) {
-            ClassModel model = ClassFile.of().parse(Files.readAllBytes(each));
+        for (ClassModel model : WhatWasCompiled.compiled().all()) {
             String from = nestOf(model.thisClass().asInternalName().replace('/', '.'));
             if (from.equals(DERIVES)) {
                 continue;   // what the derivation does with itself is its own business
@@ -96,11 +89,10 @@ class OneReadingAnswersWhatATermIsMeasuredOnTest {
      * held to here rather than left to be noticed.
      */
     @Test
-    void oneProductionPlaceMakesAPair() throws IOException {
+    void oneProductionPlaceMakesAPair() {
         Set<String> built = new TreeSet<>();
         Set<String> named = new TreeSet<>();
-        for (Path each : classes()) {
-            ClassModel model = ClassFile.of().parse(Files.readAllBytes(each));
+        for (ClassModel model : WhatWasCompiled.compiled().all()) {
             String from = nestOf(model.thisClass().asInternalName().replace('/', '.'));
             if (from.equals(MADE)) {
                 continue;   // what the pair does with itself is its own business
@@ -137,13 +129,6 @@ class OneReadingAnswersWhatATermIsMeasuredOnTest {
         return nested < 0 ? binaryName : binaryName.substring(0, nested);
     }
 
-    private static List<Path> classes() throws IOException {
-        Path root = Path.of("target", "classes").toAbsolutePath();
-        try (Stream<Path> walk = Files.walk(root)) {
-            return new ArrayList<>(new LinkedHashSet<>(
-                    walk.filter(each -> each.toString().endsWith(".class")).toList()));
-        }
-    }
 
     /**
      * And the way in stays shut, which is what makes the count above the whole of the rule.
