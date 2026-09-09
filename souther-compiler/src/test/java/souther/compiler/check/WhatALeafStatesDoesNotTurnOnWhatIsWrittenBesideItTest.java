@@ -144,9 +144,12 @@ class WhatALeafStatesDoesNotTurnOnWhatIsWrittenBesideItTest {
             if (each.startsWith("· read as check/")) {
                 return each.substring("· read as check/".length()).split(":")[0];
             }
+            // The number is what stands between the quotes, and what follows them is where in the
+            // rule a reader goes. Read as everything after the first quote, the place came back as
+            // part of the number the moment the sentence began saying one.
             if (each.startsWith("· not read:") && each.contains(" about `")) {
-                return each.substring(each.indexOf(" about `") + " about `".length())
-                        .replace("`", "");
+                String after = each.substring(each.indexOf(" about `") + " about `".length());
+                return after.substring(0, after.indexOf('`'));
             }
         }
         return "nothing: " + lines;

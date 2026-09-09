@@ -31,6 +31,7 @@ import souther.compiler.diag.Citation;
 import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.inputs.InputQuestion;
 import souther.compiler.inputs.StandingQuestion;
+import souther.compiler.inputs.WhereInTheRule;
 import souther.compiler.meta.ModuleMetadata;
 import souther.compiler.check.CheckSurface;
 import souther.compiler.observe.Disposition;
@@ -74,6 +75,7 @@ import souther.compiler.publish.CanonicalArrangement;
 import souther.compiler.publish.NoPlaceToWrite;
 import souther.compiler.publish.NotMeasuredWord;
 import souther.compiler.publish.PublicationOrders;
+import souther.compiler.publish.PlaceProse;
 import souther.compiler.publish.PublishedAt;
 import souther.compiler.publish.PublishedIncompleteness;
 import souther.compiler.observe.RowIdentity;
@@ -154,7 +156,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
         return ReportMeasurement.statusOf(weakenedBy);
     }
 
-    public static final int SCHEMA_VERSION = 16;
+    public static final int SCHEMA_VERSION = 17;
 
     /**
      * Where the schema this writes documents ships.
@@ -1807,10 +1809,15 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             // read to the end and cuts nothing" — which is what the reader is left to make sense
             // of.
             if (f.about() instanceof About.ARuleWithoutALine(var it)) {
-                out.append(String.format("      %s %s: %s — %s, about `%s`%n",
+                // And where in the rule, for a reason about a part of it. Two choices of one
+                // clause leave one rule, one position and one reason between them, so a line
+                // without this is the same sentence twice and a reader lifting one of them cannot
+                // tell which.
+                out.append(String.format("      %s %s: %s — %s, about `%s`%s%n",
                         mark(f), it.readingStopped() ? "not read" : "no line",
                         cited(it.cited(), names, declaredIn),
-                        whyUnread(it.reason()), it.at()));
+                        whyUnread(it.reason()), it.at(),
+                        sentTo(it.finding().sentTo(), names, declaredIn)));
             }
             if (f.about() instanceof About.ARuleNothingClassified(var it)) {
                 out.append(String.format("      %s not read: %s — %s, about `%s`%n",
@@ -3214,12 +3221,59 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
      * to a place.
      */
     private static void at(ObjectNode into, PublishedAt place, DocumentSources sources) {
-        ObjectNode at = into.putObject("at");
+        place(into.putObject("at"), place, sources);
+    }
+
+    /**
+     * The same, into a node the caller has already put under whatever key it is writing.
+     *
+     * <p>The fields and not the key, because more than one key carries a place and the shape they
+     * carry is one — a consumer reading a place under a second name should not have to learn a
+     * second spelling of it.
+     */
+    private static void place(ObjectNode at, PublishedAt place, DocumentSources sources) {
         at.put("sourceId", sources.written(place.source()));
         at.put("line", place.line());
         at.put("column", place.column());
         ObjectNode writtenAt = at.putObject("writtenAt");
         place.writtenAt().fields().forEach(writtenAt::put);
+    }
+
+    /**
+     * Where inside a rule a reader is sent, where that is not the whole of the rule.
+     *
+     * <p>Its own key and not {@code at}, which in this document is the position a rule is written
+     * about. What this says is a place in a source; putting the two under one word would give a
+     * consumer one name for a path through a value and a line in a file.
+     *
+     * <p>Written only for a reason about a part of the rule. A reader lifting the whole of a rule
+     * is sent to it by the handle beside this, and a second place saying the same thing would be
+     * two answers to one question — free, one day, to disagree.
+     */
+    private static void sentTo(ObjectNode into, WhereInTheRule sentTo, DocumentSources sources) {
+        placeInTheRule(sentTo).ifPresent(at -> place(into.putObject("sentTo"), at, sources));
+    }
+
+    /**
+     * The same for the report a person reads, as the words to put after the sentence.
+     *
+     * <p>Empty where the rule is the whole of what a reader lifts, and where the part is in a text
+     * this compilation cannot point at — which is the state {@link PublishedAt} answers for and not
+     * one decided again here.
+     */
+    private static String sentTo(WhereInTheRule sentTo, SourceNameResolver names,
+                                 SourceId declaredIn) {
+        return placeInTheRule(sentTo)
+                .map(at -> ", at " + PlaceProse.said(at, names, declaredIn))
+                .orElse("");
+    }
+
+    /** Where inside the rule a reader is sent, for the two surfaces that write it. */
+    private static Optional<PublishedAt> placeInTheRule(WhereInTheRule sentTo) {
+        return switch (sentTo) {
+            case WhereInTheRule.TheRuleItself _ -> Optional.empty();
+            case WhereInTheRule.APlaceInIt(Citation at) -> PublishedAt.of(at);
+        };
     }
 
     private static void signature(ObjectNode behavior, Adequacy.SignatureEvidence signature) {
@@ -3523,6 +3577,12 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                 RuleHandleSurface.NOT_READ_RULE.put(
                         row, PublishedRuleHandle.of(handle(rule.cited())), sources::written, null);
                 ruleId(said.putObject("ruleId"), rule.rule());
+                // And where inside the rule, for a reason that is about a part of it. The handle
+                // above sends a reader to the rule, which is the whole answer while what they lift
+                // is the rule; an end a choice left open is lifted at the `||`, and the clause the
+                // handle names reads perfectly well. Absent where the rule is the whole of it,
+                // rather than repeating the rule's own place under a second key.
+                sentTo(said, rule.finding().sentTo(), sources);
             }
             if (each instanceof PartitionEvidence.NotRead.AnUnclassifiedRule rule) {
                 RuleHandleSurface.NOT_READ_RULE.put(

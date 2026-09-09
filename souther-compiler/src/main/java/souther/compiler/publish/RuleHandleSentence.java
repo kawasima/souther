@@ -63,20 +63,15 @@ final class RuleHandleSentence {
     /**
      * A place as the sentence writes it.
      *
-     * <p>A line and a column are a place only beside a file. They are written on their own where the
-     * section already names the file, and with the file where it does not — a position from another
-     * source, printed bare, points at whatever happens to sit at those numbers in the one the reader
-     * has in mind.
+     * <p>The words themselves are {@link PlaceProse}'s, so that a place in a handle and a place
+     * beside one read alike. What is left here is the arm with no file to name, whose numbers are
+     * the reader's to place.
      */
     private static String place(PublishedRuleHandle.Place at, SourceNameResolver names,
                                 SourceId sectionSource) {
         return switch (at) {
-            case PublishedRuleHandle.Place.InSource it -> {
-                PublishedAt where = it.at();
-                String numbers = where.line() + ":" + where.column();
-                yield where.source().equals(sectionSource) ? numbers
-                        : names.nameOf(where.source()) + ":" + numbers;
-            }
+            case PublishedRuleHandle.Place.InSource it ->
+                    PlaceProse.said(it.at(), names, sectionSource);
             case PublishedRuleHandle.Place.Unplaced it -> it.line() + ":" + it.column();
         };
     }

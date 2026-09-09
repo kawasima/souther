@@ -68,32 +68,60 @@ class AnEndAChoiceLeftOpenIsNotTheModelDrawingNoLineTest {
     @Test
     void andTheDocumentSendsAnAuthorToTheChoice() {
         assertEquals(List.of("· not read: invariant N (r) — left open by a choice in it whose"
-                        + " other alternative this compiler does not read, about `v.n`"),
+                        + " other alternative this compiler does not read, about `v.n`, at 7:26"),
                 linesOf("n >= 2 || Int.abs(n) >= 5",
                         each -> each.startsWith("· not read:")),
-                "the position comes back with no line, and this is what says which clause is why");
+                "the position comes back with no line, and this is what says which clause is why"
+                        + " and where in it to look");
     }
 
     /**
-     * And two choices of one rule leaving one end open are told once, as the values' two are.
+     * And two choices of one rule leaving one end open are two things to lift, said as two.
      *
-     * <p>They are two things an author has to do and this is one sentence about both, which is what
-     * a document can say today: a rule an author named is found by that name, so there is nowhere
-     * in what is said about it to put the operator each of them was written at. Split without one,
-     * the two lines are the same sentence twice — which tells a reader less than one line does.
+     * <p>One rule, one position and one reason, so the operator each was written at is the whole of
+     * the difference between them — and while a sentence had nowhere to put it, the second was
+     * dropped as a repeat of the first. A reader lifting the one they were shown found the position
+     * still with no line and nothing saying why.
      *
-     * <p>Pinned here rather than left to be noticed, because the count is not lost on the way: what
-     * the position was left with says how many there were, and the reading holds which. What is
-     * missing is a way to name a place inside a named rule, and this is where a document saying two
-     * would show up.
+     * <p>Which of the two an author meets first is where they wrote them, and that is asked here as
+     * well: the entries carry the places, so the order is theirs rather than the reading's.
      */
     @Test
-    void andTwoChoicesOfOneRuleAreToldOnce() {
+    void andTwoChoicesOfOneRuleAreTwoThingsToLift() {
         assertEquals(List.of("· not read: invariant N (r) — left open by a choice in it whose"
-                        + " other alternative this compiler does not read, about `v.n`"),
+                        + " other alternative this compiler does not read, about `v.n`, at 7:27",
+                        "· not read: invariant N (r) — left open by a choice in it whose"
+                        + " other alternative this compiler does not read, about `v.n`, at 7:58"),
                 linesOf("(n >= 2 || Int.abs(n) >= 5) && (n >= 7 || Int.abs(n) >= 9)",
                         each -> each.startsWith("· not read:")),
-                "one rule, one position, one sentence about what became of it there");
+                "each choice is somewhere an author goes, and the rule and the position say"
+                        + " nothing about which");
+    }
+
+    /**
+     * And one choice an expansion put in two places is one thing to lift.
+     *
+     * <p>The operator is written once, in the helper, and rewriting it there answers both calls. So
+     * the multiplicity is not how many times a reading met the choice — which is a fact about this
+     * compiler — but how many places an author has to go, and here that is one.
+     */
+    @Test
+    void andOneChoiceReachedTwiceIsOneThingToLift() {
+        String model = """
+                module demo
+                %s
+                let alt (x: Int): Bool = x >= 2 || Int.abs(x) >= 5
+
+                data N = { n: Int }
+                    invariant r = alt(n) && alt(n)
+
+                behavior check : (v: N) -> Answer
+                let check (v) = Yes
+                """.formatted(YES_OR_NO);
+        assertEquals(List.of("· not read: invariant N (r) — left open by a choice in it whose"
+                        + " other alternative this compiler does not read, about `v.n`, at 6:33"),
+                linesOfSource(model, each -> each.startsWith("· not read:")),
+                "one operator an author wrote, so one place to go however often it was expanded");
     }
 
     /**

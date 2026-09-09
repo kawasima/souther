@@ -146,6 +146,18 @@ public record RulesWithNoLine(List<RuleWithoutALine> reported,
         }
 
         /**
+         * The same, from a reader that has a place inside the rule to send anybody to.
+         *
+         * <p>Which is what keeps two of them two. Everything else about a clause whose ends two
+         * choices left open agrees — one rule, one position, one reason — so without the place the
+         * second was merged into the first by the fold below.
+         */
+        public void add(RuleCitation cited, FilingCoordinate at, WhereInTheRule sentTo,
+                        BlockReason.RuleWithoutLineReason why) {
+            add(RuleWithoutALine.of(cited, at, sentTo, why));
+        }
+
+        /**
          * The same, from a reader whose rules nothing classifies.
          *
          * <p>A question and not a finding beside it. Both would be one thing said twice to one
