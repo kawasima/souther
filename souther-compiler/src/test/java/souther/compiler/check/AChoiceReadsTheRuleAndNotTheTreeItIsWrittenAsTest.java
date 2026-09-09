@@ -61,7 +61,9 @@ class AChoiceReadsTheRuleAndNotTheTreeItIsWrittenAsTest {
         }
 
         Branch or(Branch other) {
-            if (souther.compiler.values.Emptiness.Alternatives.of(said(), other.said())
+            if (souther.compiler.values.Emptiness.Alternatives.from(
+                            souther.compiler.values.Emptiness.SidesShownEmpty.of(
+                                    said(), other.said()))
                     .bothStand()) {
                 return new Branch(adoption.either(Opening.nothing(), other.adoption), false);
             }

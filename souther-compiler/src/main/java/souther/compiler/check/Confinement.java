@@ -8,6 +8,7 @@ import souther.compiler.values.AdmissibleValues;
 import souther.compiler.values.Allowance;
 import souther.compiler.values.AskedOfEachBlock;
 import souther.compiler.values.ConjoinedAdmissibleValues;
+import souther.compiler.values.Emptiness.SidesShownEmpty;
 import souther.compiler.values.Admits;
 import souther.compiler.values.AskedOfARelation;
 import souther.compiler.values.StringMachineAnswers;
@@ -484,12 +485,23 @@ sealed interface Confinement<A> {
         return block.members().stream().anyMatch(each -> !outside.at(each).saysNothing());
     }
 
-    /** What showed a conjunction of two readings empty, where either of them was. */
+    /**
+     * What showed a conjunction of two readings empty, where either of them was.
+     *
+     * <p>The conjunction's reading of which sides were shown empty, which runs the other way from a
+     * choice's ({@link souther.compiler.values.Emptiness.Alternatives}): a conjunct shown empty is
+     * what decides the conjunction and its proof is what carries, where an alternative shown empty
+     * is the one that drops. So the same four cases mean the opposite thing, and the observation is
+     * shared while the reading of it is not.
+     */
     static <A> Admission<A> eitherShown(Admission<A> one, Admission<A> other) {
-        if (one.emptiness() != souther.compiler.values.Emptiness.EMPTY) {
-            return other.emptiness() == souther.compiler.values.Emptiness.EMPTY ? other : null;
-        }
-        return other.emptiness() == souther.compiler.values.Emptiness.EMPTY ? Admission.bothShown(one, other) : one;
+        return switch (SidesShownEmpty.of(one.emptiness(), other.emptiness())) {
+            // Nothing showed the pair empty, and there is no proof of a lack that was not shown.
+            case NEITHER -> null;
+            case THE_LEFT -> one;
+            case THE_RIGHT -> other;
+            case BOTH -> Admission.bothShown(one, other);
+        };
     }
 
     /** What each position is ordered on, both tables put together. */

@@ -86,8 +86,8 @@ class ADeadBranchIsSettledTheSameHoweverTheChoiceWasBracketedTest {
     private record Branch(Confinement.Planned<String> reading, boolean dead) {
 
         Branch or(Branch other) {
-            return switch (souther.compiler.values.Emptiness.Alternatives.of(said(),
-                    other.said())) {
+            return switch (souther.compiler.values.Emptiness.Alternatives.from(
+                    souther.compiler.values.Emptiness.SidesShownEmpty.of(said(), other.said()))) {
                 // What showed the choice dead is what showed both of its branches dead, which is
                 // where the holder of both languages takes it from as well.
                 case NEITHER_STANDS -> new Branch(reading.bothDead(other.reading,

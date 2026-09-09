@@ -6,6 +6,7 @@ import souther.compiler.types.Type;
 import souther.compiler.values.AdmissibleValues;
 import souther.compiler.values.AdmittedPlan;
 import souther.compiler.values.Allowance;
+import souther.compiler.values.Emptiness.SidesShownEmpty;
 import souther.compiler.values.StringMachineAnswers;
 import souther.compiler.values.PlannedValues;
 import souther.compiler.values.Realizations;
@@ -687,11 +688,11 @@ sealed interface StatedByClauses {
          * refused, so a language asked to decide would answer about a branch and not about the
          * choice.
          *
-         * <p>Which of the alternatives are still standing is read off the two answers
-         * ({@link souther.compiler.values.Emptiness.Alternatives}), and whether the answers about
-         * them are final is asked here beside it ({@link #settledHere}). Two questions and not one
-         * word: a branch nobody has worked out stands, and a choice of two that stand is one this
-         * may still have to keep.
+         * <p>Which of the alternatives are still standing is the choice's reading of which of the two
+         * answers were shown empty ({@link souther.compiler.values.Emptiness.Alternatives#from}), and
+         * whether the answers about them are final is asked here beside it ({@link #settledHere}).
+         * Two questions and not one word: a branch nobody has worked out stands, and a choice of two
+         * that stand is one this may still have to keep.
          *
          * <p>What every alternative leaves empty is what the dead choice leaves empty, and where
          * that is no position, the choice admits nothing with none of them at fault. That is the
@@ -728,8 +729,8 @@ sealed interface StatedByClauses {
                 Confinement.Admission<FactSubject> theirs =
                         there.confinement().admission(machines);
                 souther.compiler.values.Emptiness.Alternatives standing =
-                        souther.compiler.values.Emptiness.Alternatives.of(
-                                mine.emptiness(), theirs.emptiness());
+                        souther.compiler.values.Emptiness.Alternatives.from(
+                                SidesShownEmpty.of(mine.emptiness(), theirs.emptiness()));
                 if (settledHere(standing, mine, theirs)) {
                     decided.put(choice.id(), settled(here, mine, there, theirs));
                     return switch (standing) {
@@ -862,8 +863,8 @@ sealed interface StatedByClauses {
          */
         private StatedTogether.Said decided(StatedTogether.Said one, Settlement.Sided here,
                                             StatedTogether.Said other, Settlement.Sided there) {
-            return switch (souther.compiler.values.Emptiness.Alternatives.of(
-                    here.emptiness(), there.emptiness())) {
+            return switch (souther.compiler.values.Emptiness.Alternatives.from(
+                    SidesShownEmpty.of(here.emptiness(), there.emptiness()))) {
                 // The rule for a choice nobody can take, named rather than arrived at: a join is
                 // what two branches somebody can take come to, and neither of these is one.
                 case NEITHER_STANDS -> new StatedTogether.Said(
@@ -1098,8 +1099,8 @@ sealed interface StatedByClauses {
                     // is answerable for what a branch of a branch it has already lost ever reached.
                     Taken left = one.under(fate.left());
                     Taken right = other.under(fate.right());
-                    if (!souther.compiler.values.Emptiness.Alternatives.of(
-                            fate.left().emptiness(), fate.right().emptiness()).bothStand()) {
+                    if (!souther.compiler.values.Emptiness.Alternatives.from(SidesShownEmpty.of(
+                            fate.left().emptiness(), fate.right().emptiness())).bothStand()) {
                         // What is left of a dead alternative is an account and not an alternative,
                         // so the two are accumulated and not composed as a choice. Which of them
                         // was the dead one is asked here and nowhere below: both sides arrive with

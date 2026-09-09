@@ -89,9 +89,13 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
 
     private static final String EMPTINESS = "souther/compiler/values/Emptiness";
 
-    /** Which of two alternatives still stand, which is the one reading of this word that is about
-     *  two answers at once and is published beside them. */
+    /** Which of two alternatives still stand, which is one reading of the classification below and
+     *  is published beside the word. */
     private static final String STANDING = EMPTINESS + "$Alternatives";
+
+    /** Which of two answers were shown empty, which is the observation every reader of two of them
+     *  at once shares and no connective's reading of it. */
+    private static final String SIDES_SHOWN_EMPTY = EMPTINESS + "$SidesShownEmpty";
 
     /** The two answers that settle something, which is what these rules are about.
      *  {@code UNDECIDED} settles nothing and is named freely. */
@@ -101,7 +105,7 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
      *  these holds a settled answer without naming one, which is why calling them counts as saying
      *  it. */
     private static final Set<String> OBSERVES_OR_COMPOSES =
-            Set.of("isEmpty", "isDecided", "met", "joined", "of", "bothStand");
+            Set.of("isEmpty", "isDecided", "met", "joined", "of", "from", "bothStand");
 
     /** What javac writes for a switch over this word: a synthetic table of its constants, read by
      *  whoever switched. Taking the answer apart by which of the three it is, under a spelling that
@@ -111,6 +115,11 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
     /** The same for a switch over which alternatives stand, which is the other thing a reader may
      *  take apart and is a different question from which of the three an answer is. */
     private static final String TAKEN_APART_BY_STANDING = TAKEN_APART + "$Alternatives";
+
+    /** And for a switch over which of two answers were shown empty, which is the observation the
+     *  connectives share rather than any of their readings of it. */
+    private static final String TAKEN_APART_BY_SIDES_SHOWN_EMPTY =
+            TAKEN_APART + "$SidesShownEmpty";
 
     /** A comparison of one of these against one of its constants, which is a reading of the word
      *  that no owned operation answered and that an answer added to the three would fall through
@@ -217,6 +226,26 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
                     + "Lsouther/compiler/check/Settlement$Sided;)"
                     + "Lsouther/compiler/check/StatedTogether$Said;");
 
+    /**
+     * And the readings of which sides two answers show empty.
+     *
+     * <p>The observation two connectives share, and the whole list of what reads it. A conjunct
+     * shown empty decides the conjunction and its proof is what carries; an alternative shown empty
+     * drops out of a choice and its proof goes with it. So each of these owes something of its own
+     * to all four cases and switches, and a third connective arriving is one that has to be written
+     * down here before it can read the observation at all.
+     *
+     * <p>One of them, because a choice's reading is published beside the word
+     * ({@link Emptiness.Alternatives#from}) and the walk passes over the word's own nest, where the
+     * meanings are worked out. So what this list holds is every reading outside it, and today that
+     * is the conjunction alone.
+     */
+    private static final List<String> TAKES_IT_APART_BY_SIDES_SHOWN_EMPTY = List.of(
+            "souther/compiler/check/Confinement#eitherShown"
+                    + "(Lsouther/compiler/check/Confinement$Admission;"
+                    + "Lsouther/compiler/check/Confinement$Admission;)"
+                    + "Lsouther/compiler/check/Confinement$Admission;");
+
     /** The bodies beside this test that compare, which is what holds the detector to finding one
      *  however it was written. */
     private static final List<String> COMPARED_IN_THE_FIXTURE = List.of(
@@ -255,9 +284,6 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
      */
     private record Open(String place, String question) {}
 
-    /** A choice and a conjunction read the same partition of two answers opposite ways round. */
-    private static final String ONE_PARTITION_TWO_READINGS = "souther-lang/souther#1492";
-
     /** What a settled positive answer is worth, beside a position nobody could build and at the top
      *  of what a join can reach. */
     private static final String WHAT_AN_ANSWER_IS_WORTH = "souther-lang/souther#1493";
@@ -265,28 +291,16 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
     /**
      * And the readings of this word whose meaning nobody has decided yet.
      *
-     * <p>Three questions and no owner for any of them. {@code eitherShown} and {@code alsoSeen}
-     * are the same partition of two answers that {@link Emptiness.Alternatives} is, read the other
-     * way round: an alternative shown empty drops out of a choice, and a conjunct shown empty
-     * decides the conjunction, so the four cases mean opposite things and one word for both would
-     * say that a left alternative and a left conjunct are one thing. {@code admission} reads what a
-     * settled positive answer is worth beside a position nobody could build. The two
-     * {@code anyAlternativeAdmits} read that a joined answer has reached the top of what a choice
-     * can be, which is a fact about the arithmetic and is known here rather than where the
-     * arithmetic is.
+     * <p>One question and no owner for it. {@code admission} reads what a settled positive answer is
+     * worth beside a position nobody could build. The two {@code anyAlternativeAdmits} read that a
+     * joined answer has reached the top of what a choice can be, which is a fact about the
+     * arithmetic and is known here rather than where the arithmetic is.
      *
      * <p>Each of them is a question this word could be given an owner for, and none of them is one
      * this compiler has decided. Naming a reading here says that; it does not say that the reading
      * was left alone.
      */
     private static final List<Open> COMPARED_IN_PRODUCTION = List.of(
-            new Open("souther/compiler/check/Confinement#eitherShown"
-                    + "(Lsouther/compiler/check/Confinement$Admission;"
-                    + "Lsouther/compiler/check/Confinement$Admission;)"
-                    + "Lsouther/compiler/check/Confinement$Admission;", ONE_PARTITION_TWO_READINGS),
-            new Open("souther/compiler/check/Settlement$Sided#alsoSeen"
-                    + "(Lsouther/compiler/check/Settlement$Sided;)"
-                    + "Lsouther/compiler/check/Settlement$Sided;", ONE_PARTITION_TWO_READINGS),
             new Open("souther/compiler/check/Confinement$Worked#admission"
                     + "(Lsouther/compiler/check/PositionEnvelope$Restrictions;"
                     + "Lsouther/compiler/values/StringMachineAnswers;)"
@@ -423,6 +437,31 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
                         use -> use.said().equals(TAKEN_APART_BY_STANDING)),
                 "what a choice comes to differs by which of its alternatives stand, and a reading"
                         + " that owes each of them something says so by switching");
+    }
+
+    /**
+     * And these read which sides two answers show empty, which is the observation and not a reading.
+     *
+     * <p>The list every connective has to be written into. Which sides were shown empty is one fact
+     * and what it is worth is the connective's — opposite things for a choice and a conjunction — so
+     * a reading arriving here is a connective this compiler has begun answering for, and one that
+     * arrived at the same four some other way would be spending a meaning nobody gave it.
+     */
+    @Test
+    void andTheseReadWhichSidesWereShownEmpty() {
+        assertEquals(2, TakingBySidesShownEmpty.by(Emptiness.SidesShownEmpty.THE_RIGHT),
+                "the fixture answers by switching");
+        assertTrue(saidHere().stream().anyMatch(
+                        use -> use.said().equals(TAKEN_APART_BY_SIDES_SHOWN_EMPTY)),
+                "the body beside this test switches over which sides were shown empty, so a"
+                        + " detector that cannot find it there is one whose green would be about"
+                        + " production having stopped switching and not about the rule");
+
+        assertEquals(TAKES_IT_APART_BY_SIDES_SHOWN_EMPTY,
+                placesSaying(saidInProduction(),
+                        use -> use.said().equals(TAKEN_APART_BY_SIDES_SHOWN_EMPTY)),
+                "what a connective makes of the observation is the connective's, and a reading that"
+                        + " owes each of the four cases something says so by switching");
     }
 
     /**
@@ -589,6 +628,25 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
                 case ONLY_THE_LEFT -> 1;
                 case ONLY_THE_RIGHT -> 2;
                 case BOTH_STAND -> 3;
+            };
+        }
+    }
+
+    /**
+     * A body that switches over which sides were shown empty, for the detector that finds those.
+     *
+     * <p>Here for the same reason as the one above: the rule names what production switches, and a
+     * rule with nothing beside it goes on passing the day javac writes a switch some other way.
+     */
+    private enum TakingBySidesShownEmpty {
+        ;
+
+        static int by(Emptiness.SidesShownEmpty shown) {
+            return switch (shown) {
+                case NEITHER -> 0;
+                case THE_LEFT -> 1;
+                case THE_RIGHT -> 2;
+                case BOTH -> 3;
             };
         }
     }
@@ -872,7 +930,8 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
     private static List<String> saidBy(CodeElement element, String holds) {
         if (element instanceof FieldInstruction field) {
             String named = field.name().stringValue();
-            if (named.equals(TAKEN_APART) || named.equals(TAKEN_APART_BY_STANDING)) {
+            if (named.equals(TAKEN_APART) || named.equals(TAKEN_APART_BY_STANDING)
+                    || named.equals(TAKEN_APART_BY_SIDES_SHOWN_EMPTY)) {
                 return field.owner().asInternalName().equals(holds) ? List.of() : List.of(named);
             }
             return field.owner().asInternalName().equals(EMPTINESS)
@@ -881,6 +940,7 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
         if (element instanceof InvokeInstruction call) {
             String owner = call.owner().asInternalName();
             return owner.equals(EMPTINESS) || owner.equals(STANDING)
+                    || owner.equals(SIDES_SHOWN_EMPTY)
                     ? List.of(call.name().stringValue()) : List.of();
         }
         if (element instanceof InvokeDynamicInstruction lambda) {
