@@ -611,20 +611,21 @@ public final class Compilation {
     /**
      * Every repair a reader of {@code source} is in a position to be offered.
      *
-     * <p>A report with nothing this file anchors is left out. It has no marker here, so there is
-     * nowhere for an offer to stand — {@link #diagnostics()} falls back to the head of the document
-     * for such a report, which is a place to put a marker and not a place to offer an edit.
+     * <p>Whether this file marks the problem, and where, are one question with one answer: what
+     * {@link DiagnosticView} anchors here. A report this file is not published under anchors
+     * nothing, so it is left out by the same step that would have said where to stand. Asked twice
+     * — once of the publication and again of the anchor — one of the two askings can never come out
+     * differently, which is a check that says nothing and is not kept.
      *
-     * <p>So is a finding that knows the word and no place to write it ({@link Repair.AWord}). What
-     * it has to say is said in the message; there is no edit to offer, and one made up from where
-     * the report points would rewrite whatever happens to be there.
+     * <p>Left out too is a finding that knows the word and no place to write it
+     * ({@link Repair.AWord}). What it has to say is said in the message; there is no edit to offer,
+     * and one made up from where the report points would rewrite whatever happens to be there.
      */
     public List<RepairOffer> repairs(SourceId source) {
         answerEverything();
         List<RepairOffer> offers = new ArrayList<>();
         for (Db.Found found : reports()) {
-            if (!(found.report().diagnostic().repair() instanceof Repair.AnEdit edit)
-                    || !publishSourceIdsOf(found).contains(source)) {
+            if (!(found.report().diagnostic().repair() instanceof Repair.AnEdit edit)) {
                 continue;
             }
             DiagnosticView view = DiagnosticView.of(found.report().diagnostic(),
