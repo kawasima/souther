@@ -588,7 +588,7 @@ public final class Analyzer {
             }
             String title = lensTitle(compilation, module, behavior.name(), adequacy);
             if (title != null) {
-                out.add(new CodeLens(pointRange(behavior.pos()), title));
+                out.add(new CodeLens(lensAnchorRange(behavior.pos()), title));
             }
         }
         return out;
@@ -712,8 +712,14 @@ public final class Analyzer {
         return owed.coverage().settled();
     }
 
-    /** The caret at one position, as a range of no width. */
-    private static Range pointRange(SourcePos pos) {
+    /**
+     * Where a lens is drawn: the declaration's position, as a range of no width.
+     *
+     * <p>An editor reads the line a lens's range starts on and nothing else of it, so a point says
+     * everything a lens needs. It says nothing about what a caret is in, which is a different
+     * question and is answered from the declaration a caret is written inside of.
+     */
+    private static Range lensAnchorRange(SourcePos pos) {
         Position at = new Position(pos.line() - 1, pos.column() - 1);
         return new Range(at, at);
     }
@@ -740,11 +746,12 @@ public final class Analyzer {
     public List<CodeAction> codeActions(String uri, String text, Range requested,
                                         ModuleGraph graph) {
         List<CodeAction> out = new ArrayList<>();
-        if (!CstParser.parse(text).errors().isEmpty()) {
+        CstParser.Result parsed = CstParser.parse(text);
+        if (!parsed.errors().isEmpty()) {
             return out;   // a semantic suggestion needs a clean parse
         }
         if (graph != null) {
-            out.addAll(rowsToWrite(uri, text, requested, graph));
+            out.addAll(rowsToWrite(uri, text, parsed.root(), requested, graph));
         }
         Diagnostic d = firstSemanticDiagnostic(text);
         if (d == null || d.suggestion() == null) {
@@ -785,11 +792,21 @@ public final class Analyzer {
      * module's own source or an attached file — and moving a block is easier than finding out why one
      * landed somewhere surprising.
      */
-    private List<CodeAction> rowsToWrite(String uri, String text, Range requested,
+    private List<CodeAction> rowsToWrite(String uri, String text, SyntaxNode root, Range requested,
                                          ModuleGraph graph) {
         if (!measure.level().readsRows()) {
             return List.of();
         }
+        // Which declaration is being asked about, before anything is compiled to answer about it.
+        // This reads the document the request arrived with and costs a walk of its top-level nodes;
+        // what comes after is a workspace compile and a search over what it holds, and an editor
+        // asks this every time the cursor moves.
+        LineIndex lines = new LineIndex(text);
+        SyntaxNode declaration = behaviorDeclarationAsked(root, lines, requested);
+        if (declaration == null) {
+            return List.of();
+        }
+        int writtenFrom = writtenFrom(declaration);
         Compilation compilation = compileOf(graph);
         String module = moduleOf(compilation, graph, uri);
         if (module == null) {
@@ -802,7 +819,7 @@ public final class Analyzer {
         }
         for (Hir.BehaviorDef behavior : written.behaviors()) {
             if (!isWrittenIn(behavior, uri, graph)
-                    || !overlaps(pointRange(behavior.pos()), requested)) {
+                    || !startsWithin(lines, behavior.pos(), writtenFrom, declaration.end())) {
                 continue;
             }
             // Whether the model owes this behavior anything a row could answer. Asked of the
@@ -839,6 +856,46 @@ public final class Analyzer {
      */
     private boolean isWrittenIn(Hir.BehaviorDef behavior, String uri, ModuleGraph graph) {
         return uri.equals(documentOf(behavior.pos(), null, graph));
+    }
+
+    /**
+     * The behavior declaration the request is in, or null where it is in none.
+     *
+     * <p>A declaration is what a caret is inside of while reading it, and it runs from its first
+     * code token to the end of its last. Not the node's span: a node reaches back over the blank
+     * lines and comments in front of it, and a caret on the line above a declaration is where the
+     * next one is written rather than inside this one.
+     *
+     * <p>A caret and a selection are asked differently. A caret is a position, and a position at
+     * either end of a declaration is on it. A selection is a stretch, and it meets the declaration
+     * where the two share a character — so a selection of the blank line above stops at the first
+     * code token rather than reaching past it.
+     */
+    private SyntaxNode behaviorDeclarationAsked(SyntaxNode root, LineIndex lines, Range requested) {
+        int from = lines.offsetOf(requested.start().line(), requested.start().character());
+        int to = lines.offsetOf(requested.end().line(), requested.end().character());
+        for (SyntaxNode def : root.childNodes()) {
+            if (def.kind() != SyntaxKind.BEHAVIOR_DEF) {
+                continue;
+            }
+            int written = writtenFrom(def);
+            if (written < 0) {
+                continue;
+            }
+            boolean asked = from == to
+                    ? from >= written && from <= def.end()
+                    : from < def.end() && written < to;
+            if (asked) {
+                return def;
+            }
+        }
+        return null;
+    }
+
+    /** Whether a compiler position is one this document writes between two of its offsets. */
+    private static boolean startsWithin(LineIndex lines, SourcePos pos, int from, int to) {
+        int at = lines.offsetOf(pos.line() - 1, pos.column() - 1);
+        return at >= from && at <= to;
     }
 
     /** Whether anything this behavior is short of is a thing writing a row could answer. */

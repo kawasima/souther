@@ -446,6 +446,107 @@ class AdequacyLensTest {
                 measuring(Adequacy.Level.ALL).codeActions(MODULE, TRIP, on(9)));
     }
 
+    /**
+     * The offer stands at every position the declaration is written over, and at no other.
+     *
+     * <p>Asked from every position in the document rather than from the one column a helper sends.
+     * A lens is drawn at a point, and the point a declaration begins at was what the offer compared
+     * a caret against — so the offer was made at the first column of the {@code behavior} line and
+     * nowhere else on it, which no test said either way.
+     *
+     * <p>What decides it here is read off the source: from the first character of {@code behavior}
+     * to the last of the declaration's final line. The offer works it out from the syntax tree, so
+     * the two would have to be wrong in the same way to agree.
+     */
+    @Test
+    void theOfferStandsExactlyWhereTheDeclarationIsWritten() {
+        Analyzer analyzer = measuring(Adequacy.Level.ALL);
+        ModuleGraph graph = graphOf(Map.of(MODULE, TRIP));
+        String lastLine = "    constructs Submitted, Waiting";
+        int from = TRIP.indexOf("behavior submit");
+        int to = TRIP.indexOf(lastLine) + lastLine.length();
+
+        List<String> offeredOutsideIt = new ArrayList<>();
+        List<String> withheldInsideIt = new ArrayList<>();
+        String[] lines = TRIP.split("\n", -1);
+        int startOfLine = 0;
+        for (int line = 0; line < lines.length; line++) {
+            for (int column = 0; column <= lines[line].length(); column++) {
+                boolean offered = offersRows(analyzer, MODULE, TRIP, caret(line, column), graph);
+                int at = startOfLine + column;
+                if (offered != (at >= from && at <= to)) {
+                    (offered ? offeredOutsideIt : withheldInsideIt).add(line + ":" + column);
+                }
+            }
+            startOfLine += lines[line].length() + 1;
+        }
+
+        assertEquals(List.of(), withheldInsideIt,
+                "the offer stands wherever the caret is in the declaration");
+        assertEquals(List.of(), offeredOutsideIt, "and nowhere it is not");
+    }
+
+    /**
+     * A comment above a declaration is not inside it.
+     *
+     * <p>The syntax tree covers every character, so the blank lines and the comment in front of a
+     * declaration are part of its node. They are not part of what it writes: a caret there is where
+     * the comment is being written, and the declaration below it is the next thing on the page
+     * rather than the thing the caret is in.
+     */
+    @Test
+    void aCommentAboveADeclarationIsNotInsideIt() {
+        String noted = ONLY_EDGES.replace("behavior keep",
+                "// what this keeps\nbehavior keep");
+        Analyzer analyzer = measuring(Adequacy.Level.ALL);
+        ModuleGraph graph = graphOf(Map.of(EDGES, noted));
+
+        assertFalse(offersRows(analyzer, EDGES, noted, caret(7, 3), graph),
+                "the caret is in the comment");
+        assertTrue(offersRows(analyzer, EDGES, noted, caret(8, 3), graph),
+                "and on the line under it, in the declaration");
+    }
+
+    /**
+     * A selection meets the declaration where the two share a character.
+     *
+     * <p>A caret is a position and is inside the declaration at either end of it. A selection is a
+     * stretch, and read the same way a selection of the blank line above would reach the
+     * declaration below by touching its first character — which is the boundary the point range
+     * got wrong at the other end.
+     */
+    @Test
+    void aSelectionMeetsTheDeclarationWhereTheyShareACharacter() {
+        Analyzer analyzer = measuring(Adequacy.Level.ALL);
+        ModuleGraph graph = graphOf(Map.of(MODULE, TRIP));
+        int endOfTheDeclaration = "    constructs Submitted, Waiting".length();
+
+        assertFalse(offersRows(analyzer, MODULE, TRIP, over(8, 0, 9, 0), graph),
+                "the blank line above, up to where the declaration starts");
+        assertTrue(offersRows(analyzer, MODULE, TRIP, over(8, 0, 9, 1), graph),
+                "and one character further, into it");
+        assertFalse(offersRows(analyzer, MODULE, TRIP, over(10, endOfTheDeclaration, 12, 0), graph),
+                "from where the declaration ends, down");
+        assertTrue(offersRows(analyzer, MODULE, TRIP, over(10, endOfTheDeclaration - 1, 12, 0), graph),
+                "and one character back, from inside it");
+    }
+
+    /** Whether the rows this behavior does not cover are on offer for {@code asked}. */
+    private static boolean offersRows(Analyzer analyzer, String uri, String text, Range asked,
+                                      ModuleGraph graph) {
+        return analyzer.codeActions(uri, text, asked, graph).stream()
+                .anyMatch(action -> action.title().startsWith("Write the rows"));
+    }
+
+    private static Range caret(int line, int column) {
+        Position at = new Position(line, column);
+        return new Range(at, at);
+    }
+
+    private static Range over(int line, int column, int toLine, int toColumn) {
+        return new Range(new Position(line, column), new Position(toLine, toColumn));
+    }
+
     /** And nothing is offered where nothing was asked to be measured. */
     @Test
     void anEditorThatDidNotAskIsOfferedNothing() {
