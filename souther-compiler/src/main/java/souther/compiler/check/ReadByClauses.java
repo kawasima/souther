@@ -136,7 +136,7 @@ record ReadByClauses(Confinement.Worked<FactSubject> confinement,
          * exactly as wide as it was.
          */
         boolean restricts(FactSubject position) {
-            return byValues.constrains(position);
+            return byValues.readAt(position);
         }
 
         /**
