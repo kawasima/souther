@@ -15,7 +15,9 @@ import java.util.Optional;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Which rules a world has is settled before a reading says how far into them it goes.
@@ -83,6 +85,47 @@ class AWorldSaysWhichRulesThereAreBeforeAReadingSaysHowFarItGoesTest {
         assertEquals(List.of("right"), whatReached(again, withoutTheLeft()),
                 "the left conjunct is no rule of this world, whichever of the two trees saying so"
                         + " the reading is walking");
+    }
+
+    /**
+     * And two parts that say the same thing stand at two places.
+     *
+     * <p>The other half of what a place is for. An author may write one conjunct twice, and the two
+     * are two rules of the model: a world told to leave the first out holds the second, which says
+     * exactly what the first said. Told which parts it holds by what they say, such a world would
+     * leave out both — and a reading of it would answer about a declaration holding neither.
+     *
+     * <p>Asked of the world directly, because the fold never puts the question that way: it takes
+     * the first side that is out and reads the other, so a world that had lost the second would
+     * hand back the same reading as one that had not.
+     */
+    @Test
+    void andTwoPartsThatSayTheSameThingStandAtTwoPlaces() {
+        ClauseExpr.Joined shape = (ClauseExpr.Joined) ClauseExpr.of(twice(), true);
+        assertEquals(shape.left().written(), shape.right().written(),
+                "one conjunct written twice, which is two rules saying one thing");
+        PartId<RuleRef.Invariant> left = new PartId<>(rule(), 0);
+        ClauseView view = PartsLeftOut.without(Set.of(left)).viewOf(
+                List.of(new Clauses.StatedPart(left, shape.left()),
+                        new Clauses.StatedPart(new PartId<>(rule(), 1), shape.right())));
+
+        ClauseExpr.Joined again = (ClauseExpr.Joined) ClauseExpr.of(twice(), true);
+        assertTrue(view.omits(again.left()),
+                "the first conjunct is the one this world was told to leave out");
+        assertFalse(view.omits(again.right()),
+                "and the second is not out for saying what the first said");
+    }
+
+    /** {@code same && same}, built afresh each time this is called. */
+    private static Core twice() {
+        return new Core.Binary(BinOp.AND, leaf("same"), leaf("same"),
+                ConstructOccurrence.unwritten(), Type.BOOL, POS);
+    }
+
+    private static RuleRef.Invariant rule() {
+        return new RuleRef.Invariant(new Clause.Ref(
+                new Clause.Id(TypeSymbols.declared(new TypeKey("demo", "R")), 0),
+                Optional.empty()));
     }
 
     /** What a reading that stops at every connective was handed, in the order it reached them. */
