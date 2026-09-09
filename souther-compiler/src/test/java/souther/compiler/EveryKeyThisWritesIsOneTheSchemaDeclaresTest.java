@@ -151,4 +151,39 @@ class EveryKeyThisWritesIsOneTheSchemaDeclaresTest {
 
         assertEquals(Set.of(), undeclared, "and none of a question's either");
     }
+
+    /**
+     * And the same of a rule this could not turn into a line, where the entry names a place inside
+     * the rule.
+     *
+     * <p>Its own model, because the key is written for one reason only. A clause the reading of
+     * ends gave up on writes an entry with no place in it, and a check reading whatever the models
+     * above happened to produce would be green over an array that never carried the key — which is
+     * how the field could be added, shipped, and refused by the schema beside it.
+     */
+    @Test
+    void everyKeyOfARuleWithNoLineIsDeclaredOnOne() throws Exception {
+        JsonNode unread = document("""
+                module m
+
+                data Yes
+                data N = { n: Int }
+                    invariant r = n >= 2 || Int.abs(n) >= 5
+
+                behavior f : (v: N) -> Yes
+                    constructs Yes
+                let f (v) = Yes
+                """).get("modules").get(0).get("behaviors").get(0)
+                .get("partition").get("notRead");
+        assertNotNull(unread, "the model leaves a rule this could not turn into a line");
+        Set<String> written = keysWritten(unread);
+        assertTrue(written.contains("sentTo"),
+                () -> "the choice is what an author is sent to: " + unread);
+
+        Set<String> undeclared = new LinkedHashSet<>(written);
+        undeclared.removeAll(keysDeclared(defined(schema(), "partition")
+                .get("properties").get("notRead").get("items")));
+
+        assertEquals(Set.of(), undeclared, "and none of one of these either");
+    }
 }

@@ -18,20 +18,63 @@ import java.util.Set;
  * order at all, because nothing an author did says which file comes first. Both of those are
  * answers, and a carrier with only the first would have to make the second up.
  *
- * <p><b>Where the places are still in hand.</b> Downstream of here the reasons are words, and a word
- * says nothing about where it was written — which is how an order arrived at by walking came to be
- * published as the author's and was right about it only while one walk produced every member. So
- * the claim is made here, out of the places, and everything after carries what was decided rather
- * than deciding again.
+ * <p><b>Where the places are still in hand.</b> Downstream of here nothing sees a source again, so
+ * both things a place answers are settled here: which order the reasons stand in, and where inside
+ * the rule each of them sends a reader ({@link WhereInTheRule}). The order was already decided here
+ * — a walk deciding it later was right only while one producer supplied every member. The second
+ * used to be dropped here, which left a reason about a choice indistinguishable from one about the
+ * clause around it.
+ *
+ * <p>So what is held is {@link Said} and not a word. Two reasons alike about two places inside one
+ * rule are two things to lift, and a list of words says they are one.
  */
 public sealed interface RuleReasons {
 
-    /** What is held, as the words a reader asks for. */
-    List<BlockReason.RuleReadingStopped> reasons();
+    /** What is held: each reason with where inside the rule it sends a reader. */
+    List<Said> said();
+
+    /**
+     * The same, as the words alone, each once.
+     *
+     * <p>For a reader asking what a question stands on rather than where to go about it — whether a
+     * wider run gets past it, which is a question about the kinds of thing and not about their
+     * places. A caller counting these is counting kinds: two choices of one clause leave one word
+     * here and two entries in {@link #said()}.
+     */
+    default List<BlockReason.RuleReadingStopped> reasons() {
+        List<BlockReason.RuleReadingStopped> out = new ArrayList<>();
+        for (Said each : said()) {
+            if (!out.contains(each.reason())) {
+                out.add(each.reason());
+            }
+        }
+        return List.copyOf(out);
+    }
 
     /** Whether the question stands on nothing its rule left. */
     default boolean isEmpty() {
-        return reasons().isEmpty();
+        return said().isEmpty();
+    }
+
+    /**
+     * One reason, and where inside the rule a reader is sent about it.
+     *
+     * <p>What tells two of these apart, and both halves are needed for it. Two parts of one clause
+     * stopped by one limit are one thing to lift and one of these; one clause whose ends two
+     * choices left open is two, and nothing in the word says so.
+     *
+     * @param sentTo where inside the rule the reader goes — the rule itself for a reason about the
+     *               whole of it, and a place in it for one about a part
+     * @param reason what the reading was short of, in this compiler's own terms
+     */
+    record Said(WhereInTheRule sentTo, BlockReason.RuleReadingStopped reason) {
+
+        public Said {
+            if (sentTo == null || reason == null) {
+                throw new IllegalArgumentException(
+                        "a reason stands somewhere in the rule, and says which");
+            }
+        }
     }
 
     /**
@@ -40,7 +83,7 @@ public sealed interface RuleReasons {
      * <p>An order of the model, which is what {@link AuthoredOrder} means and is why it is the
      * thing held rather than a list beside a flag.
      */
-    record AsWritten(AuthoredOrder<BlockReason.RuleReadingStopped> order) implements RuleReasons {
+    record AsWritten(AuthoredOrder<Said> order) implements RuleReasons {
 
         public AsWritten {
             if (order == null) {
@@ -49,7 +92,7 @@ public sealed interface RuleReasons {
         }
 
         @Override
-        public List<BlockReason.RuleReadingStopped> reasons() {
+        public List<Said> said() {
             return order.written();
         }
     }
@@ -61,26 +104,38 @@ public sealed interface RuleReasons {
      * it is. What settles it is not a fact about the model, so nothing may be read off it — a reader
      * acting on this order is acting on which text this compiler compared first.
      */
-    record NoSingleAuthoredOrder(List<BlockReason.RuleReadingStopped> reasons)
-            implements RuleReasons {
+    record NoSingleAuthoredOrder(List<Said> said) implements RuleReasons {
 
         public NoSingleAuthoredOrder {
-            reasons = List.copyOf(reasons);
+            said = List.copyOf(said);
         }
     }
 
     /**
-     * One reason and the place it stands on.
+     * One reason, the place it stands on, and where inside the rule it sends a reader.
+     *
+     * <p>Two places and they answer different questions. {@code writtenAt} is what an order among
+     * these is taken over and is read against the other members and nothing else. {@code sentTo} is
+     * what a reader is given, and it survives this file — which is why a reason about a part of a
+     * rule has to arrive here already saying so, rather than being worked out from the position
+     * afterwards.
      *
      * @param writtenAt where the part that raised it was written
+     * @param sentTo where inside the rule a reader goes about it
      * @param reason what it left, in the vocabulary a question stands on
      */
-    record Placed(SourcePos writtenAt, BlockReason.RuleReadingStopped reason) {
+    record Placed(SourcePos writtenAt, WhereInTheRule sentTo,
+                  BlockReason.RuleReadingStopped reason) {
 
         public Placed {
-            if (writtenAt == null || reason == null) {
+            if (writtenAt == null || sentTo == null || reason == null) {
                 throw new IllegalArgumentException("a reason stands on a place, and says which");
             }
+        }
+
+        /** What is kept of it once the order is settled. */
+        Said said() {
+            return new Said(sentTo, reason);
         }
     }
 
@@ -130,7 +185,7 @@ public sealed interface RuleReasons {
         sorted.sort(Comparator.comparingInt((Placed each) -> each.writtenAt().line())
                 .thenComparingInt(each -> each.writtenAt().column())
                 .thenComparingInt(each -> canonical(each.reason())));
-        return new AsWritten(AuthoredOrder.asWritten(distinct(sorted)));
+        return new AsWritten(AuthoredOrder.asWritten(said(sorted)));
     }
 
     /**
@@ -144,18 +199,22 @@ public sealed interface RuleReasons {
     private static RuleReasons acrossTexts(List<Placed> these) {
         List<Placed> sorted = new ArrayList<>(these);
         sorted.sort(Comparator.comparingInt(each -> canonical(each.reason())));
-        return new NoSingleAuthoredOrder(distinct(sorted));
+        return new NoSingleAuthoredOrder(said(sorted));
     }
 
-    /** Each reason once, keeping the first of them in whatever order they arrive in. */
-    private static List<BlockReason.RuleReadingStopped> distinct(List<Placed> sorted) {
-        List<BlockReason.RuleReadingStopped> out = new ArrayList<>();
+    /**
+     * Each of them once, keeping the first in whatever order they arrive in.
+     *
+     * <p>Told apart by the reason and by where it sends a reader, which is what makes two choices of
+     * one clause two entries. Kept by the word alone — which is what this did while a word was the
+     * whole of what travelled — the second of them was dropped as a repeat of the first.
+     */
+    private static List<Said> said(List<Placed> sorted) {
+        Set<Said> out = new LinkedHashSet<>();
         for (Placed each : sorted) {
-            if (!out.contains(each.reason())) {
-                out.add(each.reason());
-            }
+            out.add(each.said());
         }
-        return out;
+        return List.copyOf(out);
     }
 
     /**
@@ -166,7 +225,12 @@ public sealed interface RuleReasons {
      * order is, and the next caller to reach for it would have two examples to follow.
      */
     static RuleReasons one(BlockReason.RuleReadingStopped reason) {
-        return new AsWritten(AuthoredOrder.asWritten(List.of(reason)));
+        return one(WhereInTheRule.theRuleItself(), reason);
+    }
+
+    /** The same, for a reader that has a place inside the rule to send anybody to. */
+    static RuleReasons one(WhereInTheRule sentTo, BlockReason.RuleReadingStopped reason) {
+        return new AsWritten(AuthoredOrder.asWritten(List.of(new Said(sentTo, reason))));
     }
 
     /**
@@ -196,6 +260,7 @@ public sealed interface RuleReasons {
             case BlockReason.OrderedExtentTooCostly _ -> 8;
             case BlockReason.RuleAboutAnElementOfSeveralSequences _ -> 9;
             case BlockReason.EndLeftOpenByAChoice _ -> 10;
+            case BlockReason.ValueRuleLeftOpenByAChoice _ -> 11;
         };
     }
 }

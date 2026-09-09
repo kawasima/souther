@@ -63,7 +63,8 @@ class AStandingQuestionSaysWhatItStandsForTest {
                 .get("partition").get("unanswered");
         assertEquals(1, standing.size(), "one question, so one entry: " + standing);
         List<String> out = new ArrayList<>();
-        standing.get(0).get("stopped").forEach(each -> out.add(each.asString()));
+        standing.get(0).get("stopped")
+                .forEach(each -> out.add(each.get("reason").asString()));
         return out;
     }
 

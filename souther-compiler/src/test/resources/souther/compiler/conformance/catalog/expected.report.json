@@ -1,5 +1,5 @@
 {
-  "schemaVersion" : 16,
+  "schemaVersion" : 17,
   "compilerVersion" : "<version>",
   "status" : "partial",
   "weakening" : [ "rule_unread" ],
@@ -609,7 +609,9 @@
             "kind" : "filedAt",
             "path" : "item.price"
           },
-          "stopped" : [ "unsupported_syntax" ]
+          "stopped" : [ {
+            "reason" : "unsupported_syntax"
+          } ]
         }, {
           "at" : "rate",
           "rule" : "comparison@0:68:15",
@@ -626,7 +628,9 @@
             "kind" : "filedAt",
             "path" : "rate"
           },
-          "stopped" : [ "unsupported_syntax" ]
+          "stopped" : [ {
+            "reason" : "unsupported_syntax"
+          } ]
         } ],
         "claimsOffAxis" : [ ],
         "boundaries" : [ {
@@ -1508,7 +1512,9 @@
             "kind" : "filedAt",
             "path" : "指示.受付日"
           },
-          "stopped" : [ "rule_about_a_derived_value" ]
+          "stopped" : [ {
+            "reason" : "rule_about_a_derived_value"
+          } ]
         }, {
           "at" : "指示.締切",
           "rule" : "comparison@1:55:57",
@@ -1525,7 +1531,9 @@
             "kind" : "filedAt",
             "path" : "指示.締切"
           },
-          "stopped" : [ "rule_about_a_derived_value" ]
+          "stopped" : [ {
+            "reason" : "rule_about_a_derived_value"
+          } ]
         }, {
           "at" : "指示.品目",
           "rule" : "comparison@1:75:39",
@@ -1542,7 +1550,9 @@
             "kind" : "filedAt",
             "path" : "指示.品目"
           },
-          "stopped" : [ "unsupported_syntax" ]
+          "stopped" : [ {
+            "reason" : "unsupported_syntax"
+          } ]
         } ],
         "claimsOffAxis" : [ ],
         "boundaries" : [ {

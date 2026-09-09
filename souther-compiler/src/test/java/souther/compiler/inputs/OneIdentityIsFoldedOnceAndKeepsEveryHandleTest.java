@@ -109,12 +109,14 @@ class OneIdentityIsFoldedOnceAndKeepsEveryHandleTest {
         assertThrows(IllegalArgumentException.class,
                 () -> new RuleWithoutALine(
                         new RuleWithoutALine.Fact(comparison(), at("x"),
+                                WhereInTheRule.theRuleItself(),
                                 new BlockReason.ComparisonBetweenPositions()),
                         Set.of()),
                 "a comparison with no place is one nobody can be sent to look at");
         assertThrows(IllegalArgumentException.class,
                 () -> new RuleWithoutALine(
                         new RuleWithoutALine.Fact(invariant(), at("x"),
+                                WhereInTheRule.theRuleItself(),
                                 new BlockReason.ComparisonBetweenPositions()),
                         Set.of(Citation.of(new SourcePos(3, 3)))),
                 "and a place beside a rule the author named is a second way to say one thing");
@@ -278,7 +280,8 @@ class OneIdentityIsFoldedOnceAndKeepsEveryHandleTest {
         List<RuleReasons.Placed> written = new ArrayList<>();
         for (int i = 0; i < these.length; i++) {
             written.add(new RuleReasons.Placed(
-                    new SourcePos(1, i + 1, new SourceId("one")), these[i]));
+                    new SourcePos(1, i + 1, new SourceId("one")),
+                    WhereInTheRule.theRuleItself(), these[i]));
         }
         return new WhatAQuestionStandsOn(RuleReasons.from(written), Optional.empty());
     }

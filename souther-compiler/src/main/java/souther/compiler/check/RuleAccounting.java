@@ -1,8 +1,10 @@
 package souther.compiler.check;
 
+import souther.compiler.diag.Citation;
 import souther.compiler.inputs.BlockReason;
 import souther.compiler.inputs.RuleReasons;
 import souther.compiler.inputs.WhatAQuestionStandsOn;
+import souther.compiler.inputs.WhereInTheRule;
 import souther.compiler.values.UnreadReason;
 
 import java.util.ArrayList;
@@ -265,12 +267,39 @@ public final class RuleAccounting {
                 case TheValueReadingSays it -> new WhatAQuestionStandsOn(
                         RuleReasons.from(it.shortfalls().stream()
                                 .map(each -> new RuleReasons.Placed(each.site().writtenAt(),
+                                        sentTo(each.site()),
                                         BlockReason.ofARuleTheValueReadingLeft(each.why())))
                                 .toList()),
                         WhatAQuestionStandsOn.oneOf(it.aboutTheAnswer().reasons().stream()
                                 .map(BlockReason::ofTheAnswerTheReadingCouldNotBuild).toList()));
                 case TheEndReadingSays it -> new WhatAQuestionStandsOn(
                         RuleReasons.one(it.why()), Optional.empty());
+            };
+        }
+
+        /**
+         * Where inside the rule a reader goes about a shortfall decided at {@code site}.
+         *
+         * <p>The two written places a reading decides at are two answers here. A clause it has no
+         * word for is the thing an author rewrites, so the rule is the whole of it. A choice
+         * offering an alternative nothing could read is not: the clause at the position was read,
+         * and what they act on is the {@code ||} — sent to the rule, they rewrite a bound that is
+         * not the difficulty.
+         *
+         * <p>The same value the reading of ends hands on for the same choice, so the two accounts
+         * of one operator carry one address and a reader holding both knows they are one thing to
+         * fix. Which is why the citation goes through {@link WhereInTheRule#at} rather than being
+         * wrapped here: whether a place is one an author can edit is one question, and two readers
+         * answering it apart is how two accounts of one operator would come to two addresses.
+         *
+         * <p>The identity inside {@code site} stays here, being one no published answer may hold —
+         * and being one about how often this compiler met the operator rather than about how many
+         * places its author has to go.
+         */
+        private static WhereInTheRule sentTo(RuleShortfall.Site site) {
+            return switch (site) {
+                case RuleShortfall.Site.AtALeaf _ -> WhereInTheRule.theRuleItself();
+                case ChoiceSite it -> WhereInTheRule.at(Citation.of(it.writtenAt()));
             };
         }
 

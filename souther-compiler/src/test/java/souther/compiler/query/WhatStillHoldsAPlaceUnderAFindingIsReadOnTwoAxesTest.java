@@ -177,6 +177,13 @@ class WhatStillHoldsAPlaceUnderAFindingIsReadOnTwoAxesTest {
         out.put("souther.compiler.query.About$AnUnansweredRow.at",
                 new Standing(new Because.NothingReachesOne(),
                         new AcrossTheCut.BlocksIt(lookAtIt)));
+        // Where inside a rule a reader is sent. Nothing in these four models writes a choice whose
+        // other alternative goes unread, so nothing reaches one here — which is a count of what was
+        // looked at and says nothing about what the place is doing. A model written for it shows
+        // two of them differing there and in nothing else.
+        out.put("souther.compiler.inputs.WhereInTheRule$APlaceInIt.at",
+                new Standing(new Because.NothingReachesOne(),
+                        new AcrossTheCut.BlocksIt(lookAtIt)));
         // What a document prints for a rule the author gave no name, and the sets folded out of it.
         // A rule is beside the place in each of them, and no two were seen differing only in the
         // place — which leaves open whether the place is spare here, and that is the question.

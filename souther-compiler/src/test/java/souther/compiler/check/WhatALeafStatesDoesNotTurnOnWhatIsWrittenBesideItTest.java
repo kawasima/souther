@@ -112,13 +112,19 @@ class WhatALeafStatesDoesNotTurnOnWhatIsWrittenBesideItTest {
      * <p>Asked whether the length is still open, the first line finds that it is, because of the
      * second, and comes back naming the choice its own alternative had already settled. So the ends
      * are struck off one at a time and never by the number they are ends of.
+     *
+     * <p>Of the ends' own line and not of the words in it. The reading that says which values may
+     * stand at a position is short here too and says so in the same words about the same choice —
+     * they are two readings of one operator — so a filter on the phrase alone reads one reading's
+     * sentence as the other's.
      */
     @Test
     void andAnEndAChoiceSettledStaysSettled() {
         assertEquals(List.of(),
                 linesOf("(String.length(s) * 2 >= 4 || n >= 3)"
                         + " && String.length(s) * 3 >= 6").stream()
-                        .filter(each -> each.contains("left open by a choice"))
+                        .filter(each -> each.startsWith("· not read:")
+                                && each.contains("left open by a choice"))
                         .toList(),
                 "the line under the choice was answered for by the alternative beside it, and the"
                         + " one outside reaches no choice at all");
@@ -144,9 +150,12 @@ class WhatALeafStatesDoesNotTurnOnWhatIsWrittenBesideItTest {
             if (each.startsWith("· read as check/")) {
                 return each.substring("· read as check/".length()).split(":")[0];
             }
+            // The number is what stands between the quotes, and what follows them is where in the
+            // rule a reader goes. Read as everything after the first quote, the place came back as
+            // part of the number the moment the sentence began saying one.
             if (each.startsWith("· not read:") && each.contains(" about `")) {
-                return each.substring(each.indexOf(" about `") + " about `".length())
-                        .replace("`", "");
+                String after = each.substring(each.indexOf(" about `") + " about `".length());
+                return after.substring(0, after.indexOf('`'));
             }
         }
         return "nothing: " + lines;

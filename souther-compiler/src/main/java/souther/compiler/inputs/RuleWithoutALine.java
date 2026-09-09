@@ -59,10 +59,17 @@ public record RuleWithoutALine(Fact fact, Set<Citation> reachedAt) {
         RuleCitation.requireReached(fact.rule(), reachedAt);
     }
 
-    /** One reader's finding, as that reader produced it. */
+    /** One reader's finding about the whole of a rule, as that reader produced it. */
     public static RuleWithoutALine of(RuleCitation cited, FilingCoordinate at,
                                       BlockReason.RuleWithoutLineReason why) {
-        return new RuleWithoutALine(new Fact(cited.rule(), at, why),
+        return of(cited, at, WhereInTheRule.theRuleItself(), why);
+    }
+
+    /** The same, for a reader with a place inside the rule to send anybody to. */
+    public static RuleWithoutALine of(RuleCitation cited, FilingCoordinate at,
+                                      WhereInTheRule sentTo,
+                                      BlockReason.RuleWithoutLineReason why) {
+        return new RuleWithoutALine(new Fact(cited.rule(), at, sentTo, why),
                 RuleCitation.placeOf(cited));
     }
 
@@ -73,11 +80,18 @@ public record RuleWithoutALine(Fact fact, Set<Citation> reachedAt) {
      * <p>The citation is no part of it. A rule and the handle for it are two questions, and a key
      * holding the handle files one rule under several wherever the two come apart — which they do
      * wherever a rule has no name of its own.
+     *
+     * <p><b>{@link WhereInTheRule} is part of it, and is not that.</b> Where inside the rule a
+     * reader goes is what tells two findings about one clause apart when everything else about
+     * them agrees: a clause whose ends two choices left open is two things to lift, and both are
+     * the same rule, at the same position, for the same reason. Left out, the second of them was
+     * merged into the first and the entry named neither choice.
      */
-    public record Fact(RuleRef rule, FilingCoordinate at, BlockReason.RuleWithoutLineReason why) {
+    public record Fact(RuleRef rule, FilingCoordinate at, WhereInTheRule sentTo,
+                       BlockReason.RuleWithoutLineReason why) {
 
         public Fact {
-            if (rule == null || at == null || why == null) {
+            if (rule == null || at == null || sentTo == null || why == null) {
                 throw new IllegalArgumentException("a rule is without a line somewhere, and for a"
                         + " reason");
             }
@@ -97,6 +111,11 @@ public record RuleWithoutALine(Fact fact, Set<Citation> reachedAt) {
     /** Why there is no line here, in this compiler's own terms. */
     public BlockReason.RuleWithoutLineReason why() {
         return fact.why();
+    }
+
+    /** Where inside the rule a reader goes about it. */
+    public WhereInTheRule sentTo() {
+        return fact.sentTo();
     }
 
     /**

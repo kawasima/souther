@@ -84,6 +84,12 @@ class WhatEachWayOfDrawingNoLineLeavesIsWrittenDownOnceTest {
         // this position was read, and what an author acts on is the branch written beside it. A run
         // allowed more meets it again — the reading of ends stopped on a form and not at a figure.
         table.put("EndLeftOpenByAChoice", "UNREAD_ALTERNATIVE_OF_A_CHOICE/UNAFFECTED");
+        // And the same operator read the other way: what may stand at the position is left open by
+        // the branch nothing read. One word for the two, because they are two readings of one
+        // operator and which of them a reader is being told is what the section says. Its own case
+        // here all the same, and not `UnreadValueRule` above — that one sends an author to rewrite
+        // a clause that was read from end to end.
+        table.put("ValueRuleLeftOpenByAChoice", "UNREAD_ALTERNATIVE_OF_A_CHOICE/UNAFFECTED");
         // A pattern read to the end and larger than this will make a machine of. Both measures are
         // short because both are read off the set it names: a class is a part of it and an end is
         // where it stops. Its own word and not the one above — that one sends an author after the
@@ -402,6 +408,7 @@ class WhatEachWayOfDrawingNoLineLeavesIsWrittenDownOnceTest {
                 new BlockReason.RuleAboutAnElementOfSeveralSequences(),
                 new BlockReason.UnreadValueRule(),
                 new BlockReason.EndLeftOpenByAChoice(),
+                new BlockReason.ValueRuleLeftOpenByAChoice(),
                 new BlockReason.PatternTooCostly(),
                 new BlockReason.PatternTooDeeplyNested(),
                 new BlockReason.OrderedExtentTooCostly(
@@ -641,14 +648,16 @@ class WhatEachWayOfDrawingNoLineLeavesIsWrittenDownOnceTest {
         WhatAQuestionStandsOn said = new WhatAQuestionStandsOn(
                 RuleReasons.from(List.of(
                         new RuleReasons.Placed(new SourcePos(1, 1),
+                                WhereInTheRule.theRuleItself(),
                                 new BlockReason.UnreadComparisonDomain()),
                         new RuleReasons.Placed(new SourcePos(1, 9),
+                                WhereInTheRule.theRuleItself(),
                                 new BlockReason.UnreadValueRule()))),
                 Optional.of(new BlockReason.ExactValuesTooCostly()));
 
         assertEquals(List.of(UndividedPosition.Reason.UNSUPPORTED_DOMAIN,
                         UndividedPosition.Reason.UNSUPPORTED_SYNTAX),
-                ReportedReason.wordsFor(said.itsRuleLeft()).written(),
+                ReportedReason.wordsFor(said.itsRuleLeft()).words(),
                 "the parts of the rule, in the order they were written");
         assertEquals(Optional.of(UndividedPosition.Reason.EXACT_VALUES_TOO_COSTLY),
                 said.itsPositionWasShortOf().map(ReportedReason::of),
