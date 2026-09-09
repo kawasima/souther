@@ -369,17 +369,29 @@ sealed interface Confinement<A> {
         // rules would then be decided differently depending on what the readings before them had
         // already built.
         Meter meter = PatternPlan.Budget.OF_WHAT_A_SET_AND_A_RANGE_SHARE.meter();
-        AskedOfEachBlock<A> byTheReadings = asking(carriers, ordered::at, meter, machines);
+        // What the ends bring to each position of a block, met with everything else placing it. Read
+        // as values of that position's own order where it has one, since the ends alone would answer
+        // for every order at once and what an `Int` holds is not what a decimal does.
+        //
+        // And nothing where the position is on no order at all. A block is the positions some rule
+        // holds as one value and they need not be ordered — a `Bool` is not — so what the ends
+        // contribute there is the identity of the meet below and never an answer about which values
+        // the position has. Asked for that answer, a position with no order has none to give
+        // ({@link OrderedIntervals#valuesAt}).
+        Function<A, OrderedInterval> byTheOrders = position -> carriers.get(position) == null
+                ? OrderedInterval.OPEN
+                : ordered.valuesAt(position, carriers);
+        AskedOfEachBlock<A> byTheReadings = asking(carriers, byTheOrders, meter, machines);
         AskedOfEachBlock<A> narrowed = asking(carriers, position ->
-                ordered.at(position).meet(outside.at(position).interval()), meter, machines);
+                byTheOrders.apply(position).meet(outside.at(position).interval()), meter, machines);
         // What a relation between two blocks comes to, which is settled against what each of them
         // is left once everything placing its positions has been met with it. Built here for the
         // same reason the question above is: the values and the ranges are put together in one
         // place, and a relation read against the values alone would answer one way for a block
         // pinned to one value by a written value and another for a block pinned to one by its ends.
         AskedOfARelation<A> relating = relating(carriers, position ->
-                ordered.at(position).meet(outside.at(position).interval()));
-        AskedOfARelation<A> byTheReadingsRelating = relating(carriers, ordered::at);
+                byTheOrders.apply(position).meet(outside.at(position).interval()));
+        AskedOfARelation<A> byTheReadingsRelating = relating(carriers, byTheOrders);
         // And a block nothing outside places is the question above and not another one, so it is
         // answered once however many askings reach it. That is what lets the two share a meter: a
         // machine a question builds is built for the block it is about, and asking about the same
@@ -405,7 +417,8 @@ sealed interface Confinement<A> {
             // the rules they wrote about another one are what cannot hold.
             Set<A> nowhere = new LinkedHashSet<>();
             carriers.keySet().forEach(position -> {
-                if (ordered.at(position).meet(outside.at(position).interval()).holdsNothing()) {
+                if (byTheOrders.apply(position).meet(outside.at(position).interval())
+                        .holdsNothing()) {
                     nowhere.add(position);
                 }
             });

@@ -250,6 +250,49 @@ class ALineReadAtAPositionSaysNothingAboutTheRuleBesideItTest {
     }
 
     /**
+     * A conjunct whose two bounds reach opposite ends of the order draws no line, and what it does
+     * restrict is said.
+     *
+     * <p>Each alternative stops {@code n} and the choice between them stops it nowhere: what they
+     * leave between them is every {@code Int}. So no line is drawn here — and the rule does hold
+     * the position to what it admits, since neither one nor five can stand at it.
+     *
+     * <p>Asked which positions some rule of the conjunct bounded, this comes back as a part with a
+     * line at {@code n}, accounted for by whoever draws lines. Nobody draws it, so the restriction
+     * the rule states went out unsaid and the position came back measured at nothing with no word
+     * for why.
+     *
+     * <p>The control beside it is the same rule with the two bounds reaching the same way, where
+     * the choice does stop {@code n} and the line is drawn.
+     */
+    @Test
+    void aConjunctWhoseBoundsCoverTheOrderIsNamedForWhatItRestricts() {
+        FieldDomains covering = readingOf("""
+                module example.parcels
+
+                data Code = { n: Int }
+                    invariant r = (n >= 2 && n /= 5) || (n <= 0 && n /= 5)
+                """, "Code");
+        FieldDomains reaching = readingOf("""
+                module example.parcels
+
+                data Code = { n: Int }
+                    invariant r = (n >= 2 && n /= 5) || (n >= 0 && n /= 5)
+                """, "Code");
+
+        assertTrue(covering.placedAt(RuleKey.of("n")).isEmpty(),
+                "the alternatives leave every value between them, so there is no line");
+        assertEquals(List.of(new BlockReason.RuleRestrictingToAdmittedValues()),
+                reasonsAt(covering, "n"),
+                () -> "and neither one nor five can stand there: "
+                        + covering.noLineAt(RuleKey.of("n")));
+        assertFalse(reaching.placedAt(RuleKey.of("n")).isEmpty(),
+                "the control stops at zero, and a line there is drawn");
+        assertEquals(List.of(), reasonsAt(reaching, "n"),
+                "so nothing is owed a second sentence about it");
+    }
+
+    /**
      * An equality least of all, though it reaches this reading as a comparison that placed no end.
      *
      * <p>It names a value rather than an end, and the reading of values holds it. Read off "no end

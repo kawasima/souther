@@ -70,9 +70,22 @@ public final class OrderedIntervals<A> {
         this.parts = parts;
     }
 
+    /**
+     * The parts of a reading that has taken nothing in, which are the same parts whoever asks.
+     *
+     * <p>Held rather than built, because a reading starts here for every leaf a connective is
+     * composed over and for every branch nobody can be in, and the parts copy the map they are
+     * handed. The reading itself is still made by {@link #top()}, which is what keeps that the one
+     * way to a reading that has read nothing
+     * ({@code AReadingIsWhatItsOperationsReachTest}) — a state handed out of a field here would be
+     * a way in that no operation of this named.
+     */
+    private static final Parts<?> NOTHING_READ = new Parts<>(Map.of(), false);
+
     /** Nothing read, so every position holds every value its order has. */
+    @SuppressWarnings("unchecked")
     public static <A> OrderedIntervals<A> top() {
-        return new OrderedIntervals<>(new Parts<>(Map.of(), false));
+        return new OrderedIntervals<>((Parts<A>) NOTHING_READ);
     }
 
     /** One position said to lie inside {@code range}. */
@@ -114,9 +127,88 @@ public final class OrderedIntervals<A> {
         return ranges().keySet();
     }
 
-    /** What {@code position} is left, every value of its order where nothing was said. */
-    public OrderedInterval at(A position) {
-        return ranges().getOrDefault(position, OrderedInterval.OPEN);
+    /**
+     * The ends these rules put on {@code position}, or null where they put none.
+     *
+     * <p>The writing and not the values. Null is the absence itself, said as itself: answered with
+     * a pair of absent ends, a position no rule spoke of would be handed back as a range, and a
+     * range is read against an order — so the answer would be right about a decimal, wrong about an
+     * {@code Int}, and indistinguishable either way. Which values the position is left is
+     * {@link #valuesAt}, and it is the question a reader comparing two readings has.
+     */
+    public OrderedInterval statedAt(A position) {
+        return ranges().get(position);
+    }
+
+    /**
+     * Which values of its own order {@code position} is left.
+     *
+     * <p>What the class above promises: a position not held here is every value its order has, and
+     * that is what comes back for one — not a pair of absent ends, which is every value of an order
+     * that stops nowhere and is more than an order that stops has.
+     *
+     * <p>The one reading a caller may compare, and the reason the two are separate methods. A
+     * choice between {@code n >= 2} and {@code n <= 0} leaves an {@code Int} where it found it, and
+     * a reading that answered from the ends alone would have {@code [MIN..MAX]} on one side and a
+     * pair of absent ends on the other and call them two answers — which is how a border nobody
+     * drew was reported as one this compiler could not measure.
+     *
+     * <p>Handed the vocabulary and not one order, so that the order this is answered against is the
+     * one belonging to the position asked about. Given an order directly, a caller can hand in the
+     * one beside it — the type would have ruled out a bare pair of ends and nothing else — and the
+     * answer would be about a position nobody asked about.
+     *
+     * <p><b>And there is no way to ask this without one, least of all about a position nothing was
+     * written about.</b> That position is exactly the one whose answer is its order and nothing
+     * else: what a reading that took nothing in leaves an {@code Int} is every whole number, which
+     * is a pair of ends, and answering the pair of absent ends instead is the reading with no order
+     * in it that this whole distinction exists to remove. A caller that dropped the vocabulary on
+     * the way would have that handed back as a value, which is where this began.
+     *
+     * <p>So a position no order here names is this compiler asking what a range leaves on an order
+     * it cannot name, and it is said as the mistake it is. Whether a rule wrote anything there is
+     * {@link #statedAt}'s question and is answered without an order.
+     */
+    public OrderedInterval valuesAt(A position, Map<A, ? extends ValueOrder> orders) {
+        ValueOrder onItsOrder = orders.get(position);
+        if (onItsOrder == null) {
+            throw new IllegalStateException(
+                    "what " + position + " is left was asked on an order nothing here names");
+        }
+        OrderedInterval extent = onItsOrder.extent();
+        OrderedInterval stated = ranges().get(position);
+        return stated == null ? extent : extent.meet(stated);
+    }
+
+    /**
+     * The positions these rules leave holding less than every value of their own order.
+     *
+     * <p>Where an end becomes a line, which is the one thing a reader of the ends is really asking
+     * and the one thing a set of bounded positions cannot say. A pair of bounds reaching both ends
+     * of a carrier is two rules about the position and stops it nowhere, and a caller that took
+     * {@link #boundedAt} for this would credit such a rule with a line nobody draws.
+     *
+     * <p>Over the positions the rules bounded, since a position they bounded nowhere is left every
+     * value its order has. A bounded position {@code orders} does not name is this compiler holding
+     * a range on an order it cannot name, and {@link #valuesAt} says so — kept here instead, as a
+     * position whose ends cannot be shown to leave all of anything, it would go out as a position
+     * the rules stop, which is the answer nobody could have checked.
+     */
+    public Set<A> stoppedShortOfTheirOrders(Map<A, ? extends ValueOrder> orders) {
+        // Nothing until there is something to hold. This is asked of every leaf of every clause,
+        // and most leaves stop no position at all — a set built and wrapped for each of them is
+        // made as often as anything in this reading.
+        Set<A> out = null;
+        for (A position : ranges().keySet()) {
+            if (valuesAt(position, orders).sameValuesAs(orders.get(position).extent())) {
+                continue;
+            }
+            if (out == null) {
+                out = new LinkedHashSet<>();
+            }
+            out.add(position);
+        }
+        return out == null ? Set.of() : Collections.unmodifiableSet(out);
     }
 
     /** Whether nothing satisfies these rules, at a position or otherwise. */
@@ -144,6 +236,16 @@ public final class OrderedIntervals<A> {
 
     /** Both readings holding at once. */
     public OrderedIntervals<A> meet(OrderedIntervals<A> other) {
+        // A side that bounded no position and showed nothing empty is what a conjunction leaves the
+        // other side alone: every position it holds is every value of its order, and a meet with
+        // every value is what it was met with. Most sides are that — a leaf the ends have no word
+        // for bounds nothing, and every clause is composed out of leaves.
+        if (other.ranges().isEmpty() && !other.nothing()) {
+            return this;
+        }
+        if (ranges().isEmpty() && !nothing()) {
+            return other;
+        }
         Map<A, OrderedInterval> out = new LinkedHashMap<>(ranges());
         other.ranges().forEach((position, range) ->
                 out.merge(position, range, OrderedInterval::meet));
@@ -202,7 +304,9 @@ public final class OrderedIntervals<A> {
         Map<A, OrderedInterval> both = new LinkedHashMap<>();
         for (A position : holdingNothing()) {
             if (other.holdingNothing().contains(position)) {
-                both.put(position, at(position).meet(other.at(position)));
+                // Both hold the position, since both leave it no value, so the ends are there to
+                // be met and no order has to be named to find them.
+                both.put(position, statedAt(position).meet(other.statedAt(position)));
             }
         }
         return new OrderedIntervals<>(new Parts<>(both, true));
