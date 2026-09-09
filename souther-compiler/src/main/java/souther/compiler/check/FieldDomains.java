@@ -1996,6 +1996,12 @@ public final class FieldDomains {
         // pattern raises none — which values may stand somewhere and where a line falls are not what
         // it is about — and it is still a way the value can be refused at an edge of the number
         // beside it.
+        // What each rule leaves unrepresented, met from every reading of it and held by the rule.
+        // A clause is read once per place the walk opens a value at, so a set held by the reading
+        // would say a rule left a position without a representation once per reading that met it —
+        // and what a rule left a position without is one fact about the rule however many readings
+        // there were.
+        Map<RuleRef.Invariant, Set<RuleKey>> unrepresented = new LinkedHashMap<>();
         readings.forEach(reading -> {
             RuleRef.Invariant rule = reading.from();
             // Every node the shapes this reading recorded were written as, which is what a
@@ -2007,7 +2013,7 @@ public final class FieldDomains {
             // leaves the range wider than the rule however well the conjunct written beside it went,
             // and a set unioned over the whole clause answers for the failing half with the other
             // one — which is the same shape as reading a clause's evidence for one of its parts.
-            Set<RuleKey> said = new LinkedHashSet<>();
+            Set<RuleKey> said = unrepresented.computeIfAbsent(rule, _ -> new LinkedHashSet<>());
             reading.constrained().values().forEach(byOccurrence ->
                     byOccurrence.values().forEach(one -> one.of().spelled().forEach(part -> {
                 InvariantChecker.PartRead read = one.said();
@@ -2052,9 +2058,10 @@ public final class FieldDomains {
                     said.add(RuleKey.THE_VALUE);
                 }
             })));
-            said.forEach(path ->
-                    causes.add(new ProjectionEvidence.Cause.Unrepresented(rule, path.toString())));
         });
+        // And said once per rule, after every reading of it has been met.
+        unrepresented.forEach((rule, said) -> said.forEach(path ->
+                causes.add(new ProjectionEvidence.Cause.Unrepresented(rule, path.toString()))));
         // And what the algebra was given and what it projects does not hold.
         //
         // Asked of what was derived and of nothing else. Asking the whole state whether it holds a

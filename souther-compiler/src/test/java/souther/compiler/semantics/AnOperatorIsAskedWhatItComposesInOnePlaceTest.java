@@ -62,7 +62,7 @@ class AnOperatorIsAskedWhatItComposesInOnePlaceTest {
                             + " parts there are, where each stands among them, the clause with each"
                             + " expanded where it stands, and which subtree of a reading each of"
                             + " them became are all answers over that one shape"),
-            new Licence("souther.compiler.check.FieldDomains.lambda$projection$6", 1,
+            new Licence("souther.compiler.check.FieldDomains.lambda$projection$7", 1,
                     "the clause that bounds a field, whose halves are answered beside it"),
             new Licence("souther.compiler.partition.ClauseStatements.walk", 1,
                     "what a behavior's clause states outright: one recognition, and both of what a"
