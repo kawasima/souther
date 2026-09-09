@@ -740,9 +740,13 @@ public final class Analyzer {
         if (!parsed.errors().isEmpty()) {
             return out;   // a semantic answer needs a clean parse
         }
-        Compilation compilation = compileOf(graph);
-        out.addAll(rowsToWrite(uri, text, parsed.root(), requested, graph, compilation));
-        out.addAll(repairs(uri, requested, compilation));
+        try {
+            Compilation compilation = compileOf(graph);
+            out.addAll(rowsToWrite(uri, text, parsed.root(), requested, graph, compilation));
+            out.addAll(repairs(uri, requested, compilation));
+        } catch (RuntimeException | StackOverflowError _) {
+            return List.of();   // nothing to offer, which is an answer; the diagnose says what broke
+        }
         return out;
     }
 
