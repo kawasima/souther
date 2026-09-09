@@ -81,7 +81,7 @@ class WhatARuleRaisesIsComputedWithoutAnAnswerTest {
     private static final List<String> WHAT_ANSWERING_PRODUCES = List.of(
             "souther/compiler/check/InvariantBound",
             "souther/compiler/check/UnreadComparison$Quantity",
-            "souther/compiler/check/InvariantChecker$PartsRead",
+            "souther/compiler/check/InvariantChecker$RulesRead",
             "souther/compiler/check/InvariantChecker$PartRead",
             "souther/compiler/check/ConstraintState",
             "souther/compiler/check/ReadingEvidence",

@@ -1,5 +1,6 @@
 package souther.compiler.check;
 
+import souther.compiler.WhatWasCompiled;
 import souther.compiler.ast.Hir;
 import souther.compiler.ast.WrittenName;
 import souther.compiler.diag.Region;
@@ -7,14 +8,10 @@ import souther.compiler.diag.SourcePos;
 
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
-import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassModel;
 import java.lang.classfile.MethodModel;
 import java.lang.classfile.instruction.InvokeInstruction;
 import java.lang.reflect.RecordComponent;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -53,6 +50,9 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
  * class file says, and reading the source would be answering the same question a second way.
  */
 class APublishedDeclarationSaysEverythingAndPlacesNothingTest {
+
+    /** The producer whose calls this is about. */
+    private static final String THE_PRODUCER = "souther.compiler.check.DeclarationMeaning";
 
     /** What a component of this type says is where the declaration stands, and not what it says. */
     private static final Set<Class<?>> WHERE_IT_STANDS = Set.of(SourcePos.class, Region.class);
@@ -110,7 +110,7 @@ class APublishedDeclarationSaysEverythingAndPlacesNothingTest {
     }
 
     @Test
-    void everythingADeclarationSaysIsRead() throws IOException {
+    void everythingADeclarationSaysIsRead() {
         Set<String> called = componentsReadByTheProducer();
         Set<String> unread = new TreeSet<>();
         for (Class<?> kind : walked()) {
@@ -131,7 +131,7 @@ class APublishedDeclarationSaysEverythingAndPlacesNothingTest {
     }
 
     @Test
-    void andNothingOfWhereItStandsIs() throws IOException {
+    void andNothingOfWhereItStandsIs() {
         Set<String> called = componentsReadByTheProducer();
         Set<String> read = new TreeSet<>();
         for (Class<?> kind : walked()) {
@@ -155,7 +155,7 @@ class APublishedDeclarationSaysEverythingAndPlacesNothingTest {
      * holds the spelling out of the answer is which of its own components the producer asks for.
      */
     @Test
-    void andOfANameOnlyWhatItIsCalledIsAsked() throws IOException {
+    void andOfANameOnlyWhatItIsCalledIsAsked() {
         Set<String> asked = new TreeSet<>(methodsCalledOn("souther/compiler/ast/WrittenName"));
         asked.removeAll(WHAT_A_NAME_MAY_BE_ASKED);
 
@@ -194,7 +194,7 @@ class APublishedDeclarationSaysEverythingAndPlacesNothingTest {
      * <p>A call made on {@link Hir.Def} is a call on every kind of one: the sealed parent declares
      * what all of them hold, and which arm it lands in is settled after the call.
      */
-    private static Set<String> componentsReadByTheProducer() throws IOException {
+    private static Set<String> componentsReadByTheProducer() {
         Set<String> read = new LinkedHashSet<>();
         for (Call call : callsMadeByTheProducer()) {
             if (!call.owner().startsWith("souther/compiler/ast/Hir")) {
@@ -214,7 +214,7 @@ class APublishedDeclarationSaysEverythingAndPlacesNothingTest {
     }
 
     /** What the producer asks of {@code owner}, by method name. */
-    private static Set<String> methodsCalledOn(String owner) throws IOException {
+    private static Set<String> methodsCalledOn(String owner) {
         Set<String> asked = new LinkedHashSet<>();
         for (Call call : callsMadeByTheProducer()) {
             if (call.owner().equals(owner)) {
@@ -234,8 +234,10 @@ class APublishedDeclarationSaysEverythingAndPlacesNothingTest {
      * and a call it makes into another class is answered by whatever that class was written to do.
      * The two it delegates to are named in {@link #READ_ELSEWHERE}.
      */
-    private static List<Call> callsMadeByTheProducer() throws IOException {
-        ClassModel model = ClassFile.of().parse(Files.readAllBytes(compiledProducer()));
+    private static List<Call> callsMadeByTheProducer() {
+        ClassModel model = WhatWasCompiled.compiled().find(THE_PRODUCER)
+                .orElseThrow(() -> new IllegalStateException(
+                        THE_PRODUCER + " is not a class this module compiled"));
         List<Call> calls = new ArrayList<>();
         Set<String> walked = new LinkedHashSet<>();
         Deque<MethodModel> pending = new ArrayDeque<>();
@@ -272,8 +274,4 @@ class APublishedDeclarationSaysEverythingAndPlacesNothingTest {
         return calls;
     }
 
-    private static Path compiledProducer() {
-        return Path.of("target", "classes", "souther", "compiler", "check",
-                "DeclarationMeaning.class").toAbsolutePath();
-    }
 }

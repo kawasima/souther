@@ -1,21 +1,15 @@
 package souther.compiler.check;
 
 import org.junit.jupiter.api.Test;
+import souther.compiler.WhatWasCompiled;
 
-import java.io.IOException;
-import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassModel;
 import java.lang.classfile.FieldModel;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 
 /**
  * Who carries the number of a part beside the rule it is a part of, rather than the name that was
@@ -50,7 +44,7 @@ class WhoMayCarryTheNumberOfAPartIsWrittenDownTest {
                             + " the one place the two stand together"));
 
     @Test
-    void aNumberBesideARuleIsWrittenDownWithWhatItCounts() throws IOException {
+    void aNumberBesideARuleIsWrittenDownWithWhatItCounts() {
         assertEquals(declared(MAY_HOLD), numbersHeldBesideARule(),
                 "a type downstream of the split that numbers a clause's parts holds the name that"
                         + " split issued, not a number of its own. What still holds one, and what"
@@ -76,12 +70,9 @@ class WhoMayCarryTheNumberOfAPartIsWrittenDownTest {
      * the pair whatever it is named, and a check that looked for the word would be satisfied by
      * renaming the field.
      */
-    private static Map<String, String> numbersHeldBesideARule() throws IOException {
+    private static Map<String, String> numbersHeldBesideARule() {
         Map<String, String> found = new TreeMap<>();
-        int read = 0;
-        for (Path each : classes()) {
-            ClassModel model = ClassFile.of().parse(Files.readAllBytes(each));
-            read++;
+        for (ClassModel model : WhatWasCompiled.compiled().all()) {
             String from = model.thisClass().asInternalName().replace('/', '.').replace('$', '.');
             boolean holdsARule = false;
             for (FieldModel field : model.fields()) {
@@ -97,14 +88,6 @@ class WhoMayCarryTheNumberOfAPartIsWrittenDownTest {
                 }
             }
         }
-        assertFalse(read == 0, "no compiled class was read at all, so this says nothing");
         return found;
-    }
-
-    private static List<Path> classes() throws IOException {
-        Path root = Path.of("target", "classes").toAbsolutePath();
-        try (Stream<Path> walk = Files.walk(root)) {
-            return new ArrayList<>(walk.filter(p -> p.toString().endsWith(".class")).toList());
-        }
     }
 }

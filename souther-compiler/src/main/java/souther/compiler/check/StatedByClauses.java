@@ -19,7 +19,6 @@ import souther.compiler.values.ValueSet;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -119,11 +118,13 @@ sealed interface StatedByClauses {
      * pushed down into the branches of a choice would be a part of each of them, and every question
      * the choice asks of an alternative would be answerable from a clause written above it.
      */
-    record CameFrom(Core node, StatedByClauses of) implements StatedByClauses {
+    record CameFrom(Core node, ClauseExpr.Occurrence at, StatedByClauses of)
+            implements StatedByClauses {
 
         public CameFrom {
-            if (node == null || of == null) {
-                throw new IllegalArgumentException("a part is some node, read into something");
+            if (node == null || at == null || of == null) {
+                throw new IllegalArgumentException(
+                        "a part is some node, somewhere in its clause, read into something");
             }
         }
     }
@@ -173,9 +174,26 @@ sealed interface StatedByClauses {
      *                       those numbers and nothing placed. The provenance alone: whether the end
      *                       is still open is {@code boundary}'s answer, and the two are met where
      *                       the account is published
+     * @param stopped        the positions this part's own ends leave holding less than every value
+     *                       of their order. Beside {@code byOrder} and not derivable from it: that
+     *                       one says which positions some rule of the part was about, and a pair of
+     *                       bounds reaching opposite ends of a carrier is two such rules leaving
+     *                       the position every value it had.
+     *                       <p>The answer and not the ranges. Where the positions stop is held by
+     *                       {@link Confinement} and by nothing else, since a reader with that half
+     *                       beside what the positions admit can decide whether a value exists out
+     *                       of one language ({@code WhatDecidesWhetherAValueExistsHoldsBothLanguagesTest});
+     *                       what is here is what a reading already worked out, in the one shape a
+     *                       reader of a clause asks for.
+     *                       <p>Composed exactly. A conjunction stops what either of its parts stops,
+     *                       since a meet with a range covering the order is that range. A choice is
+     *                       neither — its alternatives may stop a position on both sides and leave
+     *                       all of it between them — so what a choice leaves whole is answered where
+     *                       the branches are ({@link WhatTheAlternativesLeave}) and struck off here
      */
     record Part(Adoption<FactSubject, ReadingLanguage.Values> byValues,
                 Adoption<FactSubject, ReadingLanguage.Order> byOrder,
+                Set<FactSubject> stopped,
                 Map<FactSubject, StringRestriction> aboutStrings,
                 Set<AdmissibleReading.AskedAt> asked,
                 Set<RuleShortfall> ruleShortfalls,
@@ -185,7 +203,8 @@ sealed interface StatedByClauses {
 
         /** What a clause of no connective, that no reading has a word for, took in. */
         static Part nothing() {
-            return new Part(Adoption.nothing(), Adoption.nothing(), Map.of(), Set.of(), Set.of(),
+            return new Part(Adoption.nothing(), Adoption.nothing(), Set.of(),
+                    Map.of(), Set.of(), Set.of(),
                     EndsLeftOpen.nothing(), BoundaryState.nothing(), Map.of());
         }
 
@@ -205,12 +224,53 @@ sealed interface StatedByClauses {
          */
         Part both(Part other) {
             return new Part(byValues.both(other.byValues()), byOrder.both(other.byOrder()),
+                    // And what either of them stops. A meet with a range covering the order is that
+                    // range, so a conjunction stops a position exactly where one of its parts does.
+                    stoppedIn(stopped, other.stopped()),
                     StringRestriction.over(aboutStrings, other.aboutStrings(), true),
                     askedIn(asked, other.asked()),
                     shortOf(ruleShortfalls, other.ruleShortfalls()),
                     endsLeftOpen.both(other.endsLeftOpen()),
                     boundary.both(other.boundary()),
                     reached(boundsLeftOpen, other.boundsLeftOpen()));
+        }
+
+        /** The positions either part stops, which is what a conjunction of two stops. */
+        private static Set<FactSubject> stoppedIn(Set<FactSubject> these,
+                                                  Set<FactSubject> those) {
+            if (those.isEmpty()) {
+                return these;
+            }
+            if (these.isEmpty()) {
+                return those;
+            }
+            Set<FactSubject> out = new LinkedHashSet<>(these);
+            out.addAll(those);
+            return out;
+        }
+
+        /**
+         * The positions a choice between the two stops, out of those its alternatives stop.
+         *
+         * <p>Both, and this is not the union being filtered. What the choice stops is worked out
+         * where the branches are and holds of every copy of the written choice
+         * ({@link WhatTheAlternativesLeave}); what the parts stop is what these two clauses state.
+         * A position is kept where both say so — the second because a choice stops nothing its
+         * alternatives did not, and the first because two bounds reaching opposite ends of a
+         * carrier stop the position on each side and leave all of it between them.
+         */
+        private static Set<FactSubject> left(Set<FactSubject> stopped,
+                                             WhatTheAlternativesLeave narrowed) {
+            if (stopped.isEmpty() || narrowed.stopsNothing()) {
+                return Set.of();
+            }
+            Set<FactSubject> out = new LinkedHashSet<>();
+            stopped.forEach(position -> {
+                if (narrowed.stops(position)) {
+                    out.add(position);
+                }
+            });
+            return out;
         }
 
         /** The same end reached two ways, which is what a conjunction of two parts comes to. */
@@ -247,7 +307,11 @@ sealed interface StatedByClauses {
         Part inADeadBranch() {
             // And no end of it is left open. An end nothing derived is what a value of this type
             // may still be at, and no value of this type is in this branch.
-            return new Part(byValues.inADeadBranch(), byOrder.inADeadBranch(), Map.of(),
+            // And where its clauses stopped the positions goes with them. What a branch nobody can
+            // be in leaves is nothing anybody is held to, and a reader asking whether this part
+            // holds a position down would be told about rules written where nobody is.
+            return new Part(byValues.inADeadBranch(), byOrder.inADeadBranch(),
+                    Set.of(), Map.of(),
                     Set.of(), Set.of(), EndsLeftOpen.nothing(), BoundaryState.nothing(), Map.of());
         }
 
@@ -260,7 +324,7 @@ sealed interface StatedByClauses {
          * {@code ||} the author wrote.
          */
         Part underACollapsedChoice() {
-            return new Part(byValues, byOrder, aboutStrings, asked, ruleShortfalls,
+            return new Part(byValues, byOrder, stopped, aboutStrings, asked, ruleShortfalls,
                     endsLeftOpen.underACollapsedChoice(), boundary,
                     underACollapsedChoice(boundsLeftOpen));
         }
@@ -275,8 +339,17 @@ sealed interface StatedByClauses {
             return Collections.unmodifiableMap(out);
         }
 
-        /** The same part of two branches somebody can be in, under the choice between them. */
-        Part either(ChoiceSite choice, AlternativeOpening opening, Part other) {
+        /**
+         * The same part of two branches somebody can be in, under the choice between them.
+         *
+         * <p>{@code narrowed} beside {@code opening} and not inside it. An opening is what a
+         * reading says the choice left open, made out of the width and the account; what each
+         * alternative holds down is a fact about one branch's values that the ends have their own
+         * reader for. Folded into the opening, a reader wanting the second would have to go through
+         * a value about both.
+         */
+        Part either(ChoiceSite choice, AlternativeOpening opening, WhatTheAlternativesLeave narrowed,
+                    Part other) {
             // What a rule is answerable for is said of the choice, beside it and never out of it.
             // What happened is that this choice offered an alternative nothing could read, so an
             // author is sent to the choice — filed at a leaf under the branch that was read, they
@@ -301,12 +374,18 @@ sealed interface StatedByClauses {
                     ruleShortfalls, shortfalls);
             return new Part(byValues.either(opening.byValues(), other.byValues()),
                     byOrder.either(opening.byOrder(), other.byOrder()),
+                    // And what the choice stops, which is not what its alternatives stop between
+                    // them: two bounds reaching opposite ends of a carrier stop the position on
+                    // each side and leave all of it here. What the pair leaves is worked out where
+                    // the branches are and arrives decided; what is done with it is to strike
+                    // positions off, so a choice can stop nothing its alternatives did not.
+                    left(stoppedIn(stopped, other.stopped()), narrowed),
                     StringRestriction.over(aboutStrings, other.aboutStrings(), false),
                     askedIn(asked, other.asked()), held(shortfalls),
                     // And the ends the choice leaves open, struck down by what each alternative
                     // says it came to and never added to: what a choice can show is that the branch
                     // beside an unfollowed one puts every value of a position on the order.
-                    endsLeftOpen.either(choice, byOrder, other.endsLeftOpen(), other.byOrder()),
+                    endsLeftOpen.either(choice, narrowed, other.endsLeftOpen()),
                     boundary.either(other.boundary()),
                     // And the choice an author is sent to for a line on a derived number nothing
                     // placed. Nothing is struck off here: which of them the choice still leaves
@@ -647,6 +726,12 @@ sealed interface StatedByClauses {
                     // choice offering an alternative nothing could read.
                     Adoption.at(mentions, said.adoptedAt(), values.gaveUpAt(e)),
                     Adoption.at(mentions, range.boundedAt(), ordered.gaveUpAt(e)),
+                    // And what the leaf leaves them, beside which of them it was about. The second
+                    // is a projection of the first and the two answer different questions: a
+                    // reader asking whether the clause holds a position down wants the values, and
+                    // handed the positions it would take a pair of bounds covering the order for a
+                    // rule that holds one.
+                    range.stoppedShortOfTheirOrders(ordered.carriers()),
                     // And what the leaf states about the strings at a position, where it is a rule
                     // about them. Asked of the reading that recognises one, so this is where the
                     // answer enters and the connectives below are what compose it.
@@ -764,8 +849,8 @@ sealed interface StatedByClauses {
          * the author wrote.
          */
         @Override
-        public StatedByClauses from(Core e, StatedByClauses out) {
-            return new CameFrom(e, out);
+        public StatedByClauses from(ClauseExpr shape, Core e, StatedByClauses out) {
+            return new CameFrom(e, shape.at(), out);
         }
 
         /**
@@ -914,14 +999,16 @@ sealed interface StatedByClauses {
          * <p>What the fates come to is the width's to read: an occurrence one branch of which
          * admits nothing is no choice there, and what that leaves the width resting on is stated
          * where the width is ({@link Settlement.WidthDependency#of}).
+         *
+         * <p>And what each alternative holds down beside it ({@link WhatTheAlternativesLeave}), which is
+         * the same two branches read once more and is nobody's component: made where a reader of it
+         * happened to be, it would be a second answer about a choice this one has already read.
          */
         private static Settlement.OfAChoice outcome(StatedTogether.Said one,
                                                     Settlement.Sided here,
                                                     StatedTogether.Said other,
                                                     Settlement.Sided there) {
-            return new Settlement.OfAChoice(here, there,
-                    Settlement.WidthDependency.of(here.emptiness(), one.confinement(),
-                            there.emptiness(), other.confinement()));
+            return Settlement.OfAChoice.of(here, one, there, other);
         }
 
         /**
@@ -1188,17 +1275,18 @@ sealed interface StatedByClauses {
             return out;
         }
 
-        private Map<Core, PartAccount> partsOf(Taken took, Settlement made,
-                                               Set<OpenEnd> stillOpen) {
+        private Map<ClauseExpr.Occurrence, PartAccount> partsOf(Taken took, Settlement made,
+                                                               Set<OpenEnd> stillOpen) {
             Set<FactSubject> unbuilt = made.made().unbuilt();
             // And what could not be built is given up on here too. What a leaf said it adopted was
             // said before any machine was made, so a position whose answer the whole reading did
             // not work out is one the account still calls taken in — while the values beside it
             // say it holds every value because nobody worked it out.
-            Map<Core, PartAccount> parts = new IdentityHashMap<>();
+            Map<ClauseExpr.Occurrence, PartAccount> parts = new LinkedHashMap<>();
             took.parts().forEach((each, part) -> parts.put(each, new PartAccount(
                     part.byValues().unbuiltAt(unbuilt),
                     part.byOrder().unbuiltAt(unbuilt),
+                    part.stopped(),
                     // What the part's own reading decided, and the machines it asked for that were
                     // refused while the positions were worked out. The second is routed by what the
                     // refusal says — the pattern and the position it was being built for — to the
@@ -1225,7 +1313,7 @@ sealed interface StatedByClauses {
                                 Map<ChoiceId, Settlement.OfAChoice> outcomes) {
             return switch (read) {
                 case Said it -> new Taken(it.took(), Map.of(), Set.of());
-                case CameFrom it -> accounted(it.of(), outcomes).alsoAt(it.node());
+                case CameFrom it -> accounted(it.of(), outcomes).alsoAt(it.at());
                 case Both it -> accounted(it.left(), outcomes)
                         .both(accounted(it.right(), outcomes));
                 case Either it -> {
@@ -1264,7 +1352,7 @@ sealed interface StatedByClauses {
                     yield left.either(
                             new ChoiceSite(it.id(), it.writtenAt().pos()),
                             opens(it.id(), fate.width(), left.took(), right.took()),
-                            right);
+                            fate.narrowed(), right);
                 }
             };
         }
@@ -1278,12 +1366,12 @@ sealed interface StatedByClauses {
      * nothing is written under two branches of a tree — so putting two of these together is a union
      * and never a merge, which is what the tree keeping the author's shape buys.
      */
-    record Taken(Part took, Map<Core, Part> parts, Set<FactSubject> opened) {
+    record Taken(Part took, Map<ClauseExpr.Occurrence, Part> parts, Set<FactSubject> opened) {
 
-        /** The same, with what a written part came to filed under it. */
-        Taken alsoAt(Core node) {
-            Map<Core, Part> out = new IdentityHashMap<>(parts);
-            out.put(node, took);
+        /** The same, with what a written part came to filed under where in the clause it is. */
+        Taken alsoAt(ClauseExpr.Occurrence at) {
+            Map<ClauseExpr.Occurrence, Part> out = new LinkedHashMap<>(parts);
+            out.put(at, took);
             return new Taken(took, out, opened);
         }
 
@@ -1303,7 +1391,7 @@ sealed interface StatedByClauses {
 
         /** Every part of this, answered again — for what a settlement could not build in it. */
         Taken mapped(UnaryOperator<Part> answer) {
-            Map<Core, Part> out = new IdentityHashMap<>();
+            Map<ClauseExpr.Occurrence, Part> out = new LinkedHashMap<>();
             parts.forEach((each, part) -> out.put(each, answer.apply(part)));
             return new Taken(answer.apply(took), out, opened);
         }
@@ -1372,6 +1460,9 @@ sealed interface StatedByClauses {
             return mapped(part -> new Part(
                     part.byValues().unbuiltAt(known.unbuilt()),
                     part.byOrder().unbuiltAt(known.unbuilt()),
+                    // Where its ends stopped the positions is what it is whether or not a machine
+                    // beside them was built: an end is read off the clause and waits on nothing.
+                    part.stopped(),
                     part.aboutStrings(), part.asked(),
                     // What a machine was refused for, said as what a rule is answerable for, at
                     // the clause that asked for it rather than at the place it was built for. What
@@ -1398,17 +1489,19 @@ sealed interface StatedByClauses {
          * parts. Each of them is written under one alternative and is answered by what happened to
          * that alternative, which is nothing — both stand.
          */
-        Taken either(ChoiceSite choice, AlternativeOpening opening, Taken other) {
-            return new Taken(took.either(choice, opening, other.took()),
+        Taken either(ChoiceSite choice, AlternativeOpening opening, WhatTheAlternativesLeave narrowed,
+                     Taken other) {
+            return new Taken(took.either(choice, opening, narrowed, other.took()),
                     joined(parts, other.parts()),
                     opened(opened(opened, other.opened()), opening.byValues().positions()));
         }
 
-        private static Map<Core, Part> joined(Map<Core, Part> these, Map<Core, Part> those) {
+        private static Map<ClauseExpr.Occurrence, Part> joined(
+                Map<ClauseExpr.Occurrence, Part> these, Map<ClauseExpr.Occurrence, Part> those) {
             if (those.isEmpty()) {
                 return these;
             }
-            Map<Core, Part> out = new IdentityHashMap<>(these);
+            Map<ClauseExpr.Occurrence, Part> out = new LinkedHashMap<>(these);
             out.putAll(those);
             return out;
         }
@@ -1502,17 +1595,23 @@ sealed interface StatedByClauses {
      */
     final class Asked<K> {
 
-        private final Map<K, Core> byClause = new LinkedHashMap<>();
-        private final Map<K, List<Core>> byPart = new LinkedHashMap<>();
+        private final Map<K, List<ClauseExpr.Occurrence>> byPart = new LinkedHashMap<>();
         private final Map<K, StatedByClauses> trees = new LinkedHashMap<>();
 
         /** One clause read from {@code at} in the world {@code view} describes
          *  ({@link ClauseView}), with the parts of it noted in the order the reading reached
          *  them. */
         StatedByClauses read(Reading reader, Denotations at, K key, Core clause, ClauseView view) {
-            List<Core> parts = new ArrayList<>();
+            // Where in the clause each part is, in the order the reading reached them, and once
+            // however many nodes one of them was spelled as: a part written `!(x)` and read at the
+            // denial and at what it denies is one part of the clause, in one place.
+            List<ClauseExpr.Occurrence> parts = new ArrayList<>();
             StatedByClauses one = reader.read(clause, true, at, reader.scope(),
-                    (_, part, _) -> parts.add(part), view);
+                    (shape, _, _) -> {
+                        if (parts.isEmpty() || !parts.getLast().equals(shape.at())) {
+                            parts.add(shape.at());
+                        }
+                    }, view);
             // An assertion because it is about this compiler and not about any model, and here
             // rather than in one test because every clause a corpus holds is read through it.
             //
@@ -1522,7 +1621,6 @@ sealed interface StatedByClauses {
             // to a shape it no longer states.
             assert mirrors(clause, one, view)
                     : "the reading of a clause is not the tree its author wrote it as";
-            byClause.put(key, clause);
             byPart.put(key, parts);
             trees.put(key, one);
             return one;
@@ -1560,7 +1658,7 @@ sealed interface StatedByClauses {
             // written elsewhere shows dead takes what it could not read with it, and which branches
             // those are is what the settlement above answers.
             Set<FactSubject> opened = new LinkedHashSet<>();
-            Map<Core, PartAccount> said = new IdentityHashMap<>();
+            Map<K, Map<ClauseExpr.Occurrence, PartAccount>> said = new LinkedHashMap<>();
             Map<K, Set<FactSubject>> narrowed = new LinkedHashMap<>();
             Adoption<FactSubject, ReadingLanguage.Values> byValues = Adoption.nothing();
             Adoption<FactSubject, ReadingLanguage.Order> byOrder = Adoption.nothing();
@@ -1581,9 +1679,9 @@ sealed interface StatedByClauses {
                 // with a narrowing it did not do.
                 Account mine = reader.accountOf(each.getValue(),
                         projected.get(each.getKey()), made, by);
-                said.putAll(mine.parts());
+                said.put(each.getKey(), mine.parts());
                 opened.addAll(mine.opened());
-                PartAccount clause = mine.parts().get(byClause.get(each.getKey()));
+                PartAccount clause = mine.parts().get(ClauseExpr.Occurrence.ofTheClause());
                 narrowed.put(each.getKey(), mine.narrowed());
                 byValues = byValues.both(clause.byValues());
                 byOrder = byOrder.both(clause.byOrder());
@@ -1607,7 +1705,7 @@ sealed interface StatedByClauses {
             // on its own, which the answer had no use for — charged to it, what a position is read
             // to admit would turn on what a reader downstream was promised, and the assertion above
             // would be true of the accounts and false of the reading as a whole.
-            Map<Core, ReadByClauses.OfAPart> published =
+            Map<K, Map<ClauseExpr.Occurrence, ReadByClauses.OfAPart>> published =
                     published(said, handingOn, answered.values());
             // And the answer's allowance is where it was. What a position admits is answered under
             // the allowance for it and nothing else reaches that allowance, so what this
@@ -1618,16 +1716,17 @@ sealed interface StatedByClauses {
                     : "handing the rules of " + made.made().values().subjects()
                             + " on spent the allowance for what they admit";
             Map<K, ReadByClauses.OfARule> clauses = new LinkedHashMap<>();
-            narrowed.forEach((key, these) -> clauses.put(key,
-                    new ReadByClauses.OfARule(these, published.get(byClause.get(key)))));
-            ReadByClauses read = new ReadByClauses(answered, byValues, byOrder, published);
-            Map<K, List<Map.Entry<Core, ReadByClauses.OfAPart>>> parts =
+            narrowed.forEach((key, these) -> clauses.put(key, new ReadByClauses.OfARule(these,
+                    published.get(key).get(ClauseExpr.Occurrence.ofTheClause()))));
+            ReadByClauses read = new ReadByClauses(answered, byValues, byOrder);
+            Map<K, List<Map.Entry<ClauseExpr.Occurrence, ReadByClauses.OfAPart>>> parts =
                     new LinkedHashMap<>();
             byPart.forEach((key, these) -> {
-                List<Map.Entry<Core, ReadByClauses.OfAPart>> out =
+                Map<ClauseExpr.Occurrence, ReadByClauses.OfAPart> mine = published.get(key);
+                List<Map.Entry<ClauseExpr.Occurrence, ReadByClauses.OfAPart>> out =
                         new ArrayList<>();
                 these.forEach(each -> {
-                    ReadByClauses.OfAPart one = published.get(each);
+                    ReadByClauses.OfAPart one = mine == null ? null : mine.get(each);
                     if (one != null) {
                         out.add(Map.entry(each, one));
                     }
@@ -1674,15 +1773,18 @@ sealed interface StatedByClauses {
          *
          * @param answered what the positions came to, asked whether each of them is exact
          */
-        private Map<Core, ReadByClauses.OfAPart> published(
-                Map<Core, PartAccount> said, Allowance<FactSubject> handingOn,
+        private Map<K, Map<ClauseExpr.Occurrence, ReadByClauses.OfAPart>> published(
+                Map<K, Map<ClauseExpr.Occurrence, PartAccount>> said,
+                Allowance<FactSubject> handingOn,
                 AdmissibleValues<FactSubject> answered) {
             Map<FactSubject, Set<AdmittedPlan>> asked = new LinkedHashMap<>();
-            said.values().forEach(part -> part.aboutStrings().forEach((position, stated) -> {
-                if (stated instanceof StringRestriction.Admitting it) {
-                    asked.computeIfAbsent(position, _ -> new LinkedHashSet<>()).add(it.plan());
-                }
-            }));
+            said.values().forEach(mine -> mine.values().forEach(part ->
+                    part.aboutStrings().forEach((position, stated) -> {
+                        if (stated instanceof StringRestriction.Admitting it) {
+                            asked.computeIfAbsent(position, _ -> new LinkedHashSet<>())
+                                    .add(it.plan());
+                        }
+                    })));
             Map<FactSubject, Realizations> answers = new LinkedHashMap<>();
             // Built for the block the position is on, which is what the machine is being made for:
             // positions the rules hold as one value have one answer between them, and one purse.
@@ -1690,13 +1792,18 @@ sealed interface StatedByClauses {
                     answered.speaksFor(position)
                             ? handingOn.realizeAll(answered.blockOf(position), plans)
                             : new Realizations.NotBuilt()));
-            Map<Core, ReadByClauses.OfAPart> out = new IdentityHashMap<>();
-            said.forEach((each, part) -> out.put(each, new ReadByClauses.OfAPart(
-                    part.byValues(), part.byOrder(), part.aboutARule(),
-                    admitted(part.aboutStrings(), answers), part.endsLeftOpen(),
-                    part.boundsLeftOpen())));
+            Map<K, Map<ClauseExpr.Occurrence, ReadByClauses.OfAPart>> out = new LinkedHashMap<>();
+            said.forEach((key, mine) -> {
+                Map<ClauseExpr.Occurrence, ReadByClauses.OfAPart> here = new LinkedHashMap<>();
+                mine.forEach((each, part) -> here.put(each, new ReadByClauses.OfAPart(
+                        part.byValues(), part.byOrder(), part.stopped(), part.aboutARule(),
+                        admitted(part.aboutStrings(), answers), part.endsLeftOpen(),
+                        part.boundsLeftOpen())));
+                out.put(key, here);
+            });
             return out;
         }
+
 
         /**
          * What one part's rules about the strings came to, out of the answers the positions gave.
@@ -1735,7 +1842,8 @@ sealed interface StatedByClauses {
      * nothing, because the work was done once and what is here is what it came to.
      */
     record Answered<K>(ReadByClauses whole, Map<K, ReadByClauses.OfARule> perClause,
-                       Map<K, List<Map.Entry<Core, ReadByClauses.OfAPart>>> perPart) {}
+                       Map<K, List<Map.Entry<ClauseExpr.Occurrence, ReadByClauses.OfAPart>>>
+                               perPart) {}
 
     /**
      * What one rule's own tree came to: what it leaves narrowed, what each of its parts took in,
@@ -1749,7 +1857,7 @@ sealed interface StatedByClauses {
      *               walked ({@code AdmissibleValues.alsoOpenedAt}). The account of the rule hears
      *               the same decision as a shortfall at the choice
      */
-    record Account(Set<FactSubject> narrowed, Map<Core, PartAccount> parts,
+    record Account(Set<FactSubject> narrowed, Map<ClauseExpr.Occurrence, PartAccount> parts,
                    Set<FactSubject> opened) {}
 
     /**
@@ -1763,6 +1871,7 @@ sealed interface StatedByClauses {
      */
     record PartAccount(Adoption<FactSubject, ReadingLanguage.Values> byValues,
                        Adoption<FactSubject, ReadingLanguage.Order> byOrder,
+                       Set<FactSubject> stopped,
                        Set<RuleShortfall> aboutARule,
                        Map<FactSubject, StringRestriction> aboutStrings,
                        EndsLeftOpen endsLeftOpen,

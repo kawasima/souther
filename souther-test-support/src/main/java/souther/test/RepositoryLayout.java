@@ -12,9 +12,12 @@ import javax.xml.parsers.ParserConfigurationException;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Stream;
 
 /**
@@ -116,6 +119,100 @@ public final class RepositoryLayout {
     }
 
     /**
+     * What a build calls the directory it writes into.
+     *
+     * <p>Where a build puts what it made is a fact about how this repository is laid out, and it
+     * belongs beside the rest of them. Written out wherever it is wanted, it is a fact each writer
+     * has taken on: a check that says it is one that would go on looking in the old place, and a
+     * walk that says it in order to leave it out is one more copy to find when it moves.
+     *
+     * <p>Kept here rather than answered. A caller handed this can build the path to a build's
+     * output, which is the thing not writing it down was for, so what is answered is whether
+     * something is under one ({@link #isUnderBuildOutput}) or names one
+     * ({@link #namesBuildOutput}), and never the name itself.
+     */
+    private static String whereABuildWrites() {
+        return "target";
+    }
+
+    /**
+     * Whether {@code said} names the directory a build writes into, at any step of a path.
+     *
+     * <p>For a rule about what is written down rather than about what is on disk: a check that
+     * works out where compiled output is has said this somewhere, and saying it is what such a
+     * check has in common however it then goes looking.
+     */
+    public static boolean namesBuildOutput(String said) {
+        for (String step : said.split("[/\\\\]")) {
+            if (step.equals(whereABuildWrites())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * What {@code module} compiled its {@code phase} sources to, or nothing where it built none.
+     *
+     * <p>A reading and not a place. What a caller does with a compiled output is ask what it holds,
+     * and what it would do with the path is walk it — which reads once more the files the reading
+     * exists to read once. So where a module's output is stays worked out here, beside the rest of
+     * what this knows about how the repository is laid out.
+     *
+     * <p>Nothing where the module built none, because that is two different things to two callers.
+     * A check about every module is entitled to treat a module that has sources and no output as a
+     * hole; a check about whichever module holds a name is entitled to look in the next one.
+     *
+     * @param phase {@code main} or {@code test}, as {@link #javaTreeOf} takes it
+     */
+    public Optional<CompiledClasses> compiledOutputOf(Path module, String phase) {
+        Path at = module.resolve(whereABuildWrites()).resolve(switch (phase) {
+            case "main" -> "classes";
+            case "test" -> "test-classes";
+            default -> throw new IllegalArgumentException(
+                    phase + " is not a phase a module compiles: main and test are");
+        });
+        return isThere(at) ? Optional.of(CompiledClasses.at(at)) : Optional.empty();
+    }
+
+    /**
+     * Whether {@code at} is a directory, where not being able to tell is not the same as no.
+     *
+     * <p>Nothing where a module built none is a fact a caller acts on — a check reads the next
+     * output, or passes over a module with no tests of its own. That this process could not look is
+     * not that fact, and answering both with the same no hands a caller the one it asked for
+     * whichever it met. What is not there is an answer; anything else that stops the look is a
+     * failure and says so.
+     */
+    private static boolean isThere(Path at) {
+        try {
+            return Files.readAttributes(at, BasicFileAttributes.class).isDirectory();
+        } catch (NoSuchFileException e) {
+            return false;
+        } catch (IOException e) {
+            throw new UncheckedIOException(at + " cannot be looked at, so whether a build wrote"
+                    + " anything there is a question this cannot answer", e);
+        }
+    }
+
+    /**
+     * Whether {@code file} is something a build wrote rather than something somebody did.
+     *
+     * <p>Asked of a walk that means to read what the repository holds: what a build wrote is a copy
+     * of something already counted, or output derived from it, and a walk that took both would
+     * report the same source twice and call the second one somebody's work.
+     */
+    public boolean isUnderBuildOutput(Path file) {
+        Path absolute = file.toAbsolutePath().normalize();
+        for (Path module : modules) {
+            if (absolute.startsWith(module.resolve(whereABuildWrites()))) {
+                return true;
+            }
+        }
+        return absolute.startsWith(root.resolve(whereABuildWrites()));
+    }
+
+    /**
      * The {@code src} of every module that has one.
      *
      * <p>A source tree and not a source root: {@code src/main/java} and {@code src/test/resources}
@@ -161,10 +258,12 @@ public final class RepositoryLayout {
         return treeOf(module, phase, "java");
     }
 
-    /** Where a module keeps one kind of source, or null where it keeps none of that kind. */
+    /** Where a module keeps one kind of source, or null where it keeps none of that kind. Beside
+     *  {@link #isThere} and for its reason: a tree this cannot look at is not a tree that is not
+     *  there. */
     private static Path treeOf(Path module, String phase, String kind) {
         Path tree = module.resolve("src").resolve(phase).resolve(kind);
-        return Files.isDirectory(tree) ? tree : null;
+        return isThere(tree) ? tree : null;
     }
 
     /**

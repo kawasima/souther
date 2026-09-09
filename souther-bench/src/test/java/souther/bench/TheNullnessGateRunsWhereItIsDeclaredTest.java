@@ -6,9 +6,6 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
 import javax.xml.parsers.DocumentBuilderFactory;
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassModel;
 import java.lang.classfile.attribute.RuntimeInvisibleAnnotationsAttribute;
 import java.lang.classfile.attribute.RuntimeVisibleAnnotationsAttribute;
@@ -24,7 +21,6 @@ import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * The modules an ordinary build runs NullAway over are the modules that declare {@code @NullMarked}.
@@ -99,24 +95,11 @@ class TheNullnessGateRunsWhereItIsDeclaredTest {
         if (!Reactor.hasMainSources(module)) {
             return false;   // nothing of its own to annotate
         }
-        Path classes = module.resolve("target/classes");
-        assertTrue(Files.isDirectory(classes),
-                Reactor.name(module) + " has no built classes: this reads what has been built, so a module that has"
-                        + " not been is a hole rather than a pass");
-        try (Stream<Path> walk = Files.walk(classes)) {
-            return walk.filter(p -> p.toString().endsWith(".class")).anyMatch(TheNullnessGateRunsWhereItIsDeclaredTest::carriesNullMarked);
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
+        return Reactor.mainOutputOf(module).all().stream()
+                .anyMatch(TheNullnessGateRunsWhereItIsDeclaredTest::carriesNullMarked);
     }
 
-    private static boolean carriesNullMarked(Path classFile) {
-        ClassModel model;
-        try {
-            model = ClassFile.of().parse(Files.readAllBytes(classFile));
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
+    private static boolean carriesNullMarked(ClassModel model) {
         // Both retentions, because which one JSpecify uses is JSpecify's to change.
         Stream<java.lang.classfile.Annotation> annotations = Stream.concat(
                 model.findAttribute(java.lang.classfile.Attributes.runtimeVisibleAnnotations())

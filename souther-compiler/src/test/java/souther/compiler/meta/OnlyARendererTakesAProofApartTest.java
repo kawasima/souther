@@ -1,22 +1,18 @@
 package souther.compiler.meta;
 
 import org.junit.jupiter.api.Test;
+import souther.compiler.WhatWasCompiled;
 
-import java.io.IOException;
-import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassModel;
 import java.lang.classfile.CodeModel;
 import java.lang.classfile.instruction.InvokeDynamicInstruction;
 import java.lang.classfile.instruction.InvokeInstruction;
 import java.lang.classfile.instruction.NewObjectInstruction;
 import java.lang.constant.DirectMethodHandleDesc;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -84,7 +80,7 @@ class OnlyARendererTakesAProofApartTest {
     private record Use(String from, String owner, String member, boolean isStatic) {}
 
     @Test
-    void onlyItsOwnWordsAskAPayloadWhatItSays() throws IOException {
+    void onlyItsOwnWordsAskAPayloadWhatItSays() {
         Map<String, List<String>> asked = new LinkedHashMap<>();
         for (Use use : uses()) {
             if (WRITES_THE_WORDS_OF.containsKey(use.owner()) && use.member().equals("said")) {
@@ -99,10 +95,9 @@ class OnlyARendererTakesAProofApartTest {
     }
 
     @Test
-    void andOnlyThoseWordsAreWritten() throws IOException {
+    void andOnlyThoseWordsAreWritten() {
         Map<String, List<String>> implementors = new LinkedHashMap<>();
-        for (Path each : classes()) {
-            ClassModel model = ClassFile.of().parse(Files.readAllBytes(each));
+        for (ClassModel model : WhatWasCompiled.compiled().all()) {
             for (var face : model.interfaces()) {
                 String name = face.asInternalName().replace('/', '.');
                 WRITES_THE_WORDS_OF.forEach((payload, words) -> {
@@ -121,7 +116,7 @@ class OnlyARendererTakesAProofApartTest {
     }
 
     @Test
-    void andNothingButTheReadingMakesAnAnswer() throws IOException {
+    void andNothingButTheReadingMakesAnAnswer() {
         List<String> outside = new ArrayList<>();
         List<Use> made = new ArrayList<>();
         boolean sawAConstructor = false;
@@ -170,10 +165,9 @@ class OnlyARendererTakesAProofApartTest {
     }
 
     /** Every call and construction the compiled classes hold, the answers' own aside. */
-    private static List<Use> uses() throws IOException {
+    private static List<Use> uses() {
         List<Use> found = new ArrayList<>();
-        for (Path each : classes()) {
-            ClassModel model = ClassFile.of().parse(Files.readAllBytes(each));
+        for (ClassModel model : WhatWasCompiled.compiled().all()) {
             String from = model.thisClass().asInternalName().replace('/', '.');
             if (from.startsWith(REACH)) {
                 continue;   // what the answers do among themselves is their own business
@@ -210,12 +204,4 @@ class OnlyARendererTakesAProofApartTest {
         return found;
     }
 
-    /** The compiled main classes of this module. Read from the build rather than from the sources,
-     *  because what a call is, is what the compiler made of it. */
-    private static List<Path> classes() throws IOException {
-        Path root = Path.of("target", "classes").toAbsolutePath();
-        try (Stream<Path> walk = Files.walk(root)) {
-            return walk.filter(each -> each.toString().endsWith(".class")).toList();
-        }
-    }
 }

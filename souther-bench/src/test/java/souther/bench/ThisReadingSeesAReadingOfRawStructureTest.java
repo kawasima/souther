@@ -4,14 +4,12 @@ import org.junit.jupiter.api.Test;
 
 import souther.bench.PositionReadings.Authority;
 import souther.bench.PositionReadings.Traversal;
+import souther.test.CompiledClasses;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.lang.classfile.ClassModel;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -46,7 +44,7 @@ class ThisReadingSeesAReadingOfRawStructureTest {
             new Authority("what a name comes to on the way",
                     "souther.bench.readings.Transparent", Traversal.TRANSPARENT));
 
-    private static PositionReadings.Over model() throws IOException {
+    private static PositionReadings.Over model() {
         return new PositionReadings.Over(written(), STAGE,
                 "souther.bench.readings.Written$Declared", "souther.bench.readings.Written$Names#declaredNode",
                 "souther.bench.readings.Written$Position$Built",
@@ -56,23 +54,17 @@ class ThisReadingSeesAReadingOfRawStructureTest {
     /**
      * The compiled model, which is what this is a reading of.
      *
-     * <p>Found from the repository, the way everything else here finds what a build produced. Read
-     * from wherever this happens to have been started instead, the model would be missing whenever
-     * that was somewhere else — and a walk over no classes finds no reading and says nothing.
+     * <p>Found through the output this test was compiled into, the way everything else here finds
+     * what a build produced. Read from wherever this happens to have been started instead, the
+     * model would be missing whenever that was somewhere else — and a walk over no classes finds no
+     * reading and says nothing, which is why a package holding none is refused where it is read.
      */
-    private static List<Path> written() throws IOException {
-        Path built = Reactor.root().resolve("souther-bench/target/test-classes/souther/bench/readings");
-        assertTrue(Files.isDirectory(built),
-                "the model was not compiled, so this would assert nothing: " + built);
-        try (Stream<Path> walk = Files.walk(built)) {
-            List<Path> out = new ArrayList<>(
-                    walk.filter(each -> each.toString().endsWith(".class")).toList());
-            assertFalse(out.isEmpty(), "the model compiled to no classes");
-            return out;
-        }
+    private static List<ClassModel> written() {
+        return CompiledClasses.ofModule(ThisReadingSeesAReadingOfRawStructureTest.class)
+                .inPackage("souther.bench.readings");
     }
 
-    private static List<String> bypassing() throws IOException {
+    private static List<String> bypassing() {
         return PositionReadings.of(model()).named();
     }
 
@@ -84,7 +76,7 @@ class ThisReadingSeesAReadingOfRawStructureTest {
      * the whole of what this is about.
      */
     @Test
-    void everyReaderThatReachesRawStructureIsSeenAndNoOtherIs() throws IOException {
+    void everyReaderThatReachesRawStructureIsSeenAndNoOtherIs() {
         assertEquals(List.of(
                         // Its own code reaches a declaration, and its own code takes a compound
                         // apart. The two plainest readings there are.
@@ -119,7 +111,7 @@ class ThisReadingSeesAReadingOfRawStructureTest {
      * and the walk stops at a boundary that was never about what it is standing in front of.
      */
     @Test
-    void namingTheOperationCatchesTheQuestionBesideItAndNamingTheClassDoesNot() throws IOException {
+    void namingTheOperationCatchesTheQuestionBesideItAndNamingTheClassDoesNot() {
         assertFalse(bypassing().contains("asksTheQuestionBesideIt"),
                 "named by its class, the entry about one question answers for the other too");
 
@@ -147,7 +139,7 @@ class ThisReadingSeesAReadingOfRawStructureTest {
      * nothing wrong — which is how a rule stops being read.
      */
     @Test
-    void touchingTheModelWithoutReadingItIsNotOne() throws IOException {
+    void touchingTheModelWithoutReadingItIsNotOne() {
         List<String> seen = bypassing();
         for (String each : List.of("asksAnAuthority", "readsANameOffALeaf", "makesACompound",
                 "readsAComponentHoldingNoPosition")) {
@@ -165,7 +157,7 @@ class ThisReadingSeesAReadingOfRawStructureTest {
      * and the model says so. What is met is recorded; what answers is the table's to say.
      */
     @Test
-    void everyBoundaryOfTheModelIsMetAndAHelperIsNotOne() throws IOException {
+    void everyBoundaryOfTheModelIsMetAndAHelperIsNotOne() {
         PositionReadings.Reading read = PositionReadings.of(model());
 
         assertEquals(List.of("souther.bench.readings.Opaque",
@@ -184,7 +176,7 @@ class ThisReadingSeesAReadingOfRawStructureTest {
      * helper an owner. What is on the way is walked through; what answers is met at the end of it.
      */
     @Test
-    void aHelperBetweenTheStageAndAnAuthorityChangesNothing() throws IOException {
+    void aHelperBetweenTheStageAndAnAuthorityChangesNothing() {
         PositionReadings.Reading read = PositionReadings.of(model());
 
         assertFalse(read.named().contains("asksAnAuthorityThroughAHelper"),
@@ -200,7 +192,7 @@ class ThisReadingSeesAReadingOfRawStructureTest {
      * to say so. Named by an operation nothing is written under, this stands nowhere.
      */
     @Test
-    void anAuthorityStandingNowhereIsNotMet() throws IOException {
+    void anAuthorityStandingNowhereIsNotMet() {
         assertFalse(alsoNaming("souther.bench.readings.Opaque#spellingAsItWasCalled")
                         .contains("souther.bench.readings.Opaque#spellingAsItWasCalled"),
                 "nothing of that name is there to be met");
@@ -216,7 +208,7 @@ class ThisReadingSeesAReadingOfRawStructureTest {
      * being made.
      */
     @Test
-    void anAuthorityOnAWayTheStageIsNotOnIsNotStanding() throws IOException {
+    void anAuthorityOnAWayTheStageIsNotOnIsNotStanding() {
         assertFalse(alsoNaming("souther.bench.readings.Elsewhere").contains(
                         "souther.bench.readings.Elsewhere"),
                 "it answers for a reader of its own, and the stage reaches neither");
@@ -226,7 +218,7 @@ class ThisReadingSeesAReadingOfRawStructureTest {
     }
 
     /** What the walk records as standing, with one more entry named. */
-    private static Set<String> alsoNaming(String owns) throws IOException {
+    private static Set<String> alsoNaming(String owns) {
         PositionReadings.Over over = model();
         List<Authority> withOneMore = new ArrayList<>(over.authorities());
         withOneMore.add(new Authority("a question nothing on a way from the stage asks", owns,
@@ -244,7 +236,7 @@ class ThisReadingSeesAReadingOfRawStructureTest {
      * far as this refuses, which is why the refusal is asked of a model that has one.
      */
     @Test
-    void aCaseBuiltOutOfTypesThatIsNotARecordIsRefused() throws IOException {
+    void aCaseBuiltOutOfTypesThatIsNotARecordIsRefused() {
         assertEquals(List.of("souther.bench.readings.Written$Position$Built$Awkward"),
                 PositionReadings.of(model()).madeOfNonRecords(),
                 "the arm of the model written as a class rather than a record: what it holds is"
@@ -261,7 +253,7 @@ class ThisReadingSeesAReadingOfRawStructureTest {
      * compiler.
      */
     @Test
-    void anOpaqueBoundaryIsWhatStopsTheWalk() throws IOException {
+    void anOpaqueBoundaryIsWhatStopsTheWalk() {
         assertFalse(bypassing().contains("asksAnAuthority"),
                 "the authority answers, so its caller reaches nothing raw");
 

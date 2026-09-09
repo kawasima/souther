@@ -195,7 +195,8 @@ final class Clauses {
                 // very reading. Read apart instead, a conjunct would be read without the conjunct
                 // beside it, and a branch one of them rules out would stand.
                 stated.add(new Stated(clause, one,
-                        inv.shape().onto(one, new RuleRef.Invariant(clause))));
+                        inv.shape().onto(ClauseExpr.of(one, true),
+                                new RuleRef.Invariant(clause))));
             } else {
                 lost.add(new RuleRef.Invariant(clause));
             }
@@ -264,12 +265,17 @@ final class Clauses {
      * worked out here: which part of a clause a tree is is not something a reader of the tree can
      * answer, and a reader that counted them would be a second walk deciding which parts there are.
      */
-    record StatedPart(PartId<RuleRef.Invariant> id, Core expr) {
+    record StatedPart(PartId<RuleRef.Invariant> id, ClauseExpr of) {
 
         public StatedPart {
-            if (id == null || expr == null) {
+            if (id == null || of == null) {
                 throw new IllegalArgumentException("a part read here is some rule's part and a form");
             }
+        }
+
+        /** The part as the tree holds it, which is the outermost node its shape was spelled as. */
+        Core expr() {
+            return of.written();
         }
     }
 

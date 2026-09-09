@@ -1,11 +1,7 @@
 package souther.bench;
 
-import java.io.IOException;
 import java.lang.classfile.Attributes;
-import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassModel;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -97,7 +93,7 @@ final class PositionReadings {
      *                    made of them is told from one that is not
      * @param authorities what answers for a reading, and what a walk does at each
      */
-    record Over(List<Path> classes, String stage, String declaration, String lookup,
+    record Over(List<ClassModel> classes, String stage, String declaration, String lookup,
                 String compound, String held, List<Authority> authorities) {}
 
     /**
@@ -133,10 +129,9 @@ final class PositionReadings {
         }
     }
 
-    static Reading of(Over over) throws IOException {
+    static Reading of(Over over) {
         Map<String, ClassModel> models = new LinkedHashMap<>();
-        for (Path each : over.classes()) {
-            ClassModel model = ClassFile.of().parse(Files.readAllBytes(each));
+        for (ClassModel model : over.classes()) {
             models.put(model.thisClass().asInternalName().replace('/', '.'), model);
         }
         Set<String> declarations = descendantsOf(models, over.declaration());

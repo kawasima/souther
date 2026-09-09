@@ -1,23 +1,17 @@
 package souther.compiler.coverage;
 
 import org.junit.jupiter.api.Test;
+import souther.compiler.WhatWasCompiled;
 
-import java.io.IOException;
-import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassModel;
 import java.lang.classfile.MethodModel;
 import java.lang.classfile.instruction.InvokeInstruction;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 
 /**
  * Where a run through a comparison is written down is handed out by one place.
@@ -107,7 +101,7 @@ class WhoNamesAComparisonAndWhoAddressesOneTest {
                             + " numbered it"));
 
     @Test
-    void onlyACheckPairsAModuleWithItsBodies() throws IOException {
+    void onlyACheckPairsAModuleWithItsBodies() {
         assertEquals(declared(MAY_PAIR), callsToConstructor(BODIES),
                 "a module's name beside another module's trees has the catalog issue names true of"
                         + " nothing, and no later check can refuse them. What may pair them, and"
@@ -115,21 +109,21 @@ class WhoNamesAComparisonAndWhoAddressesOneTest {
     }
 
     @Test
-    void onlyTheWalkPutsACataloguedComparisonTogether() throws IOException {
+    void onlyTheWalkPutsACataloguedComparisonTogether() {
         assertEquals(declared(MAY_CATALOGUE), callsToConstructor(CATALOGUED),
                 "a name, a recognition and a place are true together or not at all. What may put"
                         + " them together, and why: " + why(MAY_CATALOGUE));
     }
 
     @Test
-    void onlyOnePlaceSaysWhichComparisonARuleIsReadOff() throws IOException {
+    void onlyOnePlaceSaysWhichComparisonARuleIsReadOff() {
         assertEquals(declared(MAY_READ), callsToConstructor(READ),
                 "an occurrence of one plan beside the emission site of another is a rule pointing"
                         + " at two places. What may pair them, and why: " + why(MAY_READ));
     }
 
     @Test
-    void onlyTheNumberingAddressesAComparisonOfARun() throws IOException {
+    void onlyTheNumberingAddressesAComparisonOfARun() {
         assertEquals(declared(MAY_ADDRESS), callsToConstructor(SITE),
                 "an address made anywhere else is a place no run was recorded at. What may make"
                         + " one, and why: " + why(MAY_ADDRESS));
@@ -143,7 +137,7 @@ class WhoNamesAComparisonAndWhoAddressesOneTest {
      * paired with a numbering that never handed them out.
      */
     @Test
-    void onlyTheNumberingAddressesAnArmOfARun() throws IOException {
+    void onlyTheNumberingAddressesAnArmOfARun() {
         assertEquals(declared(MAY_ADDRESS_AN_ARM), callsToConstructor(ARM),
                 "an address made anywhere else is a place no run was recorded at. What may make"
                         + " one, and why: " + why(MAY_ADDRESS_AN_ARM));
@@ -162,12 +156,9 @@ class WhoNamesAComparisonAndWhoAddressesOneTest {
     }
 
     /** How many times each method of the compiler makes one of {@code owner}. */
-    private static Map<String, Integer> callsToConstructor(String owner) throws IOException {
+    private static Map<String, Integer> callsToConstructor(String owner) {
         Map<String, Integer> calls = new TreeMap<>();
-        int read = 0;
-        for (Path each : classes()) {
-            ClassModel model = ClassFile.of().parse(Files.readAllBytes(each));
-            read++;
+        for (ClassModel model : WhatWasCompiled.compiled().all()) {
             String from = model.thisClass().asInternalName().replace('/', '.').replace('$', '.');
             for (MethodModel method : model.methods()) {
                 method.code().ifPresent(code -> code.forEach(element -> {
@@ -179,14 +170,6 @@ class WhoNamesAComparisonAndWhoAddressesOneTest {
                 }));
             }
         }
-        assertFalse(read == 0, "no compiled class was read at all, so this says nothing");
         return calls;
-    }
-
-    private static List<Path> classes() throws IOException {
-        Path root = Path.of("target", "classes").toAbsolutePath();
-        try (Stream<Path> walk = Files.walk(root)) {
-            return new ArrayList<>(walk.filter(p -> p.toString().endsWith(".class")).toList());
-        }
     }
 }

@@ -407,6 +407,42 @@ class AnEndAChoiceLeftOpenIsNotTheModelDrawingNoLineTest {
                         + " `n` leaves it where it found it");
     }
 
+    /**
+     * And an alternative whose own two bounds cover the order settles the choice above it.
+     *
+     * <p>{@code n >= 2 || n <= 0} leaves every {@code Int}, so a value satisfying that branch
+     * stands anywhere and the choice above does too, whatever the form beside it says. What is
+     * asked of the branch is the values its ends leave and not which positions some rule of it
+     * bounded: both of its own alternatives bound {@code n}, and read off that the branch was taken
+     * for one that holds {@code n} down.
+     *
+     * <p>The control below is the same rule with the covering pair replaced by one bound, where the
+     * branch does hold the position down and the end really is left open.
+     */
+    @Test
+    void andAnAlternativeWhoseBoundsCoverTheOrderSettlesTheChoice() {
+        assertEquals(List.of(theModelDrawsNoLine(),
+                        List.of("border      not measured"
+                                + " (no line was derived at any position)")),
+                List.of(borderIn("Int.abs(n) >= 5 || (n >= 2 || n <= 0)"),
+                        borderIn("Int.abs(n) >= 5 || (n >= 2 || n >= 0)")),
+                "between them the first branch's bounds hold every value the order has, and the"
+                        + " second's stop at zero");
+    }
+
+    /**
+     * And an author is sent to no choice where the alternative beside them settles it.
+     *
+     * <p>The end is not left open, so there is nothing for a choice to be named about.
+     */
+    @Test
+    void andNoChoiceIsNamedWhereTheAlternativeCoversTheOrder() {
+        assertEquals(List.of(),
+                linesOf("Int.abs(n) >= 5 || (n >= 2 || n <= 0)",
+                        each -> each.contains("left open by a choice")),
+                "the branch beside the unread form leaves `n` wherever it found it");
+    }
+
     /** And a rule with no choice in it is measured as it was. */
     @Test
     void andARuleWithNoChoiceInItIsMeasuredAsItWas() {

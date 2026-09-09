@@ -1,23 +1,16 @@
 package souther.compiler.partition;
 
 import org.junit.jupiter.api.Test;
+import souther.compiler.WhatWasCompiled;
 
-import java.io.IOException;
-import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassModel;
 import java.lang.classfile.CodeModel;
 import java.lang.classfile.instruction.InvokeDynamicInstruction;
 import java.lang.classfile.instruction.InvokeInstruction;
 import java.lang.constant.ConstantDesc;
 import java.lang.constant.DirectMethodHandleDesc;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -73,7 +66,7 @@ class OnlyTypeAtWrittenPathStepsIntoAWrittenValueTest {
      * written, one relation standing in for the other again.
      */
     @Test
-    void oneMethodAsksWhereAWrittenValueHasItsParts() throws IOException {
+    void oneMethodAsksWhereAWrittenValueHasItsParts() {
         Set<String> asks = callersOf(ANSWERS);
 
         assertFalse(asks.isEmpty(),
@@ -100,7 +93,7 @@ class OnlyTypeAtWrittenPathStepsIntoAWrittenValueTest {
      * error one call further out.
      */
     @Test
-    void theWalkIsAskedWhereAValueIsComposed() throws IOException {
+    void theWalkIsAskedWhereAValueIsComposed() {
         Set<String> asks = callersOf(WALKS);
 
         assertFalse(asks.isEmpty(),
@@ -117,10 +110,9 @@ class OnlyTypeAtWrittenPathStepsIntoAWrittenValueTest {
     }
 
     /** Every production method that reaches {@code answer} on the owner, however it spelled it. */
-    private static Set<String> callersOf(String answer) throws IOException {
+    private static Set<String> callersOf(String answer) {
         Set<String> asks = new TreeSet<>();
-        for (Path each : classes()) {
-            ClassModel model = ClassFile.of().parse(Files.readAllBytes(each));
+        for (ClassModel model : WhatWasCompiled.compiled().all()) {
             String from = model.thisClass().asInternalName().replace('/', '.');
             for (var method : model.methods()) {
                 CodeModel code = method.code().orElse(null);
@@ -146,9 +138,9 @@ class OnlyTypeAtWrittenPathStepsIntoAWrittenValueTest {
      * would be settled by the types it happened to hold.
      */
     @Test
-    void thereIsOneAnswerUnderThatName() throws IOException {
+    void thereIsOneAnswerUnderThatName() {
         Set<String> declared = new TreeSet<>();
-        ClassModel model = ClassFile.of().parse(Files.readAllBytes(fileOf(OWNER)));
+        ClassModel model = compiled(OWNER);
         for (var method : model.methods()) {
             if (method.methodName().stringValue().equals(ANSWERS)) {
                 declared.add(method.methodType().stringValue());
@@ -193,18 +185,9 @@ class OnlyTypeAtWrittenPathStepsIntoAWrittenValueTest {
         return (owner.equals(OWNER) || owner.equals(SHORT)) && method.equals(answer);
     }
 
-    private static Path fileOf(String binaryName) {
-        return root().resolve(binaryName.replace('.', '/') + ".class");
-    }
-
-    private static List<Path> classes() throws IOException {
-        try (Stream<Path> walk = Files.walk(root())) {
-            return new ArrayList<>(new LinkedHashSet<>(
-                    walk.filter(each -> each.toString().endsWith(".class")).toList()));
-        }
-    }
-
-    private static Path root() {
-        return Path.of("target", "classes").toAbsolutePath();
+    private static ClassModel compiled(String binaryName) {
+        return WhatWasCompiled.compiled().find(binaryName)
+                .orElseThrow(() -> new IllegalStateException(
+                        binaryName + " is not a class this module compiled"));
     }
 }

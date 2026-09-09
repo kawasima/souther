@@ -1,23 +1,17 @@
 package souther.compiler.coverage;
 
 import org.junit.jupiter.api.Test;
+import souther.compiler.WhatWasCompiled;
 
-import java.io.IOException;
-import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassModel;
 import java.lang.classfile.MethodModel;
 import java.lang.classfile.instruction.InvokeInstruction;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 
 /**
  * A plan is made where its bodies are numbered, and nowhere else in the compiler.
@@ -65,7 +59,7 @@ class WhatMakesAPlanIsWhatNumberedItTest {
                             + " there being none of them"));
 
     @Test
-    void onlyTheWalkThatNumberedThemMakesAPlanOfABodysArms() throws IOException {
+    void onlyTheWalkThatNumberedThemMakesAPlanOfABodysArms() {
         assertEquals(declared(), made(),
                 "a plan put together anywhere else is parts a caller believed went together, and"
                         + " the agreements between them are what a reader of a run rests on."
@@ -85,12 +79,9 @@ class WhatMakesAPlanIsWhatNumberedItTest {
     }
 
     /** How many times each method of the compiler makes one. */
-    private static Map<String, Integer> made() throws IOException {
+    private static Map<String, Integer> made() {
         Map<String, Integer> calls = new TreeMap<>();
-        int read = 0;
-        for (Path each : classes()) {
-            ClassModel model = ClassFile.of().parse(Files.readAllBytes(each));
-            read++;
+        for (ClassModel model : WhatWasCompiled.compiled().all()) {
             String from = model.thisClass().asInternalName().replace('/', '.').replace('$', '.');
             for (MethodModel method : model.methods()) {
                 method.code().ifPresent(code -> code.forEach(element -> {
@@ -102,14 +93,6 @@ class WhatMakesAPlanIsWhatNumberedItTest {
                 }));
             }
         }
-        assertFalse(read == 0, "no compiled class was read at all, so this says nothing");
         return calls;
-    }
-
-    private static List<Path> classes() throws IOException {
-        Path root = Path.of("target", "classes").toAbsolutePath();
-        try (Stream<Path> walk = Files.walk(root)) {
-            return new ArrayList<>(walk.filter(p -> p.toString().endsWith(".class")).toList());
-        }
     }
 }

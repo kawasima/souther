@@ -2,11 +2,7 @@ package souther.bench;
 
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
-import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassModel;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -88,10 +84,9 @@ class EveryFigureTheComposingStageStopsAtIsABudgetOrIsSaidNotToBeTest {
      * that is not there.
      */
     @Test
-    void aFigureIsThisCompilersBudgetOrIsSaidToBeSomethingElse() throws IOException {
+    void aFigureIsThisCompilersBudgetOrIsSaidToBeSomethingElse() {
         List<String> written = new ArrayList<>();
-        for (Path each : Reactor.classes()) {
-            ClassModel model = ClassFile.of().parse(Files.readAllBytes(each));
+        for (ClassModel model : Reactor.classes()) {
             String from = model.thisClass().asInternalName().replace('/', '.').replace('$', '.');
             if (!from.startsWith(COMPOSING) || from.equals(COMPOSING + "CompositionBudget")) {
                 continue;

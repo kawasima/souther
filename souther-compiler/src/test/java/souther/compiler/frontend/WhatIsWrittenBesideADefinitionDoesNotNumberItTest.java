@@ -300,12 +300,13 @@ class WhatIsWrittenBesideADefinitionDoesNotNumberItTest {
     /** Every {@code .sou} file the repository carries, by where it is written: the corpora, the
      *  models written to be worked with, and the library the language ships. */
     private static Map<String, String> everySourceTheRepositoryCarries() {
-        Path root = RepositoryLayout.ofWorkingDirectory().root();
+        RepositoryLayout repository = RepositoryLayout.ofWorkingDirectory();
+        Path root = repository.root();
         Map<String, String> sources = new LinkedHashMap<>();
         try (Stream<Path> walk = Files.walk(root)) {
             for (Path each : walk.filter(Files::isRegularFile)
                     .filter(it -> it.getFileName().toString().endsWith(".sou"))
-                    .filter(it -> !it.toString().contains("/target/"))
+                    .filter(it -> !repository.isUnderBuildOutput(it))
                     .sorted().toList()) {
                 sources.put(root.relativize(each).toString(), Files.readString(each));
             }

@@ -605,6 +605,15 @@ final class Predicates {
         return obligations(inv, at, Set.of(), true, decidesFalse, Discharge.AN_ASSUMPTION, per);
     }
 
+    /**
+     * The same over a shape the caller already read the clause into, so that what is said about an
+     * occurrence is said in the numbering the clause handed out.
+     */
+    Owed assumed(ClauseExpr of, Denotations at, boolean decidesFalse, PerPart per) {
+        return new Owing(this, Set.of(), decidesFalse, Discharge.AN_ASSUMPTION)
+                .read(of, at, terms::inside, per == null ? null : per::read);
+    }
+
     /** Told what one part of a clause owed, by the shape of the clause it was read at. */
     interface PerPart {
         void read(ClauseExpr of, Core part, Owed owed);

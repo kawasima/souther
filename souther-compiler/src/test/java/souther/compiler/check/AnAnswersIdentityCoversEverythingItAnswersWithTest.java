@@ -1,15 +1,12 @@
 package souther.compiler.check;
 
 import org.junit.jupiter.api.Test;
+import souther.compiler.WhatWasCompiled;
 
-import java.io.IOException;
-import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassModel;
 import java.lang.classfile.MethodModel;
 import java.lang.classfile.instruction.FieldInstruction;
 import java.lang.classfile.instruction.InvokeInstruction;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -18,7 +15,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -51,6 +47,9 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
  */
 class AnAnswersIdentityCoversEverythingItAnswersWithTest {
 
+    /** The package whose states the store compares, which is what this rule is about. */
+    private static final String THE_CHECK = "souther.compiler.check";
+
     /** Where a state's identity may leave a field out, and why. Nothing else may. */
     private static final Map<String, String> ALLOWED = Map.of(
             "souther.compiler.check.Term.hash",
@@ -66,11 +65,16 @@ class AnAnswersIdentityCoversEverythingItAnswersWithTest {
                     + " identity");
 
     @Test
-    void everyHandWrittenIdentityReadsEveryFieldItsStateHolds() throws IOException {
+    void everyHandWrittenIdentityReadsEveryFieldItsStateHolds() {
         Map<String, String> uncovered = new TreeMap<>();
         int asked = 0;
-        for (Path each : classesOfTheCheck()) {
-            ClassModel model = ClassFile.of().parse(Files.readAllBytes(each));
+        for (ClassModel model : WhatWasCompiled.compiled().inPackage(THE_CHECK)) {
+            if (model.superclass().isPresent()
+                    && model.superclass().get().asInternalName().equals("java/lang/Record")) {
+                // A record's identity is written for it out of its components, and what such a one
+                // covers is not a question about what anybody wrote.
+                continue;
+            }
             MethodModel equals = declaredEquals(model);
             if (equals == null) {
                 continue;
@@ -166,25 +170,4 @@ class AnAnswersIdentityCoversEverythingItAnswersWithTest {
         return fields;
     }
 
-    /**
-     * The compiled classes of the check, records left out.
-     *
-     * <p>Read from the build and not from the sources: which fields a class has and which of them a
-     * method loads are what the class file says, and a reading of the text would be answering the
-     * same question a second way.
-     */
-    private static List<Path> classesOfTheCheck() throws IOException {
-        Path root = Path.of("target", "classes", "souther", "compiler", "check").toAbsolutePath();
-        try (Stream<Path> walk = Files.walk(root)) {
-            List<Path> out = new ArrayList<>();
-            for (Path each : walk.filter(p -> p.toString().endsWith(".class")).toList()) {
-                ClassModel model = ClassFile.of().parse(Files.readAllBytes(each));
-                if (model.superclass().isEmpty()
-                        || !model.superclass().get().asInternalName().equals("java/lang/Record")) {
-                    out.add(each);
-                }
-            }
-            return out;
-        }
-    }
 }

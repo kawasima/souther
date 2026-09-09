@@ -2,11 +2,7 @@ package souther.bench;
 
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
-import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassModel;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -72,7 +68,7 @@ class OnlyARendererTakesAProofApartTest {
             REACH + "Reachability$Unsettled");
 
     @Test
-    void onlyItsOwnWordsAskAPayloadWhatItSays() throws IOException {
+    void onlyItsOwnWordsAskAPayloadWhatItSays() {
         Map<String, List<String>> asked = new LinkedHashMap<>();
         for (Compiled.Site use : uses()) {
             if (WRITES_THE_WORDS_OF.containsKey(use.owner()) && use.member().equals("said")) {
@@ -87,10 +83,9 @@ class OnlyARendererTakesAProofApartTest {
     }
 
     @Test
-    void andOnlyThoseWordsAreWritten() throws IOException {
+    void andOnlyThoseWordsAreWritten() {
         Map<String, List<String>> implementors = new LinkedHashMap<>();
-        for (Path each : Reactor.classes()) {
-            ClassModel model = ClassFile.of().parse(Files.readAllBytes(each));
+        for (ClassModel model : Reactor.classes()) {
             for (var face : model.interfaces()) {
                 String name = face.asInternalName().replace('/', '.');
                 WRITES_THE_WORDS_OF.forEach((payload, words) -> {
@@ -109,7 +104,7 @@ class OnlyARendererTakesAProofApartTest {
     }
 
     @Test
-    void andNothingButTheReadingMakesAnAnswer() throws IOException {
+    void andNothingButTheReadingMakesAnAnswer() {
         List<String> outside = new ArrayList<>();
         boolean sawAFactory = false;
         boolean sawAConstructor = false;
@@ -148,7 +143,7 @@ class OnlyARendererTakesAProofApartTest {
      * that out first and the next one copied the module walk instead, so the reading is one place
      * now and both ask it.
      */
-    private static List<Compiled.Site> uses() throws IOException {
+    private static List<Compiled.Site> uses() {
         // What the answers do among themselves is their own business.
         return Compiled.sites().stream().filter(use -> !use.from().startsWith(REACH)).toList();
     }

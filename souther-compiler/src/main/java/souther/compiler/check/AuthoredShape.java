@@ -1,7 +1,6 @@
 package souther.compiler.check;
 
 import souther.compiler.ast.Hir;
-import souther.compiler.core.Core;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -58,7 +57,7 @@ public sealed interface AuthoredShape {
      * ruled out there), and what an author is answerable for is the parts; both come out of the one
      * reading, which is why this recovers them from it rather than reading them apart.
      */
-    default List<Clauses.StatedPart> onto(Core read, RuleRef.Invariant rule) {
+    default List<Clauses.StatedPart> onto(ClauseExpr read, RuleRef.Invariant rule) {
         List<Clauses.StatedPart> out = new ArrayList<>();
         found(read, rule, out);
         return List.copyOf(out);
@@ -85,10 +84,10 @@ public sealed interface AuthoredShape {
      * Each part of the clause with the subtree of the expanded {@code read} it became, as a part of
      * {@code rule}.
      *
-     * <p>The same recovery {@link #onto(Core, RuleRef.Invariant)} does of a reading, done of the
-     * tree an expansion left. What a helper's body joined stands under a binding there, so a reader
-     * splitting that tree for itself would find parts this shape never issued — which is why the
-     * shape drives the descent here as well.
+     * <p>The same recovery {@link #onto(ClauseExpr, RuleRef.Invariant)} does of a reading, done of
+     * the tree an expansion left. What a helper's body joined stands under a binding there, so a
+     * reader splitting that tree for itself would find parts this shape never issued — which is
+     * why the shape drives the descent here as well.
      */
     default List<Written> onto(Hir.Expr read, RuleRef.Invariant rule) {
         List<Written> out = new ArrayList<>();
@@ -111,7 +110,7 @@ public sealed interface AuthoredShape {
         }
     }
 
-    private void found(Core read, RuleRef.Invariant rule, List<Clauses.StatedPart> out) {
+    private void found(ClauseExpr read, RuleRef.Invariant rule, List<Clauses.StatedPart> out) {
         switch (this) {
             case One it -> out.add(new Clauses.StatedPart(it.part().idFor(rule), read));
             case Both it -> {
@@ -119,13 +118,13 @@ public sealed interface AuthoredShape {
                 // of the tree instead — whether this node joins two conditions — this would be a
                 // second reading of what a clause is made of, and the reading it agreed with until
                 // somebody changed one of them.
-                if (!(read instanceof Core.Binary bin)) {
+                if (!(read instanceof ClauseExpr.Joined joined)) {
                     throw new IllegalStateException("an author wrote two rules where this reading"
                             + " has one " + read.getClass().getSimpleName() + ", so the clause was"
                             + " read into a shape it was not written in");
                 }
-                it.left().found(bin.left(), rule, out);
-                it.right().found(bin.right(), rule, out);
+                it.left().found(joined.left(), rule, out);
+                it.right().found(joined.right(), rule, out);
             }
         }
     }

@@ -3,23 +3,17 @@ package souther.compiler.partition;
 import souther.compiler.check.PartId;
 
 import org.junit.jupiter.api.Test;
+import souther.compiler.WhatWasCompiled;
 
-import java.io.IOException;
-import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassModel;
 import java.lang.classfile.FieldModel;
 import java.lang.classfile.MethodModel;
 import java.lang.classfile.instruction.InvokeInstruction;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 
 /**
  * Who carries the number of a statement beside the part it is a statement of, and who may make one.
@@ -66,7 +60,7 @@ class WhoMayCarryTheNumberOfAStatementIsWrittenDownTest {
      * statement is, which is the number being counted by whoever was holding the part.
      */
     @Test
-    void onlyTheReadingThatTookThePartApartNamesOne() throws IOException {
+    void onlyTheReadingThatTookThePartApartNamesOne() {
         assertEquals(named(MAY_MAKE), callsTo(STATEMENT_ID, "<init>"),
                 "a statement named anywhere else is a number somebody counted for themselves put"
                         + " beside whichever part they were holding. What may make one, and why: "
@@ -75,7 +69,7 @@ class WhoMayCarryTheNumberOfAStatementIsWrittenDownTest {
 
     /** And nothing downstream of that reading holds the number instead of the name. */
     @Test
-    void aNumberBesideAPartIsWrittenDownWithWhatItCounts() throws IOException {
+    void aNumberBesideAPartIsWrittenDownWithWhatItCounts() {
         assertEquals(named(MAY_HOLD), numbersHeldBesideAPart(),
                 "a type downstream of the reading that numbers a part's statements holds the name"
                         + " that reading issued, not a number of its own. What still holds one, and"
@@ -101,11 +95,9 @@ class WhoMayCarryTheNumberOfAStatementIsWrittenDownTest {
      * the pair whatever it is named, and a check that looked for the word would be satisfied by
      * renaming the field.
      */
-    private static Map<String, String> numbersHeldBesideAPart() throws IOException {
+    private static Map<String, String> numbersHeldBesideAPart() {
         Map<String, String> found = new TreeMap<>();
-        int read = 0;
-        for (ClassModel model : compiled()) {
-            read++;
+        for (ClassModel model : WhatWasCompiled.compiled().all()) {
             String from = model.thisClass().asInternalName().replace('/', '.').replace('$', '.');
             boolean holdsAPart = false;
             for (FieldModel field : model.fields()) {
@@ -121,16 +113,13 @@ class WhoMayCarryTheNumberOfAStatementIsWrittenDownTest {
                 }
             }
         }
-        assertFalse(read == 0, "no compiled class was read at all, so this says nothing");
         return found;
     }
 
     /** Which methods of the compiler call {@code owner.name}. */
-    private static Map<String, String> callsTo(String owner, String name) throws IOException {
+    private static Map<String, String> callsTo(String owner, String name) {
         Map<String, String> calls = new TreeMap<>();
-        int read = 0;
-        for (ClassModel model : compiled()) {
-            read++;
+        for (ClassModel model : WhatWasCompiled.compiled().all()) {
             String from = model.thisClass().asInternalName().replace('/', '.').replace('$', '.');
             for (MethodModel method : model.methods()) {
                 String where = from + "." + method.methodName().stringValue();
@@ -143,30 +132,6 @@ class WhoMayCarryTheNumberOfAStatementIsWrittenDownTest {
                 }));
             }
         }
-        assertFalse(read == 0, "no compiled class was read at all, so this says nothing");
         return calls;
     }
-
-    /**
-     * Every compiled class, parsed once for both questions.
-     *
-     * <p>The two ask different things of the same classes, and reading the tree twice is reading
-     * every class file of the compiler twice for an answer that does not change between them.
-     */
-    private static List<ClassModel> compiled() throws IOException {
-        if (COMPILED != null) {
-            return COMPILED;
-        }
-        Path root = Path.of("target", "classes").toAbsolutePath();
-        List<ClassModel> out = new ArrayList<>();
-        try (Stream<Path> walk = Files.walk(root)) {
-            for (Path each : walk.filter(p -> p.toString().endsWith(".class")).toList()) {
-                out.add(ClassFile.of().parse(Files.readAllBytes(each)));
-            }
-        }
-        COMPILED = List.copyOf(out);
-        return COMPILED;
-    }
-
-    private static List<ClassModel> COMPILED;
 }

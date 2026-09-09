@@ -13,6 +13,7 @@ import souther.compiler.numeric.NumericDomain;
 import souther.compiler.numeric.OrderedInterval;
 import souther.compiler.numeric.Times;
 import souther.compiler.numeric.Towards;
+import souther.compiler.numeric.ValueOrder;
 import souther.compiler.observe.ObservedValue;
 import souther.compiler.regex.Language;
 import souther.compiler.regex.Meter;
@@ -64,7 +65,7 @@ import java.util.Set;
  * <p><b>Which types have one</b> is {@link #ofValue}, and it is the one table. Deciding twice is
  * what left a {@code Date} a carrier to one reader and not to another.
  */
-public sealed interface Carrier {
+public sealed interface Carrier extends ValueOrder {
 
     /** A whole number: an {@code Int}, and every size. */
     record Whole() implements Carrier {}
@@ -345,21 +346,45 @@ public sealed interface Carrier {
      * the order does not reach: {@code value < ""} leaves a range open below, and what is below the
      * empty string is nothing.
      */
+    @Override
     default OrderedInterval extent() {
         return switch (this) {
-            case Whole _ -> between(Count.of(Long.MIN_VALUE), Count.of(Long.MAX_VALUE));
+            case Whole _ -> Extents.WHOLE;
             // Every number, so no end either way.
             case Dense _ -> OrderedInterval.OPEN;
-            case Days _ -> between(Count.of(java.time.LocalDate.MIN.toEpochDay()),
-                    Count.of(java.time.LocalDate.MAX.toEpochDay()));
-            case Seconds _ -> between(DateTimes.MIN, DateTimes.MAX);
-            case SecondsOfDay _ -> between(Times.MIN, Times.MAX);
-            case Nanos _ -> between(Instants.MIN, Instants.MAX);
+            case Days _ -> Extents.DAYS;
+            case Seconds _ -> Extents.SECONDS;
+            case SecondsOfDay _ -> Extents.SECONDS_OF_DAY;
+            case Nanos _ -> Extents.NANOS;
             // Every string is at or above the empty one, and there is no longest string.
-            case Text _ -> new OrderedInterval(
-                    Endpoint.inclusive(souther.compiler.numeric.Text.of("")), null);
+            case Text _ -> Extents.TEXT;
             case Ordinal ordinal -> between(Count.of(0), Count.of(ordinal.cases().size() - 1L));
         };
+    }
+
+    /**
+     * The ends of the orders that have the same ends every time they are asked.
+     *
+     * <p>Where a reading starts is asked of every leaf of every clause, and of every position of
+     * every choice — so the answer for an {@code Int} was two counts and two ends built afresh at
+     * each of them. An enumeration is not here: its ends come from how many cases were declared,
+     * and there is one of these for each declaration rather than one for the language.
+     */
+    final class Extents {
+
+        private Extents() {
+        }
+
+        private static final OrderedInterval WHOLE =
+                between(Count.of(Long.MIN_VALUE), Count.of(Long.MAX_VALUE));
+        private static final OrderedInterval DAYS =
+                between(Count.of(java.time.LocalDate.MIN.toEpochDay()),
+                        Count.of(java.time.LocalDate.MAX.toEpochDay()));
+        private static final OrderedInterval SECONDS = between(DateTimes.MIN, DateTimes.MAX);
+        private static final OrderedInterval SECONDS_OF_DAY = between(Times.MIN, Times.MAX);
+        private static final OrderedInterval NANOS = between(Instants.MIN, Instants.MAX);
+        private static final OrderedInterval TEXT = new OrderedInterval(
+                Endpoint.inclusive(souther.compiler.numeric.Text.of("")), null);
     }
 
     private static OrderedInterval between(Place low, Place high) {

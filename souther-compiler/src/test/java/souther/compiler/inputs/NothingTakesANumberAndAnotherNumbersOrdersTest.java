@@ -1,22 +1,16 @@
 package souther.compiler.inputs;
 
 import org.junit.jupiter.api.Test;
+import souther.compiler.WhatWasCompiled;
 
-import java.io.IOException;
-import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassModel;
 import java.lang.classfile.CodeModel;
 import java.lang.classfile.MethodModel;
 import java.lang.classfile.instruction.InvokeInstruction;
 import java.lang.constant.ClassDesc;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -66,10 +60,9 @@ class NothingTakesANumberAndAnotherNumbersOrdersTest {
     private static final String MOVES = "movedTo";
 
     @Test
-    void nothingTakesBothWithoutProvingTheyAgree() throws IOException {
+    void nothingTakesBothWithoutProvingTheyAgree() {
         Set<String> takesBoth = new TreeSet<>();
-        for (Path each : classes()) {
-            ClassModel model = ClassFile.of().parse(Files.readAllBytes(each));
+        for (ClassModel model : WhatWasCompiled.compiled().all()) {
             String from = model.thisClass().asInternalName().replace('/', '.');
             if (from.equals(ORDERS)) {
                 continue;   // what the pair says about itself is its own business
@@ -96,10 +89,9 @@ class NothingTakesANumberAndAnotherNumbersOrdersTest {
      * the one name this does not report.
      */
     @Test
-    void movingAQuantityIsAskedOneNumberAndHandedOneAnswer() throws IOException {
+    void movingAQuantityIsAskedOneNumberAndHandedOneAnswer() {
         Set<String> shapes = new TreeSet<>();
-        for (Path each : classes()) {
-            ClassModel model = ClassFile.of().parse(Files.readAllBytes(each));
+        for (ClassModel model : WhatWasCompiled.compiled().all()) {
             for (MethodModel method : model.methods()) {
                 // The declared move, not the lambdas inside one: a lambda's parameters are what it
                 // captured, which is not a shape anybody wrote.
@@ -122,10 +114,9 @@ class NothingTakesANumberAndAnotherNumbersOrdersTest {
 
     /** That the scan is reading methods at all, so an empty answer means what it says. */
     @Test
-    void theScanReadsTheMethodsItIsAbout() throws IOException {
+    void theScanReadsTheMethodsItIsAbout() {
         int found = 0;
-        for (Path each : classes()) {
-            ClassModel model = ClassFile.of().parse(Files.readAllBytes(each));
+        for (ClassModel model : WhatWasCompiled.compiled().all()) {
             for (MethodModel method : model.methods()) {
                 if (mentions(method, ORDERS)) {
                     found++;
@@ -174,11 +165,4 @@ class NothingTakesANumberAndAnotherNumbersOrdersTest {
         return false;
     }
 
-    private static List<Path> classes() throws IOException {
-        Path root = Path.of("target", "classes").toAbsolutePath();
-        try (Stream<Path> walk = Files.walk(root)) {
-            return new ArrayList<>(new LinkedHashSet<>(
-                    walk.filter(each -> each.toString().endsWith(".class")).toList()));
-        }
-    }
 }
