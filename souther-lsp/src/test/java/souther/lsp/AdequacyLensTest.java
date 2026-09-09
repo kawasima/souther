@@ -589,6 +589,43 @@ class AdequacyLensTest {
                         .get(0).title());
     }
 
+    /**
+     * A selection that starts in another declaration still reaches the behavior it ends in.
+     *
+     * <p>What a stretch reaches is as many declarations as it is drawn over, and which of them the
+     * offer is about is the offer's to say. Asked for one, the walk answers with whichever is
+     * written first — an answer about the order of the file — and a `data` above the behavior would
+     * take the place of the behavior.
+     */
+    @Test
+    void aSelectionReachesTheBehaviorItEndsInFromAnotherDeclaration() {
+        Analyzer analyzer = measuring(Adequacy.Level.ALL);
+        ModuleGraph graph = graphOf(Map.of(MODULE, TRIP));
+        int data = lineOf(TRIP, "data Waiting");
+        int behavior = lineOf(TRIP, "behavior submit");
+
+        assertTrue(offersRows(analyzer, MODULE, TRIP, over(data, 5, behavior, 1), graph),
+                "the selection runs from inside the data declaration into the behavior");
+    }
+
+    /**
+     * A selection over both behaviors is an offer about one of them.
+     *
+     * <p>The rows an offer writes are the rows of one declaration, so a stretch drawn over two is
+     * answered about the one written first rather than about both or about neither.
+     */
+    @Test
+    void aSelectionOverTwoBehaviorsIsAnOfferAboutTheFirst() {
+        Analyzer analyzer = measuring(Adequacy.Level.ALL);
+        ModuleGraph graph = graphOf(Map.of(TWO_URI, TWO));
+        int first = lineOf(TWO, "behavior first");
+        int second = lineOf(TWO, "behavior second");
+
+        assertEquals("Write the rows `first` does not cover",
+                analyzer.codeActions(TWO_URI, TWO, over(first, 0, second + 1, 0), graph)
+                        .get(0).title());
+    }
+
     /** The zero-based line {@code written} is on. */
     private static int lineOf(String text, String written) {
         String[] lines = text.split("\n", -1);

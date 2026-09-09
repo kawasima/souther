@@ -801,10 +801,16 @@ public final class Analyzer {
         // Ahead of the compile because it is what the rest is about: everything below answers about
         // a behavior, and there is no behavior to answer about until this says so.
         LineIndex lines = new LineIndex(text);
-        SyntaxNode declaration = defReaching(root,
+        // The first behavior it reaches, and not the first definition. A selection is drawn over as
+        // many declarations as somebody drags it over, and a `data` above the behavior is not an
+        // answer about the behavior. Over more than one behavior it is the one written first: an
+        // offer writes the rows of one declaration, so one of them is what it can be about.
+        SyntaxNode declaration = defsReaching(root,
                 lines.offsetOf(requested.start().line(), requested.start().character()),
-                lines.offsetOf(requested.end().line(), requested.end().character()));
-        if (declaration == null || declaration.kind() != SyntaxKind.BEHAVIOR_DEF) {
+                lines.offsetOf(requested.end().line(), requested.end().character())).stream()
+                .filter(def -> def.kind() == SyntaxKind.BEHAVIOR_DEF)
+                .findFirst().orElse(null);
+        if (declaration == null) {
             return List.of();
         }
         int declaredAt = writtenFrom(declaration);
@@ -2329,19 +2335,27 @@ public final class Analyzer {
      * it.
      */
     private SyntaxNode enclosingDef(SyntaxNode root, int offset) {
-        return defReaching(root, offset, offset);
+        List<SyntaxNode> reached = defsReaching(root, offset, offset);
+        return reached.isEmpty() ? null : reached.get(0);
     }
 
     /**
-     * The same for a stretch of the document rather than a position: the top-level definition the
-     * request from {@code from} to {@code to} is in, or null where it is in none.
+     * The top-level definitions the stretch from {@code from} to {@code to} reaches, in the order
+     * they are written.
      *
-     * <p>A position and a stretch are asked differently. A position at either end of a definition is
-     * on it, which is what a caret at the end of a line is. A stretch meets a definition where the
-     * two share a character — read as a position is, a selection of the blank line above would
-     * reach the definition below by ending where its first character begins.
+     * <p>Every one of them, because a stretch reaches as many as it is drawn over and a caller has
+     * to say which of those it wanted. A position is the case where there is at most one, and
+     * {@link #enclosingDef} is that case — asked for one, a stretch would answer with whichever
+     * definition is written first, which is an answer about the order of the file rather than about
+     * what was asked for.
+     *
+     * <p>A position and a stretch are also bounded differently. A position at either end of a
+     * definition is on it, which is what a caret at the end of a line is. A stretch meets a
+     * definition where the two share a character — bounded as a position is, a selection of the
+     * blank line above would reach the definition below by ending where its first character begins.
      */
-    private SyntaxNode defReaching(SyntaxNode root, int from, int to) {
+    private List<SyntaxNode> defsReaching(SyntaxNode root, int from, int to) {
+        List<SyntaxNode> reached = new ArrayList<>();
         for (SyntaxNode def : root.childNodes()) {
             if (!DEFINITIONS.contains(def.kind())) {
                 continue;
@@ -2354,10 +2368,10 @@ public final class Analyzer {
                     ? from >= written && from <= def.end()
                     : from < def.end() && written < to;
             if (reaches) {
-                return def;
+                reached.add(def);
             }
         }
-        return null;
+        return reached;
     }
 
     /** Where {@code node}'s own text begins: its first code token, past the trivia in front of it. */
