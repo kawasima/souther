@@ -1,11 +1,10 @@
 package souther.compiler.check;
 
-import souther.compiler.core.Core;
 import souther.compiler.semantics.ConditionJoin;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.IdentityHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -43,12 +42,12 @@ final class ClauseView {
     private final List<Clauses.StatedPart> authored;
     /** The parts this world holds, in the order they were written. */
     private final List<Clauses.StatedPart> present;
-    /** And the roots of the ones it does not, by identity: two conjuncts spelled alike are two
-     *  parts, and a set comparing them by what they say would leave out both. */
-    private final Set<Core> omitted;
+    /** And where in the clause the ones it does not are: two conjuncts spelled alike stand at two
+     *  places, and a set comparing them by what they say would leave out both. */
+    private final Set<ClauseExpr.Occurrence> omitted;
 
     private ClauseView(List<Clauses.StatedPart> authored, List<Clauses.StatedPart> present,
-                       Set<Core> omitted) {
+                       Set<ClauseExpr.Occurrence> omitted) {
         this.authored = authored;
         this.present = present;
         this.omitted = omitted;
@@ -88,17 +87,19 @@ final class ClauseView {
      * holds it.
      *
      * <p>Told which parts by their names and never by their trees, which is what a world is asked
-     * with ({@link PartsLeftOut}); the roots are worked out here so that what the walk matches on is
-     * the very node this clause holds. Handed a set of nodes instead, a caller could build one that
-     * tells two conjuncts spelled alike apart by what they say, and both would go.
+     * with ({@link PartsLeftOut}); where each of them stands is worked out here, off the shape the
+     * clause was read into, so that what the walk matches on is a place in the clause. Handed a set
+     * of nodes instead, a caller could build one that tells two conjuncts spelled alike apart by
+     * what they say, and both would go — and a walk over a tree built for it by a substitution
+     * would match none of them, which is a world holding rules the caller took away.
      */
     static ClauseView without(List<Clauses.StatedPart> authored,
                               Set<PartId<RuleRef.Invariant>> left) {
         List<Clauses.StatedPart> here = new ArrayList<>(authored.size());
-        Set<Core> omitted = Collections.newSetFromMap(new IdentityHashMap<>());
+        Set<ClauseExpr.Occurrence> omitted = new LinkedHashSet<>();
         for (Clauses.StatedPart each : authored) {
             if (left.contains(each.id())) {
-                omitted.add(each.expr());
+                omitted.add(each.of().at());
             } else {
                 here.add(each);
             }
@@ -152,10 +153,8 @@ final class ClauseView {
         if (omitted.isEmpty()) {
             return false;
         }
-        for (Core each : shape.spelled()) {
-            if (omitted.contains(each)) {
-                return true;
-            }
+        if (omitted.contains(shape.at())) {
+            return true;
         }
         return switch (shape) {
             case ClauseExpr.Scoped it -> omits(it.body());
