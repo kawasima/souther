@@ -19,6 +19,7 @@ import souther.compiler.values.Refusal;
 import souther.compiler.values.Sameness;
 import souther.compiler.values.ValueSet;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
@@ -851,6 +852,24 @@ sealed interface Confinement<A> {
          *  {@link Planned#derived()}. */
         BoundaryState derived() {
             return derived;
+        }
+
+        /**
+         * How far the values at each position reach, for the readers that draw lines.
+         *
+         * <p>The one way out of here for what the connectives came to on the positions' own orders.
+         * A reader drawing a line is handed this and never the order it is read off: holding the
+         * order, it would hold half of what says whether a value exists, and composing a choice a
+         * second time is what the whole of this arrangement is against.
+         *
+         * <p>Which is why nothing is stored. The projection is of this reading and is wanted by
+         * whoever made it — a counterfactual is a reading of its own and takes its own answer, and
+         * one lent this one would find every end exactly where it left it.
+         *
+         * @param aliases the names each position answers to, in the vocabulary of the reader asking
+         */
+        SettledOrderEnvelope envelopeOver(Map<RuleKey, ? extends Collection<A>> aliases) {
+            return SettledOrderEnvelope.of(ordered, carriers, aliases);
         }
 
         /**

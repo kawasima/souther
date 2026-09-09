@@ -78,13 +78,15 @@ class AReadingOfAClauseIsTheTreeItsAuthorWroteTest {
 
     @Test
     void aReadingStandsWhereTheClauseDoes() {
-        assertTrue(StatedByClauses.mirrors(BESIDE_THE_BRACKET, asWritten()),
+        assertTrue(StatedByClauses.mirrors(BESIDE_THE_BRACKET, asWritten(),
+                        ClauseView.asWritten()),
                 "the conjunction is a conjunction of the choice, which is what the author wrote");
     }
 
     @Test
     void aConjunctionMovedIntoTheBranchesIsRefused() {
-        assertFalse(StatedByClauses.mirrors(BESIDE_THE_BRACKET, distributed()),
+        assertFalse(StatedByClauses.mirrors(BESIDE_THE_BRACKET, distributed(),
+                        ClauseView.asWritten()),
                 "the conjunct written beside the brackets stands inside both alternatives, so each"
                         + " of them is a clause nobody wrote and the choice would be answerable"
                         + " for what one of them left open");
@@ -107,7 +109,8 @@ class AReadingOfAClauseIsTheTreeItsAuthorWroteTest {
                                                 new ChoiceId(), choice,
                                                 part(C, part(A, said())),
                                                 part(C, part(B, said())))),
-                                        part(C, said()))))),
+                                        part(C, said())))),
+                        ClauseView.asWritten()),
                 "the whole clause is recorded as what each alternative came to, so a reader asking"
                         + " what it came to is answered by one branch of a choice");
     }

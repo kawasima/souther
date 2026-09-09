@@ -496,7 +496,7 @@ public final class InvariantChecker {
                   StringFacts stringMachines,
                   Map<RuleRef.Invariant, EndsLeftOpen> endsLeftOpen,
                   Map<RuleRef.Invariant, Map<OpenEnd, EndsLeftOpen.Behind>> boundsLeftOpen,
-                  BoundaryState derived) {
+                  BoundaryState derived, SettledOrderEnvelope settledOrder) {
 
         /** The atom each count is recorded against, for a reader that wants the subject and not
          *  which operation it is a count of. Projected rather than kept beside {@link #held()}: two
@@ -786,7 +786,7 @@ public final class InvariantChecker {
             @Override
             public void gathered(RuleRef.Invariant from, Core clause,
                                  List<Clauses.StatedPart> parts, Set<FactSubject> spokenFor) {
-                written.add(new Written(clause, parts));
+                written.add(Written.of(clause, parts, reach.withoutParts()));
                 spokenFor.forEach(spoken -> took.record(from, spoken));
             }
 
@@ -848,16 +848,14 @@ public final class InvariantChecker {
             }
             // The clause as one reading, and the parts its author wrote as subtrees of it. Which
             // parts there are was settled where the clause was split; nothing here decides it.
-            Written wrote = new Written(stated, declared.shape().onto(stated, origin));
+            Written wrote = Written.of(stated, declared.shape().onto(stated, origin),
+                    reach.withoutParts());
             written.add(wrote);
-            // A part at a time, and the ones this reading was asked for. Which parts a clause has
-            // was settled where it was split, so a part left out is one left out of the list —
-            // never a node a walk was told to step over.
+            // A part at a time, and the ones this world holds. Which parts a clause has was settled
+            // where it was split, so a part left out is one left out of the list — never a node a
+            // walk was told to step over.
             Predicates.Owed owed = null;
             for (Clauses.StatedPart part : wrote.parts()) {
-                if (reach.withoutParts().excludes(part.id())) {
-                    continue;
-                }
                 Predicates.Owed said = c.predicates.assumed(part.expr(), at, false,
                         (of, came) -> gathering.constrained(origin, of, partRead(came)));
                 owed = owed == null ? said : owed.and(said);
@@ -950,7 +948,21 @@ public final class InvariantChecker {
         // where its clauses landed in a table.
         StatedByClauses.Asked<Written> asked = new StatedByClauses.Asked<>();
         for (Written each : written) {
-            asked.read(reader, at, each, each.clause());
+            // A clause this world holds no part of is no rule of it. Read as one, the reading would
+            // compose a tree of nothing at all, which is not the shape a clause has.
+            //
+            // Read off what the world holds rather than worked out from the tree: which parts are
+            // here was settled when the clause was viewed, and a walk of the shape to find out
+            // would be the same answer at the cost of building one.
+            if (each.parts().isEmpty()) {
+                continue;
+            }
+            // And the clause read in this world. A reader asking what one conjunct was holding
+            // compares two readings of this declaration, and they are two readings of one world
+            // only where the conjunct is out of both — which is what left a choice composed the
+            // same way with the conjunct and without it, so that every end it was holding came back
+            // held by nobody.
+            asked.read(reader, at, each, each.clause(), each.view());
         }
         // And now that every rule about this value has been said, what its positions admit is
         // worked out — and with it what each clause and each part of it took in, since a branch
@@ -1018,7 +1030,7 @@ public final class InvariantChecker {
         // And which of the clauses place an edge, asked once the positions have names to be
         // recognised by.
         Reading reading = c.directsIn(written, at, numbers, typeAt, took,
-                new PartsRead(readBy, adoptedBy, narrowedBy), reach.withoutParts());
+                new PartsRead(readBy, adoptedBy, narrowedBy));
         ConstraintState<FactSubject> constraints = k.constraints()
                 .takingRead(answered.whole().confinement(), allowed, c.answers);
         // How each atom's values are spaced, kept so that settling one afterwards states the
@@ -1119,7 +1131,12 @@ public final class InvariantChecker {
                 // taken from the reading with the choices settled. The interval algebra never
                 // enters an alternative, so this is the one answer that says where a choice of two
                 // bounds on a length stops it.
-                answered.whole().confinement().derived());
+                answered.whole().confinement().derived(),
+                // And the same of the positions themselves, which the same reading settled and
+                // nothing carried out of it. Both names each position answers to, because a clause
+                // is filed under whichever the reading that read it recognised — asked of one, what
+                // a choice left a position would turn on how the rule was spelled.
+                answered.whole().confinement().envelopeOver(aliasesOf(atoms, keys)));
     }
 
     /**
@@ -1157,6 +1174,21 @@ public final class InvariantChecker {
             names.add(key);
         }
         return names;
+    }
+
+    /**
+     * Every name every position of this value answers to, keyed by the position.
+     *
+     * <p>The names alone, and never a count's. What a count is is a number taken of what stands at
+     * a name, and where it stops is settled by a reading of its own ({@link BoundaryState}) — put
+     * in here, one path would carry two orders and whichever was met last would be the one a line
+     * was drawn from.
+     */
+    private static Map<RuleKey, List<FactSubject>> aliasesOf(Map<RuleKey, FactSubject> atoms,
+                                                             Map<RuleKey, FactSubject> keys) {
+        Map<RuleKey, List<FactSubject>> out = new LinkedHashMap<>();
+        written(atoms, keys).forEach(path -> out.put(path, named(atoms, keys, path)));
+        return out;
     }
 
     /** The atom of a count that may not be there, which every lookup of one wants. */
@@ -1323,24 +1355,32 @@ public final class InvariantChecker {
      * a line drawn on a position is attributed to, and each of them is a subtree of that same
      * reading — carrying which part of the clause it is, settled where the clause was split.
      */
-    private record Written(Core clause, List<Clauses.StatedPart> parts) {
+    private record Written(Core clause, ClauseView view) {
 
-        Written {
-            if (parts.isEmpty()) {
+        /** The clause {@code authored} was written in, as {@code world} holds it. */
+        static Written of(Core clause, List<Clauses.StatedPart> authored, PartsLeftOut world) {
+            if (authored.isEmpty()) {
                 throw new IllegalArgumentException("a clause reaching a value is written in parts");
             }
-            parts = List.copyOf(parts);
+            return new Written(clause, world.viewOf(authored));
+        }
+
+        /** Which rule of the model this is — see {@link ClauseView#rule}. */
+        RuleRef.Invariant from() {
+            return view.rule();
         }
 
         /**
-         * Which rule of the model this is, read off the parts it was written in.
+         * The parts of it this reading's world holds, which is what every walk over this clause
+         * reads.
          *
-         * <p>Every part of a clause is a part of that clause, so the rule is the parts' answer and
-         * not a second thing to carry: held beside them, a value about one rule could be built
-         * about two.
+         * <p>The only parts a walk can reach from here. What the author wrote is spent above, on
+         * naming the rule; offered beside these, a walk would have both lists and would have to be
+         * written to take the right one — which is what left the connectives composed over
+         * conjuncts every walk beside them had left out.
          */
-        RuleRef.Invariant from() {
-            return parts.get(0).id().rule();
+        List<Clauses.StatedPart> parts() {
+            return view.present();
         }
     }
 
@@ -1668,8 +1708,7 @@ public final class InvariantChecker {
     private Reading directsIn(List<Written> stated, Denotations at,
                                    Map<FactSubject, Coordinate> byName,
                                    Map<RuleKey, Type> typeAt,
-                                   ReadingEvidence took, PartsRead parts,
-                                   PartsLeftOut withoutParts) {
+                                   ReadingEvidence took, PartsRead parts) {
         List<Direct> out = new ArrayList<>();
         List<FieldDomains.NoLine> noLines = new ArrayList<>();
         List<FieldDomains.WithoutAnEnd> withoutAnEnd = new ArrayList<>();
@@ -1679,15 +1718,14 @@ public final class InvariantChecker {
         Map<RuleRef.Invariant, Map<Core, Required>> raisedByPart = new LinkedHashMap<>();
         Map<FieldDomains.BoundaryQuestion, FieldDomains.BoundaryStanding> standing =
                 new LinkedHashMap<>();
-        // A part this reading was not asked for is not read, which is the same list of parts the
-        // reader of predicates was given: a part one of them reached that the other never read is a
-        // value whose rules were not gathered ({@link APartNoReadingSaw}).
-        stated.forEach(each -> each.parts().stream()
-                .filter(part -> !withoutParts.excludes(part.id()))
-                .forEach(part ->
-                        direct(part.expr(), each.from(), part.id(), at, byName, out, noLines,
-                                withoutAnEnd, aboutOneCoordinate, narrowers,
-                                raised, took, typeAt, parts, raisedByPart, standing)));
+        // The parts this world holds, which is the same list every other walk over these clauses
+        // was given: a part one of them reached that another never read is a value whose rules were
+        // not gathered ({@link APartNoReadingSaw}). One list and not one rule each of them
+        // consults, so the agreement is not something a walk has to be written to keep.
+        stated.forEach(each -> each.parts().forEach(part ->
+                direct(part.expr(), each.from(), part.id(), at, byName, out, noLines,
+                        withoutAnEnd, aboutOneCoordinate, narrowers,
+                        raised, took, typeAt, parts, raisedByPart, standing)));
         // Insertion order, kept: `Map.copyOf` iterates in an order salted once per JVM run, and
         // what a report prints for a position is these in the order the declaration writes them.
         return new Reading(List.copyOf(out), List.copyOf(noLines), List.copyOf(withoutAnEnd),
@@ -2218,10 +2256,19 @@ public final class InvariantChecker {
             return BETWEEN;
         }
         return switch (canonicalFormOf(read, at, byName)) {
-            // The walk stopped inside a side, so which number the rule stops the values on is what
-            // reading further would say — and every number the leaf writes about is one waiting on
-            // that reading, the numbers an operation answers among them.
-            case CanonicalForm.NotRead _ -> ELSEWHERE;
+            // The walk stopped inside a side. Where one whole side is a position and the other
+            // names none, the line is on that position and the arithmetic stopping says nothing
+            // about it: what it could not read is an order it has no words for, and a rule holding
+            // a string or a case of an enumeration against a constant states where those values
+            // stop as plainly as a bound on a number does.
+            //
+            // Anywhere else, which number the rule stops the values on is what reading further
+            // would say — and every number the leaf writes about is one waiting on that reading,
+            // the numbers an operation answers among them.
+            case CanonicalForm.NotRead _ -> {
+                Coordinate against = heldAgainstAConstant(bin, at, byName);
+                yield against == null ? ELSEWHERE : statedOn(against);
+            }
             // The positions cancelled, and what is left is a number against a number. Read as
             // written, which is what the residue is a residue of: under a denial the same form
             // states the opposite of what it reads as, and both answers are here.
@@ -2233,6 +2280,33 @@ public final class InvariantChecker {
             case CanonicalForm.Over over -> over.numbers().size() == 1
                     ? statedOn(over.numbers().iterator().next()) : ELSEWHERE;
         };
+    }
+
+    /**
+     * The position one whole side of {@code bin} is, where the other side names none, or null
+     * where the comparison is not of that shape.
+     *
+     * <p>The one shape the arithmetic answers nothing about and a line still falls on. Asked of the
+     * two sides whole, which is the same question {@link Relates#twoPositions} asks and the answer
+     * it did not have a use for: a comparison naming one position and holding it against something
+     * with no position in it stops that position's values, whatever the order is made of.
+     *
+     * <p>Reached only where the form was not read. A comparison the arithmetic followed is
+     * classified by what it followed to, so this adds no second answer to a question that has one —
+     * it answers where the first reading said it had none, and it says a number rather than a
+     * narrower one.
+     */
+    private Coordinate heldAgainstAConstant(Core.Binary bin, Denotations at,
+                                            Map<FactSubject, Coordinate> byName) {
+        Coordinate left = byName.get(nameOf(bin.left(), at));
+        Coordinate right = byName.get(nameOf(bin.right(), at));
+        if (left != null && right == null && coordinatesIn(bin.right(), at, byName).isEmpty()) {
+            return left;
+        }
+        if (right != null && left == null && coordinatesIn(bin.left(), at, byName).isEmpty()) {
+            return right;
+        }
+        return null;
     }
 
     /** Which of the two a line on {@code number} is, said by the number itself. */
