@@ -35,8 +35,18 @@ public final class WhatWasCompiled {
      * itself would be one more place to get it wrong when a module moves.
      */
     public static CompiledClasses compiled() {
-        return CompiledClasses.ofModule(Compiler.class);
+        return COMPILED;
     }
+
+    /**
+     * Which output this module compiled to, worked out once.
+     *
+     * <p>Not the classes, which the fork holds: this is the view of them, and working one out asks
+     * the file system what the path it was handed really is. A rule that walks the supertypes of
+     * every class asks for the view once per name it follows, so working it out per ask is a system
+     * call per lookup for an answer that was the same every time.
+     */
+    private static final CompiledClasses COMPILED = CompiledClasses.ofModule(Compiler.class);
 
     /** Every class this module compiled, by binary name. */
     public static List<String> classes() {

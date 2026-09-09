@@ -14,6 +14,7 @@ import java.util.Set;
 import java.util.TreeSet;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 /**
  * A check of this module asks for the compiled output; it does not go and find one.
@@ -24,15 +25,17 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * build invoked elsewhere — and, having found the files, it opens them: the same files the check
  * beside it opened, for the fork to read again.
  *
- * <p><b>What is refused is going to look, and not reading a class file.</b> A test handed bytes to
- * read is doing something else entirely: this module compiles Souther models and asks what came out
- * of them, and what came out is a value in the test rather than a file anybody went looking for. A
- * rule written over parsing would refuse those as well, and there are many of them.
+ * <p><b>The population is what reaches a class file, and the rule is that none of it says where a
+ * build writes.</b> Reaching one is parsing it, or handing the shared reading a path to an output;
+ * this module has many tests that do the first, because it compiles Souther models and asks what
+ * came out of them, and what came out is a value in the test rather than a file anybody went looking
+ * for. Those are what the rule is asked of, and going looking is what it refuses.
  *
- * <p>So what is refused is the pair: a check that says where a build writes <em>and</em> reaches a
- * class file. Either alone is somebody else's business — a walk over the repository's own sources
- * says where a build writes in order to leave it out, and a test handed bytes reads a class file
- * without going anywhere — and it is holding both that makes a second way into the compiled output.
+ * <p>A check that reaches no class file is not in it. A walk over the repository's own sources says
+ * where a build writes in order to leave the build's output out, and answers a question about
+ * sources either way; this check says the word in order to look for it. Neither reaches a class
+ * file, and a rule about naming alone would be a rule about the word rather than about going to
+ * look.
  */
 class NoCheckOfThisModuleGoesLookingForTheCompiledOutputTest {
 
@@ -45,19 +48,27 @@ class NoCheckOfThisModuleGoesLookingForTheCompiledOutputTest {
             "souther/test/CompiledClasses.at");
 
     @Test
-    void nothingSaysWhereABuildWritesAndReachesAClassFileAsWell() {
-        Set<String> both = new TreeSet<>();
-        List<ClassModel> checks = CompiledClasses.ofModule(
-                NoCheckOfThisModuleGoesLookingForTheCompiledOutputTest.class).all();
-        for (ClassModel each : checks) {
+    void nothingThatReachesAClassFileSaysWhereABuildWrites() {
+        List<ClassModel> reaching = new ArrayList<>();
+        for (ClassModel each : CompiledClasses.ofModule(
+                NoCheckOfThisModuleGoesLookingForTheCompiledOutputTest.class).all()) {
+            if (reachesAClassFile(each)) {
+                reaching.add(each);
+            }
+        }
+        assertFalse(reaching.isEmpty(), "no check of this module reaches a class file at all, so"
+                + " this rule is asked of nothing and passes by having nobody to ask");
+
+        Set<String> looking = new TreeSet<>();
+        for (ClassModel each : reaching) {
             String said = whereABuildWritesAsSaidBy(each);
-            if (said != null && reachesAClassFile(each)) {
-                both.add(each.thisClass().asInternalName().replace('/', '.') + " says `" + said
+            if (said != null) {
+                looking.add(each.thisClass().asInternalName().replace('/', '.') + " says `" + said
                         + "`");
             }
         }
 
-        assertEquals(Set.of(), both,
+        assertEquals(Set.of(), looking,
                 "a check works out where this module's compiled output is instead of asking for it,"
                         + " so it answers about wherever the build was invoked from and reads files"
                         + " a check beside it has already read");
