@@ -108,7 +108,7 @@ record ReadByClauses(Confinement.Worked<FactSubject> confinement,
                    Set<RuleShortfall> aboutARule,
                    java.util.Map<FactSubject, AdmittedStrings> aboutStrings,
                    EndsLeftOpen endsLeftOpen,
-                   java.util.Map<DerivedNumber, EndsLeftOpen.Behind> boundsLeftOpen) {
+                   java.util.Map<OpenEnd, EndsLeftOpen.Behind> boundsLeftOpen) {
 
         /** The positions some reading took the whole of this part in at. */
         java.util.Set<FactSubject> adopted() {

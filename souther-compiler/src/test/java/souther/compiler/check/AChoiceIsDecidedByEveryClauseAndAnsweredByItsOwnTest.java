@@ -365,7 +365,7 @@ class AChoiceIsDecidedByEveryClauseAndAnsweredByItsOwnTest {
                 new Adoption<>(java.util.Set.of(), java.util.Set.of(),
                         java.util.Set.of(UNREAD), true, java.util.Set.of()),
                 Map.of(), java.util.Set.of(), java.util.Set.of(), EndsLeftOpen.nothing(),
-                java.util.Map.of());
+                BoundaryState.nothing(), java.util.Map.of());
     }
 
     /** And the alternative beside it that both of them read, constraining one position. */
@@ -376,7 +376,7 @@ class AChoiceIsDecidedByEveryClauseAndAnsweredByItsOwnTest {
                 new Adoption<>(java.util.Set.of(CONSTRAINED), java.util.Set.of(),
                         java.util.Set.of(), false, java.util.Set.of()),
                 Map.of(), java.util.Set.of(), java.util.Set.of(), EndsLeftOpen.nothing(),
-                java.util.Map.of());
+                BoundaryState.nothing(), java.util.Map.of());
     }
 
     /** One choice somebody wrote, told from every other by being this one. */
@@ -391,7 +391,7 @@ class AChoiceIsDecidedByEveryClauseAndAnsweredByItsOwnTest {
                         java.util.Set.of(), false, java.util.Set.of()),
                 Adoption.nothing(), Map.of(), java.util.Set.of(), shortfalls,
                 EndsLeftOpen.nothing(),
-                java.util.Map.of());
+                BoundaryState.nothing(), java.util.Map.of());
     }
 
     /** And the alternative beside it that nothing could read. */
@@ -402,7 +402,7 @@ class AChoiceIsDecidedByEveryClauseAndAnsweredByItsOwnTest {
                         true, java.util.Set.of()),
                 Adoption.nothing(), Map.of(), java.util.Set.of(), shortfalls,
                 EndsLeftOpen.nothing(),
-                java.util.Map.of());
+                BoundaryState.nothing(), java.util.Map.of());
     }
 
     /** And two choices leaving one position open are two things an author can look at. */

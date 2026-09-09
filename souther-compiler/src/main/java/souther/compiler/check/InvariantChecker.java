@@ -495,7 +495,7 @@ public final class InvariantChecker {
                   Set<RuleKey> notSeparated,
                   StringFacts stringMachines,
                   Map<RuleRef.Invariant, EndsLeftOpen> endsLeftOpen,
-                  Map<RuleRef.Invariant, Map<DerivedNumber, EndsLeftOpen.Behind>> boundsLeftOpen,
+                  Map<RuleRef.Invariant, Map<OpenEnd, EndsLeftOpen.Behind>> boundsLeftOpen,
                   BoundaryState derived) {
 
         /** The atom each count is recorded against, for a reader that wants the subject and not
@@ -969,7 +969,7 @@ public final class InvariantChecker {
         // dropped, and a walk here would be asking a second time about a shape the settlement has
         // finished with.
         Map<RuleRef.Invariant, EndsLeftOpen> endsLeftOpen = new LinkedHashMap<>();
-        Map<RuleRef.Invariant, Map<DerivedNumber, EndsLeftOpen.Behind>> boundsLeftOpen =
+        Map<RuleRef.Invariant, Map<OpenEnd, EndsLeftOpen.Behind>> boundsLeftOpen =
                 new LinkedHashMap<>();
         answered.perClause().forEach((each, one) -> {
             narrowedBy.put(each.from(), one);

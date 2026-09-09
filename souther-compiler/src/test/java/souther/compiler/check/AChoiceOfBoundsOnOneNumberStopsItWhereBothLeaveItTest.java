@@ -187,25 +187,47 @@ class AChoiceOfBoundsOnOneNumberStopsItWhereBothLeaveItTest {
     }
 
     /**
-     * And a branch whose rules leave the number no value is one this says nothing about.
+     * And a branch whose rules leave the number no value leaves the choice what the other leaves.
      *
-     * <p>That two of its rules stop the length past each other is a sound proof that nobody is in
-     * that branch — and this reading is no part of deciding a branch's fate, so it declines rather
-     * than acts on it. Which is what it may always do: a number it says nothing about is one no
-     * line is drawn on.
+     * <p>Every value of the choice is in the branch beside it, so what the choice stops the length
+     * at is what that branch stops it at. Which this reading may say: that the ends of the first
+     * have crossed is its own knowledge, and acting on it inside itself is not deciding a fate —
+     * nobody outside is told, and whether anybody is in the branch stands on what the values and
+     * the orders say.
      *
-     * <p>Handed to the join the ranges are composed by, the branch arrives as one this reading was
-     * told somebody can be in, which is a promise nothing here made.
+     * <p>Handed to the join the position's ranges are composed by, such a branch arrives as one
+     * this reading was told somebody can be in, which is a promise nothing here made.
      */
     @Test
-    void andABranchWhoseRulesLeaveTheNumberNoValueIsOneThisSaysNothingAbout() {
-        assertEquals(List.of(NO_LINE, NO_LINE),
-                List.of(borderIn("(String.length(s) >= 5 && String.length(s) <= 3)"
-                                + " || String.length(s) >= 2"),
-                        borderIn("(String.length(s) == 3 && String.length(s) == 5)"
-                                + " || String.length(s) >= 2")),
-                "the rules of one alternative stop the length past each other, and where a choice"
-                        + " of that leaves it is not this reading's to say");
+    void andABranchWhoseRulesLeaveTheNumberNoValueLeavesTheOtherDrawingIt() {
+        assertEquals(
+                List.of(lineAt("String.length(v.s)", "7"), lineAt("String.length(v.s)", "7")),
+                List.of(readingIn("(String.length(s) >= 5 && String.length(s) <= 3)"
+                                + " || String.length(s) >= 7"),
+                        readingIn("(String.length(s) == 3 && String.length(s) == 5)"
+                                + " || String.length(s) >= 7")),
+                "no value of the first alternative exists, so the line is the second's — and the"
+                        + " ends of the first are not where anything is");
+    }
+
+    /**
+     * And it does not turn on where the brackets were put, whatever the alternatives came to.
+     *
+     * <p>The one thing a choice may never be. A branch whose rules leave the length no value and a
+     * branch that says nothing about the length read alike off a range — both are absent from it —
+     * and the two are opposite answers: the first is one nobody is in, and the second puts every
+     * length on the order. Read as one, these three alternatives come to a line under one
+     * bracketing and to none under the other.
+     */
+    @Test
+    void andNotOnWhereTheBracketsWere() {
+        String crossed = "(String.length(s) >= 5 && String.length(s) <= 3)";
+        String unplaced = "String.length(s) * 2 >= 4";
+        assertEquals(List.of(NOT_MEASURED, NOT_MEASURED),
+                List.of(borderIn("(" + crossed + " || " + crossed + ") || " + unplaced),
+                        borderIn(crossed + " || (" + crossed + " || " + unplaced + ")")),
+                "no value of the crossed alternatives exists, so every value is in the third —"
+                        + " whose line is one nothing placed, whichever way the brackets fall");
     }
 
     /** What the document says the line was read as. */

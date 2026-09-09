@@ -97,8 +97,15 @@ final class BoundaryReading {
         record Bounded(DerivedNumber number, FactSubject subject, OrderedInterval range)
                 implements Read {}
 
-        /** It stops {@code number} somewhere nothing here worked out. */
-        record LeftOpen(DerivedNumber number, FactSubject subject) implements Read {}
+        /**
+         * It stops {@code number} somewhere nothing here worked out.
+         *
+         * <p>The line is named ({@link OpenEnd}) because what a choice does to it is about this
+         * line and not about the number: a rule stating two lines on one length may have one of
+         * them settled by an alternative and the other written where no alternative reaches, and
+         * told apart by the number the second would answer for the first.
+         */
+        record LeftOpen(OpenEnd end, FactSubject subject) implements Read {}
     }
 
     private static final Read NOTHING_STATED = new Read.NoLineStated();
@@ -125,7 +132,7 @@ final class BoundaryReading {
         // saying so is what keeps a choice offering it from reading as a model that draws none.
         if (!(read.left() instanceof OrderedLeaf.Left.Leaves<DerivedNumber> it)
                 || !it.number().equals(said.number())) {
-            return new Read.LeftOpen(said.number(), subject);
+            return new Read.LeftOpen(new OpenEnd(said.number()), subject);
         }
         OrderedInterval left = it.stated();
         // And a rule whose ends have crossed states no end of this number. What it says is that

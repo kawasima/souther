@@ -131,7 +131,7 @@ public final class FieldDomains {
     private final BoundaryState derived;
     /** Which choice an author is sent to for a line on one of those numbers that nothing placed —
      *  see {@link #endsLeftOpenAt}. */
-    private final Map<RuleRef.Invariant, Map<DerivedNumber, EndsLeftOpen.Behind>> boundsLeftOpen;
+    private final Map<RuleRef.Invariant, Map<OpenEnd, EndsLeftOpen.Behind>> boundsLeftOpen;
     /** Which readings took each clause in, as each of them said so. */
     private final ReadingEvidence took;
     /** The accounting, worked out once. Every name of a value asks the same question of it. */
@@ -252,7 +252,7 @@ public final class FieldDomains {
                          Map<FactSubject, souther.compiler.numeric.Granularity> spacing,
                          StringFacts stringMachines, KnownExtents known,
                          Map<RuleRef.Invariant, EndsLeftOpen> endsLeftOpen,
-                         Map<RuleRef.Invariant, Map<DerivedNumber, EndsLeftOpen.Behind>>
+                         Map<RuleRef.Invariant, Map<OpenEnd, EndsLeftOpen.Behind>>
                                  boundsLeftOpen,
                          BoundaryState derived) {
         this.endsLeftOpen = endsLeftOpen;
@@ -1445,11 +1445,11 @@ public final class FieldDomains {
         // is the other reading's answer arriving by the same road. Where the choice left one open
         // is that reading's ({@link BoundaryState}); which choice to send an author to is what the
         // account of the rule kept, and the two are met before either reaches here.
-        boundsLeftOpen.forEach((rule, open) -> open.forEach((number, behind) -> {
-            if (!path.equals(number.position()) || !behind.underAChoice()) {
+        boundsLeftOpen.forEach((rule, open) -> open.forEach((end, behind) -> {
+            if (!path.equals(end.number().position()) || !behind.underAChoice()) {
                 return;
             }
-            said(number.asNumber(), rule, behind, out);
+            said(end.number().asNumber(), rule, behind, out);
         }));
         return List.copyOf(out);
     }
