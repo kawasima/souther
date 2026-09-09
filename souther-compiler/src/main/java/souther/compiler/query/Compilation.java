@@ -14,6 +14,8 @@ import souther.compiler.diag.msg.ModuleMessage;
 import souther.compiler.diag.Located;
 import souther.compiler.diag.SourcePos;
 import souther.compiler.diag.Primary;
+import souther.compiler.diag.DiagnosticView;
+import souther.compiler.diag.Region;
 import souther.compiler.diag.Repair;
 import souther.compiler.diag.ReportContext;
 import souther.compiler.diag.SourceProvenance;
@@ -585,28 +587,52 @@ public final class Compilation {
     }
 
     /**
-     * The edits that answer this compilation's findings and land in {@code source}.
+     * A repair as a reader of {@code source} meets it: the stretch of that file the problem is
+     * marked over, and the edit that answers it.
      *
-     * <p>Chosen by where each edit applies, which is not where its finding is published. A problem
-     * written in two files is said in both ({@link #diagnostics()}), and the characters that make it
-     * go away are in one of them: the second file's reader is shown the report and offered nothing
-     * to apply to a line that is not what is wrong. The same holds for a report about code out of
-     * sight, said at the import that reached it while its repair stays where somebody typed it.
+     * <p>Three questions and not two. Where the problem is marked is where a reader looks and so
+     * where an offer has to stand; where the edit writes is the characters that make the problem go
+     * away; what it writes is the third. The first two are the same stretch often enough to be
+     * mistaken for one, and a qualified name nothing denotes is where they part — marked over the
+     * whole of {@code up.Amuont}, because which of its parts is wrong is what the message settles,
+     * and answered by rewriting one part. An offer that compared a caret against the part would not
+     * be there where the reader is looking.
      *
-     * <p>Publication does not come into it at all, so nothing here reads what a file is filed under
-     * or which of a report's places is its anchor. That is the whole reason this is a query of its
-     * own rather than a reading of the diagnostics.
+     * <p>Which file the edit is applied to is not said here. The edit's own place answers it, and it
+     * may be another of this compilation's files: an offer is made where a reader meets the problem
+     * and applied where the characters are.
+     *
+     * @param offeredAt where this file marks the problem — {@link #diagnostics()} draws its marker
+     *        over the same stretch, both being what {@link DiagnosticView} says this file anchors
+     * @param repair the edit itself
      */
-    public List<Repair> repairs(SourceId source) {
+    public record RepairOffer(Region offeredAt, Repair.AnEdit repair) {}
+
+    /**
+     * Every repair a reader of {@code source} is in a position to be offered.
+     *
+     * <p>A report with nothing this file anchors is left out. It has no marker here, so there is
+     * nowhere for an offer to stand — {@link #diagnostics()} falls back to the head of the document
+     * for such a report, which is a place to put a marker and not a place to offer an edit.
+     *
+     * <p>So is a finding that knows the word and no place to write it ({@link Repair.AWord}). What
+     * it has to say is said in the message; there is no edit to offer, and one made up from where
+     * the report points would rewrite whatever happens to be there.
+     */
+    public List<RepairOffer> repairs(SourceId source) {
         answerEverything();
-        List<Repair> found = new ArrayList<>();
-        for (Db.Found report : reports()) {
-            Repair repair = report.report().diagnostic().repair();
-            if (repair != null && repair.target().start().isIn(source)) {
-                found.add(repair);
+        List<RepairOffer> offers = new ArrayList<>();
+        for (Db.Found found : reports()) {
+            if (!(found.report().diagnostic().repair() instanceof Repair.AnEdit edit)
+                    || !publishSourceIdsOf(found).contains(source)) {
+                continue;
             }
+            DiagnosticView view = DiagnosticView.of(found.report().diagnostic(),
+                    ReportContext.of(filedUnderOf(found), source));
+            view.anchor().ifPresent(
+                    shown -> offers.add(new RepairOffer(shown.spot().region(), edit)));
         }
-        return List.copyOf(found);
+        return List.copyOf(offers);
     }
 
     /**

@@ -438,16 +438,27 @@ public final class Diagnostic {
         }
 
         /**
-         * What to write and where, as one thing, because they are one fact. A site that could hand
+         * What to write and where, as one call, because they are one fact. A site that could hand
          * over the word on its own would be a site whose reader had to find the place, and the only
          * value in reach to find it from is the primary region — which is the stretch the report is
          * said about and is not always the stretch to rewrite.
          *
-         * <p>Either half absent leaves no repair: nothing near enough to be worth offering, or a
-         * name nobody wrote, which has no place in any file to write over.
+         * <p>Which of the two shapes it comes out as is decided here and not at the site, because
+         * what decides it is a property of the position rather than of the check: a name nobody
+         * wrote has no place, and one inside a body an expansion copied in has a borrowed one. Both
+         * leave the word, which is what the reader is told; neither leaves an edit.
+         *
+         * <p>No word leaves nothing. There was nothing near enough to be worth saying.
          */
         public Builder repair(Region target, String with) {
-            this.repair = target == null || with == null ? null : new Repair(target, with);
+            if (with == null) {
+                this.repair = null;
+            } else if (target == null
+                    || target.start().wasCopiedHere() || target.end().wasCopiedHere()) {
+                this.repair = new Repair.AWord(with);
+            } else {
+                this.repair = new Repair.AnEdit(target, with);
+            }
             return this;
         }
 

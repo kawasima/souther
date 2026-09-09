@@ -47,6 +47,7 @@ import souther.compiler.diag.Messages;
 import souther.compiler.diag.Located;
 import souther.compiler.diag.Spot;
 import souther.compiler.diag.Region;
+import souther.compiler.diag.QuotedFrom;
 import souther.compiler.diag.Repair;
 import souther.compiler.diag.UnnamedRegion;
 import souther.compiler.diag.ReportContext;
@@ -753,19 +754,32 @@ public final class Analyzer {
     /**
      * The compiler's repairs for {@code uri}, as actions, for the ones the request's range reaches.
      *
-     * <p>Each repair says where it applies, so nothing here works a range out from where the report
-     * was said. The two are the same stretch for a plain misspelled name and are not for a qualified
-     * one — {@code up.Amuont} is reported over the whole name and repaired over the part after the
-     * dot — and an action built from the report's range would write the suggested part over both.
+     * <p>Reached is compared against where the problem is marked, and never against where the edit
+     * writes. The two are the same stretch for a plain misspelled name and are not for a qualified
+     * one: {@code up.Amuont} is marked over the whole name and repaired after the dot, and a caret
+     * on the {@code up} is on the squiggle its author is asking about. Compared against the edit,
+     * the offer is missing from most of what is underlined.
+     *
+     * <p>The edit goes to the file the repair's own characters are in, read off the place they are
+     * at. That is this file for every repair the compiler makes today, and reading it rather than
+     * assuming it is what makes the offer and the edit two answers.
      */
     private List<CodeAction> repairs(String uri, Range requested, Compilation compilation) {
         List<CodeAction> out = new ArrayList<>();
-        for (Repair repair : compilation.repairs(new SourceId(uri))) {
-            Range target = rangeOfRegion(repair.target());
-            if (overlaps(target, requested)) {
-                out.add(new CodeAction.Applied("Replace with '" + repair.with() + "'",
-                        new CodeAction.Edit(uri, target, repair.with())));
+        for (Compilation.RepairOffer offer : compilation.repairs(new SourceId(uri))) {
+            if (!overlaps(rangeOfRegion(offer.offeredAt()), requested)) {
+                continue;
             }
+            Repair.AnEdit edit = offer.repair();
+            // A workspace names its sources by document URI, so a source id is already the name an
+            // editor opens. A place in a text this workspace has no file for is nothing an editor
+            // could apply an edit to, so there is no offer to make.
+            if (!(edit.target().start().quotedFrom()
+                    instanceof QuotedFrom.ASourceThisCompileHolds(SourceId written))) {
+                continue;
+            }
+            out.add(new CodeAction.Applied("Replace with '" + edit.with() + "'",
+                    new CodeAction.Edit(written.value(), rangeOfRegion(edit.target()), edit.with())));
         }
         return out;
     }

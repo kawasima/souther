@@ -128,12 +128,12 @@ class ARepairSaysWhereItGoesTest {
     }
 
     /**
-     * The file an edit lands in is the file it is offered in, and a report published in two of them
-     * is one report. The reader of the other file is shown the marker and offered nothing to apply
-     * to a line that is not what is wrong.
+     * An offer stands where the problem is marked, so a file the problem is not marked in is
+     * offered nothing however much it is asked. The imported module is fine; what is wrong is the
+     * name written in the file that imports it.
      */
     @Test
-    void aRepairIsOfferedOnlyInTheFileItsEditIsWrittenIn() {
+    void aFileTheProblemIsNotMarkedInIsOfferedNothing() {
         String text = """
             module m
 
@@ -150,20 +150,18 @@ class ARepairSaysWhereItGoesTest {
         Range everywhereInLib = new Range(new Position(0, 0),
                 new Position((int) LIB.lines().count(), 0));
         assertEquals(List.of(), analyzer.codeActions(LIB_URI, LIB, everywhereInLib, graph),
-                "the misspelling is in the other file, whatever this one is told about it");
+                "nothing is marked here, whatever this file is asked");
         assertTrue(!analyzer.codeActions(URI, text, on(text, "l.Cst"), graph).isEmpty(),
-                "and the file that holds it is offered the edit");
+                "and the file the problem is marked in is offered the edit");
     }
 
     /**
-     * A module written over two files answers about the file the edit is in, not the file its
-     * module is declared in. What a report is filed under falls back to the module's own source
-     * where the report claims none, and the rows are in the attached file — so a fix offered by
-     * publication would be offered on the model's text and applied to whatever sits at those
-     * numbers there.
+     * A module written over two files marks the problem in the file it is written in, and that is
+     * the file the offer stands in. Not the file the module is declared in: a reader looking at the
+     * model is looking at text this problem says nothing about.
      */
     @Test
-    void anEditInAnAttachedFileIsOfferedOnThatFile() {
+    void aProblemInAnAttachedFileIsOfferedOnThatFile() {
         String model = """
             module m
 
@@ -196,7 +194,55 @@ class ARepairSaysWhereItGoesTest {
         Range everywhereInTheModel = new Range(new Position(0, 0),
                 new Position((int) model.lines().count(), 0));
         assertEquals(List.of(), analyzer.codeActions(URI, model, everywhereInTheModel, graph),
-                "the model's own file holds none of the characters this edit rewrites");
+                "the model's own file marks nothing about the rows in the other one");
+    }
+
+    /**
+     * The offer stands wherever the problem is marked, and the marked stretch is not the stretch
+     * the edit rewrites. A caret on the qualifier of {@code l.Cst} is on the squiggle the author is
+     * looking at; the characters to change are after the dot, and an offer that compared the caret
+     * against those is an offer that is not there where the author asks for it.
+     */
+    @Test
+    void theOfferStandsAtEveryPositionTheProblemIsMarkedAt() {
+        String text = """
+            module m
+
+            import lib as l ( Cost )
+
+            data Draft = { plannedCost: l.Cst }
+            """;
+        Range marked = spanOf(text, "l.Cst");
+        for (int at = 0; at < "l.Cst".length(); at++) {
+            Range caret = caretAt(text, text.indexOf("l.Cst") + at);
+            List<CodeAction> offered = actions(text, caret);
+            assertEquals(1, offered.size(),
+                    () -> "the caret is inside " + marked + " at " + caret + ": " + offered);
+            assertEquals("Cost",
+                    assertInstanceOf(CodeAction.Applied.class, offered.getFirst()).edit().newText());
+        }
+    }
+
+    /** And the same where the part to rewrite is the qualifier: a caret on the type name is on the
+     *  same marker, and the fix it is offered writes before the dot. */
+    @Test
+    void theOfferStandsOnTheWholeMarkerWhenTheEditIsTheQualifier() {
+        String text = """
+            module m
+
+            import lib as ledger ( Cost )
+
+            data Draft = { plannedCost: ledgr.Cost }
+            """;
+        for (int at = 0; at < "ledgr.Cost".length(); at++) {
+            Range caret = caretAt(text, text.indexOf("ledgr.Cost") + at);
+            List<CodeAction> offered = actions(text, caret);
+            assertEquals(1, offered.size(), () -> "at " + caret + ": " + offered);
+            CodeAction.Edit edit =
+                    assertInstanceOf(CodeAction.Applied.class, offered.getFirst()).edit();
+            assertEquals("ledger", edit.newText());
+            assertEquals(spanOf(text, "ledgr"), edit.range());
+        }
     }
 
     private static List<CodeAction> actions(String text, Range requested) {
@@ -212,9 +258,15 @@ class ARepairSaysWhereItGoesTest {
         return assertInstanceOf(CodeAction.Applied.class, offered.get(0)).edit();
     }
 
-    /** The range an editor sends with the caret somewhere in {@code written}. */
+    /** The range an editor sends for a selection drawn over {@code written}. */
     private static Range on(String text, String written) {
         return spanOf(text, written);
+    }
+
+    /** The range an editor sends with the caret at {@code offset} and nothing selected. */
+    private static Range caretAt(String text, int offset) {
+        Position at = positionOf(text, offset);
+        return new Range(at, at);
     }
 
     /** The range an editor sends for a selection drawn from the first of these to the last. */

@@ -7,6 +7,8 @@ import souther.compiler.diag.CompileException;
 import souther.compiler.meta.ModulePath;
 import souther.compiler.query.Compilation;
 import souther.compiler.source.SourceId;
+import souther.lsp.protocol.Position;
+import souther.lsp.protocol.Range;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -39,25 +41,34 @@ import java.util.Set;
  * at all. So its column is what the old path cost where it worked, and the row it does not have is
  * every workspace of more than one module.
  *
+ * <p>Two layers, said apart because they are two numbers. The query rows are one step of a request
+ * — the compilation being asked, with the compilation already in hand. The request row is what an
+ * editor waits on: {@link Analyzer#codeActions} sorting the workspace into what can join a compile,
+ * bringing the compilation up to date, and answering both halves of what an action is.
+ *
  * <p>Observed, on the workspace this generates (7 modules, 3264 lines), medians:
  * <pre>
- *   settled:   diagnostics    0.03 ms   repairs    0.03 ms
- *   asked:     diagnostics   54.53 ms   repairs   54.58 ms
- *   elsewhere: diagnostics   52.70 ms   repairs   53.94 ms
- *   cold:      diagnostics  882.63 ms   repairs  869.07 ms
- *   alone (one self-contained document, a third the size):  145.24 ms
+ *   query    settled:   diagnostics    0.04 ms   repairs    0.04 ms
+ *   query    asked:     diagnostics   59.56 ms   repairs   57.71 ms
+ *   query    elsewhere: diagnostics   55.83 ms   repairs   56.49 ms
+ *   query    cold:      diagnostics  990.68 ms   repairs  947.43 ms
+ *   request  settled:     0.73 ms     after an edit elsewhere:  61.16 ms
+ *   alone (one self-contained document, a third the size):     154.92 ms
  * </pre>
  *
- * <p>Settled is the state a cursor move arrives in, and it is where the old path spent its whole
- * cost: a compile of the document from nothing, every request, against a store that already held
- * the answer. The other rows are an edit being paid for once — by whichever of the diagnose and the
- * request reaches the store first, since what either of them answers is kept.
+ * <p>Settled is the state a cursor move arrives in. A request there costs most of a millisecond,
+ * nearly all of it above the query: sorting the workspace is per request and grows with the
+ * workspace rather than with the edit. It is where the old path spent its whole cost — a compile of
+ * the document from nothing, every request, against a store that already held the answer — and, for
+ * a workspace of more than one module, where it gave up and offered nothing.
+ *
+ * <p>The other rows are an edit being paid for once, by whichever of the diagnose and the request
+ * reaches the store first, since what either of them answers is kept.
  *
  * <p>The two queries do not differ. Asking for every marker in the workspace costs what asking for
- * one file's edits costs, because both are {@code answerEverything} and the publication map beside
- * it is nothing. So the narrower query is not here for its cost: it is here because publication and
- * applicability are different questions, and a query that answered one while being read for the
- * other would be right only while every finding stayed in the file it was published in.
+ * one file's repairs costs, because both are {@code answerEverything} and what is built beside it is
+ * nothing. So the narrower query is not here for its cost: it is here because it answers three
+ * questions a code action asks and {@code diagnostics} answers one of them.
  */
 @Disabled("manual benchmark; run explicitly to re-measure — see class javadoc")
 class WhatACodeActionCostsBenchmark {
@@ -90,6 +101,36 @@ class WhatACodeActionCostsBenchmark {
         String own = selfContained();
         System.out.printf("alone (one self-contained document): %6.2f ms%n",
                 medianMillis(round -> compileAlone(own), ROUNDS / 4));
+
+        requestCost(byId);
+    }
+
+    /**
+     * The whole request, which is the number an editor waits on: the analyzer sorting the workspace
+     * into what can join a compile, bringing its compilation up to date, and answering both halves
+     * of what an action is. The rows above are one of those steps.
+     */
+    private static void requestCost(Map<String, String> byId) {
+        Map<String, String> sources = new LinkedHashMap<>(byId);
+        ModuleGraph graph = ModuleGraph.of(sources);
+        Analyzer analyzer = new Analyzer();
+        String text = byId.get(ASKED);
+        int at = text.indexOf("writen");
+        Position caret = new Position((int) text.substring(0, at).lines().count() - 1,
+                at - (text.substring(0, at).lastIndexOf('\n') + 1));
+        Range asking = new Range(caret, caret);
+        if (analyzer.codeActions(ASKED, text, asking, graph).isEmpty()) {
+            throw new IllegalStateException("the caret is meant to be on something to repair");
+        }
+
+        double settled = medianMillis(_ -> analyzer.codeActions(ASKED, text, asking, graph), ROUNDS);
+        double afterAnEdit = medianMillis(round -> {
+            Map<String, String> now = new LinkedHashMap<>(byId);
+            now.put("file:///m1.sou", byId.get("file:///m1.sou") + added(round));
+            analyzer.codeActions(ASKED, text, asking, ModuleGraph.of(now));
+        }, ROUNDS);
+        System.out.printf("request:   settled %6.2f ms   after an edit elsewhere %6.2f ms%n",
+                settled, afterAnEdit);
     }
 
     /** What has happened to the documents since the last request. */
