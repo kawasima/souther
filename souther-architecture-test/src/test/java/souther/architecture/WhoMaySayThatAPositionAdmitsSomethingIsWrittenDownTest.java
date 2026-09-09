@@ -244,10 +244,9 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
      * {@code StatedByClauses} and {@code Settlement} put the answers of a choice's branches
      * together, and {@code StringMachineAnswers} keeps an answer once somebody has looked.
      *
-     * <p>{@code Realized} is not here, and holds what a reading could not build. Which of these
-     * answers that comes to is the question above, and it is asked of a word that answers it once —
-     * so a reading and the answers are two vocabularies, and the value that carries the first
-     * speaks neither of them.
+     * <p>{@code Realized} is not here, and it is what holds a position nobody could build. What
+     * that leaves an answer is {@code LeftUnbuilt}'s and is said there once, so the value carrying
+     * the reading says nothing about the answers at all — which is what leaving this list is.
      *
      * <p>What is not here is the list's point. Nothing else in {@code check}, nothing downstream of
      * the compiler, and nothing that reports: a settled answer reaching one of those would be a

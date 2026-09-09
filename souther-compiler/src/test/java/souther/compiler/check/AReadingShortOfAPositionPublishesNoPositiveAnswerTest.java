@@ -56,7 +56,7 @@ class AReadingShortOfAPositionPublishesNoPositiveAnswerTest {
     /** Room for the pattern, and room for anything else these readings ask for. */
     private static final int ENOUGH = 50_000;
 
-    /** Room for neither the pattern nor what widening around it costs. */
+    /** Not room for it, so the position it is about is left holding every value. */
     private static final int TOO_LITTLE = 20;
 
     @Test

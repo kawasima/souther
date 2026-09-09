@@ -858,10 +858,12 @@ sealed interface Confinement<A> {
          * conjunction nothing showed empty carries no proof and may still be carrying this, and a
          * value holding one word for both would have to drop whichever of the two it was not.
          *
-         * <p>Written at every place one of these is made, rather than defaulted. The three ways one
-         * arrives are a reading taken in, two conjunctions met, and the same conjunction said
-         * again over renamed positions or with a range taken as holding — and the middle of those
-         * is the one a value that filled this in for itself would get wrong.
+         * <p>Written at every place one of these is made, rather than defaulted. Nothing read
+         * leaves nothing unbuilt; a reading taken in brings its own; two conjunctions met are
+         * short of a position where either is; and the same conjunction said again under other
+         * names, or handed a range to take as holding, asks the readings nothing and so works
+         * nothing out. A value that filled this in for itself would answer the middle two the way
+         * it answers the first.
          */
         private final LeftUnbuilt leftUnbuilt;
 
