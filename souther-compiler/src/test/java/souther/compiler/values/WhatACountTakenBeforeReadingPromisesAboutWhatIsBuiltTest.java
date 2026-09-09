@@ -74,7 +74,8 @@ class WhatACountTakenBeforeReadingPromisesAboutWhatIsBuiltTest {
      */
     private PlannedValues<String> either(PlannedValues<String> one, PlannedValues<String> other,
                                          boolean apart) {
-        return switch (Emptiness.Alternatives.of(said(one), said(other))) {
+        return switch (Emptiness.Alternatives.from(
+                Emptiness.SidesShownEmpty.of(said(one), said(other)))) {
             case NEITHER_STANDS -> one.bothDead(other);
             case ONLY_THE_RIGHT -> other;
             case ONLY_THE_LEFT -> one;

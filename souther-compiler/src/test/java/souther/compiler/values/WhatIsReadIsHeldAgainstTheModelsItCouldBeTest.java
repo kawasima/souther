@@ -286,7 +286,8 @@ class WhatIsReadIsHeldAgainstTheModelsItCouldBeTest {
      * one keeps what either branch could not read.
      */
     private static Answer settled(Rule left, Rule right) {
-        return switch (Emptiness.Alternatives.of(said(left), said(right))) {
+        return switch (Emptiness.Alternatives.from(
+                Emptiness.SidesShownEmpty.of(said(left), said(right)))) {
             case NEITHER_STANDS -> new Answer(
                     left.planned().bothDead(right.planned()),
                     Set.of(), Set.of(), true,

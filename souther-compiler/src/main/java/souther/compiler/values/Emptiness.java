@@ -23,7 +23,9 @@ package souther.compiler.values;
  * means to each of these before anything compiles. Written as a comparison against a constant, each
  * of them would hand a fourth answer whichever meaning the comparison happened to leave it, and
  * nobody would have decided that. A reader outside asks one of these operations, and
- * {@link Alternatives} for the one reading that is about two of them at once.
+ * {@link SidesShownEmpty} where the question is about two answers at once: which of the two were
+ * shown empty is the observation, and what a connective does about that is the connective's
+ * ({@link Alternatives} for a choice).
  */
 public enum Emptiness {
 
@@ -105,13 +107,61 @@ public enum Emptiness {
     }
 
     /**
+     * Which of two answers were shown empty, in the order they were written.
+     *
+     * <p>The observation two connectives share, and nothing either of them does with it. A conjunct
+     * shown empty decides the conjunction and carries its proof forward; an alternative shown empty
+     * drops out of a choice and its proof goes with it. So what is held here is the sides, and the
+     * valuing of them is not: named for which side survives, this would be the choice's reading
+     * under a word a conjunction takes backwards, and the four cases are the same four either way.
+     *
+     * <p><b>Whether one answer was shown empty is {@link #isEmpty()}'s, and this holds which of the
+     * two gave that answer.</b> So {@link #UNDECIDED} is not on the shown-empty side because
+     * {@link #isEmpty()} says it is not — nobody has shown that nothing satisfies such an answer, and
+     * a reader that sorted it with {@link #EMPTY} would be acting on not having looked. Nothing here
+     * decides that a second time, and an answer added to the three is told which side it falls on
+     * there, before anything compiles.
+     *
+     * <p>What this owns is the lifting of that decision to two answers: the sides, kept in the order
+     * they were written. Read off the constants at each reader of a pair, the sides would be as many
+     * rules as there are readers.
+     *
+     * <p><b>And falling on one side of this is not being one answer.</b> {@link #NONEMPTY} and
+     * {@link #UNDECIDED} were both not shown empty, which is the whole of what this says about
+     * them: whether the question was answered at all is {@link #isDecided()}, and a reader that
+     * took this classification for what the two answers are would call a reading exact that is
+     * waiting on a decision.
+     */
+    public enum SidesShownEmpty {
+
+        /** Neither of them was shown empty. */
+        NEITHER,
+
+        /** The left, and nothing showed the right empty. */
+        THE_LEFT,
+
+        /** The right, and nothing showed the left empty. */
+        THE_RIGHT,
+
+        /** Both of them. */
+        BOTH;
+
+        /** Which of two answers, read in the order they were written, were shown empty. */
+        public static SidesShownEmpty of(Emptiness left, Emptiness right) {
+            if (left.isEmpty()) {
+                return right.isEmpty() ? BOTH : THE_LEFT;
+            }
+            return right.isEmpty() ? THE_RIGHT : NEITHER;
+        }
+    }
+
+    /**
      * Which alternatives of a choice anybody can still be in.
      *
-     * <p>A branch stands unless something showed it empty, so {@link #UNDECIDED} stands: nobody
-     * has shown that nothing satisfies it, and a walk that dropped it would be dropping a branch on
-     * the strength of not having looked. That rule is written here and nowhere else — it is the one
-     * thing every reader of a choice needs before it can do anything, and read off the constants at
-     * each of them it would be as many rules as there are readers.
+     * <p>One reading of {@link SidesShownEmpty}, which is where a branch standing unless something
+     * showed it empty is settled. What is added here is the choice's own valuing of that
+     * observation, and it runs the other way from the observation's sides — a side shown empty is
+     * the side that drops.
      *
      * <p><b>A reading of two answers, and not a settlement of a choice.</b> What this says is which
      * of the alternatives are still candidates. What a choice then leaves, which branch the caller
@@ -141,14 +191,20 @@ public enum Emptiness {
         /** Both are alternatives somebody may still be in. */
         BOTH_STAND;
 
-        /** Which of two alternatives, read in the order they were written, still stand. */
-        public static Alternatives of(Emptiness left, Emptiness right) {
-            boolean here = stands(left);
-            boolean there = stands(right);
-            if (here) {
-                return there ? BOTH_STAND : ONLY_THE_LEFT;
-            }
-            return there ? ONLY_THE_RIGHT : NEITHER_STANDS;
+        /**
+         * Which alternatives stand, read off which sides were shown empty.
+         *
+         * <p>An exchange, and the one place it is written: the side that was shown empty is the side
+         * that drops, so what stands is the other one. Carried across as the same word, the
+         * observation's left would name the alternative a choice has lost.
+         */
+        public static Alternatives from(SidesShownEmpty shown) {
+            return switch (shown) {
+                case NEITHER -> BOTH_STAND;
+                case THE_LEFT -> ONLY_THE_RIGHT;
+                case THE_RIGHT -> ONLY_THE_LEFT;
+                case BOTH -> NEITHER_STANDS;
+            };
         }
 
         /**
@@ -163,20 +219,6 @@ public enum Emptiness {
             return switch (this) {
                 case NEITHER_STANDS, ONLY_THE_LEFT, ONLY_THE_RIGHT -> false;
                 case BOTH_STAND -> true;
-            };
-        }
-
-        /**
-         * Whether anybody may still be in an alternative this is the answer about.
-         *
-         * <p>Not published. What a settled answer means to an alternative is this classification's,
-         * and a name for it beside the answers themselves would say that "empty" and "nobody can be
-         * in it" are one thing wherever an {@code Emptiness} is read. They are one thing here.
-         */
-        private static boolean stands(Emptiness said) {
-            return switch (said) {
-                case EMPTY -> false;
-                case NONEMPTY, UNDECIDED -> true;
             };
         }
     }
