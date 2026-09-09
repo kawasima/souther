@@ -48,12 +48,12 @@ import java.util.Set;
  *
  * <p>Observed, on the workspace this generates (7 modules, 3264 lines), medians:
  * <pre>
- *   query    settled:   diagnostics    0.04 ms   repairs    0.04 ms
- *   query    asked:     diagnostics   59.56 ms   repairs   57.71 ms
- *   query    elsewhere: diagnostics   55.83 ms   repairs   56.49 ms
- *   query    cold:      diagnostics  990.68 ms   repairs  947.43 ms
- *   request  settled:     0.73 ms     after an edit elsewhere:  61.16 ms
- *   alone (one self-contained document, a third the size):     154.92 ms
+ *   query    settled:   diagnostics    0.06 ms   repairs    0.06 ms
+ *   query    asked:     diagnostics   63.25 ms   repairs   60.28 ms
+ *   query    elsewhere: diagnostics   56.43 ms   repairs   54.33 ms
+ *   query    cold:      diagnostics  939.47 ms   repairs  969.05 ms
+ *   request  settled:     0.73 ms     after an edit elsewhere:  62.19 ms
+ *   alone (one self-contained document, a third the size):     160.94 ms
  * </pre>
  *
  * <p>Settled is the state a cursor move arrives in. A request there costs most of a millisecond,
