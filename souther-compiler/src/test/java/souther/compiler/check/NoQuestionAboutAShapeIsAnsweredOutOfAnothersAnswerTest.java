@@ -74,9 +74,13 @@ class NoQuestionAboutAShapeIsAnsweredOutOfAnothersAnswerTest {
     /** Who crosses a {@code .} on a type: the elaboration that types what a text wrote, the walk
      *  that says what declarations already state about an expression, and the snapshot an editor
      *  asks what may follow a {@code .}. Readers of one answer, so what a compiler accepts, what a
-     *  measurement of a written value reads, and what an author is offered are the same names. */
+     *  measurement of a written value reads, and what an author is offered are the same names.
+     *
+     *  <p>The second of those is named by its walk rather than by the component holding it: one
+     *  reading of an expression carries what it has entered and what it has already worked out, so
+     *  it is a class of its own, and that is the class that crosses the {@code .}. */
     private static final List<String> CROSS_A_DOT = List.of(
-            "souther.compiler.check.DeclaredTypeReading",
+            "souther.compiler.check.DeclaredTypeReading$Reading",
             "souther.compiler.check.Elaborator",
             "souther.compiler.sites.SemanticSnapshot");
 

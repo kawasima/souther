@@ -175,7 +175,14 @@ public record DeclaredTypeReading(DeclarationFacts facts,
                     yield target == null ? null : facts.read().of(target, fa.field());
                 }
                 case Hir.Apply call -> applied(call);
-                case Hir.Expansion ex -> ofExpansion(ex);
+                // A call a pass already put the callee's body in place of, read as the bindings it
+                // wrote — the node's own reading of itself, so there is no second rule here about
+                // what an expansion means. Nothing hands this walk one today: a reader asks about
+                // the source as it stands or about the definitions a module settled, and neither
+                // has been expanded. Declined instead, a reader that comes to hold one would be
+                // told nothing states what a call is, which is what this reading was made total to
+                // stop.
+                case Hir.Expansion ex -> of(ex.asBindings());
                 case Hir.LetIn let -> ofLet(let);
                 case Hir.Var v -> ofVar(v);
                 // It answers no value, which is a type and is this one.
@@ -229,15 +236,6 @@ public record DeclaredTypeReading(DeclarationFacts facts,
                 case BindingEvidence.BoundTo(Hir.Expr value) -> of(value);
                 // The answer outright, where a declaration gave it one.
                 case BindingEvidence.DeclaredAs(Type declared) -> declared;
-                case BindingEvidence.Carried(Hir.RetType declared, Hir.Expr value) -> {
-                    Type arrived = of(value);
-                    Type parameter = TypeOps.resolveParamType(declared);
-                    // With nothing said about what arrived, the callee's own parameter type is all
-                    // there is, and it answers where it is a type at all rather than a variable this
-                    // application was to decide.
-                    yield arrived == null ? closed(parameter)
-                            : Elaborator.carriedType(declared, arrived, symbols());
-                }
                 case null -> null;
             };
         }
@@ -251,16 +249,6 @@ public record DeclaredTypeReading(DeclarationFacts facts,
                     ? null : ofDefinition(named, value, List.of());
         }
 
-        /** What one expansion answers: what the callee declared, or what the body it left states. */
-        private Type ofExpansion(Hir.Expansion ex) {
-            Type declared = ex.declaredReturn() == null
-                    ? null : TypeOps.resolveParamType(ex.declaredReturn());
-            // Its variables are this application's, and one still open says only that this
-            // application decides it — which the bindings it wrote may state.
-            Type settled = closed(declared);
-            return settled != null ? settled : of(ex.asBindings());
-        }
-
         /** What a {@code let} puts in force while its body is read. */
         private Type ofLet(Hir.LetIn let) {
             BindingId binding = let.binder().id();
@@ -272,16 +260,23 @@ public record DeclaredTypeReading(DeclarationFacts facts,
             }
         }
 
-        /** What the binding a {@code let} writes says about itself: the type the author wrote, the
-         *  parameter type an inlining carried here, or the expression it stands for. */
+        /**
+         * What the binding a {@code let} writes says about itself.
+         *
+         * <p>The type the author wrote on it, where they wrote one: an annotation is what a reader
+         * of the name is looking at, and the value only says what it happens to be — a case where
+         * the annotation says the sum.
+         *
+         * <p>A type on the binding that no author wrote is a parameter type an inlining carried
+         * here, and it is not read: whether the callee's declared type or the argument's own answers
+         * there is a rule of the elaboration's, needing both halves, and nothing hands this reading
+         * an expanded body to ask it about. {@link Hir.LetIn#annotation()} is what tells the two
+         * apart, which is why it is asked rather than the field beside it.
+         */
         private BindingEvidence evidenceOf(Hir.LetIn let) {
-            if (let.annotation() != null) {
-                return new BindingEvidence.DeclaredAs(
-                        TypeOps.resolveParamType(let.annotation()));
-            }
-            return let.declaredType() == null
+            return let.annotation() == null
                     ? new BindingEvidence.BoundTo(let.value())
-                    : new BindingEvidence.Carried(let.declaredType(), let.value());
+                    : new BindingEvidence.DeclaredAs(TypeOps.resolveParamType(let.annotation()));
         }
 
         // --- what an application answers ---------------------------------------------------------
