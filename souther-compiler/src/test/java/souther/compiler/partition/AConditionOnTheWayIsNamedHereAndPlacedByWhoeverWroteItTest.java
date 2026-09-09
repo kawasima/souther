@@ -10,12 +10,14 @@ import souther.compiler.query.Sites;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * What tells one condition on the way to a border from another, and what sends a reader to it, are
@@ -85,24 +87,6 @@ class AConditionOnTheWayIsNamedHereAndPlacedByWhoeverWroteItTest {
     }
 
     /**
-     * And nothing on the way is told from its neighbours by where a report would point.
-     *
-     * <p>Written out because the fault it guards against is invisible otherwise. A carrier that
-     * carried the anchor and nothing else would pass the test above while the anchor was doing what
-     * the place used to do, one name further along.
-     */
-    @Test
-    void whatTellsThemApartIsTheirNameAndNotWhereAReportWouldPoint() {
-        List<OnTheWay> way = longestWay(compiled(""));
-        Set<ConditionReportAnchor> anchors = new LinkedHashSet<>();
-        way.forEach(each -> anchors.add(each.anchor()));
-        assertEquals(way.size(), anchors.size(),
-                () -> "each of these is somewhere of its own here, so this says nothing yet: " + way);
-        assertEquals(way.size(), new LinkedHashSet<>(way).size(),
-                () -> "and each is its own value: " + way);
-    }
-
-    /**
      * A condition the source wrote a construct of is placed by the module that wrote it.
      *
      * <p>The comparisons are, and the forks on a truth are not: what the source wrote at one of
@@ -148,6 +132,129 @@ class AConditionOnTheWayIsNamedHereAndPlacedByWhoeverWroteItTest {
             assertNotEquals(before.get(i), after.get(i),
                     "a reader is sent to where the condition is now, and it has moved");
         }
+    }
+
+    /**
+     * One condition is one name, however many ways carry it.
+     *
+     * <p>The left operand of a short-circuit operator is on the way to its right operand, and on
+     * the way into the arm the whole condition leads to. Those are two accounts of one condition,
+     * and a reader joining them on the name joins them on nothing if the two say different names.
+     *
+     * <p>Its own model, because what this is about is one condition reached twice rather than the
+     * shape of an account.
+     */
+    @Test
+    void oneConditionIsOneNameHoweverManyWaysCarryIt() {
+        String source = """
+                module example.twice
+
+                behavior oneCondition : (a: Bool, n: Int) -> Bool
+                let oneCondition (a, n) =
+                    if a && n > 3 then n > 0 else n < 0
+                """;
+        Compilation compilation = compiledFrom(source);
+        List<OnTheWay.Declined> named = new ArrayList<>();
+        for (List<OnTheWay> way : waysIn(compilation, "oneCondition")) {
+            for (OnTheWay each : way) {
+                if (each instanceof OnTheWay.Declined left
+                        && left.why() instanceof OnTheWay.Why.NoWordsForTheShape) {
+                    named.add(left);
+                }
+            }
+        }
+        assertTrue(named.size() > 1,
+                () -> "the parameter this reading has no words for is on more than one way: "
+                        + named);
+        assertEquals(1, new LinkedHashSet<>(named).size(),
+                () -> "one condition, and every way that carries it says the same one: " + named);
+    }
+
+    /**
+     * And a reading names each condition once, however many times it is read.
+     *
+     * <p>What the reading writes down for the conditions it places itself is one entry per
+     * condition. A name minted per reading of a subtree instead would grow with the shape of the
+     * tree rather than with what is in it — a left-leaning run of operators reads its whole prefix
+     * again at every step — and every one of those names would be an entry in an answer.
+     */
+    @Test
+    void whatTheReadingWritesDownGrowsWithTheConditionsAndNotWithTheReading() {
+        String source = """
+                module example.run
+
+                behavior aRun : (a: Bool, b: Bool, c: Bool, d: Bool, n: Int) -> Bool
+                let aRun (a, b, c, d, n) =
+                    if a && b && c && d then n > 0 else n < 0
+                """;
+        assertEquals(4, placedByTheReading(compiledFrom(source), "aRun").size(),
+                "the four truths it has no words for, and nothing else");
+    }
+
+    /**
+     * Two conditions a report sends a reader to one place for are still two conditions.
+     *
+     * <p>The one that says the name is doing work the anchor cannot. A helper is spliced into each
+     * call of it, so one condition an author wrote stands twice in one body — and where it is
+     * written is one place, because there is one of it in the source. Told apart by where a report
+     * points, the two would be one value; told apart by the name, they are what they are.
+     */
+    @Test
+    void twoConditionsReportedAtOnePlaceAreStillTwo() {
+        String source = """
+                module example.expanded
+
+                let either (x: Int, y: Int): Bool = x > 0 || y > 0
+
+                behavior calledTwice : (m: Int, n: Int) -> Bool
+                let calledTwice (m, n) =
+                    if either(m, n) then
+                        if either(n, m) then n > 0 else n < 0
+                    else
+                        n > 5
+                """;
+        List<OnTheWay.Declined> declined = new ArrayList<>();
+        for (List<OnTheWay> way : waysIn(compiledFrom(source), "calledTwice")) {
+            for (OnTheWay each : way) {
+                if (each instanceof OnTheWay.Declined left
+                        && left.why() instanceof OnTheWay.Why.OneOfTwoThings) {
+                    declined.add(left);
+                }
+            }
+        }
+        Set<ConditionReportAnchor> where = new LinkedHashSet<>();
+        Set<ConditionOccurrence> named = new LinkedHashSet<>();
+        declined.forEach(each -> {
+            where.add(each.anchor());
+            named.add(each.condition());
+        });
+        assertEquals(1, where.size(),
+                () -> "one condition was written, so a report points at one place: " + declined);
+        assertEquals(2, named.size(),
+                () -> "and the reading met two of it, which is what the name says: " + declined);
+        assertEquals(2, new LinkedHashSet<>(declined).size(),
+                () -> "so the two are two values, which the place could not have said: " + declined);
+    }
+
+    /** What the reading of {@code behavior} wrote down for the conditions it places itself. */
+    private static Map<ConditionOccurrence, Citation> placedByTheReading(Compilation compilation,
+                                                                         String behavior) {
+        return compilation.db()
+                .ask(new Adequacy.ConditionsMet(compilation.modules().get(0), behavior)).value();
+    }
+
+    /** Every account the reading of {@code behavior} filed. */
+    private static List<List<OnTheWay>> waysIn(Compilation compilation, String behavior) {
+        Partitions.Partitioning divided = compilation.db()
+                .ask(new Adequacy.Divided(compilation.modules().get(0), behavior)).value();
+        assertNotNull(divided, "the model under test is measured");
+        return List.copyOf(divided.reaching().byComparison().values());
+    }
+
+    private static Compilation compiledFrom(String source) {
+        Compilation compilation = Compilation.ofSource(source, "Main");
+        compilation.answerEverything();
+        return compilation;
     }
 
     /** Where a report about each condition on the way points, in the order the way carries them. */

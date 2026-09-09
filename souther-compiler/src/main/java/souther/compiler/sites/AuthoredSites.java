@@ -219,7 +219,7 @@ public final class AuthoredSites {
          * sent past the thing the sentence is about.
          */
         private void wroteCondition(WrittenCondition which, SourcePos at) {
-            if (which.construct().isWritten() && at != null) {
+            if (at != null) {
                 byCondition.putIfAbsent(which, at);
             }
         }
@@ -235,7 +235,7 @@ public final class AuthoredSites {
          * is places nobody asks for.
          */
         private void wroteCondition(Hir.Binary binary) {
-            if (binary.origin() != null) {
+            if (binary.origin() != null && binary.origin().isWritten()) {
                 wroteCondition(new WrittenCondition.Construct(binary.origin()), binary.pos());
             }
         }
@@ -386,7 +386,7 @@ public final class AuthoredSites {
                         // case the arm selects, and where that is written is the arm. The fork's
                         // origin is what names it, since the source wrote no construct here of its
                         // own; its place is the fork's and is not what a reader is shown.
-                        if (match.origin() != null) {
+                        if (match.origin() != null && match.origin().isWritten()) {
                             wroteCondition(new WrittenCondition.ForkArm(match.origin(), part),
                                     one.pos());
                         }

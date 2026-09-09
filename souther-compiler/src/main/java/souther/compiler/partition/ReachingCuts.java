@@ -146,7 +146,7 @@ public record ReachingCuts(Map<ModelOccurrence, List<OnTheWay>> byComparison) {
     static OnTheWay entering(Core.Match match, Core.Case arm, int part, InputDomain inputs,
                              InputReads reads, RuleReadingSource ruleSource,
                              ConditionNumbering numbering) {
-        ConditionOccurrence met = numbering.met();
+        ConditionOccurrence met = numbering.metEntering(match, part);
         ConditionReportAnchor at =
                 numbering.anchorOfArm(match.origin(), part, arm.pos(), met);
         Refinement narrowing = arm.selectedCase().map(Refinement::of).orElse(null);

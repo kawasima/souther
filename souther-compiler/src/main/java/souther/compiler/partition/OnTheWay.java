@@ -90,6 +90,15 @@ public sealed interface OnTheWay {
                 throw new IllegalArgumentException(
                         "a condition this reading declined is some condition it met");
             }
+            // And the one it is named after is the one a report is sent to. Where the reading
+            // places it, the anchor says which condition of the reading that is — so the two are
+            // one answer said twice, and a value whose halves named different conditions would be
+            // reported at a condition other than the one it says was declined.
+            if (anchor instanceof ConditionReportAnchor.WhereTheReadingMetIt(
+                    String _, ConditionOccurrence anchored) && !condition.equals(anchored)) {
+                throw new IllegalArgumentException("a condition declined here is reported here: "
+                        + condition + " reported at " + anchored);
+            }
         }
     }
 

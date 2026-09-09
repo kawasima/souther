@@ -110,9 +110,15 @@ sealed interface Condition {
      * <p>Bindings are looked through and their names taken in; the two operators are taken apart;
      * everything else is either one comparison or nowhere this reading goes.
      *
-     * <p>Called once for the condition it is about, however many outcomes of it a reader goes on to
-     * ask about. Reaching one arm of a fork and reaching the other are two things this one
-     * condition says, and a second fold for the second arm would name the same condition twice.
+     * <p><b>One condition however often it is read.</b> A subtree is read as a condition more than
+     * once — what stands past a short-circuit operator's left operand is read where the walk meets
+     * the operator, and again inside whatever encloses it — and the readings are of one condition.
+     * So the reading of a site is asked for and filed rather than made again, and the name it goes
+     * by comes back with it. Made again, one condition would wear a name per reading, and two
+     * accounts of it would agree about nothing.
+     *
+     * <p>Asked after the way in has been looked through, so that what is filed is the condition
+     * rather than the route to it: a truth reached through a binding is the truth.
      */
     static Condition of(Core e, InputReads reads, Symbols symbols, ConditionNumbering numbering) {
         if (e instanceof Core.LetIn let) {
@@ -134,29 +140,40 @@ sealed interface Condition {
                 && reads.meaningOf(name, symbols) instanceof ReadMeaning.Through through) {
             return of(through.denotes().value(), through.denotes().at(), symbols, numbering);
         }
+        Condition already = numbering.alreadyRead(e, reads);
+        if (already != null) {
+            return already;
+        }
+        // The recognition stays in this one method, which is what the registers of who reads an
+        // operator name. Read in a helper beside it, the one place a condition becomes a shape
+        // would be somewhere those registers do not look.
+        Condition made = null;
         if (e instanceof Core.Binary binary) {
             ConditionJoin joined = ConditionJoin.of(binary.op()).orElse(null);
+            Comparison comparison = joined == null ? Comparison.of(binary).orElse(null) : null;
             if (joined != null) {
                 // The whole node is named before its operands are, so that the order the names come
                 // in is the order a reader meets the conditions in.
                 ConditionOccurrence met = numbering.met();
-                return new Joined(met,
+                made = new Joined(met,
                         numbering.anchorOf(binary.origin(), binary.pos(), met), joined,
                         of(binary.left(), reads, symbols, numbering),
                         of(binary.right(), reads, symbols, numbering));
-            }
-            Comparison comparison = Comparison.of(binary).orElse(null);
-            if (comparison != null) {
+            } else if (comparison != null) {
                 ConditionOccurrence met = numbering.met();
-                return new Compares(comparison, met,
+                made = new Compares(comparison, met,
                         numbering.anchorOf(binary.origin(), binary.pos(), met), reads);
             }
         }
-        // Where this stops. A condition may be anything a `Bool` is, and the source wrote no
-        // construct here to name one by — so this is placed by the reading that met it, which is
-        // what handing no origin over says.
-        ConditionOccurrence met = numbering.met();
-        return new NotRead(met, numbering.anchorOf(null, e.pos(), met));
+        if (made == null) {
+            // Where this stops. A condition may be anything a `Bool` is, and the source wrote no
+            // construct here to name one by — so this is placed by the reading that met it, which
+            // is what handing no origin over says.
+            ConditionOccurrence met = numbering.met();
+            made = new NotRead(met, numbering.anchorOf(null, e.pos(), met));
+        }
+        numbering.read(e, reads, made);
+        return made;
     }
 
     // Which binaries are comparisons is `Comparison#of`'s answer and is asked rather than spelled

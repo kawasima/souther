@@ -27,15 +27,27 @@ public sealed interface WrittenCondition {
      *  it. */
     SourceConstructOrigin construct();
 
+    /**
+     * Refuses a construct no source wrote.
+     *
+     * <p>Here rather than where one of these is made. What this type is for is a condition the
+     * module that wrote it can be asked about, and a construct nothing wrote is one no module
+     * files — so a value naming one is a question with no answer, and it is refused where the value
+     * is made rather than left to come back absent from a lookup a caller had no reason to doubt.
+     */
+    private static void written(SourceConstructOrigin construct) {
+        if (construct == null || !construct.isWritten()) {
+            throw new IllegalArgumentException(
+                    "a condition the source wrote is one some source wrote: " + construct);
+        }
+    }
+
     /** A comparison or a short-circuit operator: a construct the source wrote, and a condition on
      *  its own. */
     record Construct(SourceConstructOrigin construct) implements WrittenCondition {
 
         public Construct {
-            if (construct == null) {
-                throw new IllegalArgumentException("a condition the source wrote is some"
-                        + " construct it wrote");
-            }
+            written(construct);
         }
 
         @Override
@@ -54,9 +66,7 @@ public sealed interface WrittenCondition {
     record ForkArm(SourceConstructOrigin construct, int part) implements WrittenCondition {
 
         public ForkArm {
-            if (construct == null) {
-                throw new IllegalArgumentException("an arm is an arm of a fork somewhere");
-            }
+            written(construct);
             if (part < 0) {
                 throw new IllegalArgumentException(
                         "an arm stands somewhere among the fork's: " + part);
