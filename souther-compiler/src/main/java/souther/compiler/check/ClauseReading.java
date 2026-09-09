@@ -111,7 +111,8 @@ interface ClauseReading<S, E> {
      * shapes it reads, so there is nothing under one of them for a view to leave out.
      */
     default S read(ClauseExpr shape, E at, ClauseScope<E> scope, PerPart<S> per) {
-        return from(shape.written(), over(shape, at, scope, per, ClauseView.asWritten()));
+        return from(shape, shape.written(),
+                over(shape, at, scope, per, ClauseView.asWritten()));
     }
 
     /**
@@ -140,7 +141,8 @@ interface ClauseReading<S, E> {
         // to is not told to {@code per} a second time: the walk below has already said it of the
         // very same node, and a reader counting what it was told would count the whole clause
         // twice and every part of it once.
-        return from(e, over(ClauseExpr.of(e, positive), at, scope, per, view));
+        ClauseExpr shape = ClauseExpr.of(e, positive);
+        return from(shape, e, over(shape, at, scope, per, view));
     }
 
     /**
@@ -188,7 +190,7 @@ interface ClauseReading<S, E> {
         // two are one shape, and the binding as well as the clause under it, since a binding states
         // what the clause under it states.
         for (Core each : shape.spelled()) {
-            out = from(each, out);
+            out = from(shape, each, out);
             if (per != null) {
                 per.read(shape, each, out);
             }
@@ -197,15 +199,21 @@ interface ClauseReading<S, E> {
     }
 
     /**
-     * The same reading, remembering that it is what {@code e} came to.
+     * The same reading, remembering that it is what {@code e} came to, which {@code shape} says
+     * which occurrence of the clause it is.
      *
      * <p>For a reading that has to answer about the parts of a clause afterwards. Kept in what the
      * reading carries rather than handed to somebody who keeps it: a part of a branch that turns
      * out dead is answered differently from the same part in a branch that stands, and everything
      * that decides which of those it was happens above here. Kept outside, the part would be read
      * again against a tree the decision had not reached.
+     *
+     * <p>The occurrence beside the node, so that a reading filing what it made of a part files it
+     * under where in the clause the part is. A clause is read once per place the walk opens a
+     * value at, over whatever tree a substitution built for that reading, and the node is that
+     * tree's; the occurrence is the clause's and is the same in every reading of it.
      */
-    default S from(Core e, S out) {
+    default S from(ClauseExpr shape, Core e, S out) {
         return out;
     }
 }

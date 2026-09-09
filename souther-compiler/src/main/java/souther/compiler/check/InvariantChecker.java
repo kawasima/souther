@@ -1367,7 +1367,7 @@ public final class InvariantChecker {
     record Written(Core clause, ClauseView view,
                    Map<PartId<RuleRef.Invariant>, Map<ClauseExpr.Occurrence, PartAsRead>>
                            constrained,
-                   Map<Core, ReadByClauses.OfAPart> adopted) {
+                   Map<ClauseExpr.Occurrence, ReadByClauses.OfAPart> adopted) {
 
         Written {
             constrained = Map.copyOf(constrained);
@@ -1392,16 +1392,17 @@ public final class InvariantChecker {
          * of them — so an account of all of them together is told apart by nothing but which
          * objects those substitutions happened to allocate.
          */
-        Written alsoAdopting(List<Map.Entry<Core, ReadByClauses.OfAPart>> account) {
-            Map<Core, ReadByClauses.OfAPart> out = new IdentityHashMap<>();
+        Written alsoAdopting(
+                List<Map.Entry<ClauseExpr.Occurrence, ReadByClauses.OfAPart>> account) {
+            Map<ClauseExpr.Occurrence, ReadByClauses.OfAPart> out = new LinkedHashMap<>();
             account.forEach(each -> out.put(each.getKey(), each.getValue()));
             return new Written(clause, view, constrained, Collections.unmodifiableMap(out));
         }
 
-        /** What this reading made of {@code part} of the clause, or null where it read no such
-         *  part — which is not the same as having read it and made nothing of it. */
-        ReadByClauses.OfAPart adoptedAt(Core part) {
-            return adopted.get(part);
+        /** What this reading made of the part at {@code at}, or null where it read no such part —
+         *  which is not the same as having read it and made nothing of it. */
+        ReadByClauses.OfAPart adoptedAt(ClauseExpr.Occurrence at) {
+            return adopted.get(at);
         }
 
         /**
@@ -1826,7 +1827,7 @@ public final class InvariantChecker {
         if (about.isEmpty()) {
             return;
         }
-        ReadByClauses.OfAPart adopted = of.adoptedAt(part);
+        ReadByClauses.OfAPart adopted = of.adoptedAt(at);
         Set<FactSubject> here = adopted == null ? null : adopted.adopted();
         // What this very reading made of this very part, as it said so when it read it. Asked
         // again here, the part was read a second time, and two readings of one conjunct agree only
@@ -1928,8 +1929,8 @@ public final class InvariantChecker {
         //
         // Before the reading below, which needs to know: a conjunct that stated where the values
         // stop has a line, and is not one an author is owed a sentence about for having drawn none.
-        RunsRead runs = runsOf(clause, from, of, part, byName, parts, out);
-        restricting(clause, from, of, part, byName, parts, noLines, runs);
+        RunsRead runs = runsOf(clause, saidAs.at(), from, of, part, byName, parts, out);
+        restricting(clause, saidAs.at(), from, of, part, byName, parts, noLines, runs);
         aChoiceAboutOneCoordinate(clause, part, at, byName, naming);
         if (!(clause instanceof Core.Binary bin)) {
             // Nothing but a binary is written as a comparison, so there is no reading of one for
@@ -2675,11 +2676,11 @@ public final class InvariantChecker {
      * beside a rule that says nothing lends the second its narrowing — and the reason goes out
      * against the one rule that holds the position to nothing.
      */
-    private void restricting(Core clause, RuleRef.Invariant from, Written of,
-                             PartId<RuleRef.Invariant> part,
+    private void restricting(Core clause, ClauseExpr.Occurrence at, RuleRef.Invariant from,
+                             Written of, PartId<RuleRef.Invariant> part,
                              Map<FactSubject, Coordinate> byName, PartsRead parts,
                              List<FieldDomains.NoLine> noLines, RunsRead runs) {
-        ReadByClauses.OfAPart account = of.adoptedAt(clause);
+        ReadByClauses.OfAPart account = of.adoptedAt(at);
         ReadByClauses.OfARule rule = parts.ruleIn(from);
         if (account == null || rule == null) {
             return;
@@ -2775,10 +2776,10 @@ public final class InvariantChecker {
      * characters they hold; a rule about the length is a rule about a whole number and is read
      * where whole numbers are.
      */
-    private RunsRead runsOf(Core clause, RuleRef.Invariant from, Written of,
-                        PartId<RuleRef.Invariant> part,
+    private RunsRead runsOf(Core clause, ClauseExpr.Occurrence at, RuleRef.Invariant from,
+                        Written of, PartId<RuleRef.Invariant> part,
                         Map<FactSubject, Coordinate> byName, PartsRead parts, List<Direct> out) {
-        ReadByClauses.OfAPart account = of.adoptedAt(clause);
+        ReadByClauses.OfAPart account = of.adoptedAt(at);
         if (account == null) {
             return RunsRead.NOTHING;
         }
