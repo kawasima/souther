@@ -272,6 +272,31 @@ class LspServerTest {
         JsonNode actions = responseFor(readFrames(out.toByteArray()), 2);
         assertEquals(0, actions.size(),
                 () -> "the name is spelled right now: " + actions);
+        // And the same request before the edit does offer one, so the emptiness above is the edit
+        // and not the request having gone wrong for some reason of its own.
+        assertEquals(1, offeredOn(uri, typo).size(), "the typo is offerable before it is fixed");
+    }
+
+    /** What a client is offered with the caret on the misspelling in {@code text}. */
+    private List<JsonNode> offeredOn(String uri, String text) {
+        byte[] input = frames(
+                message(1, "initialize", Map.of()),
+                message(null, "initialized", Map.of()),
+                message(null, "textDocument/didOpen", Map.of(
+                        "textDocument", Map.of("uri", uri, "text", text))),
+                message(2, "textDocument/codeAction", Map.of(
+                        "textDocument", Map.of("uri", uri),
+                        "range", Map.of("start", Map.of("line", 2, "character", 16),
+                                "end", Map.of("line", 2, "character", 22)),
+                        "context", Map.of("diagnostics", List.of(Map.of(
+                                "range", Map.of("start", Map.of("line", 2, "character", 16),
+                                        "end", Map.of("line", 2, "character", 22)),
+                                "message", "unknown identifier"))))));
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        new LspServer(new MessageConnection(new ByteArrayInputStream(input), out)).run();
+        List<JsonNode> offered = new ArrayList<>();
+        responseFor(readFrames(out.toByteArray()), 2).forEach(offered::add);
+        return offered;
     }
 
     @Test

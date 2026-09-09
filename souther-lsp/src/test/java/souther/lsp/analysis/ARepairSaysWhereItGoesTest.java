@@ -113,7 +113,13 @@ class ARepairSaysWhereItGoesTest {
         assertEquals(List.of("draft", "agreement"), written);
     }
 
-    /** Away from every repair there is nothing to offer, whatever the document is wrong about. */
+    /**
+     * Away from every repair there is nothing to offer, whatever the document is wrong about.
+     *
+     * <p>Asked beside the range that does offer one, in the same document and the same run. An
+     * offer that goes missing for any reason at all leaves an empty list too, and that is what an
+     * emptiness on its own cannot be told apart from.
+     */
     @Test
     void aRangeReachingNoRepairIsOfferedNothing() {
         String text = """
@@ -124,6 +130,8 @@ class ARepairSaysWhereItGoesTest {
             behavior price : (draft: Draft) -> Int
             let price (draft) = drft.plannedCost
             """;
+        assertEquals(1, actions(text, on(text, "drft")).size(),
+                "there is an offer in this document to go missing");
         assertEquals(List.of(), actions(text, on(text, "module m")));
     }
 
@@ -243,6 +251,52 @@ class ARepairSaysWhereItGoesTest {
             assertEquals("ledger", edit.newText());
             assertEquals(spanOf(text, "ledgr"), edit.range());
         }
+    }
+
+    /**
+     * Two files, each with a misspelling of its own, and each keeps its own fix.
+     *
+     * <p>What a file reads a report as is asked of the files that report is said in, and asking it
+     * of one it says nothing about is refused rather than answered emptily. A walk over every
+     * report in the workspace meets both of these on the way to either, so a walk that asked
+     * without looking lost the fix that was there — not the other file's, its own, and every other
+     * offer in the request with it.
+     *
+     * <p>Said as what is offered rather than as what is not. An offer that goes missing looks the
+     * same from outside as one there was never anything to make, and the second is what a test
+     * asserting emptiness cannot tell it from.
+     */
+    @Test
+    void eachOfTwoFilesKeepsItsOwnFix() {
+        String first = """
+            module first
+
+            behavior price : (draft: Int) -> Int
+            let price (draft) = drft
+            """;
+        String second = """
+            module second
+
+            behavior agreed : (agreement: Int) -> Int
+            let agreed (agreement) = agrement
+            """;
+        Map<String, String> sources = new LinkedHashMap<>();
+        sources.put("file:///first.sou", first);
+        sources.put("file:///second.sou", second);
+        ModuleGraph graph = ModuleGraph.of(sources);
+        Analyzer analyzer = new Analyzer();
+
+        List<CodeAction> onFirst = analyzer.codeActions("file:///first.sou", first,
+                caretAt(first, first.indexOf("drft")), graph);
+        assertEquals(1, onFirst.size(), onFirst::toString);
+        assertEquals("draft",
+                assertInstanceOf(CodeAction.Applied.class, onFirst.getFirst()).edit().newText());
+
+        List<CodeAction> onSecond = analyzer.codeActions("file:///second.sou", second,
+                caretAt(second, second.indexOf("agrement")), graph);
+        assertEquals(1, onSecond.size(), onSecond::toString);
+        assertEquals("agreement",
+                assertInstanceOf(CodeAction.Applied.class, onSecond.getFirst()).edit().newText());
     }
 
     private static List<CodeAction> actions(String text, Range requested) {
