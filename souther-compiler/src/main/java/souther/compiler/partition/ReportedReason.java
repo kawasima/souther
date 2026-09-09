@@ -3,6 +3,7 @@ package souther.compiler.partition;
 import souther.compiler.inputs.AuthoredOrder;
 import souther.compiler.inputs.BlockReason;
 import souther.compiler.inputs.RuleReasons;
+import souther.compiler.inputs.WhereInTheRule;
 import souther.compiler.publish.SourceOrdered;
 
 import java.util.ArrayList;
@@ -37,9 +38,33 @@ public final class ReportedReason {
      * two reasons a reader is not offered to tell apart come out as one word — and that is this
      * projection saying they are one thing to lift, rather than a reader dropping one of them.
      */
-    public static SourceOrdered<UndividedPosition.Reason> asWritten(
-            AuthoredOrder<RuleReasons.Said> stopped) {
-        return SourceOrdered.carrying(stopped.map(each -> of(each.reason())));
+    public static SourceOrdered<Stop> asWritten(AuthoredOrder<RuleReasons.Said> stopped) {
+        return SourceOrdered.carrying(stopped.map(ReportedReason::stop));
+    }
+
+    /**
+     * One thing a question stands on, in the words a document promises, and where to go about it.
+     *
+     * <p>The pair and not the word, because the word is deliberately coarser than what produced it
+     * and two things to lift can come out under one of them. A clause whose ends two choices left
+     * open leaves two, and a list of words says the reader has one thing to do.
+     *
+     * @param reason what kind of thing stopped the derivation, at the coarseness promised
+     * @param sentTo where inside the rule a reader goes about it — the rule itself for a reason
+     *               about the whole of it
+     */
+    public record Stop(UndividedPosition.Reason reason, WhereInTheRule sentTo) {
+
+        public Stop {
+            if (reason == null || sentTo == null) {
+                throw new IllegalArgumentException(
+                        "a question stands on some reason, somewhere in its rule");
+            }
+        }
+    }
+
+    private static Stop stop(RuleReasons.Said said) {
+        return new Stop(of(said.reason()), said.sentTo());
     }
 
     /**
@@ -56,16 +81,21 @@ public final class ReportedReason {
             case RuleReasons.AsWritten it ->
                     new Published.AsTheAuthorWroteThem(asWritten(it.order()));
             case RuleReasons.NoSingleAuthoredOrder it -> new Published.InNoAuthoredOrder(
-                    distinct(it.reasons()));
+                    distinct(it.said()));
         };
     }
 
-    /** Each word once, keeping where it first stood, which is what a coarsening leaves. */
-    private static List<UndividedPosition.Reason> distinct(
-            List<BlockReason.RuleReadingStopped> these) {
-        List<UndividedPosition.Reason> out = new ArrayList<>();
-        for (BlockReason.RuleReadingStopped each : these) {
-            UndividedPosition.Reason said = of(each);
+    /**
+     * Each of them once, keeping where it first stood, which is what a coarsening leaves.
+     *
+     * <p>Told apart by the word and by where it sends a reader. Two producers a document offers one
+     * word for are one thing to lift where they are about the same part of the rule, and two where
+     * they are not — folded on the word alone, a clause with two choices in it came out as one.
+     */
+    private static List<Stop> distinct(List<RuleReasons.Said> these) {
+        List<Stop> out = new ArrayList<>();
+        for (RuleReasons.Said each : these) {
+            Stop said = stop(each);
             if (!out.contains(said)) {
                 out.add(said);
             }
@@ -83,15 +113,25 @@ public final class ReportedReason {
      */
     public sealed interface Published {
 
-        /** The words, in whatever order this arm answers for. */
-        List<UndividedPosition.Reason> written();
+        /** What the question stands on, in whatever order this arm answers for. */
+        List<Stop> written();
+
+        /** The words alone, each once, for a reader that has no use for where to go about them. */
+        default List<UndividedPosition.Reason> words() {
+            List<UndividedPosition.Reason> out = new ArrayList<>();
+            for (Stop each : written()) {
+                if (!out.contains(each.reason())) {
+                    out.add(each.reason());
+                }
+            }
+            return List.copyOf(out);
+        }
 
         /** Reasons of one text, in the order that text puts the places they stand on. */
-        record AsTheAuthorWroteThem(SourceOrdered<UndividedPosition.Reason> order)
-                implements Published {
+        record AsTheAuthorWroteThem(SourceOrdered<Stop> order) implements Published {
 
             @Override
-            public List<UndividedPosition.Reason> written() {
+            public List<Stop> written() {
                 return order.written();
             }
         }
@@ -103,7 +143,7 @@ public final class ReportedReason {
          * settles it is which text this walk reached first, and nothing an author did says a word of
          * one file comes before a word of another.
          */
-        record InNoAuthoredOrder(List<UndividedPosition.Reason> written) implements Published {
+        record InNoAuthoredOrder(List<Stop> written) implements Published {
 
             public InNoAuthoredOrder {
                 written = List.copyOf(written);
@@ -138,7 +178,11 @@ public final class ReportedReason {
             // Its own word, and not the one above. That one promises the rule at this position is
             // written in a form nothing here takes apart, and an author acting on it rewrites a
             // bound that reads perfectly well. What they can act on is the branch beside it.
-            case BlockReason.EndLeftOpenByAChoice _ ->
+            // One word for the two readings of one operator. Each says a different thing about it —
+            // what may stand at the position, and where those values stop — and which of them a
+            // reader is being told is what the section they meet it in says. Two words would ask a
+            // reader joining the pair to know that they mean the same operator.
+            case BlockReason.EndLeftOpenByAChoice _, BlockReason.ValueRuleLeftOpenByAChoice _ ->
                     UndividedPosition.Reason.UNREAD_ALTERNATIVE_OF_A_CHOICE;
             // Its own word, and not the one above. That one promises a rule is written in a form
             // nothing here takes apart, and what a reader does about it is rewrite the rule. These

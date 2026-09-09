@@ -2624,7 +2624,9 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                 out.append(String.format("      %s not accounted for: %s — %s %s: %s%s%n",
                         mark(f), cited(asked.cited(), names, declaredIn),
                         asked(asked.asked()), subjectOf(asked),
-                        whyStanding(asked).written().stream().map(AdequacyReport::whyUnread)
+                        whyStanding(asked).written().stream()
+                                .map(stop -> whyUnread(stop.reason())
+                                        + sentTo(stop.sentTo(), names, declaredIn))
                                 .collect(Collectors.joining("; ")),
                         whatItsPositionWasShortOf(asked).map(AdequacyReport::whyUnread)
                                 .map(each -> ", and the answer at its position: " + each)
@@ -3417,9 +3419,16 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                 // the parts of the rule left keeps the order they were written in; what the
                 // position's answer was short of names no part of the rule, so it is written on
                 // its own rather than given a place among things it is not one of.
+                // Each with where inside the rule to go about it, because the word is coarser than
+                // what produced it and two things to lift can arrive under one of them: a clause
+                // whose ends two choices left open leaves two, and a list of words says one.
                 if (!whyStanding(each).written().isEmpty()) {
                     ArrayNode stopped = one.putArray("stopped");
-                    whyStanding(each).written().forEach(reason -> stopped.add(word(reason)));
+                    whyStanding(each).written().forEach(stop -> {
+                        ObjectNode standsOn = stopped.addObject();
+                        standsOn.put("reason", word(stop.reason()));
+                        sentTo(standsOn, stop.sentTo(), sources);
+                    });
                 }
                 whatItsPositionWasShortOf(each)
                         .ifPresent(reason -> one.put("answerStopped", word(reason)));
@@ -4371,7 +4380,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                 PartitionEvidence.Unanswered asked = new PartitionEvidence.Unanswered(it.question());
                 yield RuleHandleProse.said(PublishedRuleHandle.of(handle(asked.cited())), names,
                                 null)
-                        + " at " + asked.at() + " (" + whyStanding(asked).written().stream()
+                        + " at " + asked.at() + " (" + whyStanding(asked).words().stream()
                         .map(AdequacyReport::whyUnread).collect(Collectors.joining("; ")) + ")";
             }
             case Subject.AtABorder it -> it.border().label();
@@ -4478,7 +4487,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                 // the material to do it with.
                 yield new PublishedSubject.AtARule(asked.at(), id,
                         PublishedRuleHandle.of(handle(asked.cited())),
-                        whyStanding(asked).written().stream().map(AdequacyReport::word).toList());
+                        whyStanding(asked).words().stream().map(AdequacyReport::word).toList());
             }
             case Subject.AtABorder it -> {
                 // The line the rules drew, as this document identifies one. Named by the rule

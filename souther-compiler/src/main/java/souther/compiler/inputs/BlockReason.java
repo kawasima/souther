@@ -201,9 +201,13 @@ public sealed interface BlockReason {
                 // values were read. What the position admits is what the rules leave; the line
                 // through them is what nobody worked out.
                 case EndLeftOpenByAChoice _ -> false;
+                // And the same operator read the other way does widen it, which is the whole
+                // difference between the two: what the alternatives admit was not read here, so
+                // the position holds whatever a value taking the unread branch may hold.
                 case PatternTooCostly _, PatternTooDeeplyNested _, OrderedExtentTooCostly _,
                      UnreadComparisonForm _, UnreadComparisonDomain _, RuleAboutADerivedValue _,
                      RuleAboutAnElementOfSeveralSequences _, UnreadValueRule _,
+                     ValueRuleLeftOpenByAChoice _,
                      ValueRuleRelatingTwoPositions _, CasePairingNotDetermined _ -> true;
             };
         }
@@ -230,6 +234,7 @@ public sealed interface BlockReason {
                 case UnreadComparisonForm _, UnreadComparisonDomain _, RuleAboutADerivedValue _,
                      RuleAboutAnElementOfSeveralSequences _, UnreadValueRule _,
                      ValueRuleRelatingTwoPositions _, EndLeftOpenByAChoice _,
+                     ValueRuleLeftOpenByAChoice _,
                      CasePairingNotDetermined _ -> RunSensitivity.UNAFFECTED;
             };
         }
@@ -331,7 +336,11 @@ public sealed interface BlockReason {
         }
         return switch (why) {
             case RELATES_TWO_POSITIONS -> new ValueRuleRelatingTwoPositions();
-            case FORM_NOT_READ, ALTERNATIVE_NOT_READ -> new UnreadValueRule();
+            case FORM_NOT_READ -> new UnreadValueRule();
+            // Its own, and not the one above. Both leave what may stand at the position open and
+            // an author does different work about them: one is a clause to rewrite and one is a
+            // branch beside a clause that reads.
+            case ALTERNATIVE_NOT_READ -> new ValueRuleLeftOpenByAChoice();
             case PATTERN_TOO_COSTLY -> new PatternTooCostly();
             case PATTERN_TOO_DEEPLY_NESTED -> new PatternTooDeeplyNested();
             // Refused above, each of them, and named here so that a reason added to the vocabulary
@@ -546,6 +555,27 @@ public sealed interface BlockReason {
      * to be put together.
      */
     record EndLeftOpenByAChoice() implements RuleReadingStopped {}
+
+    /**
+     * A choice offering an alternative nothing read, leaving what may stand at a position open.
+     *
+     * <p>The other reading's half of {@link EndLeftOpenByAChoice}, and its own case for the reason
+     * that one is: {@link UnreadValueRule} promises the rule at this position is written in a form
+     * nothing here takes apart, and an author acting on it rewrites a clause that was read from end
+     * to end. What went unread is the branch beside it.
+     *
+     * <p>Which is what the value reading has recorded all along ({@code UnreadReason
+     * .ALTERNATIVE_NOT_READ}) and lost here, arriving at a document as the form nobody could read.
+     * The distinction was worth making inside the reading and was worth nothing to the reader it
+     * was made for.
+     *
+     * <p>What a document writes for this and for the one above is one word. They are two readings
+     * of one operator saying two things about it — what may stand at the position, and where those
+     * values stop — and which of them a reader is being told is what the section they are in says.
+     * Two words would put that in the vocabulary as well, and a reader joining the pair would have
+     * to know they meant the same thing.
+     */
+    record ValueRuleLeftOpenByAChoice() implements RuleReadingStopped {}
 
     /**
      * A rule naming a set of strings whose machine is more than this compiler will make.

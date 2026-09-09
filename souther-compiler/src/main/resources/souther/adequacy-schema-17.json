@@ -2615,11 +2615,24 @@
               },
               "stopped": {
                 "type": "array",
-                "description": "What the parts of the rule that raised this question left, in the order they were written: one or more distinct reasons. Not what is wrong with the model — every word here is a limit of this compiler or a statement of what a rule places, and lifting one is what would let the question be answered. A question stands until every part that asked it has been read, so a part standing behind another is a second thing to lift and is a second entry here; two parts one limit stopped are one thing to lift and are one entry. Where every one of them was written in one source text, the order is part of what this says: it is the order the places they stand on were written in, and a consumer sorting it would answer by a precedence nothing in the model decides. Where they were written across texts there is no such order — nothing an author did says which file comes before another — and the entries are in an order that is steady from run to run and means nothing else. Absent where nothing about the rule itself was short and `answerStopped` says what was. The same words the human report writes for this question, from the same projection — a document that carried fewer of them than the report says would be the report and the document disagreeing about one question. Under schema 12 this also held `answerStopped`'s word, at a place in the order that came from which of this compiler's stores a reason was recorded in rather than from anything the model says.",
+                "description": "What the parts of the rule that raised this question left, in the order they were written: one or more distinct entries. Not what is wrong with the model — every word here is a limit of this compiler or a statement of what a rule places, and lifting one is what would let the question be answered. A question stands until every part that asked it has been read, so a part standing behind another is a second thing to lift and is a second entry here; two parts one limit stopped are one thing to lift and are one entry. What tells two entries apart is `reason` together with `sentTo`: a clause whose ends two choices left open leaves two things to lift under one word, and they are told apart by where in the rule each of them is. Where every one of them was written in one source text, the order is part of what this says: it is the order the places they stand on were written in, and a consumer sorting it would answer by a precedence nothing in the model decides. Where they were written across texts there is no such order — nothing an author did says which file comes before another — and the entries are in an order that is steady from run to run and means nothing else. Absent where nothing about the rule itself was short and `answerStopped` says what was. The same words the human report writes for this question, from the same projection — a document that carried fewer of them than the report says would be the report and the document disagreeing about one question. Under schema 16 an entry was the word alone, which said a clause with two choices in it left a reader one thing to do. Under schema 12 this also held `answerStopped`'s word, at a place in the order that came from which of this compiler's stores a reason was recorded in rather than from anything the model says.",
                 "minItems": 1,
                 "uniqueItems": true,
                 "items": {
-                  "$ref": "#/$defs/ruleStoppedReadingReason"
+                  "type": "object",
+                  "required": [
+                    "reason"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "reason": {
+                      "$ref": "#/$defs/ruleStoppedReadingReason"
+                    },
+                    "sentTo": {
+                      "$ref": "#/$defs/at",
+                      "description": "Where inside the rule a reader goes about this one, for an entry about a part of it rather than about the whole. `rule` beside the entry sends them to the rule, which is the whole answer wherever what they lift is the rule; a choice whose other alternative went unread is lifted at the `||`, and the clause `rule` names reads perfectly well. Absent where the rule is the whole of it, and absent where the part is in a text this document cannot point at. The same place the `notRead` entry for the same choice carries, so a consumer holding what the values were short of and what the ends were short of knows the two are one thing to fix."
+                    }
+                  }
                 }
               },
               "answerStopped": {

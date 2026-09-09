@@ -260,6 +260,7 @@ public sealed interface RuleReasons {
             case BlockReason.OrderedExtentTooCostly _ -> 8;
             case BlockReason.RuleAboutAnElementOfSeveralSequences _ -> 9;
             case BlockReason.EndLeftOpenByAChoice _ -> 10;
+            case BlockReason.ValueRuleLeftOpenByAChoice _ -> 11;
         };
     }
 }
