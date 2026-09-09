@@ -580,7 +580,7 @@ public sealed interface PlannedValues<A> {
      * guarantee for — see {@link AdmissibleValues#guaranteedBy}.
      *
      * <p>A conjunction leaves a coarser relation, so a block here covers several of a side's own
-     * and what that side promises is what it promises at all of them ({@link #promisedAcross}).
+     * and what that side promises is what it promises at all of them ({@link #promisesFor}).
      */
     private static <A> Map<Sameness.Block<A>, AdmittedPlan> guaranteedMet(
             Settled<A> here, Settled<A> there, Sameness<A> heldAsOne) {
