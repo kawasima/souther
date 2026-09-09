@@ -115,6 +115,16 @@ class EverythingAnAnswerHoldsMeansSomethingTest {
     private record Met(Map<Locus.Place, Set<String>> byPlace, Set<String> fellShort,
                        Map<Locus.Place, Set<String>> differentThings, int opened) {}
 
+    /**
+     * What both walks met, worked out once for the class that asks.
+     *
+     * <p>Every question below is about the same walk of the same models, and the walk is nearly all
+     * of what this costs. Asked per question, the models would be compiled again for each — and
+     * compiled twice over for the detector that compares two stores, which is the point of that
+     * detector and not something a second question adds anything to.
+     */
+    private static final Met MET = met();
+
     private static Met met() {
         // Not a map that sorts. A place is told from a place by what it holds and not by how it
         // reads, and what it reads as drops the very thing that tells two of them apart — so an
@@ -176,7 +186,7 @@ class EverythingAnAnswerHoldsMeansSomethingTest {
      */
     @Test
     void bothDetectorsGetToTheEndOfBothScenarios() {
-        Met met = met();
+        Met met = MET;
 
         // What an answer was built from is what an edit is absorbed by, so which questions a
         // compile reaches is as much what it did as what it said: two stores over one input
@@ -260,7 +270,7 @@ class EverythingAnAnswerHoldsMeansSomethingTest {
     /** And what they found is the places written down, and no others. */
     @Test
     void theOnlyThingsThatMeanNothingAreTheOnesWrittenDown() {
-        Met met = met();
+        Met met = MET;
         Map<Locus.Place, String> reasons = AnswerClosure.reasons();
 
         assertEquals(new java.util.HashSet<>(AnswerClosure.places()),
@@ -278,7 +288,7 @@ class EverythingAnAnswerHoldsMeansSomethingTest {
      */
     @Test
     void andEachIsMetByWhatIsWrittenDownBesideIt() {
-        Met met = met();
+        Met met = MET;
 
         assertEquals(List.of(),
                 differencesBetween(AnswerClosure.observations(), met.byPlace()),
