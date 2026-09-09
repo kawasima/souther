@@ -1663,10 +1663,8 @@ sealed interface StatedByClauses {
             }
             // What this reading did with the choices it read, gathered as the walks below do their
             // own work and added to the totals once. Nothing here asks a question of its own.
-            ChoicesRead.Tally tally = new ChoicesRead.Tally();
-            if (reader.alternatives() == Alternatives.MERGED) {
-                tally.mergedAlternatives();
-            }
+            ChoicesRead.Tally tally =
+                    new ChoicesRead.Tally(reader.alternatives() == Alternatives.MERGED);
             tally.settledOffDescriptions(decided.size());
             Settlement made = reader.settle(whole, by, decided, tally);
             // What the choices of every rule left open, gathered as each rule is accounted for and

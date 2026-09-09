@@ -120,7 +120,20 @@ public final class ChoicesRead {
         private long everyAlternativeStood;
         private long oneAlternativeStood;
         private long noAlternativeStood;
-        private boolean merged;
+
+        /**
+         * Whether this reading holds its alternatives merged rather than apart.
+         *
+         * <p>Taken when the tally is made, and not told to it later. Which of the two a reading is
+         * is settled before a clause is read, so there is nothing to wait for; told later, the
+         * reading on one side of the guardrail would make a call the reading on the other side does
+         * not, in the one series written to look for a step there.
+         */
+        private final boolean merged;
+
+        Tally(boolean merged) {
+            this.merged = merged;
+        }
 
         /** One more place a branch stood, which is one node of the tree the settlement walks. */
         void placeMet() {
@@ -130,20 +143,6 @@ public final class ChoicesRead {
         /** How many of this declaration's choices the descriptions alone settled. */
         void settledOffDescriptions(int settled) {
             settledOffDescriptions += settled;
-        }
-
-        /**
-         * That this reading held its alternatives merged rather than apart.
-         *
-         * <p>Recorded here with everything else rather than where the policy decides, and for two
-         * reasons. A write to a shared counter at the decision is a write on one side of the
-         * guardrail and not the other, which is a step the instrument puts into the very place a
-         * measurement of the guardrail looks for one. And a reading that stopped after the decision
-         * would have said it: what is wanted is a declaration read with its alternatives merged,
-         * which is known when the reading is done and not when it is chosen.
-         */
-        void mergedAlternatives() {
-            merged = true;
         }
 
         /**
@@ -177,6 +176,11 @@ public final class ChoicesRead {
          * declaration anybody writes. A shared counter told that nothing happened is still a shared
          * counter written to, and a compile of a model with no choice in it would be paying an
          * instrument for the choices it does not have.
+         *
+         * <p>And where a declaration did state one, the same writes whichever way its alternatives
+         * were held. A figure added only where it is not nought is a figure whose reading costs one
+         * shared write more than the reading beside it — and the reading beside it is the other side
+         * of the guardrail, which is what one of these series exists to measure the step at.
          */
         void publish() {
             if (stated == 0 && placesMet == 0 && !merged) {
@@ -188,9 +192,7 @@ public final class ChoicesRead {
             EVERY_ALTERNATIVE_STOOD.add(everyAlternativeStood);
             ONE_ALTERNATIVE_STOOD.add(oneAlternativeStood);
             NO_ALTERNATIVE_STOOD.add(noAlternativeStood);
-            if (merged) {
-                MERGED.increment();
-            }
+            MERGED.add(merged ? 1 : 0);
         }
     }
 }
