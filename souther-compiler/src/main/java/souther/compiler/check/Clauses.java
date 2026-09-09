@@ -35,6 +35,9 @@ final class Clauses {
     private final ExpandedClauseLookup expandedClauses;
     private final ClauseLocations written;
     private final DeclarationReadings machines;
+    /** Where what each clause of a declaration states is answered from — the declaration's own
+     *  reading of it, and not one this reader makes out of the tree it was handed. */
+    private final ClauseMeanings meanings;
     private final Map<TypeSymbol.AtModule, Map<String, Type>> fields = new HashMap<>();
     private final Map<TypeSymbol.AtModule, Map<String, BindingId>> bindings =
             new HashMap<>();
@@ -61,17 +64,24 @@ final class Clauses {
      *        what those readings answer with.
      */
     Clauses(Symbols symbols, ExpandedClauseLookup expandedClauses, ClauseLocations written,
-            DeclarationReadings machines) {
+            DeclarationReadings machines, ClauseMeanings meanings) {
         this.symbols = symbols;
         this.expandedClauses = expandedClauses;
         this.written = written;
         this.machines = machines;
+        this.meanings = meanings;
     }
 
     /** The representation this reads a declaration's clauses in, for a reader that has to hand it
      *  on rather than ask for one of its own. */
     ExpandedClauseLookup expandedClauses() {
         return expandedClauses;
+    }
+
+    /** Where what each clause of a declaration states is answered from, for a reader that has to
+     *  hand it on rather than ask for one of its own. */
+    ClauseMeanings states() {
+        return meanings;
     }
 
     /** Where a clause of a declaration is written, for the same reader — asked where a sentence
@@ -156,24 +166,51 @@ final class Clauses {
     }
 
     /**
-     * What a clause of {@code data} states where each field is given what {@code given} says, or
-     * {@code null} where it states nothing this check can read.
+     * What {@code clause} states where each field is given what {@code given} says, or {@code null}
+     * where it states nothing this check can read.
+     *
+     * <p>Taken from what the declaration that wrote the clause publishes, and not worked out from
+     * the tree that declaration was written as. What a clause states is that declaration's answer,
+     * and a reader typing the authored tree again is a second answer to it — one that is made
+     * afresh for every reader and that moves whenever anything above the declaration is edited.
+     *
+     * <p>The term goes no further than this reading. What comes back to the caller is a clause read
+     * at the fields it was given, which is this reading's own tree from here on; where the clause is
+     * written is asked of {@link ClauseLocations} by whoever puts a caret under it.
      *
      * <p>A field nothing was given — one a construction leaves out — leaves the clause naming a value
      * that is not there, and the clause is left to the run-time check rather than read against
      * nothing.
      */
-    Core statedAt(ClauseAsExpanded clause, TypeSymbol.AtModule named,
-                  Map<BindingId, Core> given) {
+    private Core statedAt(TypeOps.Declared clause, TypeSymbol.AtModule named,
+                          Map<BindingId, Core> given) {
         // Fail-open: a clause with no form leaves its run-time check standing, whichever way the
         // form went missing. Which of the two it was matters to a reader that publishes a sentence
         // about the clause, and this is not one.
-        Core stated = typed(clause, named).orNull();
-        if (stated == null) {
+        if (!(stated(clause) instanceof ClauseMeaning.Stated it)) {
             return null;
         }
-        return everyFieldRead(given, named, fieldsRead(stated, named))
-                ? substituted(stated, given) : null;
+        return everyFieldRead(given, named, it.fieldsRead())
+                ? substituted(it.states().termForClauseReading(), given) : null;
+    }
+
+    /**
+     * What the declaration that wrote {@code clause} says it states, or {@code null} where it says
+     * nothing about it.
+     *
+     * <p>Asked of the declaration the clause was written on and not of the one being read. A clause
+     * a spread brought in was written elsewhere and is that declaration's to answer for, so a
+     * reading that asked the declaration in hand would be asking a declaration about a clause it
+     * did not write.
+     */
+    private ClauseMeaning stated(TypeOps.Declared clause) {
+        Clause.Id wanted = Clause.Ref.of(clause).id();
+        for (ClauseMeaning each : meanings.of(clause.declaredOn().key())) {
+            if (each.ref().id().equals(wanted)) {
+                return each;
+            }
+        }
+        return null;
     }
 
     /** Whether {@code given} holds a value for every one of {@code fields}, which are named as the
@@ -203,7 +240,7 @@ final class Clauses {
         List<RuleRef.Invariant> lost = new ArrayList<>();
         for (TypeOps.Declared inv : declared(named)) {
             Clause.Ref clause = Clause.Ref.of(inv);
-            Core one = statedAt(inv.asExpanded(), named, given);
+            Core one = statedAt(inv, named, given);
             if (one != null) {
                 // The clause as one reading, and the parts its author wrote as subtrees of that
                 // very reading. Read apart instead, a conjunct would be read without the conjunct

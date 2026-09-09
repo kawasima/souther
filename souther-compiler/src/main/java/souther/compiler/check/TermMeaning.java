@@ -89,6 +89,27 @@ public final class TermMeaning {
         return predicates.assumed(term, at, decidesFalse);
     }
 
+    /**
+     * The term, for the one reader that reads a declaration's clauses into the state the discharge
+     * is made of ({@link Clauses}).
+     *
+     * <p><b>Not an unwrapping, and named so that it cannot be read as one.</b> What this type keeps
+     * from a reader is the ability to observe a term it was handed as an answer: two of these
+     * compare equal while holding terms written at different places, so anything read off the term
+     * and published would be a fact about which of two equal answers a store happened to keep.
+     * Nothing about holding the term inside one reading is that.
+     *
+     * <p>So the term comes out here and reaches no answer. The reading it goes into publishes what
+     * the clauses state and never a tree, and where a clause is written is asked of the thing that
+     * says where a clause is written ({@link ClauseLocations}) rather than read off what comes out
+     * of here. Being package-private is not what holds that: the compiler lets any neighbour call
+     * this, and what says who may is the ledger that names the callers
+     * ({@code WhoMayReadTheTermOfAMeaningTest}).
+     */
+    Core termForClauseReading() {
+        return term;
+    }
+
     @Override
     public boolean equals(Object other) {
         return other instanceof TermMeaning it

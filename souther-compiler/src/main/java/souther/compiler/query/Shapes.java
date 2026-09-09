@@ -3,6 +3,7 @@ package souther.compiler.query;
 import souther.compiler.ast.Hir;
 import souther.compiler.check.ClauseDischarge;
 import souther.compiler.check.ClauseLocations;
+import souther.compiler.check.ClauseMeanings;
 import souther.compiler.check.DeclarationCitations;
 import souther.compiler.check.DeclarationLocations;
 import souther.compiler.check.DeclarationMeaning;
@@ -907,6 +908,23 @@ public final class Shapes {
         return declaration -> {
             Answer<DeclarationMeaning> said = db.ask(new MeaningOf(declaration));
             return said.present() ? said.value() : null;
+        };
+    }
+
+    /**
+     * Where a reading asks what each clause of a declaration states, answered by the declaration
+     * that wrote it ({@link MeaningOf}).
+     *
+     * <p>Empty where nothing declares one and empty where what is declared writes no clauses, which
+     * are the same answer to this question: a reader is asking what the clauses of a declaration
+     * state, and a declaration with none states nothing. Which of the two happened is a question
+     * about the declaration, and it is asked of the declaration.
+     */
+    public static ClauseMeanings clauseMeanings(Db db) {
+        return declaration -> {
+            Answer<DeclarationMeaning> said = db.ask(new MeaningOf(declaration));
+            return said.present() && said.value() instanceof DeclarationMeaning.Product it
+                    ? it.clauses() : List.of();
         };
     }
 

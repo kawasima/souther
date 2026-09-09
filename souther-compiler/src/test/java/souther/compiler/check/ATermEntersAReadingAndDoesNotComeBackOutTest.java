@@ -54,7 +54,15 @@ class ATermEntersAReadingAndDoesNotComeBackOutTest {
             "int hashCode()"
                     + " — of the same projection equals compares",
             "String toString()"
-                    + " — what it read, for whoever is looking at two that differ"));
+                    + " — what it read, for whoever is looking at two that differ",
+            "Core termForClauseReading()"
+                    + " — the term, for the one reader that reads a declaration's clauses into"
+                    + " the state the discharge is made of. The asymmetry above is about what a"
+                    + " reader handed an answer can observe, and this is inside one reading:"
+                    + " what that reading publishes carries no term, and where a clause is"
+                    + " written is asked of ClauseLocations rather than read off this. Who may"
+                    + " call it is what holds that, and it is written down in"
+                    + " WhoMayReadTheTermOfAReadingTest"));
 
     @Test
     void theOperationsOnAReadingAreTheOnesWrittenDown() {

@@ -32,6 +32,7 @@ public final class TheCompilationsSources {
 
     private final Function<String, Symbols> scopeOf;
     private final ExpandedClauseLookup clauses;
+    private final ClauseMeanings states;
     private final ClauseLocations written;
 
     /** Which mint this is, told to nobody: what it stamps says this and what another stamps says
@@ -48,14 +49,16 @@ public final class TheCompilationsSources {
      * to read.
      */
     public TheCompilationsSources(Function<String, Symbols> scopeOf, ExpandedClauseLookup clauses,
-                                  ClauseLocations written) {
-        if (scopeOf == null || clauses == null || written == null) {
+                                  ClauseMeanings states, ClauseLocations written) {
+        if (scopeOf == null || clauses == null || states == null || written == null) {
             throw new IllegalArgumentException(
-                    "a compilation reads its modules under a scope, reads clauses somewhere, and"
-                            + " reads where one is written somewhere");
+                    "a compilation reads its modules under a scope, reads clauses somewhere, reads"
+                            + " what one states somewhere, and reads where one is written"
+                            + " somewhere");
         }
         this.scopeOf = scopeOf;
         this.clauses = clauses;
+        this.states = states;
         this.written = written;
     }
 
@@ -64,7 +67,7 @@ public final class TheCompilationsSources {
     public RuleReadingSource of(String module) {
         Symbols scope = scopeOf.apply(module);
         return scope == null ? null
-                : new RuleReadingSource(scope, clauses, written,
+                : new RuleReadingSource(scope, clauses, states, written,
                         new AModulesRules(mint, module));
     }
 }

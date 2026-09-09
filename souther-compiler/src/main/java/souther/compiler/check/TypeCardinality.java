@@ -67,7 +67,7 @@ public final class TypeCardinality {
         // through a spread, which the graph below does not follow, so a set taken from the graph
         // would leave out exactly the rules that arrive from somewhere else.
         Asked asked = new Asked(source.invariants());
-        source = new RuleReadingSource(symbols, asked, source.written());
+        source = new RuleReadingSource(symbols, asked, source.states(), source.written());
         Map<TypeSymbol, Hir.Def> declared = reached(declarations, symbols);
         Map<TypeSymbol, Set<TypeSymbol>> edges = new LinkedHashMap<>();
         declared.forEach((name, def) -> edges.put(name, read(def, symbols, declared.keySet())));

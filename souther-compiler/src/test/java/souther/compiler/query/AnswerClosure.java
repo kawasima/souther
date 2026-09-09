@@ -629,6 +629,16 @@ final class AnswerClosure {
                     part("souther.compiler.partition.MeasuredInput", "written"),
                     part("souther.compiler.partition.BehaviorInputs", "rules"),
                     part("souther.compiler.check.RuleReadingSource", "written")),
+            // What each clause of a declaration states, beside where it is written and for the
+            // same reason: a capability, whose only input is which declaration is being asked
+            // about. Held as an answer here it would be this reading's copy of what the declaring
+            // module made of its own clauses, which is the copy that goes on saying what the
+            // clause used to state.
+            generationReader("souther.compiler.check.ClauseMeanings",
+                    Traversal.Why.NOTHING_CLOSES_IT,
+                    part("souther.compiler.partition.MeasuredInput", "written"),
+                    part("souther.compiler.partition.BehaviorInputs", "rules"),
+                    part("souther.compiler.check.RuleReadingSource", "states")),
             generationReader("souther.compiler.inputs.ReadQuantities",
                     part("souther.compiler.partition.MeasuredInput", "quantities"),
                     arm("souther.compiler.inputs.ReadQuantities")),
