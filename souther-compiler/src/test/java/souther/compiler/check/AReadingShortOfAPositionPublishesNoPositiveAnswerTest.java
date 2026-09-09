@@ -85,4 +85,46 @@ class AReadingShortOfAPositionPublishesNoPositiveAnswerTest {
         assertEquals(souther.compiler.values.Emptiness.UNDECIDED, took.admits(),
                 "a conjunction of one reading answers what that reading answers");
     }
+
+    /**
+     * And to a conjunction met with that one, from either side.
+     *
+     * <p>Two conjunctions are met where a caller holds the readings of two declarations and wants
+     * what they come to, and the one that took the short reading in is the only one carrying the
+     * reason to doubt. Kept on the side it arrived on, which side the caller wrote first would
+     * settle whether the answer is one anybody worked out.
+     */
+    @Test
+    void andToAConjunctionMetWithThatOneFromEitherSide() {
+        Confinement.Conjoined<String> took = Confinement.Conjoined.<String>top()
+                .taking(readWithRoomFor(TOO_LITTLE), AsACompilationAllows.forAdmittedValues());
+        Confinement.Conjoined<String> nothingRead = Confinement.Conjoined.top();
+
+        assertEquals(souther.compiler.values.Emptiness.UNDECIDED,
+                took.meet(nothingRead, AsACompilationAllows.forAdmittedValues()).admits());
+        assertEquals(souther.compiler.values.Emptiness.UNDECIDED,
+                nothingRead.meet(took, AsACompilationAllows.forAdmittedValues()).admits());
+    }
+
+    /**
+     * And to the same conjunction said again, however it was said again.
+     *
+     * <p>The two ways one of these is made without a reading arriving: the same rules under other
+     * names, and the same rules with a range taken as holding of the positions it bounds. Neither
+     * asks anything of the readings, so neither can have worked out what one of them could not
+     * work out — and a conjunction that answered positively after being renamed would be one whose
+     * answer turned on having been carried across a boundary.
+     */
+    @Test
+    void andToTheSameConjunctionSaidAgain() {
+        Confinement.Conjoined<String> took = Confinement.Conjoined.<String>top()
+                .taking(readWithRoomFor(TOO_LITTLE), AsACompilationAllows.forAdmittedValues());
+
+        assertEquals(souther.compiler.values.Emptiness.UNDECIDED,
+                took.renamed(position -> position).admits(),
+                "renaming the positions works nothing out");
+        assertEquals(souther.compiler.values.Emptiness.UNDECIDED,
+                took.taking(OrderedIntervals.top(), Map.of()).admits(),
+                "and neither does taking a range as holding of them");
+    }
 }
