@@ -12,7 +12,7 @@ import java.util.Objects;
  * better told what was probably meant. So the word travels either way and the edit does not, and a
  * caller that needs to write something has to say which of the two it is looking at.
  *
- * <p>{@link AnEdit#target} is the answer to a different question from a diagnostic's
+ * <p>{@link AnEdit#target()} is the answer to a different question from a diagnostic's
  * {@link Primary}. What a finding is said about and what makes it go away are the same stretch often
  * enough to be mistaken for one rule, and they are not: a qualified name nothing denotes is reported
  * over the whole name and repaired by rewriting the one part that is wrong, and a report moved to

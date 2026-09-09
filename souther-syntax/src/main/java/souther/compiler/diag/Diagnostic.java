@@ -144,11 +144,12 @@ public final class Diagnostic {
     }
 
     /**
-     * The edit that answers this, or null where nothing is known to.
+     * What would answer this, or null where nothing is known to.
      *
      * <p>The one place a machine-applicable edit is read from. A renderer quoting
-     * {@link Repair#with} is quoting the word, and where it applies is
-     * {@link Repair#target} — which no caller works out from {@link #primary()}.
+     * {@link Repair#with()} is quoting the word, which every shape has; where it applies is
+     * {@link Repair.AnEdit#target()}, which only that shape has and which no caller works out from
+     * {@link #primary()}.
      */
     public Repair repair() {
         return repair;
