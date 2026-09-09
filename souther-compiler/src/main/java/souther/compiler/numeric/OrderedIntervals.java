@@ -114,9 +114,48 @@ public final class OrderedIntervals<A> {
         return ranges().keySet();
     }
 
-    /** What {@code position} is left, every value of its order where nothing was said. */
-    public OrderedInterval at(A position) {
-        return ranges().getOrDefault(position, OrderedInterval.OPEN);
+    /**
+     * The ends these rules put on {@code position}, or null where they put none.
+     *
+     * <p>The writing and not the values. Null is the absence itself, said as itself: answered with
+     * a pair of absent ends, a position no rule spoke of would be handed back as a range, and a
+     * range is read against an order — so the answer would be right about a decimal, wrong about an
+     * {@code Int}, and indistinguishable either way. Which values the position is left is
+     * {@link #valuesAt}, and it is the question a reader comparing two readings has.
+     */
+    public OrderedInterval statedAt(A position) {
+        return ranges().get(position);
+    }
+
+    /**
+     * Which values of its own order {@code position} is left.
+     *
+     * <p>What the class above promises: a position not held here is every value its order has, and
+     * that is what comes back for one — not a pair of absent ends, which is every value of an order
+     * that stops nowhere and is more than an order that stops has.
+     *
+     * <p>The one reading a caller may compare, and the reason the two are separate methods. A
+     * choice between {@code n >= 2} and {@code n <= 0} leaves an {@code Int} where it found it, and
+     * a reading that answered from the ends alone would have {@code [MIN..MAX]} on one side and a
+     * pair of absent ends on the other and call them two answers — which is how a border nobody
+     * drew was reported as one this compiler could not measure.
+     *
+     * <p>Handed the order rather than an interval standing for it, so that a caller cannot hand in
+     * the extent of a position beside this one: what a position is ordered on is the carrier's to
+     * say, and there is no reading of this that is about two carriers.
+     *
+     * <p>A null order is a position ordered on nothing this reading names, which is a state a
+     * vocabulary is in and not a caller forgetting to say. There is no order to hold the ends
+     * against, so what comes back is what was written and nothing added — every value where nothing
+     * was written, which is the one answer that cannot be wrong about an order nobody named.
+     */
+    public OrderedInterval valuesAt(A position, ValueOrder onItsOrder) {
+        OrderedInterval stated = ranges().get(position);
+        if (onItsOrder == null) {
+            return stated == null ? OrderedInterval.OPEN : stated;
+        }
+        OrderedInterval extent = onItsOrder.extent();
+        return stated == null ? extent : extent.meet(stated);
     }
 
     /** Whether nothing satisfies these rules, at a position or otherwise. */
@@ -202,7 +241,9 @@ public final class OrderedIntervals<A> {
         Map<A, OrderedInterval> both = new LinkedHashMap<>();
         for (A position : holdingNothing()) {
             if (other.holdingNothing().contains(position)) {
-                both.put(position, at(position).meet(other.at(position)));
+                // Both hold the position, since both leave it no value, so the ends are there to
+                // be met and no order has to be named to find them.
+                both.put(position, statedAt(position).meet(other.statedAt(position)));
             }
         }
         return new OrderedIntervals<>(new Parts<>(both, true));

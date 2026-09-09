@@ -13,6 +13,7 @@ import souther.compiler.numeric.NumericDomain;
 import souther.compiler.numeric.OrderedInterval;
 import souther.compiler.numeric.Times;
 import souther.compiler.numeric.Towards;
+import souther.compiler.numeric.ValueOrder;
 import souther.compiler.observe.ObservedValue;
 import souther.compiler.regex.Language;
 import souther.compiler.regex.Meter;
@@ -64,7 +65,7 @@ import java.util.Set;
  * <p><b>Which types have one</b> is {@link #ofValue}, and it is the one table. Deciding twice is
  * what left a {@code Date} a carrier to one reader and not to another.
  */
-public sealed interface Carrier {
+public sealed interface Carrier extends ValueOrder {
 
     /** A whole number: an {@code Int}, and every size. */
     record Whole() implements Carrier {}
@@ -345,6 +346,7 @@ public sealed interface Carrier {
      * the order does not reach: {@code value < ""} leaves a range open below, and what is below the
      * empty string is nothing.
      */
+    @Override
     default OrderedInterval extent() {
         return switch (this) {
             case Whole _ -> between(Count.of(Long.MIN_VALUE), Count.of(Long.MAX_VALUE));

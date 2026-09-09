@@ -369,17 +369,21 @@ sealed interface Confinement<A> {
         // rules would then be decided differently depending on what the readings before them had
         // already built.
         Meter meter = PatternPlan.Budget.OF_WHAT_A_SET_AND_A_RANGE_SHARE.meter();
-        AskedOfEachBlock<A> byTheReadings = asking(carriers, ordered::at, meter, machines);
+        // What the ends leave each position, read as values of that position's own order. The ends
+        // alone would answer for every order at once, and what a position holds is decided here.
+        Function<A, OrderedInterval> byTheOrders =
+                position -> ordered.valuesAt(position, carriers.get(position));
+        AskedOfEachBlock<A> byTheReadings = asking(carriers, byTheOrders, meter, machines);
         AskedOfEachBlock<A> narrowed = asking(carriers, position ->
-                ordered.at(position).meet(outside.at(position).interval()), meter, machines);
+                byTheOrders.apply(position).meet(outside.at(position).interval()), meter, machines);
         // What a relation between two blocks comes to, which is settled against what each of them
         // is left once everything placing its positions has been met with it. Built here for the
         // same reason the question above is: the values and the ranges are put together in one
         // place, and a relation read against the values alone would answer one way for a block
         // pinned to one value by a written value and another for a block pinned to one by its ends.
         AskedOfARelation<A> relating = relating(carriers, position ->
-                ordered.at(position).meet(outside.at(position).interval()));
-        AskedOfARelation<A> byTheReadingsRelating = relating(carriers, ordered::at);
+                byTheOrders.apply(position).meet(outside.at(position).interval()));
+        AskedOfARelation<A> byTheReadingsRelating = relating(carriers, byTheOrders);
         // And a block nothing outside places is the question above and not another one, so it is
         // answered once however many askings reach it. That is what lets the two share a meter: a
         // machine a question builds is built for the block it is about, and asking about the same
@@ -405,7 +409,8 @@ sealed interface Confinement<A> {
             // the rules they wrote about another one are what cannot hold.
             Set<A> nowhere = new LinkedHashSet<>();
             carriers.keySet().forEach(position -> {
-                if (ordered.at(position).meet(outside.at(position).interval()).holdsNothing()) {
+                if (byTheOrders.apply(position).meet(outside.at(position).interval())
+                        .holdsNothing()) {
                     nowhere.add(position);
                 }
             });

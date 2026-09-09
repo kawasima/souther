@@ -30,6 +30,71 @@ public record OrderedInterval(Endpoint low, Endpoint high) {
     }
 
     /**
+     * Whether this and {@code other} leave the same values of the order they are both ranges of.
+     *
+     * <p>{@link Object#equals} asked of the values rather than of the writing, and one layer short
+     * of the whole question. Two ends at one place are one end however the rule that put them there
+     * spelled the number, which {@link Endpoint#sameAs} decides and a record's derived equality does
+     * not — it reaches {@link java.math.BigDecimal#equals} and tells {@code 3.0} from {@code 3.00}.
+     * And a range with no value in it leaves what every other empty range leaves, whichever ends it
+     * arrived with.
+     *
+     * <p><b>The order's own values and not a carrier's.</b> An absent end is no end and is not the
+     * same end as one at the last count a carrier has, so {@code [MIN..MAX]} and a pair of absent
+     * ends come back different here — which is right of the pairs and is not the question a reader
+     * asking about a position has. That reader interprets both against what its order holds
+     * ({@link OrderedIntervals#valuesAt}) and asks this of the results.
+     *
+     * <p>Beside {@code equals} rather than replacing it. What is written down is what a report
+     * writes back, and a value used as a map key is keyed by how it was written unless somebody
+     * canonicalised it — so the derived equality stays the structural one, and this is the question
+     * a reader about values asks by name.
+     */
+    public boolean sameValuesAs(OrderedInterval other) {
+        if (holdsNothing()) {
+            return other.holdsNothing();
+        }
+        return !other.holdsNothing()
+                && sameEnd(low, other.low) && sameEnd(high, other.high);
+    }
+
+    /** Whether two ends are the same end, an absent one being no end and so the same as no other. */
+    private static boolean sameEnd(Endpoint one, Endpoint other) {
+        return one == null ? other == null : one.sameAs(other);
+    }
+
+    /**
+     * The ends of this that {@code order} does not already stop the values at.
+     *
+     * <p>What a rule states, out of what a reading of it left. Every whole number stops at the
+     * largest one whether or not anybody wrote a rule, so an end there is not a line an author
+     * drew — and a reader downstream cannot tell that end from one a rule states, so it would draw
+     * a line at it and send somebody to a rule that says nothing about it.
+     *
+     * <p>Nothing struck off where the range holds no value. Such a range is a rule stepping past
+     * the end of its own order, and an end pulled off it would come back holding the values the
+     * rule refuses.
+     *
+     * <p>A question about the writing and not about the values, which is why it is here and not
+     * beside {@link #sameValuesAs}: what comes back leaves more values than this does, and is read
+     * by whoever is looking for the line somebody wrote.
+     *
+     * <p><b>Where an end coincides with the order's, and not where clamping put one there.</b> The
+     * two part company over a rule that names the order's own last value: this strikes that end off
+     * whoever wrote it, and a reader holding the rule as written can tell the author's from the
+     * clamp's and keeps it ({@code OrderedLeaf.Left.Leaves#stated}). What has been through a
+     * connective has no such reader — the ends of a join are nobody's in particular — which is what
+     * this is for.
+     */
+    public OrderedInterval endsStatedWithin(OrderedInterval order) {
+        if (holdsNothing()) {
+            return this;
+        }
+        return new OrderedInterval(sameEnd(low, order.low()) ? null : low,
+                sameEnd(high, order.high()) ? null : high);
+    }
+
+    /**
      * Whether {@code at} is inside both ends.
      *
      * <p>Asked of the ends, because whether an end is one of the places it stops at is what the
