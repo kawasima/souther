@@ -44,7 +44,7 @@ final class Clauses {
     private final Map<TypeSymbol.AtModule, ExpandedRules> effective = new HashMap<>();
     /** Which of a declaration's own fields each typed clause reads — what a construction has to have
      * filled for the clause to be read at all. */
-    private final Map<Core, Set<BindingId>> readsFields = new IdentityHashMap<>();
+    private final Map<Core, Set<String>> readsFields = new IdentityHashMap<>();
 
     /**
      * @param expandedClauses where a declaration's clauses are answered from, in the
@@ -172,8 +172,22 @@ final class Clauses {
         if (stated == null) {
             return null;
         }
-        return given.keySet().containsAll(fieldsRead(stated, named))
+        return everyFieldRead(given, named, fieldsRead(stated, named))
                 ? substituted(stated, given) : null;
+    }
+
+    /** Whether {@code given} holds a value for every one of {@code fields}, which are named as the
+     *  declaration writes them and are reached here through this reading's own bindings. */
+    private boolean everyFieldRead(Map<BindingId, Core> given, TypeSymbol.AtModule named,
+                                   Set<String> fields) {
+        Map<String, BindingId> bindings = bindingsOf(named);
+        for (String each : fields) {
+            BindingId binding = bindings.get(each);
+            if (binding == null || !given.containsKey(binding)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
@@ -284,15 +298,28 @@ final class Clauses {
         return declaredClauses.computeIfAbsent(named, name -> of(name).reached());
     }
 
-    /** Which of {@code data}'s own fields {@code clause} reads, remembered: a clause is read at every
-     * construction of its type, and what it reads does not change between them. */
-    private Set<BindingId> fieldsRead(Core clause, TypeSymbol.AtModule named) {
+    /**
+     * Which of {@code named}'s fields {@code clause} reads, remembered: a clause is read at every
+     * construction of its type, and what it reads does not change between them.
+     *
+     * <p>Every field a value of {@code named} has, which is the fields it writes together with the
+     * ones its spreads bring in ({@link #bindingsOf}). What a construction has to have filled is
+     * the question, and a field brought in is filled like any other.
+     *
+     * <p>By the name a field is reached under and not by the binding it is read through. A binding
+     * is one reading's way of reaching a field, so two readings of one declaration name the same
+     * fields through two bindings. Said as bindings, the answer could only be used by the reading
+     * that produced it, which is the reading that already had the tree.
+     */
+    Set<String> fieldsRead(Core clause, TypeSymbol.AtModule named) {
         return readsFields.computeIfAbsent(clause, read -> {
-            Set<BindingId> declared = new HashSet<>(bindingsOf(named).values());
-            Set<BindingId> found = new HashSet<>();
+            Map<BindingId, String> declared = new HashMap<>();
+            bindingsOf(named).forEach((name, binding) -> declared.put(binding, name));
+            Set<String> found = new HashSet<>();
             readsOf(read, binding -> {
-                if (declared.contains(binding)) {
-                    found.add(binding);
+                String name = declared.get(binding);
+                if (name != null) {
+                    found.add(name);
                 }
             });
             return Set.copyOf(found);
