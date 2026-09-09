@@ -1,7 +1,6 @@
 package souther.compiler.check;
 
 import souther.compiler.ast.Hir;
-import souther.compiler.core.Core;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -85,10 +84,10 @@ public sealed interface AuthoredShape {
      * Each part of the clause with the subtree of the expanded {@code read} it became, as a part of
      * {@code rule}.
      *
-     * <p>The same recovery {@link #onto(Core, RuleRef.Invariant)} does of a reading, done of the
-     * tree an expansion left. What a helper's body joined stands under a binding there, so a reader
-     * splitting that tree for itself would find parts this shape never issued — which is why the
-     * shape drives the descent here as well.
+     * <p>The same recovery {@link #onto(ClauseExpr, RuleRef.Invariant)} does of a reading, done of
+     * the tree an expansion left. What a helper's body joined stands under a binding there, so a
+     * reader splitting that tree for itself would find parts this shape never issued — which is
+     * why the shape drives the descent here as well.
      */
     default List<Written> onto(Hir.Expr read, RuleRef.Invariant rule) {
         List<Written> out = new ArrayList<>();
