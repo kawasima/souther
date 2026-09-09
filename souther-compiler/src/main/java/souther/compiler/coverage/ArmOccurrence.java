@@ -24,7 +24,11 @@ import souther.compiler.types.SourceConstructOrigin;
  * would leave such an arm nameless.
  *
  * @param fork which fork of the tree that runs
- * @param part which of its arms, by the order the emitter emits them
+ * @param part which of that fork's arms, by where the arm stands in the fork: the arms of an
+ *             {@code if}, the cases of a {@code match} and the ways an attempted construction comes
+ *             out are each written in an order the node itself has. What emits them walks that
+ *             order and does not decide it, so an emitter that emitted them in some other order
+ *             would be emitting these same arms
  */
 public record ArmOccurrence(ConstructOccurrence fork, int part) {
 

@@ -917,6 +917,20 @@ public final class CoverageSites {
                         + "; a copy of a fork is told from the fork it copies or the two are"
                         + " one decision");
             }
+            // And that each arm says it is the arm it stands at. Which arm an arm is is where it
+            // stands in its fork, and what is filed here is read back by position — the emitter
+            // takes an arm's probe by its place among its siblings, and every reader that names an
+            // arm takes the name off the same array. Said in two places and held in neither, the
+            // two would be free to come apart under an edit to this walk, and an arm would go on
+            // being reported and reasoned about under the name of its neighbour.
+            for (int part = 0; part < arms.length; part++) {
+                ArmOccurrence says = arms[part].arm();
+                if (!says.equals(new ArmOccurrence(which, part))) {
+                    throw new IllegalStateException("the arm standing at part " + part + " of "
+                            + which + " says it is " + says
+                            + "; an arm is named by where it stands in its fork");
+                }
+            }
             armsByNode.put(fork, arms);
         }
 

@@ -70,7 +70,7 @@ public sealed interface ControlPointId {
             return arm.origin();
         }
 
-        /** Which of its fork's arms this is, by the order the emitter emits them. */
+        /** Which of its fork's arms this is, by where the arm stands in the fork. */
         public int part() {
             return arm.part();
         }
