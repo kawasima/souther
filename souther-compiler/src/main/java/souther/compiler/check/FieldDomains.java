@@ -1427,7 +1427,7 @@ public final class FieldDomains {
      */
     public List<EndLeftOpen> endsLeftOpenAt(RuleKey path) {
         List<EndLeftOpen> out = new ArrayList<>();
-        endsLeftOpen.forEach((rule, open) -> open.byPosition().forEach((position, behind) -> {
+        endsLeftOpen.forEach((rule, open) -> open.byNumber().forEach((position, behind) -> {
             // Only the ends nothing else reaches. An end left open with no choice between it and
             // the walk that raises a rule's questions is one those questions already leave
             // standing, and a second account of it is one stop said twice.
@@ -1471,11 +1471,14 @@ public final class FieldDomains {
     /**
      * Where the number called {@code subject} sits, whichever of a place's numbers it is.
      *
-     * <p>Both of them, because a rule can state a line on either: {@link #namedBy} holds what a
-     * place is called and the counts are called something else, and a reader asking only the first
-     * finds nothing for a rule about how long a string is. What such a lookup is for is the place
-     * to report at, which is the same place for both — {@link #numberOf} is what tells them apart
-     * once it is found, and it is written expecting both to arrive.
+     * <p><b>{@link #subjectAt} run backwards</b>, and over the same two kinds it goes forwards
+     * over: what stands at a place, and what an operation answers of it. A rule can state a line on
+     * either, so a lookup that knew only the first finds nothing for a rule about how long a string
+     * is — and {@link #namedBy} is the first alone, because what it is for elsewhere is the subject
+     * a place's own values are filed under.
+     *
+     * <p>Which place, and never which number: those are the same place for both, and
+     * {@link #numberOf} is what tells them apart once it is found.
      */
     private RuleKey placeOf(FactSubject subject) {
         RuleKey named = namedBy.get(subject);
@@ -1929,14 +1932,7 @@ public final class FieldDomains {
             return held;
         }
         OrderedInterval settled = derived.at(number);
-        // And nothing where the envelope holds no value. That its ends have crossed says the rules
-        // admit nothing at this number, which is a fact about whether a value exists — the question
-        // this reading is deliberately no part of ({@link Confinement.Planned#derived}) and one the
-        // readings that decide it already answer. Met in, a line would be drawn where the ends
-        // crossed, at a place the order does not reach.
-        return Endpoint.someValueLiesBetween(settled.low(), settled.high())
-                ? held.meet(new NumericDomain.Bounds(settled.low(), settled.high()))
-                : held;
+        return held.meet(new NumericDomain.Bounds(settled.low(), settled.high()));
     }
 
     /**

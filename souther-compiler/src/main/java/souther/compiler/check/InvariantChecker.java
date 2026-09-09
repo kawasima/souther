@@ -975,7 +975,7 @@ public final class InvariantChecker {
             took.stoppedBy(each.from(), one.account().aboutARule());
             // Only the rules with one, so that a reader asking a position what is left open there
             // walks the rules that have something rather than every rule of the declaration.
-            if (!one.account().endsLeftOpen().byPosition().isEmpty()) {
+            if (!one.account().endsLeftOpen().byNumber().isEmpty()) {
                 endsLeftOpen.merge(each.from(), one.account().endsLeftOpen(), EndsLeftOpen::both);
             }
         });

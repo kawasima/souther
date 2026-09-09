@@ -1,6 +1,7 @@
 package souther.compiler.check;
 
 import souther.compiler.core.Core;
+import souther.compiler.numeric.Endpoint;
 import souther.compiler.numeric.OrderedInterval;
 
 import java.util.LinkedHashMap;
@@ -122,10 +123,19 @@ final class BoundaryReading {
         // can find a side for: the arithmetic reaches a coordinate written inside an expression and
         // the walk over the two sides does not. Such a line is one this reading left open, and
         // saying so is what keeps a choice offering it from reading as a model that draws none.
-        return read.left() instanceof OrderedLeaf.Left.Leaves<DerivedNumber> it
-                && it.number().equals(said.number())
-                ? new Read.Bounded(it.number(), subject, it.stated())
-                : new Read.LeftOpen(said.number(), subject);
+        if (!(read.left() instanceof OrderedLeaf.Left.Leaves<DerivedNumber> it)
+                || !it.number().equals(said.number())) {
+            return new Read.LeftOpen(said.number(), subject);
+        }
+        OrderedInterval left = it.stated();
+        // And a rule whose ends have crossed states no end of this number. What it says is that
+        // nothing satisfies it there, which is a fact about whether a value exists — the question
+        // this reading has no half of and the readings that decide it already answer. Put in the
+        // envelope, it would be a line at a place the order does not reach, and every reader of the
+        // envelope would have to know not to draw it.
+        return Endpoint.someValueLiesBetween(left.low(), left.high())
+                ? new Read.Bounded(it.number(), subject, left)
+                : NOTHING_STATED;
     }
 
     /** What the clauses call {@code number}, which is the name every other reader files it
