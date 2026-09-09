@@ -19,9 +19,7 @@ import souther.compiler.values.ValueSet;
 
 import souther.compiler.numeric.Count;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import souther.compiler.types.ValueName;
@@ -111,7 +109,7 @@ public final class FieldDomains {
     private final Map<RuleRef.Invariant, Required> raised;
     /** The same per part of each clause. A reader that found one conjunct wanting names what that
      *  conjunct is about, and not what the conjunct written beside it raised. */
-    private final Map<RuleRef.Invariant, Map<Core, Required>> raisedByPart;
+    private final Map<RuleRef.Invariant, Map<ClauseExpr.Occurrence, Required>> raisedByPart;
 
     /** What the reading answered for each boundary question it raised and left standing. */
     private final Map<BoundaryQuestion, BoundaryStanding> standing;
@@ -251,7 +249,7 @@ public final class FieldDomains {
                          List<WithoutAnEnd> withoutAnEnd, List<AboutOneCoordinate> aboutOneCoordinate,
                          PartsLeftOut withoutParts,
                          Map<RuleRef.Invariant, Required> raised,
-                         Map<RuleRef.Invariant, Map<Core, Required>> raisedByPart,
+                         Map<RuleRef.Invariant, Map<ClauseExpr.Occurrence, Required>> raisedByPart,
                          Map<BoundaryQuestion, BoundaryStanding> standing, ReadingEvidence took,
                          Map<RuleKey, List<TypeSymbol.AtModule>> narrowers,
                          Map<RuleKey, Set<RulesMissed>> notGathered, Set<RuleKey> handedOn,
@@ -2108,26 +2106,33 @@ public final class FieldDomains {
         Map<RuleRef.Invariant, Set<RuleKey>> unrepresented = new LinkedHashMap<>();
         readings.forEach(reading -> {
             RuleRef.Invariant rule = reading.from();
-            // Every node the shapes this reading recorded were written as, which is what a
-            // conjunction below asks about its two halves.
-            Set<Core> recorded = Collections.newSetFromMap(new IdentityHashMap<>());
+            // Where in the clause this reading recorded a shape, which is what a conjunction below
+            // asks about its two halves.
+            Set<ClauseExpr.Occurrence> recorded = new LinkedHashSet<>();
             reading.constrained().values().forEach(byOccurrence ->
-                    byOccurrence.values().forEach(one -> recorded.addAll(one.of().spelled())));
+                    byOccurrence.values().forEach(one -> recorded.add(one.of().at())));
             // A part at a time, and any one of them is enough. A conjunct the bounds hold nothing of
             // leaves the range wider than the rule however well the conjunct written beside it went,
             // and a set unioned over the whole clause answers for the failing half with the other
             // one — which is the same shape as reading a clause's evidence for one of its parts.
             Set<RuleKey> said = unrepresented.computeIfAbsent(rule, _ -> new LinkedHashSet<>());
             reading.constrained().values().forEach(byOccurrence ->
-                    byOccurrence.values().forEach(one -> one.of().spelled().forEach(part -> {
+                    byOccurrence.values().forEach(one -> {
+                ClauseExpr shape = one.of();
                 InvariantChecker.PartRead read = one.said();
                 // A conjunction says what its conjuncts say, and they are here beside it. Asked of
                 // the conjunction as well, a rule whose halves are each held in a language of their
                 // own — a date bounded at both ends, read by the comparison rather than by the
                 // interval algebra — answers for neither half and fails on the node above them.
-                if (part instanceof Core.Binary b
-                        && ConditionJoin.of(b.op()).orElse(null) == ConditionJoin.BOTH
-                        && recorded.contains(b.left()) && recorded.contains(b.right())) {
+                //
+                // Which shapes are conjunctions is read off the shape and never off the operator
+                // it was written with: what a connective composes is settled where a clause is read
+                // out of the tree ({@link ClauseExpr}), and a denial written above one turns the
+                // conjunction its author wrote into a choice between the denials of its halves.
+                if (shape instanceof ClauseExpr.Joined it && it.how() == ConditionJoin.BOTH
+                        && it.positive()
+                        && recorded.contains(it.left().at())
+                        && recorded.contains(it.right().at())) {
                     return;
                 }
                 if (read.narrowable().stream().anyMatch(ranged::contains)) {
@@ -2138,7 +2143,11 @@ public final class FieldDomains {
                 // the comparison rather than from the interval algebra, and counting only the
                 // algebra calls a bounded `Date` a rule the bounds do not hold — and takes every
                 // boundary beside it down with it.
-                if (directs.stream().anyMatch(d -> d.read() == part)) {
+                // The rule as well as the place: a place is a coordinate of one clause and every
+                // clause has a first one, so an end another rule placed at its own opening would
+                // answer here for a conjunct that placed nothing.
+                if (directs.stream().anyMatch(d -> d.part().rule().equals(rule)
+                        && d.stands().equals(shape.at()))) {
                     return;
                 }
                 // What this part is about, and not what the rule is. A conjunction is one rule the
@@ -2146,8 +2155,8 @@ public final class FieldDomains {
                 // reaching for the rule's questions here would name the places of the conjunct
                 // written beside this one — the half the bounds do hold — among the ones they do
                 // not.
-                Map<Core, Required> byPartRaised = raisedByPart.get(rule);
-                Required required = byPartRaised == null ? null : byPartRaised.get(part);
+                Map<ClauseExpr.Occurrence, Required> byPartRaised = raisedByPart.get(rule);
+                Required required = byPartRaised == null ? null : byPartRaised.get(shape.at());
                 if (required != null) {
                     required.obligations().forEach(owed -> {
                         switch (owed) {
@@ -2161,7 +2170,7 @@ public final class FieldDomains {
                 if (required == null || required.obligations().isEmpty()) {
                     said.add(RuleKey.THE_VALUE);
                 }
-            })));
+            }));
         });
         // And said once per rule, after every reading of it has been met.
         unrepresented.forEach((rule, said) -> said.forEach(path ->
