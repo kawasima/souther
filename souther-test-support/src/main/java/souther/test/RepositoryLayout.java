@@ -64,7 +64,9 @@ public final class RepositoryLayout {
     private final Map<String, Path> byTheNameTheRootPomWrites;
     private final List<Path> sourceTrees;
 
-    private RepositoryLayout(Path root, LinkedHashMap<String, Path> named, List<Path> sourceTrees) {
+    /** {@code named} in the order the root pom names them, which is the order {@link #modules}
+     *  answers in: the pom is what that order is read from, and nothing here sorts it again. */
+    private RepositoryLayout(Path root, Map<String, Path> named, List<Path> sourceTrees) {
         this.root = root;
         this.byTheNameTheRootPomWrites =
                 Collections.unmodifiableMap(new LinkedHashMap<>(named));
