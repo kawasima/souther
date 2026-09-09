@@ -52,7 +52,7 @@ class WhatWasObservedDecidesWhatAReportMayNameTest {
     private static CoverageSites.ArmSite arm(SourceConstructOrigin fork, int index, DecidedBy decided) {
         return new CoverageSites.ArmSite("b",
                 new SourceOutcome.Held(new SourceOutcome.HeldBy.Condition()),
-                Numberings.armPlace(index, PLACES.get(index), fork,
+                Numberings.armPlace(Numberings.arm(fork, index), PLACES.get(index),
                         new ArmReportAnchor.WhereItIsWritten(fork)),
                 index,
                 new CoverageSites.Obligation("b", fork, index, decided));
