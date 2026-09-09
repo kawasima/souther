@@ -104,7 +104,7 @@ public final class TermMeaning {
      * says where a clause is written ({@link ClauseLocations}) rather than read off what comes out
      * of here. Being package-private is not what holds that: the compiler lets any neighbour call
      * this, and what says who may is the ledger that names the callers
-     * ({@code WhoMayReadTheTermOfAMeaningTest}).
+     * ({@code WhoMayReadTheTermOfAReadingTest}).
      */
     Core termForClauseReading() {
         return term;
