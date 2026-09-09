@@ -2,11 +2,9 @@ package souther.compiler.partition;
 
 import org.junit.jupiter.api.Test;
 
-import souther.compiler.ast.Hir;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.RuleReadings;
-import souther.compiler.check.Prepared;
-import souther.compiler.check.Sig;
+import souther.compiler.check.DeclaredSig;
 import souther.compiler.inputs.Refinement;
 import souther.compiler.inputs.TermPath;
 import souther.compiler.observe.Classification;
@@ -16,7 +14,6 @@ import souther.compiler.query.Bodies;
 import souther.compiler.query.Compilation;
 import souther.compiler.query.Output;
 import souther.compiler.query.ReadAs;
-import souther.compiler.query.Shapes;
 import souther.compiler.types.CaseSelector;
 import souther.compiler.types.TypeKey;
 import souther.compiler.types.TypeSymbols;
@@ -75,20 +72,18 @@ class ARowAtAnotherCaseStandsNowhereBelowItTest {
         Compilation compilation = Compilation.ofSource(MODEL, "Main");
         compilation.answerEverything();
         String module = compilation.modules().get(0);
-        Prepared prepared = compilation.db().ask(new Shapes.Prepared(module)).value();
         RuleReadingSource rules = RuleReadings.of(compilation, module);
-        Map<String, Sig> sigs = compilation.db().ask(new Bodies.Signatures(module)).value();
+        Map<String, DeclaredSig> sigs =
+                compilation.db().ask(new Bodies.DeclaredSignatures(module)).value();
         assertNotNull(compilation.db().ask(new Bodies.Checked(module)).value(),
                 "the model under test compiles");
-        Hir.SpecBehavior spec = (Hir.SpecBehavior) prepared.behaviors().stream()
-                .filter(b -> b.name().equals("read")).findFirst().orElseThrow();
         Output.Examples.Of observed = compilation.db()
                 .ask(Output.Examples.asked(compilation.db(), module,
                         compilation.sourceIds().get(0))).value();
         assertNotNull(observed);
         souther.compiler.inputs.InputDomain domain = souther.compiler.inputs.InputDomain.of(
-                spec, sigs.get("read"), rules, ReadAs.THE_COMPILATION_DOES);
-        Partitions.Partitioning partitioning = Partitions.of(spec.name(), domain,
+                sigs.get("read"), rules, ReadAs.THE_COMPILATION_DOES);
+        Partitions.Partitioning partitioning = Partitions.of("read", domain,
                 rules, ReadAs.THE_COMPILATION_DOES);
         return new Read(MeasuredInput.of("read", domain.reading(rules), partitioning),
                 observed.rows());

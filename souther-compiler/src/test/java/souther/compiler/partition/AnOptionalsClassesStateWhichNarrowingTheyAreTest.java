@@ -5,16 +5,13 @@ import org.junit.jupiter.api.Test;
 import souther.compiler.check.DeclaredBounds;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.RuleReadings;
-import souther.compiler.ast.Hir;
-import souther.compiler.check.Prepared;
-import souther.compiler.check.Sig;
+import souther.compiler.check.DeclaredSig;
 import souther.compiler.inputs.Case;
 import souther.compiler.inputs.Refinement;
 import souther.compiler.inputs.Requirements;
 import souther.compiler.inputs.TermPath;
 import souther.compiler.query.Bodies;
 import souther.compiler.query.Compilation;
-import souther.compiler.query.Shapes;
 
 import java.util.List;
 import java.util.Map;
@@ -136,7 +133,7 @@ class AnOptionalsClassesStateWhichNarrowingTheyAreTest {
     private static ConstructionPlan planFor(Requirements required) {
         Read read = read(HOLDING);
         return assertInstanceOf(ConstructionPlan.Result.Planned.class,
-                ConstructionPlan.of(read.sig().inputTypes().get(0), TermPath.of("query"),
+                ConstructionPlan.of(read.sig().inputs().get(0).type(), TermPath.of("query"),
                         read.rules().symbols(), Set.of(), required, ONE_AT_LEAST),
                 "nothing here asks one position to be two things").plan();
     }
@@ -155,23 +152,21 @@ class AnOptionalsClassesStateWhichNarrowingTheyAreTest {
 
     private static Partitions.Partitioning partitioningOf() {
         Read read = read(FLAGGED);
-        return Partitions.of(read.spec().name(),
-                souther.compiler.inputs.InputDomain.of(read.spec(), read.sig(), read.rules(),
+        return Partitions.of("look",
+                souther.compiler.inputs.InputDomain.of(read.sig(), read.rules(),
                         souther.compiler.query.ReadAs.THE_COMPILATION_DOES),
                 read.rules(), souther.compiler.query.ReadAs.THE_COMPILATION_DOES);
     }
 
-    private record Read(Hir.SpecBehavior spec, Sig sig, RuleReadingSource rules) {}
+    private record Read(DeclaredSig sig, RuleReadingSource rules) {}
 
     private static Read read(String source) {
         Compilation compilation =
                 Compilation.ofSources(List.of(source), souther.compiler.meta.ModulePath.EMPTY);
         compilation.answerEverything();
         String module = compilation.modules().get(0);
-        Prepared prepared = compilation.db().ask(new Shapes.Prepared(module)).value();
-        Map<String, Sig> sigs = compilation.db().ask(new Bodies.Signatures(module)).value();
-        Hir.SpecBehavior spec = (Hir.SpecBehavior) prepared.behaviors().stream()
-                .filter(b -> b.name().equals("look")).findFirst().orElseThrow();
-        return new Read(spec, sigs.get("look"), RuleReadings.of(compilation, module));
+        Map<String, DeclaredSig> sigs =
+                compilation.db().ask(new Bodies.DeclaredSignatures(module)).value();
+        return new Read(sigs.get("look"), RuleReadings.of(compilation, module));
     }
 }

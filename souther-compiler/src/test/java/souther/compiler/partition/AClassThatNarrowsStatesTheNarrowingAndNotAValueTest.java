@@ -2,18 +2,15 @@ package souther.compiler.partition;
 
 import org.junit.jupiter.api.Test;
 
-import souther.compiler.ast.Hir;
+import souther.compiler.check.DeclaredSig;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.RuleReadings;
-import souther.compiler.check.Prepared;
-import souther.compiler.check.Sig;
 import souther.compiler.core.Core;
 import souther.compiler.inputs.InputDomain;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.Bodies;
 import souther.compiler.query.Compilation;
 import souther.compiler.query.ReadAs;
-import souther.compiler.query.Shapes;
 
 import java.util.List;
 import java.util.Map;
@@ -77,18 +74,15 @@ class AClassThatNarrowsStatesTheNarrowingAndNotAValueTest {
         Compilation compilation = Compilation.ofSource(source, "Main");
         compilation.answerEverything();
         String module = compilation.modules().get(0);
-        Prepared prepared = compilation.db().ask(new Shapes.Prepared(module)).value();
         RuleReadingSource rules = RuleReadings.of(compilation, module);
-        Map<String, Sig> sigs = compilation.db().ask(new Bodies.Signatures(module)).value();
+        Map<String, DeclaredSig> sigs =
+                compilation.db().ask(new Bodies.DeclaredSignatures(module)).value();
         Bodies.Elaborated checked = compilation.db().ask(new Bodies.Checked(module)).value();
         assertNotNull(checked, "the model under test compiles");
-        Hir.SpecBehavior spec = (Hir.SpecBehavior) prepared.behaviors().stream()
-                .filter(b -> b.name().equals("use")).findFirst().orElseThrow();
-        Sig sig = sigs.get("use");
         Core body = checked.behaviorBodies().get("use");
-        InputDomain domain = InputDomain.of(spec, sig, rules, ReadAs.THE_COMPILATION_DOES);
+        InputDomain domain = InputDomain.of(sigs.get("use"), rules, ReadAs.THE_COMPILATION_DOES);
         Partitions.Partitioning axes =
-                Partitions.of(spec.name(), domain, rules, ReadAs.THE_COMPILATION_DOES);
+                Partitions.of("use", domain, rules, ReadAs.THE_COMPILATION_DOES);
         // What a body draws, where there is one. A behavior nothing implements has the classes its
         // declarations state and no lines beside them, which is the whole of what one of these
         // models is for.
@@ -103,7 +97,7 @@ class AClassThatNarrowsStatesTheNarrowingAndNotAValueTest {
                 souther.compiler.values.Allowance.of(souther.compiler.regex.PatternPlan.Budget.OF_BEHAVIOR_DISTINCTIONS));
         }
         FillResult filled = Generator.fill(
-                MeasuredInput.of(spec.name(), domain.reading(rules), axes),
+                MeasuredInput.of("use", domain.reading(rules), axes),
                 List.of(), Generator.CandidateCheck.ANY, Budgets.generation());
         assertEquals(List.of(), filled.unresolved(), filled.unresolved().toString());
         return filled.rows();

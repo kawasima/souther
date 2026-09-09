@@ -6,6 +6,7 @@ import souther.compiler.Compiler;
 import souther.compiler.check.BehaviorRequirement;
 import souther.compiler.check.Prepared;
 import souther.compiler.check.Requirements;
+import souther.compiler.check.DeclaredSig;
 import souther.compiler.check.Sig;
 import souther.compiler.check.Resolve;
 import souther.compiler.check.SpecImplementation;
@@ -2061,13 +2062,17 @@ public final class Analyzer {
         Map<String, List<BehaviorRequirement>> requirements =
                 compilation.db().ask(new Bodies.Requirements(module)).value();
         Map<String, Sig> signatures = compilation.db().ask(new Bodies.Signatures(module)).value();
-        if (prepared == null || requirements == null || signatures == null) {
+        Map<String, DeclaredSig> declarations =
+                compilation.db().ask(new Bodies.DeclaredSignatures(module)).value();
+        if (prepared == null || requirements == null || signatures == null
+                || declarations == null) {
             return null;
         }
         List<CompletionItem> out = new ArrayList<>();
         for (Hir.BehaviorDef declared : prepared.behaviors()) {
             implementationToWrite(prepared, declared, module).ifPresent(out::add);
-            rowToWrite(prepared, declared, signatures, requirements, module).ifPresent(out::add);
+            rowToWrite(prepared, declared, signatures, declarations, requirements, module)
+                    .ifPresent(out::add);
         }
         return out;
     }
@@ -2106,6 +2111,7 @@ public final class Analyzer {
      */
     private static Optional<CompletionItem> rowToWrite(
             Prepared prepared, Hir.BehaviorDef declared, Map<String, Sig> signatures,
+            Map<String, DeclaredSig> declarations,
             Map<String, List<BehaviorRequirement>> requirements, String module) {
         Sig sig = signatures.get(declared.name());
         if (sig == null) {
@@ -2123,31 +2129,38 @@ public final class Analyzer {
         List<String> unsupplied = ExampleProvisioning.unsupplied(List.of(),
                         Requirements.names(required), prepared.forExamples()).stream()
                 .map(dependency -> Requirements.writtenIn(prepared.name(), dependency)).toList();
+        DeclaredSig written = declarations.get(declared.name());
+        List<String> arguments = written == null
+                ? unnamedArguments(sig.ins().size())
+                : argumentsOf(written);
         return built(TopLevelForm.EXAMPLE.starter() + " " + declared.name(),
                 CompletionItem.SNIPPET, module,
-                DeclarationSkeletons.exampleFor(declared.name(), argumentsOf(declared, sig),
-                        unsupplied));
+                DeclarationSkeletons.exampleFor(declared.name(), arguments, unsupplied));
     }
 
     /**
-     * What to write in each of a row's argument places.
+     * What to write in each of a row's argument places, where the behavior named its parameters.
      *
-     * <p>How many there are is the signature's. What each is called is a label and nothing more —
-     * what stands there is a value, not the parameter — so it is taken from the declaration where
-     * there is one to take it from, and held to the count rather than deciding it. A composition
-     * names no parameters of its own, and a row for one says what it takes without saying what its
-     * first stage happened to call them.
+     * <p>A label and nothing more: what stands in an argument place is a value, not the parameter.
+     * It reads as the declaration's own word for what goes there, which is what a name is for.
      */
-    private static List<String> argumentsOf(Hir.BehaviorDef declared, Sig sig) {
+    private static List<String> argumentsOf(DeclaredSig declared) {
         List<String> labels = new ArrayList<>();
-        if (declared instanceof Hir.SpecBehavior behavior
-                && behavior.params().size() == sig.ins().size()) {
-            for (Hir.Param param : behavior.params()) {
-                labels.add(param.name());
-            }
-            return labels;
+        for (DeclaredSig.Input input : declared.inputs()) {
+            labels.add(input.name());
         }
-        for (int i = 0; i < sig.ins().size(); i++) {
+        return labels;
+    }
+
+    /**
+     * The same for a behavior that named none.
+     *
+     * <p>A composition takes what its first stage takes and calls those nothing of its own, so a row
+     * for one says what it takes without saying what that stage happened to call them.
+     */
+    private static List<String> unnamedArguments(int arity) {
+        List<String> labels = new ArrayList<>();
+        for (int i = 0; i < arity; i++) {
             labels.add("arg");
         }
         return labels;

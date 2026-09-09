@@ -2,17 +2,14 @@ package souther.compiler.partition;
 
 import org.junit.jupiter.api.Test;
 
-import souther.compiler.ast.Hir;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.RuleReadings;
-import souther.compiler.check.Prepared;
-import souther.compiler.check.Sig;
+import souther.compiler.check.DeclaredSig;
 import souther.compiler.inputs.InputDomain;
 import souther.compiler.inputs.PositionValuesNotSeparated;
 import souther.compiler.inputs.TermPath;
 import souther.compiler.query.Bodies;
 import souther.compiler.query.Compilation;
-import souther.compiler.query.Shapes;
 
 import java.util.List;
 import java.util.Map;
@@ -40,13 +37,11 @@ class WhatAReadingCouldNotHoldTogetherIsSaidAtThePositionTest {
                 souther.compiler.meta.ModulePath.EMPTY);
         compilation.answerEverything();
         String module = compilation.modules().getFirst();
-        Prepared prepared = compilation.db().ask(new Shapes.Prepared(module)).value();
-        Map<String, Sig> sigs = compilation.db().ask(new Bodies.Signatures(module)).value();
+        Map<String, DeclaredSig> sigs =
+                compilation.db().ask(new Bodies.DeclaredSignatures(module)).value();
         RuleReadingSource rules = RuleReadings.of(compilation, module);
-        Hir.SpecBehavior spec = (Hir.SpecBehavior) prepared.behaviors().stream()
-                .filter(b -> b.name().equals(behavior)).findFirst().orElseThrow();
-        return Partitions.of(spec.name(),
-                InputDomain.of(spec, sigs.get(behavior), rules, souther.compiler.query.ReadAs.MERGING_WHAT_A_CHOICE_LEAVES), rules, souther.compiler.query.ReadAs.MERGING_WHAT_A_CHOICE_LEAVES);
+        return Partitions.of(behavior,
+                InputDomain.of(sigs.get(behavior), rules, souther.compiler.query.ReadAs.MERGING_WHAT_A_CHOICE_LEAVES), rules, souther.compiler.query.ReadAs.MERGING_WHAT_A_CHOICE_LEAVES);
     }
 
     /** The witness of issue #877: two invariants, each a choice reaching across both fields. */
