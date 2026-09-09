@@ -1926,12 +1926,15 @@ public final class FieldDomains {
         // A position ordered on something the interval algebra has no words for is at no atom of
         // its own, and the rules stop it all the same: what a choice of two bounds on a string
         // leaves is settled by the reading that composes the connectives, and where there is no
-        // algebra to meet with, that answer is the whole of what is known. Null still where
-        // neither reading has anything, which is what a caller reads as a number no range is taken
-        // of here.
+        // algebra to meet with, that answer is the whole of what is known.
+        //
+        // Of a position and not of what an operation answers. A count is a whole number whatever it
+        // counts, so the algebra has words for every one of them and a count with no atom is one no
+        // range was taken of here — which is what a caller reads a missing answer as, and is not
+        // something this has anything to add to.
         if (atom == null) {
-            return settled == null ? null
-                    : new NumericDomain.Bounds(settled.low(), settled.high());
+            return kind instanceof NumberAt.OfWhatNumber.OfItsOwnValue && settled != null
+                    ? new NumericDomain.Bounds(settled.low(), settled.high()) : null;
         }
         NumericDomain.Bounds held = constraints.numbers().boundsOf(atom);
         // And what the choices leave it, which the algebra has no way to: it reads a clause as

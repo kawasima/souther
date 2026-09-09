@@ -503,7 +503,8 @@ sealed interface StatedByClauses {
     }
 
     /**
-     * Whether {@code read} is the tree {@code clause} was written as.
+     * Whether {@code read} is the tree {@code clause} was written as, in the world {@code view}
+     * describes.
      *
      * <p>What this type is for, said as a predicate. Every question a choice answers is asked of its
      * two alternatives, and an alternative is what stands between the brackets — so a reading that

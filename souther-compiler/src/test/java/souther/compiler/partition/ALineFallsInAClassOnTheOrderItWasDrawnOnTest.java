@@ -224,6 +224,10 @@ class ALineFallsInAClassOnTheOrderItWasDrawnOnTest {
     void aClassOfANamedValueHoldsTheLineDrawnAtThatValue() {
         Measured named = measured(NAMED, "gate/slot.level");
 
+        assertEquals(List.of("1", "2", "3"),
+                named.axis().cuts().stream().map(Cut::key).sorted().toList(),
+                "the guard cuts at two and the invariant stops the level at the outermost of the"
+                        + " values it names, so those are the lines this model draws");
         assertEquals(List.of("2"),
                 named.holding(named.lineAt("2")).stream().map(PartitionClass::id).toList(),
                 "the line is at two, and the class holding two is the one that holds it");

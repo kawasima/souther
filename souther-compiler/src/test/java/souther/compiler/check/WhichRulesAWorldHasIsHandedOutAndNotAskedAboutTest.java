@@ -78,15 +78,19 @@ class WhichRulesAWorldHasIsHandedOutAndNotAskedAboutTest {
     }
 
     /**
-     * And every walk over a declaration's clauses is given one.
+     * And nothing is handed a world beside the clause that world would narrow.
      *
-     * <p>Over the compiler and not over the walks somebody listed. What a walk of a world reads is
-     * the parts that world holds, so a walk holding a world and working out the parts for itself is
-     * a second answer to a question with one — and the shape that answer takes is a method that has
-     * both in hand.
+     * <p>Which is the shape the defect takes and not the one place it was found. A reader holding
+     * both has to be written to narrow one by the other, and the reader that is not written to is
+     * the one this is about — so the pair is what is forbidden, whether the second half arrives as
+     * the clause, as one of its parts, or as the answer a world would have given.
+     *
+     * <p>Over the compiler and not over the readers somebody listed. A world is converted where it
+     * is received and what travels on is the clause this world has; a reader further in that could
+     * still be given both is one this finds without being told where to look.
      */
     @Test
-    void andNothingHoldsAWorldBesideThePartsItWouldHaveHandedOut() {
+    void andNothingIsHandedAWorldBesideTheClauseItWouldNarrow() {
         Set<String> both = new TreeSet<>();
         int holding = 0;
         for (Class<?> each : compiled()) {
@@ -95,23 +99,31 @@ class WhichRulesAWorldHasIsHandedOutAndNotAskedAboutTest {
             }
             for (Method method : each.getDeclaredMethods()) {
                 boolean world = false;
-                boolean parts = false;
+                boolean narrowed = false;
                 for (Class<?> takes : method.getParameterTypes()) {
                     world |= takes == PartsLeftOut.class;
-                    parts |= takes == ClauseView.class;
+                    narrowed |= narrowedByAWorld(takes);
                 }
                 if (world) {
                     holding++;
                 }
-                if (world && parts) {
+                if (world && narrowed) {
                     both.add(each.getName() + "." + method.getName());
                 }
             }
         }
         assertTrue(holding > 0, "found nothing that is handed a world at all — the scan missed it");
         assertEquals(Set.of(), both,
-                "a reader given a world and the clause it holds can read one and walk the other,"
+                "a reader given a world and what it would narrow can read one and walk the other,"
                         + " which is the two readings of one world this arrangement is against");
+    }
+
+    /** What a world's answer is about: a clause, a part of one, or the answer itself. */
+    private static boolean narrowedByAWorld(Class<?> takes) {
+        return takes == ClauseView.class
+                || takes == Clauses.Stated.class
+                || takes == Clauses.StatedPart.class
+                || takes == Clauses.StatedClauses.class;
     }
 
     /**

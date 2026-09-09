@@ -89,19 +89,20 @@ class WhatIsSettledAfterAChoiceIsObservedAndNotComposedAgainTest {
      */
     @Test
     void andTheOneWayInWantsAnOrderNobodyButTheReadingHolds() {
-        List<Method> made = new ArrayList<>();
+        Set<String> made = new TreeSet<>();
         for (Method each : SettledOrderEnvelope.class.getDeclaredMethods()) {
-            if (each.getReturnType() == SettledOrderEnvelope.class
-                    && each.getParameterCount() > 0) {
-                made.add(each);
+            if (each.getReturnType() != SettledOrderEnvelope.class) {
+                continue;
             }
+            made.add(each.getName() + "/" + (each.getParameterCount() == 0 ? "nothing"
+                    : each.getParameterTypes()[0].getSimpleName()));
         }
-        assertEquals(1, made.size(),
-                "one way to make one of these, and it is the one that is looked at: " + made);
-        assertEquals(souther.compiler.numeric.OrderedIntervals.class,
-                made.get(0).getParameterTypes()[0],
-                "what it is made from is an order, and an order is held by the reading that"
-                        + " composed the connectives over it");
+        // Both of them, written out: a way in that says nothing is one nothing can be read off, and
+        // a way in that is given a reading's answer is one only that reading can take. A third
+        // fails here whichever of the two it looks like.
+        assertEquals(Set.of("of/OrderedIntervals", "nothing/nothing"), made,
+                "an envelope is made from an order and from nothing else, and an order is held by"
+                        + " the reading that composed the connectives over it");
     }
 
     private static boolean takesOne(Class<?>[] these) {

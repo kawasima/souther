@@ -94,8 +94,12 @@ final class SettledOrderEnvelope {
      * of them.
      */
     private static OrderedInterval stated(OrderedInterval reach, OrderedInterval extent) {
+        // And nothing where the position is ordered on nothing this reading names. Such a position
+        // is one no rule of the order reached either, so what is here is already every value there
+        // is — and the answer that costs nothing to be wrong about is the one that states no end,
+        // rather than one that keeps an end nothing could tell from where the order stops anyway.
         if (extent == null) {
-            return reach;
+            return OrderedInterval.OPEN;
         }
         return new OrderedInterval(
                 reach.low() == null || reach.low().equals(extent.low()) ? null : reach.low(),

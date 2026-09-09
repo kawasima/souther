@@ -67,6 +67,30 @@ class AChoiceOfBoundsLeavesTheLineTheAlternativesLeaveTest {
     }
 
     /**
+     * And which position such a rule is about does not turn on which side it was written on.
+     *
+     * <p>What a leaf states is one question with one answer, and the reading that answers it for an
+     * order the arithmetic has no words for asks the two sides whole. That is the shape a second,
+     * narrower reading of the same question takes — so what is held here is that it is not one: the
+     * four spellings below are one rule about the string at a position, and a choice offering any
+     * of them draws the line that rule draws.
+     */
+    @Test
+    void andWhichPositionItIsAboutDoesNotTurnOnWhichSideItIsWrittenOn() {
+        assertEquals(
+                List.of("s > \"a\" || s > \"b\": a",
+                        "\"a\" < s || s > \"b\": a",
+                        "s > \"a\" || \"b\" < s: a",
+                        "\"a\" < s || \"b\" < s: a"),
+                linesAt("s > \"a\" || s > \"b\"",
+                        "\"a\" < s || s > \"b\"",
+                        "s > \"a\" || \"b\" < s",
+                        "\"a\" < s || \"b\" < s"),
+                "each alternative holds the string at a position above a constant, whichever side"
+                        + " of the comparison the author put the position on");
+    }
+
+    /**
      * And a choice bounds a position only where both of its alternatives do.
      *
      * <p>The control, and the one thing that tells reading the settled answer from gathering what

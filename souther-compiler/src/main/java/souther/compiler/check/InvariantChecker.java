@@ -786,7 +786,7 @@ public final class InvariantChecker {
             @Override
             public void gathered(RuleRef.Invariant from, Core clause,
                                  List<Clauses.StatedPart> parts, Set<FactSubject> spokenFor) {
-                written.add(new Written(clause, reach.withoutParts().viewOf(parts)));
+                written.add(Written.of(clause, parts, reach.withoutParts()));
                 spokenFor.forEach(spoken -> took.record(from, spoken));
             }
 
@@ -848,8 +848,8 @@ public final class InvariantChecker {
             }
             // The clause as one reading, and the parts its author wrote as subtrees of it. Which
             // parts there are was settled where the clause was split; nothing here decides it.
-            Written wrote = new Written(stated,
-                    reach.withoutParts().viewOf(declared.shape().onto(stated, origin)));
+            Written wrote = Written.of(stated, declared.shape().onto(stated, origin),
+                    reach.withoutParts());
             written.add(wrote);
             // A part at a time, and the ones this world holds. Which parts a clause has was settled
             // where it was split, so a part left out is one left out of the list — never a node a
@@ -1030,7 +1030,7 @@ public final class InvariantChecker {
         // And which of the clauses place an edge, asked once the positions have names to be
         // recognised by.
         Reading reading = c.directsIn(written, at, numbers, typeAt, took,
-                new PartsRead(readBy, adoptedBy, narrowedBy), reach.withoutParts());
+                new PartsRead(readBy, adoptedBy, narrowedBy));
         ConstraintState<FactSubject> constraints = k.constraints()
                 .takingRead(answered.whole().confinement(), allowed, c.answers);
         // How each atom's values are spaced, kept so that settling one afterwards states the
@@ -1357,39 +1357,30 @@ public final class InvariantChecker {
      */
     private record Written(Core clause, ClauseView view) {
 
-        Written {
-            if (view.authored().isEmpty()) {
+        /** The clause {@code authored} was written in, as {@code world} holds it. */
+        static Written of(Core clause, List<Clauses.StatedPart> authored, PartsLeftOut world) {
+            if (authored.isEmpty()) {
                 throw new IllegalArgumentException("a clause reaching a value is written in parts");
             }
+            return new Written(clause, world.viewOf(authored));
+        }
+
+        /** Which rule of the model this is — see {@link ClauseView#rule}. */
+        RuleRef.Invariant from() {
+            return view.rule();
         }
 
         /**
          * The parts of it this reading's world holds, which is what every walk over this clause
          * reads.
          *
-         * <p>The parts as the author wrote them are reachable through the view and are wanted by
-         * nothing that walks: a walk of a world reads that world's rules, and a walk given the
-         * whole clause beside them is a walk that has to remember which of the two it is about —
-         * which is what left the connectives composed over conjuncts every walk beside them had
-         * left out.
+         * <p>The only parts a walk can reach from here. What the author wrote is spent above, on
+         * naming the rule; offered beside these, a walk would have both lists and would have to be
+         * written to take the right one — which is what left the connectives composed over
+         * conjuncts every walk beside them had left out.
          */
         List<Clauses.StatedPart> parts() {
             return view.present();
-        }
-
-        /**
-         * Which rule of the model this is, read off the parts it was written in.
-         *
-         * <p>Every part of a clause is a part of that clause, so the rule is the parts' answer and
-         * not a second thing to carry: held beside them, a value about one rule could be built
-         * about two.
-         *
-         * <p>Off what the author wrote and not off what this world holds. Which rule a clause is is
-         * the model's and does not turn on what a counterfactual left out, and a world holding none
-         * of the clause would have no part to answer from.
-         */
-        RuleRef.Invariant from() {
-            return view.authored().get(0).id().rule();
         }
     }
 
@@ -1717,8 +1708,7 @@ public final class InvariantChecker {
     private Reading directsIn(List<Written> stated, Denotations at,
                                    Map<FactSubject, Coordinate> byName,
                                    Map<RuleKey, Type> typeAt,
-                                   ReadingEvidence took, PartsRead parts,
-                                   PartsLeftOut withoutParts) {
+                                   ReadingEvidence took, PartsRead parts) {
         List<Direct> out = new ArrayList<>();
         List<FieldDomains.NoLine> noLines = new ArrayList<>();
         List<FieldDomains.WithoutAnEnd> withoutAnEnd = new ArrayList<>();

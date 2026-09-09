@@ -1,7 +1,5 @@
 package souther.compiler.check;
 
-import souther.compiler.core.Core;
-
 import java.util.List;
 import java.util.Set;
 
@@ -87,13 +85,7 @@ sealed interface PartsLeftOut permits PartsLeftOut.Nothing, PartsLeftOut.Some {
 
         @Override
         public ClauseView viewOf(List<Clauses.StatedPart> written) {
-            Set<Core> out = ClauseView.roots();
-            for (Clauses.StatedPart each : written) {
-                if (parts.contains(each.id())) {
-                    out.add(each.expr());
-                }
-            }
-            return out.isEmpty() ? ClauseView.whole(written) : ClauseView.without(written, out);
+            return ClauseView.without(written, parts);
         }
     }
 

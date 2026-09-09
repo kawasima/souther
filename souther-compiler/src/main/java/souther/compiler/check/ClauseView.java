@@ -38,9 +38,10 @@ import java.util.Set;
  */
 final class ClauseView {
 
-    /** Every part the author wrote, whether or not this world holds it. */
+    /** Every part the author wrote, kept for the one thing they answer that this world does not:
+     *  which rule of the model the clause is. Not shown, for the reason {@link #present} gives. */
     private final List<Clauses.StatedPart> authored;
-    /** The ones it holds, in the order they were written. */
+    /** The parts this world holds, in the order they were written. */
     private final List<Clauses.StatedPart> present;
     /** And the roots of the ones it does not, by identity: two conjuncts spelled alike are two
      *  parts, and a set comparing them by what they say would leave out both. */
@@ -61,58 +62,76 @@ final class ClauseView {
      * the declaration as it stands pays to be told that is nothing.
      */
     static ClauseView whole(List<Clauses.StatedPart> authored) {
-        return new ClauseView(authored, authored, Set.of());
+        List<Clauses.StatedPart> here = List.copyOf(authored);
+        return new ClauseView(here, here, Set.of());
     }
 
-    /** The world the author wrote, told without the parts of any clause — see {@link #asWritten}. */
-    private static final ClauseView AS_WRITTEN = new ClauseView(null, null, Set.of());
+    /** The world the author wrote, of a form nobody split into parts — see {@link #asWritten}. */
+    private static final ClauseView AS_WRITTEN = whole(List.of());
 
     /**
      * The world the author wrote, for a reading with no clause's parts in hand.
      *
      * <p>A form nobody split into parts is read through this, and so is a question about a tree
-     * asked of the shape alone. Nothing is left out, so nothing is walked past — and there are no
-     * parts here to present, which {@link #present} says by refusing rather than by answering that
-     * a world holding everything holds nothing.
+     * asked of the shape alone. Nothing is left out, so nothing is walked past, and the parts here
+     * are none because none were written — which is not the same fact as a world holding none of a
+     * clause, and is told from it where it matters: a clause reaching a value is written in parts
+     * ({@code InvariantChecker.Written}), so one made from this is refused there rather than read
+     * as a clause every world has taken away.
      */
     static ClauseView asWritten() {
         return AS_WRITTEN;
     }
 
-    /** The same clause with {@code omitted} left out, which is how a counterfactual holds it. */
-    static ClauseView without(List<Clauses.StatedPart> authored, Set<Core> omitted) {
+    /**
+     * The same clause with the parts {@code left} names left out, which is how a counterfactual
+     * holds it.
+     *
+     * <p>Told which parts by their names and never by their trees, which is what a world is asked
+     * with ({@link PartsLeftOut}); the roots are worked out here so that what the walk matches on is
+     * the very node this clause holds. Handed a set of nodes instead, a caller could build one that
+     * tells two conjuncts spelled alike apart by what they say, and both would go.
+     */
+    static ClauseView without(List<Clauses.StatedPart> authored,
+                              Set<PartId<RuleRef.Invariant>> left) {
         List<Clauses.StatedPart> here = new ArrayList<>(authored.size());
+        Set<Core> omitted = Collections.newSetFromMap(new IdentityHashMap<>());
         for (Clauses.StatedPart each : authored) {
-            if (!omitted.contains(each.expr())) {
+            if (left.contains(each.id())) {
+                omitted.add(each.expr());
+            } else {
                 here.add(each);
             }
         }
-        return new ClauseView(authored, Collections.unmodifiableList(here),
-                Collections.unmodifiableSet(omitted));
+        return omitted.isEmpty() ? whole(authored)
+                : new ClauseView(List.copyOf(authored), Collections.unmodifiableList(here),
+                        omitted);
     }
 
-    /** An identity set for {@link #without}, which is what a world's omissions are told apart by. */
-    static Set<Core> roots() {
-        return Collections.newSetFromMap(new IdentityHashMap<>());
+    /**
+     * Which rule of the model the clause is, read off the parts the author wrote it in.
+     *
+     * <p>The one thing the author's parts answer that this world's do not. Every part of a clause is
+     * a part of that clause, so the rule is the parts' answer and not a second thing anybody
+     * carries — held beside them, a value about one rule could be built about two
+     * ({@code OneWayFromAStateToTheRuleItIsAboutTest}). And the author's rather than this world's,
+     * since which rule a clause is does not turn on what a counterfactual left out and a world
+     * holding none of the clause would have no part left to answer from.
+     */
+    RuleRef.Invariant rule() {
+        return authored.get(0).id().rule();
     }
 
-    /** Every part the author wrote, for the readers that are about the clause rather than about
-     *  what any world holds of it. */
-    List<Clauses.StatedPart> authored() {
-        if (authored == null) {
-            throw new IllegalStateException(
-                    "this world was not made from a clause's parts and has none to name");
-        }
-        return authored;
-    }
-
-    /** The parts this world holds, which is what a reading of it reads. Empty where the world holds
-     *  none of the clause, which is a clause that is no rule of it. */
+    /**
+     * The parts this world holds, which is what a reading of it reads. Empty where the world holds
+     * none of the clause, which is a clause that is no rule of it.
+     *
+     * <p>The only parts this shows. What the author wrote is the clause's and belongs where a
+     * clause is named — offered here beside these, a reader holding a world would have both lists
+     * and would have to be written to take the right one, which is the whole of what handing it a
+     * world instead of a rule was for.
+     */
     List<Clauses.StatedPart> present() {
-        if (present == null) {
-            throw new IllegalStateException(
-                    "this world was not made from a clause's parts and has none to present");
-        }
         return present;
     }
 
