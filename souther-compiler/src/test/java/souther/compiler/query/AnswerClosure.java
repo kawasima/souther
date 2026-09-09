@@ -391,6 +391,11 @@ final class AnswerClosure {
 
     private static final String Q = "souther.compiler.query.";
 
+    /** What the reading of a body left of the model's own divisions, which is the half of it the
+     *  measurement asks for. */
+    private static final TypePath.Step THE_GEOMETRY_THE_READING_LEFT =
+            part(Q + "Adequacy$BodyDivided", "geometry");
+
     private static final List<Known> KNOWN = List.of(
             new Known(at(Q + "Names$ModuleScope", Q + "Db",
                     m(ANSWER, "value"), m("souther.compiler.check.Scoping$Scoped", "values"), m("souther.compiler.check.Resolve$Values", "elsewhere"),
@@ -663,6 +668,34 @@ final class AnswerClosure {
                 part("souther.compiler.partition.PositionMeasurements", "axes"), HELD,
                 part("souther.compiler.partition.Axis", "classes"), HELD,
                 part("souther.compiler.partition.PartitionClass", "denotes"));
+        // And the same machines again through the reading the geometry is a projection of. Two
+        // questions are asked of one reading of a body — what the model divides, and where that
+        // reading met each condition it places itself — so the walk arrives at everything the
+        // geometry holds by both names. One thing to fix, met twice.
+        theMachineUnderALanguage(out, Q + "Adequacy$Dividing",
+                THE_GEOMETRY_THE_READING_LEFT,
+                part("souther.compiler.partition.Partitions$Partitioning", "measurements"), HELD,
+                part("souther.compiler.partition.PositionMeasurements", "axes"), HELD,
+                part("souther.compiler.partition.Axis", "classes"), HELD,
+                part("souther.compiler.partition.PartitionClass", "denotes"));
+        theMachineUnderALanguage(out, Q + "Adequacy$Dividing",
+                THE_GEOMETRY_THE_READING_LEFT,
+                part("souther.compiler.partition.Partitions$Partitioning", "measurements"), HELD,
+                part("souther.compiler.partition.PositionMeasurements", "axes"), HELD,
+                part("souther.compiler.partition.Axis", "classes"), HELD,
+                part("souther.compiler.partition.PartitionClass", "recognises"),
+                arm("souther.compiler.partition.Recognition$OfASet"),
+                part("souther.compiler.partition.Recognition$OfASet", "values"));
+        theMachineUnderALanguage(out, Q + "Adequacy$Dividing",
+                THE_GEOMETRY_THE_READING_LEFT,
+                part("souther.compiler.partition.Partitions$Partitioning", "measurements"), HELD,
+                part("souther.compiler.partition.PositionMeasurements", "position"),
+                part("souther.compiler.partition.PositionAccount", "admits"));
+        bothEndsOfARange(out, Q + "Adequacy$Dividing",
+                THE_GEOMETRY_THE_READING_LEFT,
+                part("souther.compiler.partition.Partitions$Partitioning", "measurements"), HELD,
+                part("souther.compiler.partition.PositionMeasurements", "axes"), HELD,
+                part("souther.compiler.partition.Axis", "narrowed"));
         theMachineUnderALanguage(out, Q + "Adequacy$Generated",
                 then(then(A_SUBJECT, A_MEASUREMENT), HELD,
                         part("souther.compiler.partition.Axis", "classes"), HELD,

@@ -278,8 +278,9 @@ final class AReportOfOneBorder {
                         new SourceId("wide.sou"), List.of(behavior), List.of(),
                         // Nothing this module's declarations are owed, and nothing that finding
                         // them went without: the fixture is about one behavior's own lines.
-                        new Adequacy.DeclaredBoundaries(List.of(), java.util.Map.of()),
-                        java.util.Map.of())))
+                        new AdequacyReport.DeclarationsShown(
+                                new Adequacy.DeclaredBoundaries(List.of(), java.util.Map.of()),
+                                java.util.Map.of()))))
                 .adequacy();
     }
 }

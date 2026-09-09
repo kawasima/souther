@@ -192,19 +192,42 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
     }
 
     /**
+     * What a module's declarations are owed, with where this report shows the conditions on the way
+     * to their lines.
+     *
+     * <p>The places are here, beside the account they are about, and not on the module. A module
+     * says which of this compilation's sources it is written in, and these say where each condition
+     * a sentence names is — including the ones another module wrote. Held side by side, the two
+     * would be a value that answers "which file" twice, and the second answer would be about
+     * whichever condition a reader happened to be looking at.
+     *
+     * @param owed what the declarations are owed, or null where the compile did not get far enough
+     *             to be asked
+     */
+    public record DeclarationsShown(Adequacy.DeclaredBoundaries owed,
+                                    Map<ConditionReportAnchor, Citation> conditionPlaces) {
+
+        public DeclarationsShown {
+            conditionPlaces = Map.copyOf(conditionPlaces);
+        }
+
+        /** Nothing owed and nothing to point at, for a module nobody could ask. */
+        public static final DeclarationsShown NONE = new DeclarationsShown(null, Map.of());
+    }
+
+    /**
      * What one module's compile came to, as this report says it.
      *
      * @param owedByDeclarations what this module's declarations are owed and how far the reading it
      *                           was made from got. An account and not a list of debts: a module
      *                           whose lines nobody could read holds no debts anybody found, and read
      *                           as a list that is the same answer as a module whose declarations owe
-     *                           nothing. Null where the compile did not get far enough to be asked
+     *                           nothing
      */
     public record ModuleReport(String module, SourceId declaredIn,
                                List<BehaviorReport> behaviors,
                                List<ReportedFinding> declarations,
-                               Adequacy.DeclaredBoundaries owedByDeclarations,
-                               Map<ConditionReportAnchor, Citation> conditionPlaces) {
+                               DeclarationsShown owedByDeclarations) {
 
         /**
          * What the module is short of that is not any behavior's.
@@ -220,13 +243,13 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
         public ModuleReport {
             behaviors = List.copyOf(behaviors);
             declarations = List.copyOf(declarations);
-            conditionPlaces = Map.copyOf(conditionPlaces);
         }
 
         /** The debts themselves, for a reader walking them. Empty where nobody could be asked,
          *  which {@link #declarationsWeakenedBy()} is what says. */
         public List<Adequacy.DeclaredDebt> debts() {
-            return owedByDeclarations == null ? List.of() : owedByDeclarations.owed();
+            return owedByDeclarations.owed() == null
+                    ? List.of() : owedByDeclarations.owed().owed();
         }
 
         /**
@@ -295,8 +318,8 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
          * entries.
          */
         public WeakeningSet declarationsWeakenedBy() {
-            return owedByDeclarations == null
-                    ? WeakeningSet.none() : owedByDeclarations.weakening();
+            return owedByDeclarations.owed() == null
+                    ? WeakeningSet.none() : owedByDeclarations.owed().weakening();
         }
 
         /** How far this module's measurement got. Derived, for the reason
@@ -595,10 +618,10 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                                         instanceof FindingSubject.OfABehavior))
                                 .map(each -> reported(compilation, name, each))
                                 .toList(),
-                declared,
                 // The declarations' own block names conditions too, and the lines it names them
                 // under are the debts' rather than any behavior's.
-                conditionPlaces(compilation, declaredLines(declared)));
+                new DeclarationsShown(declared,
+                        conditionPlaces(compilation, declaredLines(declared))));
     }
 
     /** The lines a module's declarations were read at, which is where the block about them looks
@@ -688,6 +711,11 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
         Map<ConditionReportAnchor, Citation> places = new LinkedHashMap<>();
         for (BorderAssessment line : lines) {
             for (BorderAssessment.Point point : line.points()) {
+                // A point nobody is owed a row at ran no search, so there is nothing under it to
+                // point at. Asked all the same, this would be reading an absence as an empty list.
+                if (point.owed() == null) {
+                    continue;
+                }
                 for (ItemAssessment.Attempt attempt : point.owed().searches().each()) {
                     for (ReachabilityGap gap : attempt.unaccountedFor()) {
                         places.computeIfAbsent(gap.anchor(),
@@ -754,7 +782,8 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                 out.append(String.format("      ? %s%n", said));
             }
             readings(out, each.debt(), _ -> true, at -> whatWasTried(
-                    at.owedAt(each.debt().at()).searches(), module.conditionPlaces(), names, null));
+                    at.owedAt(each.debt().at()).searches(),
+                    module.owedByDeclarations().conditionPlaces(), names, null));
         }
         Map<String, List<Adequacy.Finding>> byDeclaration = new LinkedHashMap<>();
         for (ReportedFinding each : module.declarations()) {
@@ -823,12 +852,13 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             // and deciding that here would be this view working out what an account means.
             ModuleReport one = new ModuleReport(m.module(), m.declaredIn(), behaviors,
                     carriedBy(m.declarations(), behaviors),
-                    m.owedByDeclarations() == null ? null
-                            : m.owedByDeclarations().keptFor(names),
-                    // Kept whole. A filtered view shows fewer debts and the conditions under the
-                    // ones it does show are the same conditions, so narrowing this would be a place
-                    // going missing from a sentence the view still writes.
-                    m.conditionPlaces());
+                    // The debts narrow with the behaviors shown; the places do not. A filtered view
+                    // shows fewer debts and the conditions under the ones it does show are the same
+                    // conditions, so narrowing the places would be one going missing from a
+                    // sentence the view still writes.
+                    new DeclarationsShown(m.owedByDeclarations().owed() == null ? null
+                            : m.owedByDeclarations().owed().keptFor(names),
+                            m.owedByDeclarations().conditionPlaces()));
             kept.add(one);
             overall = overall.union(one.weakenedBy());
         }
