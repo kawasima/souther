@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 
 /**
  * That a fork reads a compiled output once rests on there being one reading for it to share.
@@ -23,6 +24,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * whether the checks of a fork are all asking it. A second reading made anywhere would be a second
  * fork-wide store, filled from the same files, and every count either of them kept would go on
  * saying that <em>it</em> read once.
+ *
+ * <p><b>One reading is two things, and a check of either alone leaves the other free.</b> Nothing
+ * else may make one, and what hands one out must hand out the one that was made. A store made in a
+ * single place and handed out afresh at every ask is made once and shared never; a store handed out
+ * from a field that anything may fill is shared until the second filler arrives. Neither half is
+ * evidence for the other, so both are here.
  *
  * <p><b>Read from the class files rather than from the sources.</b> A construction does not have to
  * be spelled {@code new}: a constructor named as a reference is a method handle in the bootstrap
@@ -54,7 +61,22 @@ class OnePlaceMakesTheReadingAForkSharesTest {
     }
 
     @Test
-    void is_the_only_way_a_class_file_is_touched() {
+    void is_the_one_that_was_made_every_time_it_is_asked_for() {
+        assertSame(CompiledClassReadings.forThisFork(), CompiledClassReadings.forThisFork(),
+                "asking for the fork's reading answered with a reading of its own, so what the"
+                        + " checks of one fork share is a way of making stores rather than a store");
+    }
+
+    /**
+     * That the boundary has one implementation, which is a narrower thing than it sounds.
+     *
+     * <p>What it does not say is that nothing else here opens a class file. A class that parses one
+     * without answering {@link ClassFiles} is outside what this reads, and saying otherwise would be
+     * claiming a rule about where compiled output is reached — which is about discovering an output
+     * rather than about parsing bytes, and belongs where the checks that discover one are.
+     */
+    @Test
+    void answers_the_boundary_in_one_implementation() {
         Set<String> answering = new LinkedHashSet<>();
         for (ClassModel each : PUBLISHED) {
             if (reaches(each, new LinkedHashSet<>())) {
@@ -62,16 +84,16 @@ class OnePlaceMakesTheReadingAForkSharesTest {
             }
         }
         assertEquals(Set.of("souther.test.ReadClassFiles"), answering,
-                "a second way of opening a class file is published here, so where compiled output"
-                        + " is reached is no longer one place");
+                "the boundary is answered somewhere else as well, so what a reading of a compiled"
+                        + " output goes through is no longer one implementation");
     }
 
     /**
-     * Whether {@code model} touches class files, through however many types in between.
+     * Whether {@code model} answers {@link ClassFiles}, through however many types in between.
      *
-     * <p>Directly or not. A type between the two is a way of being one of these and not a way of
-     * not being one, and a rule reading only what the class itself declares would be met by a
-     * second reading written as a subclass of the first.
+     * <p>Directly or not. A type between the two is a way of answering it and not a way of not
+     * answering it, and a rule reading only what the class itself declares would be met by a second
+     * implementation written as a subclass of the first.
      */
     private static boolean reaches(ClassModel model, Set<ClassDesc> seen) {
         List<ClassDesc> above = new ArrayList<>();

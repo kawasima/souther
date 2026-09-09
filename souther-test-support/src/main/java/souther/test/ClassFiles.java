@@ -6,9 +6,9 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Where a compiled class file is touched, and the only place it is.
+ * Where a reading of a compiled output touches the file system.
  *
- * <p>Both ways of touching one are here, because a reading that asked this for the bytes and looked
+ * <p>Both ways of touching it are here, because a reading that asked this for the bytes and looked
  * for the file itself would leave half of what it does outside the boundary — and a rule saying
  * where compiled output is reached could then be met while the file system was still being asked
  * somewhere else.
