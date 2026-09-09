@@ -14,6 +14,7 @@ import souther.compiler.diag.msg.ModuleMessage;
 import souther.compiler.diag.Located;
 import souther.compiler.diag.SourcePos;
 import souther.compiler.diag.Primary;
+import souther.compiler.diag.Repair;
 import souther.compiler.diag.ReportContext;
 import souther.compiler.diag.SourceProvenance;
 import souther.compiler.diag.WhereCodeIsWritten;
@@ -581,6 +582,31 @@ public final class Compilation {
         Map<SourceId, List<Located>> published = new LinkedHashMap<>();
         byId.forEach((id, found) -> published.put(id, List.copyOf(found)));
         return published;
+    }
+
+    /**
+     * The edits that answer this compilation's findings and land in {@code source}.
+     *
+     * <p>Chosen by where each edit applies, which is not where its finding is published. A problem
+     * written in two files is said in both ({@link #diagnostics()}), and the characters that make it
+     * go away are in one of them: the second file's reader is shown the report and offered nothing
+     * to apply to a line that is not what is wrong. The same holds for a report about code out of
+     * sight, said at the import that reached it while its repair stays where somebody typed it.
+     *
+     * <p>Publication does not come into it at all, so nothing here reads what a file is filed under
+     * or which of a report's places is its anchor. That is the whole reason this is a query of its
+     * own rather than a reading of the diagnostics.
+     */
+    public List<Repair> repairs(SourceId source) {
+        answerEverything();
+        List<Repair> found = new ArrayList<>();
+        for (Db.Found report : reports()) {
+            Repair repair = report.report().diagnostic().repair();
+            if (repair != null && repair.target().start().isIn(source)) {
+                found.add(repair);
+            }
+        }
+        return List.copyOf(found);
     }
 
     /**

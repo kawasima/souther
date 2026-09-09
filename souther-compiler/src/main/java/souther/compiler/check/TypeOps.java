@@ -1960,9 +1960,13 @@ public final class TypeOps {
             String name = canonical.substring(dot + 1);
             String module = symbols.scope().moduleOfQualifier(qualifier);
             if (module == null) {
+                // Said over the whole name, since which of the two parts is wrong is what the
+                // message settles, and repaired over the qualifier alone: the candidate is a
+                // qualifier, and writing it over `up.Amount` would take the type name with it.
                 return CompileException.of(Diagnostic.say(new ModuleMessage.NoModuleOfThatName(qualifier, name))
                                 .at(written.reportedAt())
-                                .suggestion(Suggest.candidate(qualifier, symbols.scope().qualifiers()))
+                                .repair(written.qualifier(),
+                                        Suggest.candidate(qualifier, symbols.scope().qualifiers()))
                                 .build());
             }
             boolean declared = symbols.declares(new TypeKey(module, name));
@@ -1971,14 +1975,16 @@ public final class TypeOps {
                                     ? new ModuleMessage.ItIsDeclaredThereAndNotExposed(name, module)
                                     : new ModuleMessage.TheModuleDeclaresNoSuchQualifiedName(name,
                                             module))
-                            .suggestion(Suggest.candidate(name, symbols.declaredNamesIn(module)))
+                            // The module is the one the author meant; the part after the dot is
+                            // what it has no such name for, and is the part to write over.
+                            .repair(written.lastSegment(),
+                                    Suggest.candidate(name, symbols.declaredNamesIn(module)))
                             .build());
         }
         Set<String> known = symbols.scope().namesInScope();
         return CompileException.of(Diagnostic
                         .at(written.reportedAt())
-                        
-                        .suggestion(Suggest.candidate(canonical, known))
+                        .repair(written.reportedAt(), Suggest.candidate(canonical, known))
                         .say(new NameMessage.NoTypeOfThatName(written.quoted())).build());
     }
 }

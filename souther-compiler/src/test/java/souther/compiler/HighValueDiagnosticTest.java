@@ -71,7 +71,7 @@ class HighValueDiagnosticTest {
                 let f (amount) = N { value = amont }
                 """);
         assertEquals("check.unknown.title", d.titleKey());
-        assertEquals("amount", d.suggestion());
+        assertEquals("amount", d.repair().with());
     }
 
     @Test

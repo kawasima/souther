@@ -34,11 +34,11 @@ public final class Diagnostic {
     private final Message said;
     private final TypeComparison diff;
     private final List<Note> notes;
-    private final String suggestion;
+    private final Repair repair;
 
     private Diagnostic(Severity severity, DiagnosticCode code, Primary primary,
                        List<LabeledRegion> secondary, String literalMessage,
-                       TypeComparison diff, List<Note> notes, String suggestion, Message said) {
+                       TypeComparison diff, List<Note> notes, Repair repair, Message said) {
         this.severity = severity;
         this.code = code;
         this.primary = primary;
@@ -46,7 +46,7 @@ public final class Diagnostic {
         this.literalMessage = literalMessage;
         this.diff = diff;
         this.notes = notes;
-        this.suggestion = suggestion;
+        this.repair = repair;
         this.said = said;
     }
 
@@ -143,8 +143,15 @@ public final class Diagnostic {
         return notes;
     }
 
-    public String suggestion() {
-        return suggestion;
+    /**
+     * The edit that answers this, or null where nothing is known to.
+     *
+     * <p>The one place a machine-applicable edit is read from. A renderer quoting
+     * {@link Repair#with} is quoting the word, and where it applies is
+     * {@link Repair#target} — which no caller works out from {@link #primary()}.
+     */
+    public Repair repair() {
+        return repair;
     }
 
     /**
@@ -169,6 +176,10 @@ public final class Diagnostic {
      * the rest are labelled {@code alsoHere}, which says they are part of what is found wrong
      * ({@link souther.compiler.diag.msg.FindingRegion}) and is what puts the report in front of each
      * of those authors.
+     *
+     * <p>The repair comes along unchanged too, and it is the one part of this that keeps pointing
+     * where it did. Moving the caret changes where a reader is sent; the characters to rewrite are
+     * still the ones somebody wrote, in the file they wrote them in.
      *
      * <p>The labels this already had come along unchanged. Each of them says where it is on its own
      * ({@link DiagnosticPlace}), so none of them meant anything different while the caret was
@@ -206,7 +217,7 @@ public final class Diagnostic {
         return new Diagnostic(severity, code,
                 Primary.at(Region.point(where.get(0).standingInFor(declaring))),
                 List.copyOf(also),
-                literalMessage, diff, notes, suggestion, said);
+                literalMessage, diff, notes, repair, said);
     }
 
     /**
@@ -246,12 +257,12 @@ public final class Diagnostic {
      */
     public record Identity(Severity severity, String code, String titleKey, Primary primary,
                            List<LabeledRegion> secondary, String literalMessage,
-                           TypeComparison diff, List<Note> notes, String suggestion, Message said) {}
+                           TypeComparison diff, List<Note> notes, Repair repair, Message said) {}
 
     public Identity identity() {
         return new Identity(severity, code(), titleKey(), primary,
                 secondary == null ? List.of() : secondary, literalMessage, diff,
-                notes == null ? List.of() : notes, suggestion, said);
+                notes == null ? List.of() : notes, repair, said);
     }
 
     /** A pre-formatted English message wrapped verbatim — the compatibility path for a site that
@@ -303,7 +314,7 @@ public final class Diagnostic {
         private final List<LabeledRegion> secondary = new ArrayList<>();
         private TypeComparison diff;
         private final List<Note> notes = new ArrayList<>();
-        private String suggestion;
+        private Repair repair;
 
         private Builder() {
         }
@@ -426,8 +437,17 @@ public final class Diagnostic {
             return this;
         }
 
-        public Builder suggestion(String suggestion) {
-            this.suggestion = suggestion;
+        /**
+         * What to write and where, as one thing, because they are one fact. A site that could hand
+         * over the word on its own would be a site whose reader had to find the place, and the only
+         * value in reach to find it from is the primary region — which is the stretch the report is
+         * said about and is not always the stretch to rewrite.
+         *
+         * <p>Either half absent leaves no repair: nothing near enough to be worth offering, or a
+         * name nobody wrote, which has no place in any file to write over.
+         */
+        public Builder repair(Region target, String with) {
+            this.repair = target == null || with == null ? null : new Repair(target, with);
             return this;
         }
 
@@ -443,7 +463,7 @@ public final class Diagnostic {
                         "a diagnostic says where it points; call `at` or `nowhere`");
             }
             return new Diagnostic(code.severity(), code, primary, List.copyOf(secondary), null,
-                    diff, List.copyOf(notes), suggestion, said);
+                    diff, List.copyOf(notes), repair, said);
         }
     }
 }

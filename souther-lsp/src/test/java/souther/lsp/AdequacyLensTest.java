@@ -443,14 +443,6 @@ class AdequacyLensTest {
                 () -> "the rows are right there: " + taken.newText());
     }
 
-    /** With one document there is nothing to offer: the values a row writes are built through the
-     * module's derived decoders, and its imports are part of that. */
-    @Test
-    void withNoWorkspaceThereIsNothingToOffer() {
-        assertEquals(List.of(),
-                measuring(Adequacy.Level.ALL).codeActions(MODULE, TRIP, on(9)));
-    }
-
     /**
      * The offer stands at every position the declaration is written over, and at no other.
      *

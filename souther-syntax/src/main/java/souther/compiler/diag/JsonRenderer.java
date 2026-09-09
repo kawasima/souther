@@ -138,8 +138,8 @@ public final class JsonRenderer implements DiagnosticRenderer {
         if (!hints.isEmpty()) {
             obj.put("hints", hints);
         }
-        if (d.suggestion() != null) {
-            obj.put("suggestion", d.suggestion());
+        if (d.repair() != null) {
+            obj.put("suggestion", d.repair().with());
         }
         return JSON.writeValueAsString(obj);
     }

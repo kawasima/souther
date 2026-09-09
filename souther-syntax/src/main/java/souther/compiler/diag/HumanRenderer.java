@@ -78,9 +78,9 @@ public final class HumanRenderer implements DiagnosticRenderer {
             out.append(Messages.get("diag.diff.expected", locale)).append('\n');
             out.append("    ").append(d.diff().expectedType()).append('\n');
         }
-        if (d.suggestion() != null) {
+        if (d.repair() != null) {
             out.append(hintLabel(locale))
-                    .append(Messages.get("diag.suggestion", locale, d.suggestion())).append('\n');
+                    .append(Messages.get("diag.suggestion", locale, d.repair().with())).append('\n');
         }
         for (Note note : d.notes()) {
             out.append(hintLabel(locale))

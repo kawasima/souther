@@ -1561,8 +1561,7 @@ public final class Elaborator {
         }
         return CompileException.of(Diagnostic
                         .at(v.written().reportedAt())
-                        
-                        .suggestion(Suggest.candidate(v.name(), env.spellings()))
+                        .repair(v.written().reportedAt(), Suggest.candidate(v.name(), env.spellings()))
                         .say(new NameMessage.NoValueOfThatNameInScope(v.name())).build());
     }
 

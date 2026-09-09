@@ -65,8 +65,8 @@ public interface DiagnosticRenderer {
         for (Note note : d.notes() == null ? List.<Note>of() : d.notes()) {
             said.append(' ').append(Messages.render(note.said(), written));
         }
-        if (d.suggestion() != null) {
-            said.append(' ').append(Messages.get("diag.suggestion", written, d.suggestion()));
+        if (d.repair() != null) {
+            said.append(' ').append(Messages.get("diag.suggestion", written, d.repair().with()));
         }
         return said.toString();
     }
