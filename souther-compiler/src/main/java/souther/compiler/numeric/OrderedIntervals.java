@@ -70,9 +70,22 @@ public final class OrderedIntervals<A> {
         this.parts = parts;
     }
 
+    /**
+     * The parts of a reading that has taken nothing in, which are the same parts whoever asks.
+     *
+     * <p>Held rather than built, because a reading starts here for every leaf a connective is
+     * composed over and for every branch nobody can be in, and the parts copy the map they are
+     * handed. The reading itself is still made by {@link #top()}, which is what keeps that the one
+     * way to a reading that has read nothing
+     * ({@code AReadingIsWhatItsOperationsReachTest}) — a state handed out of a field here would be
+     * a way in that no operation of this named.
+     */
+    private static final Parts<?> NOTHING_READ = new Parts<>(Map.of(), false);
+
     /** Nothing read, so every position holds every value its order has. */
+    @SuppressWarnings("unchecked")
     public static <A> OrderedIntervals<A> top() {
-        return new OrderedIntervals<>(new Parts<>(Map.of(), false));
+        return new OrderedIntervals<>((Parts<A>) NOTHING_READ);
     }
 
     /** One position said to lie inside {@code range}. */
@@ -219,6 +232,16 @@ public final class OrderedIntervals<A> {
 
     /** Both readings holding at once. */
     public OrderedIntervals<A> meet(OrderedIntervals<A> other) {
+        // A side that bounded no position and showed nothing empty is what a conjunction leaves the
+        // other side alone: every position it holds is every value of its order, and a meet with
+        // every value is what it was met with. Most sides are that — a leaf the ends have no word
+        // for bounds nothing, and every clause is composed out of leaves.
+        if (other.ranges().isEmpty() && !other.nothing()) {
+            return this;
+        }
+        if (ranges().isEmpty() && !nothing()) {
+            return other;
+        }
         Map<A, OrderedInterval> out = new LinkedHashMap<>(ranges());
         other.ranges().forEach((position, range) ->
                 out.merge(position, range, OrderedInterval::meet));
