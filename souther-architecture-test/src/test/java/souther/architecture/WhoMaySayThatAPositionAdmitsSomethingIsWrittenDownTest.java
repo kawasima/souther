@@ -240,9 +240,14 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
      * that both halves are asked along. {@code AdmissibleValues},
      * {@code ConjoinedAdmissibleValues} and {@code PlannedValues} are that walk over what a reading
      * holds, and {@code Apartness} is what the denials between two blocks come to.
-     * {@code Realized} says whether everything asked for was built. {@code StatedByClauses} and
-     * {@code Settlement} put the answers of a choice's branches together, and
-     * {@code StringMachineAnswers} keeps an answer once somebody has looked.
+     * {@code LeftUnbuilt} says what a reading short of a position leaves an answer about it.
+     * {@code StatedByClauses} and {@code Settlement} put the answers of a choice's branches
+     * together, and {@code StringMachineAnswers} keeps an answer once somebody has looked.
+     *
+     * <p>{@code Realized} is not here, and holds what a reading could not build. Which of these
+     * answers that comes to is the question above, and it is asked of a word that answers it once —
+     * so a reading and the answers are two vocabularies, and the value that carries the first
+     * speaks neither of them.
      *
      * <p>What is not here is the list's point. Nothing else in {@code check}, nothing downstream of
      * the compiler, and nothing that reports: a settled answer reaching one of those would be a
@@ -256,8 +261,8 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
             "souther/compiler/values/AdmissibleValues",
             "souther/compiler/values/Apartness",
             "souther/compiler/values/ConjoinedAdmissibleValues",
+            "souther/compiler/values/LeftUnbuilt",
             "souther/compiler/values/PlannedValues",
-            "souther/compiler/values/Realized",
             "souther/compiler/values/StringMachineAnswers",
             "souther/compiler/values/TextExtents");
 
@@ -276,6 +281,11 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
      * where a meet begins, which the word decides and the walk carries. What puts a nest here is
      * saying in its own words which answer is the answer: {@code PlannedValues} does, for a position
      * whose plan is already a set and needs no machine.
+     *
+     * <p>{@code LeftUnbuilt} is above and not here, for that reason. What a reading that built
+     * everything leaves an answer is the answer a meet begins from, and it asks the word for it —
+     * naming it there would be this list gaining an entry whose whole content is that the identity
+     * happens to be the positive answer.
      */
     private static final List<String> SAYS_SOMETHING_IS_ADMITTED = List.of(
             "souther/compiler/check/Carrier",
@@ -283,7 +293,6 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
             "souther/compiler/check/StatedByClauses",
             "souther/compiler/values/Apartness",
             "souther/compiler/values/PlannedValues",
-            "souther/compiler/values/Realized",
             "souther/compiler/values/TextExtents");
 
     /**
@@ -391,24 +400,19 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
      */
     private record Open(String place, String question) {}
 
-    /** What a settled positive answer is worth beside a position nobody could build. */
-    private static final String WHAT_AN_ANSWER_IS_WORTH = "souther-lang/souther#1498";
-
     /**
-     * And the readings of this word whose meaning nobody has decided yet.
+     * And the readings of this word whose meaning nobody has decided yet, which are none.
      *
-     * <p>One question and no owner for it. {@code admission} reads what a settled positive answer is
-     * worth beside a position nobody could build, which is a rule about what a reading that asked
-     * less than the rules say may publish rather than about which of the three an answer is.
+     * <p>Every reading of one of these answers is an operation the word owns or a switch over all
+     * of them, so an answer added to the three is told what it means to each reader before anything
+     * compiles.
      *
-     * <p>It is a question this word could be given an owner for, and it is not one this compiler has
-     * decided. Naming a reading here says that; it does not say that the reading was left alone.
+     * <p><b>Empty, and what says the walk still works is beside this test.</b> A list nothing is in
+     * is a list a detector that stopped finding anything would also fill, so what holds this one to
+     * meaning something is {@link #COMPARED_IN_THE_FIXTURE}: bodies here comparing every way one
+     * can be written, found by the same walk in the same run.
      */
-    private static final List<Open> COMPARED_IN_PRODUCTION = List.of(
-            new Open("souther/compiler/check/Confinement$Worked#admission"
-                    + "(Lsouther/compiler/check/PositionEnvelope$Restrictions;"
-                    + "Lsouther/compiler/values/StringMachineAnswers;)"
-                    + "Lsouther/compiler/check/Confinement$Admission;", WHAT_AN_ANSWER_IS_WORTH));
+    private static final List<Open> COMPARED_IN_PRODUCTION = List.of();
 
     /** The operations that make one of these answers out of two. Where a walk starts and where it
      *  stops are questions asked about an operation and answer for none of it, so a place that asks
@@ -428,9 +432,10 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
      * block of it does, and a reading stands where any alternative does. Each starts where the
      * operation it walks under starts and stops where that operation can no longer be moved, and
      * asks the word for both — a walk that named either would be saying the arithmetic's fact in its
-     * own words, true of these three answers by a coincidence nobody wrote down. The fourth composes
-     * two answers and no more, so there is no place in it to start from or stop at: what two
-     * occurrences of one branch come to is one call.
+     * own words, true of these three answers by a coincidence nobody wrote down. The other two
+     * compose two answers and no more, so there is no place in either to start from or stop at:
+     * what two occurrences of one branch come to is one call, and so is what a reading short of a
+     * position leaves an answer about it.
      *
      * <p><b>Directly, which is the whole of what this holds.</b> What each of these does with the
      * answers it put together is its own, and no walk here follows a call into what it calls. A
@@ -455,6 +460,9 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
             "souther/compiler/values/ConjoinedAdmissibleValues#anyAlternativeAdmits"
                     + "(Lsouther/compiler/values/AskedOfEachBlock;"
                     + "Lsouther/compiler/values/AskedOfARelation;)"
+                    + "Lsouther/compiler/values/Emptiness;",
+            "souther/compiler/values/LeftUnbuilt#hold"
+                    + "(Lsouther/compiler/values/Emptiness;)"
                     + "Lsouther/compiler/values/Emptiness;",
             "souther/compiler/values/PlannedValues#anyAlternativeAdmits"
                     + "(Lsouther/compiler/values/AskedOfEachBlock;)"

@@ -931,8 +931,9 @@ sealed interface StatedByClauses {
                     new LinkedHashMap<>();
             made.aboutTheAnswer().forEach(each -> answered.merge(each.at(),
                     List.of(each.why()), ReadByClauses::alsoSaying));
-            return new Settlement.Sided(Confinement.Admission.left(souther.compiler.values.Emptiness.UNDECIDED), answered,
-                    made.aboutARule(), made.unbuilt());
+            // The answer the reading gave, and not one written again out of the word. What reaches
+            // here is what nobody settled, which is what that answer already is.
+            return new Settlement.Sided(admitted, answered, made.aboutARule(), made.unbuilt());
         }
 
         /**

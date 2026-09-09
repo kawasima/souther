@@ -123,22 +123,20 @@ public final class Realized<A> {
     }
 
     /**
-     * Whether anything satisfies the reading.
+     * Whether working this out left a position nobody could build.
      *
-     * <p>Three answers, because a reading with a position nobody could work out has not been shown
-     * to admit anything or to admit nothing. What stands there is every value, which is true and is
-     * wider than the rules — so the reading may hold something the rules refuse, and reading it as
-     * one that admits something is sound and is not exact.
+     * <p>What a reader asking about the reading is owed beside the reading. The values it comes
+     * back with hold every value at such a position, which is true and is wider than the rules — so
+     * an answer worked out of them alone is sound and is not exact, and what says so is here rather
+     * than at whoever is asking.
      *
-     * <p>Which is why the shortfall travels with it. A caller taking {@link Emptiness#UNDECIDED} for
-     * "it admits something" and dropping what is here has claimed a reading is a branch anybody can
-     * be in, and has kept no record of why nobody knows.
+     * <p>The existential question and not the shortfalls: what a rule or the answer is answerable
+     * for is a report's ({@link #aboutARule}, {@link #aboutTheAnswer}), and what a verdict turns on
+     * is only whether there is such a position. What that comes to for a verdict is
+     * {@link LeftUnbuilt}'s, so nothing here names one of the answers.
      */
-    public Emptiness emptiness() {
-        if (values().isBottom()) {
-            return Emptiness.EMPTY;
-        }
-        return unbuilt().isEmpty() ? Emptiness.NONEMPTY : Emptiness.UNDECIDED;
+    public LeftUnbuilt leftUnbuilt() {
+        return unbuilt().isEmpty() ? LeftUnbuilt.NOTHING : LeftUnbuilt.A_POSITION;
     }
 
     /** Every position whose answer was not built, whichever of the two it is owed to. */
