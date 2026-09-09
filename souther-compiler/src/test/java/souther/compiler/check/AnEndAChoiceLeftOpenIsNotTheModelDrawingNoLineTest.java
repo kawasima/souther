@@ -240,24 +240,68 @@ class AnEndAChoiceLeftOpenIsNotTheModelDrawingNoLineTest {
     }
 
     /**
-     * And one whose subject this reading cannot name leaves it open, which is weaker than the rules
-     * are.
+     * And an alternative holding of every row settles the choice, whatever stands beside it.
      *
-     * <p>{@code n - n >= 0} holds every value, and written alone this compiler says so — the
-     * reading that classifies a comparison reads it to the end and finds it cuts nothing. That
-     * reading does not go into a choice, and the reading of ends cannot see that the arithmetic
-     * cancels: what it has is a subject it cannot name, which is what an absolute value is as well.
+     * <p>{@code n - n >= 0} holds every value there is, so every value takes that alternative and
+     * the branch beside it constrains nobody. What the choice leaves {@code n} is every value, and
+     * the model draws no line — which is an answer and not this compiler falling short.
      *
-     * <p>So this is the conservative answer and not the exact one, and it is written down rather
-     * than left to be found: what would close it is the classification of a comparison being
-     * asked under a choice.
+     * <p>The reading of ends cannot see it. It has no arithmetic for the sides of a comparison, so
+     * what it has is a subject it cannot name — which is what an absolute value is as well, and
+     * those two are not the same rule. They are told apart by the reading that does have the
+     * arithmetic ({@link StatedLines}), and the answer arrives here already made.
+     *
+     * <p>Read off what the ends managed alone, both alternatives are forms nothing followed and
+     * this came back as a border this compiler could not measure — a limit of this compiler sent
+     * out where the model has an answer. The control for that is
+     * {@link #andAnEndNoAlternativeBoundedIsLeftOpen}, where neither alternative was followed and
+     * neither holds of every row.
      */
     @Test
-    void andOneWhoseSubjectItCannotNameIsLeftOpen() {
-        assertEquals(List.of("border      not measured (no line was derived at any position)"),
+    void andAnAlternativeHoldingOfEveryRowSettlesTheChoice() {
+        assertEquals(theModelDrawsNoLine(),
                 borderIn("Int.abs(n) >= 5 || n - n >= 0"),
-                "neither alternative is one the reading of ends can name a position in, so what"
-                        + " the choice leaves `n` is what following them would answer");
+                "one alternative admits every value, so nothing about `n` rests on the form"
+                        + " beside it");
+    }
+
+    /**
+     * And an alternative no row meets settles nothing for the one beside it.
+     *
+     * <p>{@code n - n >= 1} is {@code 0 >= 1}, which no value satisfies — so every value of the
+     * choice is in the alternative beside it, and the end that one leaves unknown is the rule's.
+     *
+     * <p>The counterpart of {@link #andAnAlternativeHoldingOfEveryRowSettlesTheChoice} and its
+     * opposite: one rule takes every value into itself and the other takes none, and both are
+     * comparisons whose positions cancel. Read as one answer — a rule that states no line — the
+     * first settles the choice and the second was made to settle it too, about a model whose line
+     * nobody has worked out.
+     */
+    @Test
+    void andAnAlternativeNoRowMeetsSettlesNothingForTheOneBesideIt() {
+        assertEquals(List.of("border      not measured (no line was derived at any position)"),
+                borderIn("Int.abs(n) >= 5 || n - n >= 1"),
+                "no value is in the second alternative, so what the rule leaves `n` is what the"
+                        + " first leaves it — and nothing worked that out");
+    }
+
+    /**
+     * And a rule that cancels against a side this reading names a position in does too.
+     *
+     * <p>{@code n + 1 >= n} holds every row, and one whole side of it is a position — so the lookup
+     * that finds which number a rule is about finds one, and the arithmetic is what says the rule
+     * stops it nowhere. Nor is it a rule holding one position to another: what it compares
+     * {@code n} to is a number built from {@code n}, which is not a position, so nothing else here
+     * answers for it.
+     *
+     * <p>Read off the lookup alone, this is a bound on {@code n} whose end nothing worked out, and
+     * the choice comes back as a border this compiler could not measure.
+     */
+    @Test
+    void andSoDoesOneThatCancelsAgainstASideAPositionIsWrittenIn() {
+        assertEquals(theModelDrawsNoLine(), borderIn("Int.abs(n) >= 5 || n + 1 >= n"),
+                "every value is at least one less than itself plus one, so the alternative"
+                        + " stops `n` nowhere");
     }
 
     /**
