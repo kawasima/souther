@@ -146,6 +146,11 @@ class OnlyOnePlaceDecidesThatAnAlternativeWentUnreadTest {
      * two would be two rules about one question, and a third reading would arrive with nowhere
      * obvious to be added.
      *
+     * <p>Which is why it is handed how to tell two of them apart as well as how to join them. The
+     * readings differ over exactly that — the ends have an equality of the values they leave and
+     * the plans have only the one they are written with — and a comparison reaching for
+     * {@code equals} would give the ends the plans' answer while still being the one place.
+     *
      * <p>Beside it the empty one and the join over occurrences, which compare nothing.
      */
     @Test
@@ -156,7 +161,8 @@ class OnlyOnePlaceDecidesThatAnAlternativeWentUnreadTest {
                         "souther.compiler.check.Settlement$Width#comparing"
                                 + "(Ljava/util/Set;Ljava/util/function/Function;"
                                 + "Ljava/util/function/Function;"
-                                + "Ljava/util/function/BinaryOperator;)"
+                                + "Ljava/util/function/BinaryOperator;"
+                                + "Ljava/util/function/BiPredicate;)"
                                 + "Lsouther/compiler/check/Settlement$Width;",
                         "souther.compiler.check.Settlement$Width#none()"
                                 + "Lsouther/compiler/check/Settlement$Width;"),
