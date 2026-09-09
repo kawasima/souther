@@ -46,8 +46,8 @@ public final class DeclaredSig {
         private final BoundaryInput boundary;
 
         Input(String name, BoundaryInput boundary) {
-            this.name = Objects.requireNonNull(name, "a parameter is written under a name");
-            this.boundary = Objects.requireNonNull(boundary, "a parameter arrives as something");
+            this.name = name;
+            this.boundary = boundary;
         }
 
         /** What the declaration calls this parameter. */

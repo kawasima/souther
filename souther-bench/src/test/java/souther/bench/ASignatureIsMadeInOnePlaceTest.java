@@ -121,7 +121,7 @@ class ASignatureIsMadeInOnePlaceTest {
         Map<String, Set<String>> reached = new TreeMap<>();
         for (Compiled.Site site : Compiled.sites()) {
             String called = site.owner() + "#" + site.member();
-            if (REACHED_BY.containsKey(called) && !method(site).equals(called)) {
+            if (REACHED_BY.containsKey(called)) {
                 reached.computeIfAbsent(called, _ -> new TreeSet<>()).add(method(site));
             }
         }
