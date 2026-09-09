@@ -117,7 +117,7 @@ class WhoMayBuildARefusalFromOneOfItsHalvesTest {
      */
     @Test
     void andWhatMayBeAskedOfARelationIsTheseTwoQuestions() {
-        ClassModel asked = CompiledClasses.ofWhatThisRepositoryPublishes()
+        ClassModel asked = CompiledOutputs.ofWhatThisRepositoryPublishes()
                 .read(WHERE + "WhatARelationShows");
         List<String> waysIn = new ArrayList<>();
         for (MethodModel maker : asked.methods()) {
@@ -153,7 +153,7 @@ class WhoMayBuildARefusalFromOneOfItsHalvesTest {
      */
     @Test
     void andTheWalkFindsACallToAHalfWhereOneIsMade() {
-        assertTrue(!callsTo(CompiledClasses.ofWhatThisRepositoryPublishes().read(PROVING_ONE_HALF),
+        assertTrue(!callsTo(CompiledOutputs.ofWhatThisRepositoryPublishes().read(PROVING_ONE_HALF),
                         ONE_HALF).isEmpty(),
                 "the finder reports nothing where a half is named, so it would report nothing"
                         + " wherever a reading named one");

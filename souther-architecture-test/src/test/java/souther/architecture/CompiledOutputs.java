@@ -14,7 +14,12 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * The class files this repository built, found through the repository.
+ * The compiled outputs a name is looked for in, and the order they are looked in.
+ *
+ * <p>Which outputs those are is what this is: a rule here asks about a class of this repository
+ * without knowing which module built it, so the question is put to several outputs in turn and the
+ * first that holds the name answers it. What one output holds is read elsewhere; the population and
+ * its order are here.
  *
  * <p>Not through {@code java.class.path}. What a module is handed there is the reactor's to decide
  * and it is not the same in every build — a module built beside this one arrives as its
@@ -32,7 +37,7 @@ import java.util.Optional;
  * <p>A name this cannot find is not a class that reaches nothing. It is a question this cannot
  * answer, and it says so rather than answering.
  */
-final class CompiledClasses {
+final class CompiledOutputs {
 
     private final RepositoryLayout repository;
 
@@ -40,19 +45,19 @@ final class CompiledClasses {
 
     private final Map<String, Optional<ClassModel>> read = new HashMap<>();
 
-    private CompiledClasses(RepositoryLayout repository, List<String> outputs) {
+    private CompiledOutputs(RepositoryLayout repository, List<String> outputs) {
         this.repository = repository;
         this.outputs = outputs;
     }
 
     /** What this repository publishes: the compiled surface a caller elsewhere reaches. */
-    static CompiledClasses ofWhatThisRepositoryPublishes() {
-        return new CompiledClasses(RepositoryLayout.ofWorkingDirectory(), List.of("classes"));
+    static CompiledOutputs ofWhatThisRepositoryPublishes() {
+        return new CompiledOutputs(RepositoryLayout.ofWorkingDirectory(), List.of("classes"));
     }
 
     /** That and what was compiled beside it, which is where a test's own subjects are. */
-    static CompiledClasses ofEverythingCompiledHere() {
-        return new CompiledClasses(RepositoryLayout.ofWorkingDirectory(),
+    static CompiledOutputs ofEverythingCompiledHere() {
+        return new CompiledOutputs(RepositoryLayout.ofWorkingDirectory(),
                 List.of("classes", "test-classes"));
     }
 

@@ -67,8 +67,8 @@ class HowARuleThatGovernsADeclarationIsAskedForTest {
      *  is one a walk can be declared to take, and these rules have to see it arrive. */
     private static final Set<String> THE_WORLDS = worlds();
 
-    private static final CompiledClasses COMPILED =
-            CompiledClasses.ofWhatThisRepositoryPublishes();
+    private static final CompiledOutputs COMPILED =
+            CompiledOutputs.ofWhatThisRepositoryPublishes();
 
     private static final WhatASignatureReaches READING = new WhatASignatureReaches(COMPILED);
 

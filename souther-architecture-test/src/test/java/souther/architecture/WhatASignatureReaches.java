@@ -55,9 +55,9 @@ final class WhatASignatureReaches {
 
     private static final String OF_THIS_REPOSITORY = "souther/";
 
-    private final CompiledClasses compiled;
+    private final CompiledOutputs compiled;
 
-    WhatASignatureReaches(CompiledClasses compiled) {
+    WhatASignatureReaches(CompiledOutputs compiled) {
         this.compiled = compiled;
     }
 

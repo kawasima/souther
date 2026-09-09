@@ -1,9 +1,6 @@
 package souther.test;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.lang.classfile.Attributes;
-import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassModel;
 import java.lang.classfile.FieldModel;
 import java.lang.classfile.MethodModel;
@@ -11,13 +8,9 @@ import java.lang.classfile.MethodSignature;
 import java.lang.classfile.Signature;
 import java.lang.classfile.attribute.RecordAttribute;
 import java.lang.classfile.attribute.RecordComponentInfo;
-import java.net.URISyntaxException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Stream;
 
 /**
  * What one module compiled, read off its class files.
@@ -32,6 +25,10 @@ import java.util.stream.Stream;
  * on disk and a module not built at all has none, so a check that swept the file system would prove
  * something about a build nobody ran. A marker class is loaded from the classpath the test was
  * given, which is the module as this run built it.
+ *
+ * <p>The classes themselves come from {@link CompiledClasses}, which is where a compiled output is
+ * read. What is asked of them is here; how many times the files behind them are opened is not a
+ * question this has to hold an answer to.
  */
 public final class WhatAModuleDeclares {
 
@@ -47,28 +44,7 @@ public final class WhatAModuleDeclares {
      * @param marker any class of that module's main sources
      */
     public static WhatAModuleDeclares of(Class<?> marker) {
-        String binary = marker.getName();
-        String simple = binary.substring(binary.lastIndexOf('.') + 1);
-        Path root;
-        try {
-            root = Path.of(marker.getResource(simple + ".class").toURI());
-        } catch (URISyntaxException e) {
-            throw new IllegalStateException("a class of " + binary + " is not on a file system,"
-                    + " so this module's classes cannot be read", e);
-        }
-        for (int up = 0; up <= binary.chars().filter(each -> each == '.').count(); up++) {
-            root = root.getParent();
-        }
-        List<ClassModel> found = new ArrayList<>();
-        try (Stream<Path> walk = Files.walk(root)) {
-            for (Path each : walk.filter(one -> one.toString().endsWith(".class")).sorted()
-                    .toList()) {
-                found.add(ClassFile.of().parse(Files.readAllBytes(each)));
-            }
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
-        return new WhatAModuleDeclares(found);
+        return new WhatAModuleDeclares(CompiledClasses.ofModule(marker).all());
     }
 
     /** Every class of it. */
