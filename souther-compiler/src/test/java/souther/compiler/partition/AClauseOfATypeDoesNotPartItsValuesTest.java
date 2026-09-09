@@ -1,9 +1,14 @@
 package souther.compiler.partition;
 
 import souther.compiler.coverage.ComparisonEmissionSite;
-import souther.compiler.types.WrittenOwner;
-import souther.compiler.coverage.ComparisonOccurrence;
 import souther.compiler.coverage.Numberings;
+import souther.compiler.diag.Citation;
+import souther.compiler.diag.SourcePos;
+import souther.compiler.types.ExpansionLineage;
+import souther.compiler.types.ModelOccurrence;
+import souther.compiler.types.SourceConstruct;
+import souther.compiler.types.SourceConstructOrigin;
+import souther.compiler.types.WrittenOwner;
 
 import org.junit.jupiter.api.Test;
 
@@ -196,17 +201,14 @@ class AClauseOfATypeDoesNotPartItsValuesTest {
     private static final ComparisonEmissionSite WHERE = Numberings.comparison(1, 0);
 
     private static LineOrigin aComparison() {
+        SourceConstructOrigin wrote = new SourceConstructOrigin(
+                new WrittenOwner.Body("example.weigh", "weigh"), 2, 0, SourceConstruct.BINARY);
         return new LineOrigin.ComparisonOrigin(
                 new LineOrigin.ComparisonOrigin.Read(
-                        new RuleRef.Comparison("weigh",
-                                new souther.compiler.types.SourceConstructOrigin(
-                                        new WrittenOwner.Body("example.weigh", "weigh"), 2, 0,
-                                        souther.compiler.types.SourceConstruct.BINARY)),
-                        souther.compiler.diag.Citation.of(
-                                new souther.compiler.diag.SourcePos(3, 5)),
-                        List.of(new LineOrigin.ComparisonOrigin.Watched(
-                                new ComparisonOccurrence(
-                                        "example.weigh", "weigh", 0), WHERE))),
+                        new RuleRef.Comparison("weigh", wrote),
+                        new ModelOccurrence(wrote, ExpansionLineage.ORIGINAL),
+                        Citation.of(new SourcePos(3, 5)),
+                        List.of(WHERE)),
                 new LineFacts(new souther.compiler.check.ComparisonClaim.Cut(Towards.BELOW, true)));
     }
 }

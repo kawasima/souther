@@ -1,13 +1,9 @@
 package souther.architecture;
 
-import souther.test.RepositoryLayout;
 
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.lang.classfile.Attributes;
-import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassModel;
 import java.lang.classfile.FieldModel;
 import java.lang.classfile.ClassSignature;
@@ -16,8 +12,6 @@ import java.lang.classfile.attribute.RecordAttribute;
 import java.lang.classfile.attribute.RecordComponentInfo;
 import java.lang.classfile.attribute.SignatureAttribute;
 import java.lang.reflect.AccessFlag;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -60,7 +54,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class OneWayFromAStateToTheRuleItIsAboutTest {
 
-    private static final RepositoryLayout REPOSITORY = RepositoryLayout.ofWorkingDirectory();
 
     private static final String RULE = "souther/compiler/check/RuleRef";
 
@@ -300,11 +293,11 @@ class OneWayFromAStateToTheRuleItIsAboutTest {
         }
 
         static Carried ofWhatThisRepositoryPublishes() {
-            return new Carried(read(List.of("classes")));
+            return new Carried(read(CompiledOutputs.ofWhatThisRepositoryPublishes()));
         }
 
         static Carried ofEverythingCompiledHere() {
-            return new Carried(read(List.of("classes", "test-classes")));
+            return new Carried(read(CompiledOutputs.ofEverythingCompiledHere()));
         }
 
         Set<String> everyClass() {
@@ -625,42 +618,19 @@ class OneWayFromAStateToTheRuleItIsAboutTest {
             }
         }
 
-        private static Map<String, ClassModel> read(List<String> outputs) {
+        private static Map<String, ClassModel> read(CompiledOutputs outputs) {
             Map<String, ClassModel> out = new HashMap<>();
-            ClassFile parser = ClassFile.of();
-            for (Path module : REPOSITORY.modules()) {
-                for (String output : outputs) {
-                    Path where = module.resolve("target").resolve(output);
-                    if (!Files.isDirectory(where)) {
-                        continue;
-                    }
-                    for (Path each : classFilesUnder(where)) {
-                        String name = where.relativize(each).toString()
-                                .replace(java.io.File.separatorChar, '/')
-                                .replaceAll("\\.class$", "");
-                        if (name.startsWith("souther/")) {
-                            out.putIfAbsent(name, parse(parser, each));
-                        }
-                    }
+            for (ClassModel each : outputs.all()) {
+                String name = each.thisClass().asInternalName();
+                if (name.startsWith("souther/")) {
+                    out.putIfAbsent(name, each);
                 }
             }
             return out;
         }
 
-        private static ClassModel parse(ClassFile parser, Path file) {
-            try {
-                return parser.parse(Files.readAllBytes(file));
-            } catch (IOException e) {
-                throw new UncheckedIOException(e);
-            }
-        }
 
-        private static List<Path> classFilesUnder(Path where) {
-            try (Stream<Path> found = Files.walk(where)) {
-                return found.filter(each -> each.toString().endsWith(".class")).toList();
-            } catch (IOException e) {
-                throw new UncheckedIOException(e);
-            }
-        }
+
+
     }
 }

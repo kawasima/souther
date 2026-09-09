@@ -115,6 +115,17 @@ class WhatIsReadOfACompiledOutputIsReadOnceTest {
     }
 
     @Test
+    void says_what_the_output_holds_without_reading_any_of_it() {
+        List<String> named = at(PUBLISHED).names();
+
+        assertTrue(named.contains(RepositoryLayout.class.getName()));
+        assertEquals(0, counting.reads.get(),
+                "being told which classes there are opened them, so a rule that wants no more than"
+                        + " the names pays for parsing every one of them");
+        assertEquals(1, counting.listings.get());
+    }
+
+    @Test
     void reaches_one_class_without_listing_the_output_it_is_in() {
         Optional<ClassModel> found = at(PUBLISHED).find(RepositoryLayout.class.getName());
 
@@ -178,6 +189,17 @@ class WhatIsReadOfACompiledOutputIsReadOnceTest {
 
         assertEquals(2, narrower.size());
         assertEquals(2, counting.reads.get(), "reading a package opened files outside it");
+    }
+
+    @Test
+    void reads_a_packages_own_classes_without_the_packages_under_it(@TempDir Path root)
+            throws IOException {
+        List<ClassModel> its = at(anOutputOfSeveralPackages(root)).inTheClassesOf("asked");
+
+        assertEquals(1, its.size());
+        assertEquals(1, counting.reads.get(),
+                "reading a package's own classes opened the ones under it as well, or the ones"
+                        + " beside it");
     }
 
     @Test

@@ -5,11 +5,11 @@ import souther.compiler.check.ComparisonClaim;
 import souther.compiler.check.DeclaredBorders;
 import souther.compiler.check.RuleRef;
 import souther.compiler.coverage.ComparisonEmissionSite;
-import souther.compiler.coverage.ComparisonOccurrence;
 import souther.compiler.diag.Citation;
 import souther.compiler.numeric.Endpoint;
 import souther.compiler.publish.PublishedRuleHandle;
 import souther.compiler.publish.PublishedSentence;
+import souther.compiler.types.ModelOccurrence;
 import souther.compiler.types.TypeSymbol;
 
 import java.util.List;
@@ -146,25 +146,6 @@ public sealed interface LineOrigin extends RuleEvidenceOrigin {
         }
 
         /**
-         * One materialisation of a rule in the tree that runs, and the place a run through it is
-         * written down.
-         *
-         * <p>The two together because they are minted together, from the plan that numbered the
-         * materialisation. Held as two lists, a reader could be handed a name from one build and a
-         * place from another and nothing would say so.
-         */
-        public record Watched(ComparisonOccurrence comparison,
-                              ComparisonEmissionSite recordedAt) {
-
-            public Watched {
-                if (comparison == null || recordedAt == null) {
-                    throw new IllegalArgumentException(
-                            "a place a rule is watched at is one the numbering named, with a site");
-                }
-            }
-        }
-
-        /**
          * Which comparison this reads, which reading of it this is, and where that reading was.
          *
          * <p>Only the handle tells one rule from another. A comparison inside a non-recursive helper
@@ -184,70 +165,39 @@ public sealed interface LineOrigin extends RuleEvidenceOrigin {
          *
          * @param rule which comparison of the model this is, which is the same value however many
          *              times the comparison is read
+         * @param states which construct of the model that rule is stated at, which is what every
+         *              fact about the rule is filed under. Beside {@link #rule} and not instead of
+         *              it: a rule is what a report names and what a document cites, and one
+         *              construct of the model states one rule while a helper called twice states
+         *              that rule at two constructs
          * @param writtenAt where a reader finds it, which is where it is written. The comparison's
          *              own place and not the fork's — a condition holding three comparisons is
          *              three rules, and a reader sent to the {@code if} is given one handle for all
          *              of them
-         * @param watched every materialisation of that comparison in the tree that runs, with the
-         *              place a run through each is written down. Beside the rule and not instead of
-         *              it: which comparison this reads is what everything about the rule is said of,
-         *              and these are only how a run is asked whether it got there. Minted from the
-         *              plan that numbered them, so the names and the places cannot come from
-         *              different builds.
-         *              <p>Several because one rule may be written into the tree that runs more than
-         *              once: a library operation evaluating a closure it was handed twice writes the
-         *              comparison twice, and the model states one rule all the same. A run that got
-         *              an answer out of any of them got one out of the rule
+         * @param recordedAt every place a run through the rule is written down. Only places: which
+         *              materialisation of the construct each of them is is the tree that runs
+         *              saying something about itself, and nothing a reader of the rule asks turns
+         *              on it — a run that got an answer out of any of them got one out of the rule.
+         *              <p>Several because one construct of the model may be written into the tree
+         *              that runs more than once: a library operation evaluating a closure it was
+         *              handed twice writes the comparison twice, and the model states one rule at
+         *              one construct all the same
          */
-        public record Read(RuleRef.Comparison rule, Citation writtenAt,
-                           List<Watched> watched) {
+        public record Read(RuleRef.Comparison rule, ModelOccurrence states, Citation writtenAt,
+                           List<ComparisonEmissionSite> recordedAt) {
 
             public Read {
-                if (rule == null || writtenAt == null) {
+                if (rule == null || states == null || writtenAt == null) {
                     throw new IllegalArgumentException(
-                            "a rule read off a comparison names one and cites it");
+                            "a rule read off a comparison names one, states it somewhere and cites"
+                                    + " it");
                 }
-                watched = List.copyOf(watched);
-                if (watched.isEmpty()) {
+                recordedAt = List.copyOf(recordedAt);
+                if (recordedAt.isEmpty()) {
                     throw new IllegalArgumentException(
                             "a rule a row is held to is one a run through is written down"
                                     + " somewhere");
                 }
-            }
-
-            /** Every name the numbering gave a materialisation of this rule. */
-            public List<ComparisonOccurrence> comparisons() {
-                return watched.stream().map(Watched::comparison).toList();
-            }
-
-            /** Every place a run through it is written down. */
-            public List<ComparisonEmissionSite> recordedAt() {
-                return watched.stream().map(Watched::recordedAt).toList();
-            }
-
-            /**
-             * Whether {@code which} is one of this rule's materialisations.
-             *
-             * <p>Asked rather than compared against one of them. A rule may be written into the
-             * tree that runs more than once, and a reader holding the name of the second would
-             * find no rule where one is — the decision it recorded is the rule's, whichever copy
-             * made it.
-             */
-            public boolean names(ComparisonOccurrence which) {
-                return watched.stream().anyMatch(one -> one.comparison().equals(which));
-            }
-
-            /**
-             * Any one of them, for a reader that asks a question every materialisation answers
-             * alike.
-             *
-             * <p>What a row had to satisfy to get to the rule is such a question: what stood on the
-             * way is read once off the tree the rule is read in, and recorded against every
-             * materialisation — so the ways are one way under several names, and taking the first
-             * is not a choice between answers.
-             */
-            public ComparisonOccurrence anyOfThem() {
-                return watched.get(0).comparison();
             }
 
             /**
@@ -642,9 +592,9 @@ public sealed interface LineOrigin extends RuleEvidenceOrigin {
      * relation changes is the input written at it. For those, writing the value is the whole of what
      * there is to reach and there is no comparison to look at.
      */
-    default Optional<ComparisonOccurrence> comparisonAt() {
+    default Optional<ModelOccurrence> comparisonAt() {
         return switch (this) {
-            case ComparisonOrigin g -> Optional.of(g.read().anyOfThem());
+            case ComparisonOrigin g -> Optional.of(g.read().states());
             case NarrowedOrigin n -> n.bound().comparisonAt();
             case InvariantOrigin _, EnsuresOrigin _ -> Optional.empty();
         };

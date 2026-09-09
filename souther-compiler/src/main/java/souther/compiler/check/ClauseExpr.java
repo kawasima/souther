@@ -82,6 +82,12 @@ sealed interface ClauseExpr {
      */
     record Occurrence(int ordinal) {
 
+        /** The clause itself, which takes the first number before anything under it does — see
+         *  {@link ClauseExpr#under}. */
+        static Occurrence ofTheClause() {
+            return new Occurrence(0);
+        }
+
         public Occurrence {
             if (ordinal < 0) {
                 throw new IllegalArgumentException(

@@ -3,24 +3,19 @@ package souther.architecture;
 import souther.compiler.types.SourceConstruct;
 import souther.compiler.types.SourceConstructOrigin;
 import souther.compiler.types.WrittenOwner;
-import souther.test.RepositoryLayout;
 
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.lang.classfile.ClassFile;
+import java.lang.classfile.ClassModel;
 import java.lang.classfile.constantpool.MemberRefEntry;
 import java.lang.classfile.constantpool.PoolEntry;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -73,7 +68,7 @@ class WhoMaySettleASourceConstructOriginTest {
      *  the type for the reason the owner is: a rename stops the build rather than emptying the walk. */
     private static final String AN_OWNER = "L" + internalNameOf(WrittenOwner.class) + ";";
 
-    private static final RepositoryLayout REPOSITORY = RepositoryLayout.ofWorkingDirectory();
+    private static final CompiledOutputs COMPILED = CompiledOutputs.ofWhatThisRepositoryPublishes();
 
     /**
      * What makes an origin, written down — so that a way of making one that is added is a row here
@@ -136,17 +131,6 @@ class WhoMaySettleASourceConstructOriginTest {
      */
     @Test
     void andEveryModuleTheRepositoryHoldsWasRead() {
-        List<String> unbuilt = new ArrayList<>();
-        for (Path module : REPOSITORY.modules()) {
-            if (!Files.isDirectory(classesOf(module)) && hasMainSources(module)) {
-                unbuilt.add(module.getFileName().toString());
-            }
-        }
-
-        assertEquals(List.of(), unbuilt,
-                "a module whose classes are not built is one this walk passes over, and a walk that"
-                        + " passes over a module answers about the rest while saying it answers"
-                        + " about all of them");
         assertTrue(modulesRead() > 1,
                 "the classes this reads are in more than the one module that declares an origin");
     }
@@ -201,14 +185,14 @@ class WhoMaySettleASourceConstructOriginTest {
     private static Set<String> namingAMaker() {
         Set<String> found = new TreeSet<>();
         Set<String> makers = makers();
-        for (Path module : REPOSITORY.modules()) {
-            for (Path each : classesUnder(module)) {
-                for (PoolEntry entry : constantPoolOf(each)) {
+        for (Path module : COMPILED.modules()) {
+            for (ClassModel each : COMPILED.classesOf(module)) {
+                for (PoolEntry entry : each.constantPool()) {
                     if (entry instanceof MemberRefEntry member) {
                         String named = member.owner().name().stringValue() + "#"
                                 + member.name().stringValue() + member.type().stringValue();
                         if (makers.contains(named)) {
-                            found.add(internalName(module, each) + " -> " + named);
+                            found.add(each.thisClass().asInternalName() + " -> " + named);
                         }
                     }
                 }
@@ -219,53 +203,23 @@ class WhoMaySettleASourceConstructOriginTest {
 
     private static int modulesRead() {
         int read = 0;
-        for (Path module : REPOSITORY.modules()) {
-            if (!classesUnder(module).isEmpty()) {
+        for (Path module : COMPILED.modules()) {
+            if (!COMPILED.classesOf(module).isEmpty()) {
                 read++;
             }
         }
         return read;
     }
 
-    private static Iterable<PoolEntry> constantPoolOf(Path compiled) {
-        try {
-            return ClassFile.of().parse(Files.readAllBytes(compiled)).constantPool();
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
-    }
 
-    /** The class's own binary name, taken against the directory it was found under rather than off
-     *  the first {@code classes} in the path, which a checkout under one would be. */
-    private static String internalName(Path module, Path compiled) {
-        String name = classesOf(module).relativize(compiled).toString().replace('\\', '/');
-        return name.substring(0, name.length() - ".class".length());
-    }
 
-    private static Path classesOf(Path module) {
-        return module.resolve("target").resolve("classes");
-    }
 
-    /** Whether the module has main sources to have been built from. A module holding only tests or
-     *  only a pom leaves no classes and is not one this walk is missing. */
-    private static boolean hasMainSources(Path module) {
-        return Files.isDirectory(module.resolve("src").resolve("main").resolve("java"));
-    }
 
-    /** The compiled classes of one module that the compiler is made of. Its own tests are not among
-     *  them: a test builds an origin to look at it and ships nothing, and a list that moved whenever
-     *  one was written is a list nobody keeps up. */
-    private static List<Path> classesUnder(Path module) {
-        Path where = classesOf(module);
-        if (!Files.isDirectory(where)) {
-            return List.of();
-        }
-        try (Stream<Path> found = Files.walk(where)) {
-            return found.filter(p -> p.toString().endsWith(".class")).toList();
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
-    }
+
+
+
+
+
 
     /** The descriptor of a member taking these and answering with that. */
     private static String descriptorOf(Class<?>[] takes, Class<?> answers) {

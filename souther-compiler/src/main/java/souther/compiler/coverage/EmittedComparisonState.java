@@ -1,6 +1,7 @@
 package souther.compiler.coverage;
 
 import souther.compiler.reach.ComparisonArrival;
+import souther.compiler.types.ConstructOccurrence;
 
 import java.util.List;
 
@@ -56,7 +57,7 @@ public sealed interface EmittedComparisonState {
      * called the materialisation, and the site is where a run through it is written down. Two facts
      * about one place, kept together so that a reader asking either has the other.
      */
-    record Observation(ComparisonOccurrence occurrence, ComparisonEmissionSite site,
+    record Observation(ConstructOccurrence occurrence, ComparisonEmissionSite site,
                        ComparisonArrival arrival) {
 
         public Observation {

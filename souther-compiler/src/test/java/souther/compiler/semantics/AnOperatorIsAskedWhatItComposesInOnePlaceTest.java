@@ -1,23 +1,17 @@
 package souther.compiler.semantics;
 
 import org.junit.jupiter.api.Test;
+import souther.compiler.WhatWasCompiled;
 
-import java.io.IOException;
-import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassModel;
 import java.lang.classfile.MethodModel;
 import java.lang.classfile.instruction.InvokeInstruction;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 
 /**
  * Who reads an operator for what a connective composes, and how often.
@@ -72,7 +66,7 @@ class AnOperatorIsAskedWhatItComposesInOnePlaceTest {
                             + " second place the same `&&` is recognised in"));
 
     @Test
-    void onlyARecognitionReadsAnOperatorForWhatItComposes() throws IOException {
+    void onlyARecognitionReadsAnOperatorForWhatItComposes() {
         assertEquals(declared(MAY_ASK), callsTo(JOIN, "of"),
                 "a reader that has recognised a connective and asks the operator again has"
                         + " somewhere in it that could disagree with itself, and a second call in a"
@@ -93,12 +87,9 @@ class AnOperatorIsAskedWhatItComposesInOnePlaceTest {
     }
 
     /** How many times each method of the compiler calls {@code owner.name}. */
-    private static Map<String, Integer> callsTo(String owner, String name) throws IOException {
+    private static Map<String, Integer> callsTo(String owner, String name) {
         Map<String, Integer> calls = new TreeMap<>();
-        int read = 0;
-        for (Path each : classes()) {
-            ClassModel model = ClassFile.of().parse(Files.readAllBytes(each));
-            read++;
+        for (ClassModel model : WhatWasCompiled.compiled().all()) {
             String from = model.thisClass().asInternalName().replace('/', '.').replace('$', '.');
             for (MethodModel method : model.methods()) {
                 method.code().ifPresent(code -> code.forEach(element -> {
@@ -110,14 +101,6 @@ class AnOperatorIsAskedWhatItComposesInOnePlaceTest {
                 }));
             }
         }
-        assertFalse(read == 0, "no compiled class was read at all, so this says nothing");
         return calls;
-    }
-
-    private static List<Path> classes() throws IOException {
-        Path root = Path.of("target", "classes").toAbsolutePath();
-        try (Stream<Path> walk = Files.walk(root)) {
-            return new ArrayList<>(walk.filter(p -> p.toString().endsWith(".class")).toList());
-        }
     }
 }

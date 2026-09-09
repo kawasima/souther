@@ -156,7 +156,7 @@ public final class HelperInliner {
                            ExpansionLineage lineage, Hir.Binders binders,
                            Set<BindingId> dependencies,
                            Map<BindingId, ScopedLambda> scopedLambdas,
-                           Map<BindingId, ExpansionSite.Supplied> suppliedFrom) {
+                           Map<BindingId, ExpansionSite.Supplied.Handover> suppliedFrom) {
 
         /**
          * The same writing, one copy deeper.
@@ -177,12 +177,13 @@ public final class HelperInliner {
          * that says how the compiler ran.
          */
         Writing inside(BindingOwner copy, ExpansionLineage deeper,
-                       Map<BindingId, ExpansionSite.Supplied> supplied) {
+                       Map<BindingId, ExpansionSite.Supplied.Handover> supplied) {
             // Where the callables in scope crossed in. A boundary in force outside this copy is
             // still in force inside it — the copy being written is code the caller's callable was
             // handed to, and where that callable came from is not changed by being handed on. What
             // this call adds is the callables that crossed in at it, which the caller works out.
-            Map<BindingId, ExpansionSite.Supplied> here = new LinkedHashMap<>(suppliedFrom);
+            Map<BindingId, ExpansionSite.Supplied.Handover> here =
+                    new LinkedHashMap<>(suppliedFrom);
             here.putAll(supplied);
             return new Writing(destination, copy, deeper, binders, dependencies, scopedLambdas,
                     here);
@@ -200,7 +201,7 @@ public final class HelperInliner {
      * from here belong to.
      */
     private Hir.Expr insideThisCopy(BindingOwner copy, ExpansionLineage deeper,
-                                    Map<BindingId, ExpansionSite.Supplied> supplied,
+                                    Map<BindingId, ExpansionSite.Supplied.Handover> supplied,
                                     java.util.function.Supplier<Hir.Expr> work) {
         Writing outer = writing;
         writing = outer.inside(copy, deeper, supplied);
@@ -1317,7 +1318,7 @@ public final class HelperInliner {
                             under != null && under.origin() != null
                                     ? new ScopedLambda(aliased, under.origin())
                                     : new ScopedLambda(aliased));
-                    ExpansionSite.Supplied crossed =
+                    ExpansionSite.Supplied.Handover crossed =
                             first == null ? null : writing.suppliedFrom().get(first);
                     if (crossed != null) {
                         writing.suppliedFrom().put(alias, crossed);
@@ -1558,9 +1559,12 @@ public final class HelperInliner {
         // Whichever way the author spelled the callable. A lambda written at the call, a name they
         // bound first, and a second name for either are one fact, and this is where the three meet
         // — so a model reads the same however the closure was written down.
-        ExpansionSite supplied = handedToThisCopy(call);
+        ExpansionSite.Supplied.Handover supplied = handedToThisCopy(call);
         if (supplied != null) {
-            return supplied;
+            // And which application of it this copy is. An operation may apply a block it was
+            // handed more than once, and each of those is a copy of the block's body standing on
+            // its own — so the handover alone would name them all alike.
+            return new ExpansionSite.Supplied(supplied, appliedAt(call));
         }
         return switch (at) {
             case ApplicationOrigin.Written(SourceConstructOrigin application) ->
@@ -1589,12 +1593,53 @@ public final class HelperInliner {
      * this names is the one the caller's code was left behind at, which is the one the boundary was
      * recorded at when the callable was bound.
      */
-    private ExpansionSite handedToThisCopy(Hir.Apply call) {
+    private ExpansionSite.Supplied.Handover handedToThisCopy(Hir.Apply call) {
         if (call.answered() == null
                 || !(call.answered().denotes() instanceof ValueName.Local local)) {
             return null;
         }
         return writing.suppliedFrom().get(local.id());
+    }
+
+    /**
+     * Which application of a supplied block {@code call} is, as the source wrote it.
+     *
+     * <p>A site of the body the block is being copied into, which is what tells one application of
+     * it from another: {@code List.distinctBy} writes two applications of its key, and the two
+     * copies of that key differ in nothing else. Read off the application rather than counted, so
+     * that the two are the same two whichever order the expansions ran in.
+     *
+     * <p><b>Read off the application alone.</b> Where the block came from is what the handover
+     * beside this says, and asking it again here would be asking the question this is a component of
+     * — an operation that binds the block it was handed to a name of its own applies it through that
+     * name, and following the name back would come to the handover and start over. So an application
+     * written as a call is that call, and one a name was expanded into is that name.
+     *
+     * <p>Refused where neither is what the source wrote. Such an application is named by what a pass
+     * composed, and a copy named by that is one whose name moves when the compiler is asked to do
+     * the same work in another order — the same reason a call a pass wrote is refused where a site
+     * is worked out.
+     */
+    private static ExpansionSite.Direct appliedAt(Hir.Apply call) {
+        ReferenceOrigin named;
+        switch (call.application()) {
+            case ApplicationOrigin.Written(SourceConstructOrigin at) -> {
+                return new ExpansionSite.Written(at);
+            }
+            case ApplicationOrigin.Eta(EtaOrigin.Declaration(ReferenceOrigin reference)) ->
+                    named = reference;
+            case ApplicationOrigin.Eta(EtaOrigin.Bound(BindingId _, ReferenceOrigin reference)) ->
+                    named = reference;
+            default -> throw new IllegalStateException(
+                    "a block applied at an application no source wrote: " + call.application()
+                            + " at " + call.pos());
+        }
+        if (named instanceof SourceReferenceOrigin written) {
+            return new ExpansionSite.Named(written);
+        }
+        throw new IllegalStateException(
+                "a block applied at a name this compiler composed: " + named
+                        + " at " + call.pos());
     }
 
     /** The same, for the block a name or a binding was expanded into. */
@@ -1616,9 +1661,9 @@ public final class HelperInliner {
                 // bound. Whichever way the author spelled it — a lambda written at the call, a name
                 // they bound first, a second name for either — and however many operations it was
                 // handed on through since.
-                ExpansionSite.Supplied handed = writing.suppliedFrom().get(binding);
+                ExpansionSite.Supplied.Handover handed = writing.suppliedFrom().get(binding);
                 if (handed != null) {
-                    return handed;
+                    return new ExpansionSite.Supplied(handed, appliedAt(call));
                 }
                 // And a lambda the author bound to a name and then wrote where a value goes. No
                 // call handed it to anything, so there is no copy and no parameter to name it by —
@@ -1673,10 +1718,10 @@ public final class HelperInliner {
      * application of it stands in, and a lineage already says that; what nothing else says is which
      * copy the writer's code was left behind at.
      */
-    private static ExpansionSite.Supplied crossedInto(ExpansionSite.Supplied crossing,
-                                                      ExpansionLineage.Step taking, int slot) {
+    private static ExpansionSite.Supplied.Handover crossedInto(
+            ExpansionSite.Supplied.Handover crossing, ExpansionLineage.Step taking, int slot) {
         return crossing != null ? crossing
-                : new ExpansionSite.Supplied(taking, new ParameterSlot(slot));
+                : new ExpansionSite.Supplied.Handover(taking, new ParameterSlot(slot));
     }
 
     /**
@@ -1699,7 +1744,7 @@ public final class HelperInliner {
      */
     private record Arguments(Map<BindingId, Substituted> subst, List<Hir.Bound> bound,
                              List<Hir.Given> given, Map<BindingId, Hir.Bound> unreduced,
-                             Map<BindingId, ExpansionSite.Supplied> supplied) {}
+                             Map<BindingId, ExpansionSite.Supplied.Handover> supplied) {}
 
     /**
      * Binds one call's arguments against the callee's parameters, this call's variables written in.
@@ -1716,7 +1761,7 @@ public final class HelperInliner {
         // as and what that name resolved to at the call site, so the expansion carries the
         // argument's own answer rather than deciding one for it
         Map<BindingId, Substituted> subst = new HashMap<>();
-        Map<BindingId, ExpansionSite.Supplied> handedHere = new LinkedHashMap<>();
+        Map<BindingId, ExpansionSite.Supplied.Handover> handedHere = new LinkedHashMap<>();
         Map<BindingId, Hir.Bound> unreduced = new LinkedHashMap<>();
         List<Hir.Bound> bound = new ArrayList<>();
         List<Hir.Given> given = new ArrayList<>();

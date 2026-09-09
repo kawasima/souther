@@ -1,20 +1,16 @@
 package souther.compiler.ast;
 
 import org.junit.jupiter.api.Test;
+import souther.compiler.WhatWasCompiled;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.lang.classfile.ClassFile;
+import java.lang.classfile.ClassModel;
 import java.lang.classfile.constantpool.PoolEntry;
 import java.lang.classfile.constantpool.Utf8Entry;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -43,8 +39,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class TheParsedTreeHoldsOnlyWhatTheFrontendWritesTest {
 
-    private static final Path FRONTEND =
-            Path.of("target", "classes", "souther", "compiler", "frontend");
+    private static final String FRONTEND = "souther.compiler.frontend";
 
     @Test
     void everyFormOfTheParsedTreeIsNamedByTheFrontendThatWritesIt() {
@@ -92,16 +87,12 @@ class TheParsedTreeHoldsOnlyWhatTheFrontendWritesTest {
     /** Every name the frontend's classes hold, descriptors and signatures included. */
     private static Set<String> whatTheFrontendNames() {
         Set<String> named = new HashSet<>();
-        try (Stream<Path> found = Files.walk(FRONTEND)) {
-            for (Path each : found.filter(p -> p.toString().endsWith(".class")).toList()) {
-                for (PoolEntry entry : ClassFile.of().parse(Files.readAllBytes(each)).constantPool()) {
-                    if (entry instanceof Utf8Entry text) {
-                        named.add(text.stringValue());
-                    }
+        for (ClassModel each : WhatWasCompiled.compiled().inPackage(FRONTEND)) {
+            for (PoolEntry entry : each.constantPool()) {
+                if (entry instanceof Utf8Entry text) {
+                    named.add(text.stringValue());
                 }
             }
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
         }
         return named;
     }

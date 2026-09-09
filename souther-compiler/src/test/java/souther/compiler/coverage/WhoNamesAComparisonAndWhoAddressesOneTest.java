@@ -1,38 +1,31 @@
 package souther.compiler.coverage;
 
 import org.junit.jupiter.api.Test;
+import souther.compiler.WhatWasCompiled;
 
-import java.io.IOException;
-import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassModel;
 import java.lang.classfile.MethodModel;
 import java.lang.classfile.instruction.InvokeInstruction;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 
 /**
- * Which comparison a reading is talking about, and where a run through one is written down, are
- * handed out by one place each.
+ * Where a run through a comparison is written down is handed out by one place.
  *
- * <p><b>Two names for two questions, and the answer to each has an owner.</b> Every comparison of
- * every body has a {@link ComparisonOccurrence}; what has a {@link ComparisonEmissionSite} is what
- * the plan instruments, which is fewer — a comparison behind an abort is one no run reaches. Held
- * as one value the two were the same number, so a reading asking which comparison it was looking at
- * got an answer that was true only while every comparison the catalog held had been numbered.
+ * <p><b>Two questions, and only one of them is answered by handing something out.</b> Which
+ * comparison a reading is talking about is the {@link souther.compiler.types.ConstructOccurrence}
+ * the tree carries, so there is nothing to hand out and no second place that could; what has a
+ * {@link ComparisonEmissionSite} is what the plan instruments, which is fewer — a comparison behind
+ * an abort is one no run reaches. Held as one value the two were the same number, so a reading
+ * asking which comparison it was looking at got an answer that was true only while every comparison
+ * the catalog held had been numbered.
  *
- * <p>Which makes who may make one the thing to hold. A second place handing out occurrences is a
- * second naming, and two readers agreeing about which comparison they mean would come back down to
- * their having been given the same pair. A second place handing out addresses is a number the
- * emitter never wrote, and a claim about a run that no run can satisfy.
+ * <p>Which makes who may make an address the thing to hold. A second place handing one out is a
+ * number the emitter never wrote, and a claim about a run that no run can satisfy.
  *
  * <p>Read off the compiled classes, so what is counted is what a method does rather than what a
  * reading of the sources makes of it — a call written inside a lambda belongs to the lambda, and
@@ -49,8 +42,6 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
  */
 class WhoNamesAComparisonAndWhoAddressesOneTest {
 
-    private static final String OCCURRENCE = "souther/compiler/coverage/ComparisonOccurrence";
-
     private static final String SITE = "souther/compiler/coverage/ComparisonEmissionSite";
 
     private static final String ARM = "souther/compiler/coverage/ArmProbe";
@@ -63,13 +54,6 @@ class WhoNamesAComparisonAndWhoAddressesOneTest {
 
     /** A method that may make one, how many times it does, and why it is the one that does. */
     private record Licence(String who, int calls, String why) { }
-
-    private static final List<Licence> MAY_NAME = List.of(
-            new Licence("souther.compiler.coverage.ComparisonCatalog.lambda$walk$0", 1,
-                    "the one enumeration of what the bodies of a module hold, which is where a"
-                            + " comparison first exists to be talked about — inside the walk,"
-                            + " where a node is recognised and named in one step, so a name and"
-                            + " what it is a name of are made together"));
 
     private static final List<Licence> MAY_ADDRESS = List.of(
             new Licence("souther.compiler.coverage.SiteNumbering.comparison", 1,
@@ -117,7 +101,7 @@ class WhoNamesAComparisonAndWhoAddressesOneTest {
                             + " numbered it"));
 
     @Test
-    void onlyACheckPairsAModuleWithItsBodies() throws IOException {
+    void onlyACheckPairsAModuleWithItsBodies() {
         assertEquals(declared(MAY_PAIR), callsToConstructor(BODIES),
                 "a module's name beside another module's trees has the catalog issue names true of"
                         + " nothing, and no later check can refuse them. What may pair them, and"
@@ -125,28 +109,21 @@ class WhoNamesAComparisonAndWhoAddressesOneTest {
     }
 
     @Test
-    void onlyTheWalkPutsACataloguedComparisonTogether() throws IOException {
+    void onlyTheWalkPutsACataloguedComparisonTogether() {
         assertEquals(declared(MAY_CATALOGUE), callsToConstructor(CATALOGUED),
                 "a name, a recognition and a place are true together or not at all. What may put"
                         + " them together, and why: " + why(MAY_CATALOGUE));
     }
 
     @Test
-    void onlyOnePlaceSaysWhichComparisonARuleIsReadOff() throws IOException {
+    void onlyOnePlaceSaysWhichComparisonARuleIsReadOff() {
         assertEquals(declared(MAY_READ), callsToConstructor(READ),
                 "an occurrence of one plan beside the emission site of another is a rule pointing"
                         + " at two places. What may pair them, and why: " + why(MAY_READ));
     }
 
     @Test
-    void onlyTheCatalogNamesAComparisonOfABody() throws IOException {
-        assertEquals(declared(MAY_NAME), callsToConstructor(OCCURRENCE),
-                "a second place naming an occurrence is a second answer to which comparison a"
-                        + " reading means. What may name one, and why: " + why(MAY_NAME));
-    }
-
-    @Test
-    void onlyTheNumberingAddressesAComparisonOfARun() throws IOException {
+    void onlyTheNumberingAddressesAComparisonOfARun() {
         assertEquals(declared(MAY_ADDRESS), callsToConstructor(SITE),
                 "an address made anywhere else is a place no run was recorded at. What may make"
                         + " one, and why: " + why(MAY_ADDRESS));
@@ -160,7 +137,7 @@ class WhoNamesAComparisonAndWhoAddressesOneTest {
      * paired with a numbering that never handed them out.
      */
     @Test
-    void onlyTheNumberingAddressesAnArmOfARun() throws IOException {
+    void onlyTheNumberingAddressesAnArmOfARun() {
         assertEquals(declared(MAY_ADDRESS_AN_ARM), callsToConstructor(ARM),
                 "an address made anywhere else is a place no run was recorded at. What may make"
                         + " one, and why: " + why(MAY_ADDRESS_AN_ARM));
@@ -179,12 +156,9 @@ class WhoNamesAComparisonAndWhoAddressesOneTest {
     }
 
     /** How many times each method of the compiler makes one of {@code owner}. */
-    private static Map<String, Integer> callsToConstructor(String owner) throws IOException {
+    private static Map<String, Integer> callsToConstructor(String owner) {
         Map<String, Integer> calls = new TreeMap<>();
-        int read = 0;
-        for (Path each : classes()) {
-            ClassModel model = ClassFile.of().parse(Files.readAllBytes(each));
-            read++;
+        for (ClassModel model : WhatWasCompiled.compiled().all()) {
             String from = model.thisClass().asInternalName().replace('/', '.').replace('$', '.');
             for (MethodModel method : model.methods()) {
                 method.code().ifPresent(code -> code.forEach(element -> {
@@ -196,14 +170,6 @@ class WhoNamesAComparisonAndWhoAddressesOneTest {
                 }));
             }
         }
-        assertFalse(read == 0, "no compiled class was read at all, so this says nothing");
         return calls;
-    }
-
-    private static List<Path> classes() throws IOException {
-        Path root = Path.of("target", "classes").toAbsolutePath();
-        try (Stream<Path> walk = Files.walk(root)) {
-            return new ArrayList<>(walk.filter(p -> p.toString().endsWith(".class")).toList());
-        }
     }
 }

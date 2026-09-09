@@ -1,24 +1,18 @@
 package souther.compiler.coverage;
 
 import org.junit.jupiter.api.Test;
+import souther.compiler.WhatWasCompiled;
 
-import java.io.IOException;
-import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassModel;
 import java.lang.classfile.MethodModel;
 import java.lang.classfile.instruction.InvokeInstruction;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 
 /**
  * Whether a run was at a place is asked of the run, and not of the set it holds.
@@ -62,7 +56,7 @@ class WhatARunSaysAboutAPlaceIsAskedOfTheRunTest {
                             + " wrong about"));
 
     @Test
-    void whatTakesThePlacesWholeIsGatheringThemAndSaysSo() throws IOException {
+    void whatTakesThePlacesWholeIsGatheringThemAndSaysSo() {
         assertEquals(declared(), taken(),
                 "a reader that takes the set to ask whether one place is in it has gone round the"
                         + " refusal that makes an aligned run mean anything, and gets an ordinary"
@@ -83,12 +77,9 @@ class WhatARunSaysAboutAPlaceIsAskedOfTheRunTest {
     }
 
     /** How many times each method of the compiler takes a run's places whole. */
-    private static Map<String, Integer> taken() throws IOException {
+    private static Map<String, Integer> taken() {
         Map<String, Integer> calls = new TreeMap<>();
-        int read = 0;
-        for (Path each : classes()) {
-            ClassModel model = ClassFile.of().parse(Files.readAllBytes(each));
-            read++;
+        for (ClassModel model : WhatWasCompiled.compiled().all()) {
             String from = model.thisClass().asInternalName().replace('/', '.').replace('$', '.');
             for (MethodModel method : model.methods()) {
                 method.code().ifPresent(code -> code.forEach(element -> {
@@ -101,14 +92,6 @@ class WhatARunSaysAboutAPlaceIsAskedOfTheRunTest {
                 }));
             }
         }
-        assertFalse(read == 0, "no compiled class was read at all, so this says nothing");
         return calls;
-    }
-
-    private static List<Path> classes() throws IOException {
-        Path root = Path.of("target", "classes").toAbsolutePath();
-        try (Stream<Path> walk = Files.walk(root)) {
-            return new ArrayList<>(walk.filter(p -> p.toString().endsWith(".class")).toList());
-        }
     }
 }

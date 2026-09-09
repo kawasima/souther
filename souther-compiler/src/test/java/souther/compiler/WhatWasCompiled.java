@@ -1,23 +1,17 @@
 package souther.compiler;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.lang.classfile.ClassFile;
+import souther.test.CompiledClasses;
+
 import java.lang.classfile.ClassModel;
 import java.lang.classfile.constantpool.ClassEntry;
 import java.lang.classfile.constantpool.ConstantPool;
 import java.lang.classfile.constantpool.MethodTypeEntry;
 import java.lang.classfile.constantpool.PoolEntry;
 import java.lang.constant.ClassDesc;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
-import java.util.stream.Stream;
 
 /**
  * What this module compiled to, for a rule about who may depend on what.
@@ -28,31 +22,52 @@ import java.util.stream.Stream;
  * not. So the set is taken from what javac made of the module, where an anonymous body, a class and
  * a lambda are all present and all say what they are.
  *
- * <p>Read from {@code target/classes}, which is what surefire was handed and what the tests using
- * this were compiled against. A walk finding nothing is a walk of the wrong directory, so
- * {@link #classes} says so rather than reporting an empty set as a clean one.
+ * <p>Read from what this module compiled to, which is what surefire was handed and what the tests
+ * using this were compiled against. Which output that is, and how many times its files are opened,
+ * are {@link CompiledClasses}'s to answer; what is here is what this module's rules ask of it.
  */
 public final class WhatWasCompiled {
 
-    private static final Path CLASSES = Path.of("target/classes");
+    /**
+     * What this module compiled, named in one place.
+     *
+     * <p>A check of this module asks about this module, and a check that named the output for
+     * itself would be one more place to get it wrong when a module moves.
+     */
+    public static CompiledClasses compiled() {
+        return COMPILED;
+    }
 
-    /** Every class this module compiled, by binary name. */
+    /**
+     * The checks compiled beside it, which is the other output this module has.
+     *
+     * <p>Here for the same reason the one above is: a rule about the checks themselves is a rule
+     * about an output of this module, and naming it somewhere else would be a second place saying
+     * where this module's classes are.
+     */
+    public static CompiledClasses checksCompiledBesideIt() {
+        return BESIDE;
+    }
+
+    /**
+     * Which output this module compiled to, worked out once.
+     *
+     * <p>Not the classes, which the fork holds: this is the view of them, and working one out asks
+     * the file system what the path it was handed really is. A rule that walks the supertypes of
+     * every class asks for the view once per name it follows, so working it out per ask is a system
+     * call per lookup for an answer that was the same every time.
+     */
+    private static final CompiledClasses COMPILED = CompiledClasses.ofModule(Compiler.class);
+
+    private static final CompiledClasses BESIDE = CompiledClasses.ofModule(WhatWasCompiled.class);
+
+    /** Every class this module compiled, by binary name and without reading any of them. */
     public static List<String> classes() {
-        List<String> found = new ArrayList<>();
-        try (Stream<Path> written = Files.walk(CLASSES)) {
-            for (Path each : written.filter(p -> p.toString().endsWith(".class")).sorted().toList()) {
-                found.add(CLASSES.relativize(each).toString()
-                        .replace(java.io.File.separatorChar, '.')
-                        .replaceAll("\\.class$", ""));
-            }
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
-        if (found.isEmpty()) {
-            throw new IllegalStateException(CLASSES.toAbsolutePath()
-                    + " holds no classes, so a rule read from it holds nothing");
-        }
-        return found;
+        return compiled().names();
+    }
+
+    private static String named(ClassModel of) {
+        return of.thisClass().asInternalName().replace('/', '.');
     }
 
     /**
@@ -66,10 +81,9 @@ public final class WhatWasCompiled {
     public static Set<String> answering(Class<?> answered) {
         ClassDesc asked = answered.describeConstable().orElseThrow();
         Set<String> found = new LinkedHashSet<>();
-        for (String each : classes()) {
-            ClassModel model = parse(each);
-            if (reaches(model, asked, new LinkedHashSet<>()) || lambdaOf(model, asked)) {
-                found.add(each);
+        for (ClassModel each : compiled().all()) {
+            if (reaches(each, asked, new LinkedHashSet<>()) || lambdaOf(each, asked)) {
+                found.add(named(each));
             }
         }
         return found;
@@ -90,9 +104,9 @@ public final class WhatWasCompiled {
     public static Set<String> implementing(Class<?> answered) {
         ClassDesc asked = answered.describeConstable().orElseThrow();
         Set<String> found = new LinkedHashSet<>();
-        for (String each : classes()) {
-            if (reaches(parse(each), asked, new LinkedHashSet<>())) {
-                found.add(each);
+        for (ClassModel each : compiled().all()) {
+            if (reaches(each, asked, new LinkedHashSet<>())) {
+                found.add(named(each));
             }
         }
         return found;
@@ -116,9 +130,9 @@ public final class WhatWasCompiled {
             if (!seen.add(each)) {
                 continue;
             }
-            ClassModel further = parsedOrNull(each.packageName().isEmpty()
+            ClassModel further = compiled().find(each.packageName().isEmpty()
                     ? each.displayName()
-                    : each.packageName() + "." + each.displayName());
+                    : each.packageName() + "." + each.displayName()).orElse(null);
             if (further != null && reaches(further, asked, seen)) {
                 return true;
             }
@@ -175,8 +189,8 @@ public final class WhatWasCompiled {
             owners.add(ClassDesc.of(each));
         }
         Set<String> found = new LinkedHashSet<>();
-        for (String each : classes()) {
-            ConstantPool pool = parse(each).constantPool();
+        for (ClassModel model : compiled().all()) {
+            ConstantPool pool = model.constantPool();
             for (int i = 1; i < pool.size(); i++) {
                 PoolEntry entry;
                 try {
@@ -187,7 +201,7 @@ public final class WhatWasCompiled {
                 if (entry instanceof java.lang.classfile.constantpool.MemberRefEntry asCall
                         && owners.contains(asCall.owner().asSymbol())
                         && asCall.name().stringValue().equals(method)) {
-                    found.add(each);
+                    found.add(named(model));
                 }
             }
         }
@@ -197,7 +211,10 @@ public final class WhatWasCompiled {
     /** Every type {@code name} names — what it implements, calls, holds, catches or hands over. */
     public static Set<String> typesNamedBy(String name) {
         Set<String> named = new LinkedHashSet<>();
-        ConstantPool pool = parse(name).constantPool();
+        ConstantPool pool = compiled().find(name)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        name + " is not a class this module compiled"))
+                .constantPool();
         for (int i = 1; i < pool.size(); i++) {
             PoolEntry entry;
             try {
@@ -232,47 +249,6 @@ public final class WhatWasCompiled {
             }
         }
         return named;
-    }
-
-    /**
-     * What each class file holds, read once for however many rules ask about it.
-     *
-     * <p>A rule asks about every class this module compiled, and a suite holds many rules. Read per
-     * question, the same files are parsed again for each of them — which is what a rule about who
-     * calls what does twice over, once for the callers and once for the types the call could be
-     * named through. What is read cannot change while the tests run, since it is what surefire was
-     * handed.
-     */
-    private static final Map<String, ClassModel> READ = new HashMap<>();
-
-    /** {@code name} as this module compiled it, or nothing where it is not this module's — the JDK's
-     *  own types and anything on the class path, which a rule about this module does not read. */
-    private static ClassModel parsedOrNull(String name) {
-        if (READ.containsKey(name)) {
-            return READ.get(name);
-        }
-        Path at = CLASSES.resolve(name.replace('.', '/') + ".class");
-        ClassModel read = Files.exists(at) ? parsed(at) : null;
-        READ.put(name, read);
-        return read;
-    }
-
-    private static ClassModel parse(String name) {
-        ClassModel read = parsedOrNull(name);
-        if (read == null) {
-            throw new UncheckedIOException(new IOException(
-                    CLASSES.resolve(name.replace('.', '/') + ".class") + " is not a class this"
-                            + " module compiled"));
-        }
-        return read;
-    }
-
-    private static ClassModel parsed(Path at) {
-        try {
-            return ClassFile.of().parse(Files.readAllBytes(at));
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
     }
 
     private WhatWasCompiled() {

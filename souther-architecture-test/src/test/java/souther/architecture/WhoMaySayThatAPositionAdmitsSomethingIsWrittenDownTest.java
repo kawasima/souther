@@ -1,26 +1,22 @@
 package souther.architecture;
 
 import souther.compiler.values.Emptiness;
-import souther.test.RepositoryLayout;
+import souther.test.CompiledClasses;
 
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassModel;
 import java.lang.classfile.CodeElement;
 import java.lang.classfile.CodeModel;
 import java.lang.classfile.MethodModel;
 import java.lang.classfile.Opcode;
+import java.lang.classfile.constantpool.PoolEntry;
+import java.lang.classfile.constantpool.Utf8Entry;
 import java.lang.classfile.instruction.FieldInstruction;
 import java.lang.classfile.instruction.InvokeDynamicInstruction;
 import java.lang.classfile.instruction.InvokeInstruction;
 import java.lang.constant.ClassDesc;
 import java.lang.constant.DirectMethodHandleDesc;
-import java.net.URISyntaxException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -28,7 +24,6 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.function.BiFunction;
 import java.util.function.Predicate;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -229,7 +224,7 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
         };
     }
 
-    private static final RepositoryLayout REPOSITORY = RepositoryLayout.ofWorkingDirectory();
+    private static final CompiledOutputs COMPILED = CompiledOutputs.ofWhatThisRepositoryPublishes();
 
     /**
      * Every nest that says a position is settled one way or the other.
@@ -784,23 +779,16 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
      */
     @Test
     void andEveryModuleTheRepositoryHoldsWasRead() {
-        List<String> unbuilt = new ArrayList<>();
         int read = 0;
-        for (Path module : REPOSITORY.modules()) {
-            Path where = classesOf(module);
-            if (!classesUnder(where).isEmpty()) {
+        for (Path module : COMPILED.modules()) {
+            // A module holding only tests or only a pom leaves no classes and is not one this walk
+            // is missing. One that has sources and left none is refused where the outputs are
+            // taken, so a walk reading fewer modules than the repository has does not get here.
+            if (!COMPILED.classesOf(module).isEmpty()) {
                 read++;
-            } else if (Files.isDirectory(module.resolve("src").resolve("main").resolve("java"))) {
-                // A module holding only tests or only a pom leaves no classes and is not one this
-                // walk is missing.
-                unbuilt.add(module.getFileName().toString());
             }
         }
 
-        assertEquals(List.of(), unbuilt,
-                "a module whose classes are not built is one this walk passes over, and a walk that"
-                        + " passes over a module answers about the rest while saying it answers"
-                        + " about all of them");
         assertTrue(read > 1, "the classes this reads are in more than the one module that declares"
                 + " the word");
         assertTrue(nestsSaying(saidInProduction(), _ -> true)
@@ -1053,9 +1041,7 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
         return new ArrayList<>(out);
     }
 
-    private static Path classesOf(Path module) {
-        return module.resolve("target").resolve("classes");
-    }
+
 
     /** The two walks, each read once. Every rule here asks the same question of the same class
      *  files, and nothing writes one while this runs, so a walk per rule is the same answer read
@@ -1067,11 +1053,7 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
     /** Every saying of the word in the reactor's own compiled classes. */
     private static List<Use> saidInProduction() {
         if (inProduction == null) {
-            List<Path> where = new ArrayList<>();
-            for (Path module : REPOSITORY.modules()) {
-                where.add(classesOf(module));
-            }
-            inProduction = List.copyOf(saidUnder(where));
+            inProduction = List.copyOf(saidUnder(COMPILED.all()));
         }
         assertFalse(inProduction.isEmpty(), "no saying of the word was read at all");
         return inProduction;
@@ -1080,14 +1062,8 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
     /** Every saying in the classes compiled beside this test, which is the fixture above. */
     private static List<Use> saidHere() {
         if (here == null) {
-            try {
-                here = List.copyOf(saidUnder(List.of(Path.of(
-                        WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest.class
-                                .getProtectionDomain().getCodeSource().getLocation().toURI()))));
-            } catch (URISyntaxException notAPath) {
-                throw new IllegalStateException("this test's own classes are somewhere unreadable",
-                        notAPath);
-            }
+            here = List.copyOf(saidUnder(CompiledClasses.ofModule(
+                    WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest.class).all()));
         }
         return here;
     }
@@ -1100,47 +1076,43 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
      * would put the word on every list as a namer of itself. Which reading of one a place is
      * is asked of it as well — see the comment where that is done.
      */
-    private static List<Use> saidUnder(List<Path> roots) {
+    private static List<Use> saidUnder(List<ClassModel> classes) {
         List<Use> found = new ArrayList<>();
-        for (Path root : roots) {
-            for (Path each : classesUnder(root)) {
-                byte[] bytes = bytesOf(each);
-                // Cheap first, so the code of a class with nothing to do with this is never walked.
-                // The filter admits more than these rules are about — another type in `check` is
-                // called the same — and refuses nothing that could match, which is the direction it
-                // has to err in.
-                if (!holdsTheWord(bytes)) {
+        for (ClassModel model : classes) {
+            // Cheap first, so the code of a class with nothing to do with this is never walked.
+            // The filter admits more than these rules are about — another type in `check` is
+            // called the same — and refuses nothing that could match, which is the direction it
+            // has to err in.
+            if (!holdsTheWord(model)) {
+                continue;
+            }
+            String holds = model.thisClass().asInternalName();
+            String nest = nestOf(holds);
+            // The word's own class is passed over by the rules about who says it, and by them
+            // only: what an enum's constants do among themselves is how one is written, and
+            // read as sayings they would put the word on every list as a namer of itself. How
+            // one of the answers is read is another question and is asked of the word too — the
+            // meanings are worked out there, so a comparison there is a meaning nobody decided
+            // in the one place that decides them.
+            boolean isTheWord = nest.equals(EMPTINESS);
+            for (MethodModel method : model.methods()) {
+                CodeModel code = method.code().orElse(null);
+                if (code == null) {
                     continue;
                 }
-                ClassModel model = ClassFile.of().parse(bytes);
-                String holds = model.thisClass().asInternalName();
-                String nest = nestOf(holds);
-                // The word's own class is passed over by the rules about who says it, and by them
-                // only: what an enum's constants do among themselves is how one is written, and
-                // read as sayings they would put the word on every list as a namer of itself. How
-                // one of the answers is read is another question and is asked of the word too — the
-                // meanings are worked out there, so a comparison there is a meaning nobody decided
-                // in the one place that decides them.
-                boolean isTheWord = nest.equals(EMPTINESS);
-                for (MethodModel method : model.methods()) {
-                    CodeModel code = method.code().orElse(null);
-                    if (code == null) {
-                        continue;
+                String where = method.methodName().stringValue();
+                String spelt = method.methodType().stringValue();
+                List<CodeElement> elements = new ArrayList<>();
+                code.forEach(elements::add);
+                for (int at = 0; at < elements.size(); at++) {
+                    if (!isTheWord) {
+                        for (String what : saidBy(elements.get(at), holds)) {
+                            found.add(new Use(nest, holds, where, spelt, what));
+                        }
                     }
-                    String where = method.methodName().stringValue();
-                    String spelt = method.methodType().stringValue();
-                    List<CodeElement> elements = new ArrayList<>();
-                    code.forEach(elements::add);
-                    for (int at = 0; at < elements.size(); at++) {
-                        if (!isTheWord) {
-                            for (String what : saidBy(elements.get(at), holds)) {
-                                found.add(new Use(nest, holds, where, spelt, what));
-                            }
-                        }
-                        String compared = comparesAConstant(elements, at);
-                        if (compared != null) {
-                            found.add(new Use(nest, holds, where, spelt, compared));
-                        }
+                    String compared = comparesAConstant(elements, at);
+                    if (compared != null) {
+                        found.add(new Use(nest, holds, where, spelt, compared));
                     }
                 }
             }
@@ -1231,14 +1203,9 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
     }
 
     /** Whether the bytes name the word anywhere at all. */
-    private static boolean holdsTheWord(byte[] bytes) {
-        byte[] word = "Emptiness".getBytes(StandardCharsets.US_ASCII);
-        for (int start = 0; start + word.length <= bytes.length; start++) {
-            int at = 0;
-            while (at < word.length && bytes[start + at] == word[at]) {
-                at++;
-            }
-            if (at == word.length) {
+    private static boolean holdsTheWord(ClassModel model) {
+        for (PoolEntry entry : model.constantPool()) {
+            if (entry instanceof Utf8Entry said && said.stringValue().contains("Emptiness")) {
                 return true;
             }
         }
@@ -1252,22 +1219,7 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
         return nested < 0 ? internalName : internalName.substring(0, nested);
     }
 
-    private static byte[] bytesOf(Path compiled) {
-        try {
-            return Files.readAllBytes(compiled);
-        } catch (IOException unreadable) {
-            throw new UncheckedIOException(unreadable);
-        }
-    }
 
-    private static List<Path> classesUnder(Path where) {
-        if (!Files.isDirectory(where)) {
-            return List.of();
-        }
-        try (Stream<Path> found = Files.walk(where)) {
-            return found.filter(each -> each.toString().endsWith(".class")).toList();
-        } catch (IOException unreadable) {
-            throw new UncheckedIOException(unreadable);
-        }
-    }
+
+
 }

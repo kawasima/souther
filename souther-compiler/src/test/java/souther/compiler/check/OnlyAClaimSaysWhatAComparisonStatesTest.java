@@ -1,22 +1,17 @@
 package souther.compiler.check;
 
 import org.junit.jupiter.api.Test;
+import souther.compiler.WhatWasCompiled;
 
-import java.io.IOException;
-import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassModel;
 import java.lang.classfile.MethodModel;
 import java.lang.classfile.instruction.InvokeInstruction;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -119,7 +114,7 @@ class OnlyAClaimSaysWhatAComparisonStatesTest {
      * grows.
      */
     @Test
-    void everyWayToComeByACanonicalComparisonIsWrittenDown() throws IOException {
+    void everyWayToComeByACanonicalComparisonIsWrittenDown() {
         assertEquals(declared(WAYS_IN), shown(producers()),
                 "a method handing back a canonical comparison is a way to come by one, and what"
                         + " may call it is decided below. What each of these is for: "
@@ -138,7 +133,7 @@ class OnlyAClaimSaysWhatAComparisonStatesTest {
      * What they are is said above.
      */
     @Test
-    void nothingMakesOneExceptTheWaysInToMakingOne() throws IOException {
+    void nothingMakesOneExceptTheWaysInToMakingOne() {
         assertEquals(shown(assembling()),
                 callers(Set.of(new Producer(CANONICAL, "<init>"))),
                 "a canonical comparison made anywhere else is one whose making nothing decided,"
@@ -154,7 +149,7 @@ class OnlyAClaimSaysWhatAComparisonStatesTest {
      * not.
      */
     @Test
-    void onlyTheTwoClaimsPutACanonicalComparisonTogether() throws IOException {
+    void onlyTheTwoClaimsPutACanonicalComparisonTogether() {
         assertEquals(declared(MAY_ASSEMBLE), callersOf(Producer::assembles),
                 "what a comparison states is derived where what it placed is held, and nowhere"
                         + " else. What each of these assembles: " + why(MAY_ASSEMBLE));
@@ -168,7 +163,7 @@ class OnlyAClaimSaysWhatAComparisonStatesTest {
      * writes has to be a comparison of this compiler's own rather than one the source never wrote.
      */
     @Test
-    void onlyAReaderWritingAComparisonDownAsksForOne() throws IOException {
+    void onlyAReaderWritingAComparisonDownAsksForOne() {
         assertEquals(declared(MAY_ASK), callersOf(producer -> !producer.assembles()),
                 "asking a claim what it states is asking to write the comparison down somewhere,"
                         + " through the interface or through the arm that declares the answer."
@@ -194,9 +189,9 @@ class OnlyAClaimSaysWhatAComparisonStatesTest {
     }
 
     /** Everything the compiler declares that hands one back. */
-    private static Set<Producer> producers() throws IOException {
+    private static Set<Producer> producers() {
         Set<Producer> out = new TreeSet<>();
-        for (ClassModel model : compiled()) {
+        for (ClassModel model : WhatWasCompiled.compiled().all()) {
             String owner = model.thisClass().asInternalName();
             for (MethodModel method : model.methods()) {
                 if (method.methodTypeSymbol().returnType().descriptorString()
@@ -210,22 +205,22 @@ class OnlyAClaimSaysWhatAComparisonStatesTest {
     }
 
     /** The ways in that are declared on the value itself, which is how one is made. */
-    private static Set<Producer> assembling() throws IOException {
+    private static Set<Producer> assembling() {
         return new TreeSet<>(producers().stream().filter(Producer::assembles).toList());
     }
 
     /** Which methods call any producer {@code wanted} admits, whichever way its receiver is
      *  typed. */
     private static Map<String, String> callersOf(java.util.function.Predicate<Producer> wanted)
-            throws IOException {
+            {
         return callers(new TreeSet<>(producers().stream().filter(wanted).toList()));
     }
 
     /** Which methods call any of {@code watched}. */
-    private static Map<String, String> callers(Set<Producer> watched) throws IOException {
+    private static Map<String, String> callers(Set<Producer> watched) {
         assertFalse(watched.isEmpty(), "no producer was watched, so this says nothing");
         Map<String, String> calls = new TreeMap<>();
-        for (ClassModel model : compiled()) {
+        for (ClassModel model : WhatWasCompiled.compiled().all()) {
             String from = model.thisClass().asInternalName().replace('/', '.').replace('$', '.');
             for (MethodModel method : model.methods()) {
                 method.code().ifPresent(code -> code.forEach(element -> {
@@ -240,15 +235,4 @@ class OnlyAClaimSaysWhatAComparisonStatesTest {
         return calls;
     }
 
-    private static List<ClassModel> compiled() throws IOException {
-        Path root = Path.of("target", "classes").toAbsolutePath();
-        List<ClassModel> out = new ArrayList<>();
-        try (Stream<Path> walk = Files.walk(root)) {
-            for (Path each : walk.filter(p -> p.toString().endsWith(".class")).toList()) {
-                out.add(ClassFile.of().parse(Files.readAllBytes(each)));
-            }
-        }
-        assertFalse(out.isEmpty(), "no compiled class was read at all, so this says nothing");
-        return out;
-    }
 }

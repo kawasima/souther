@@ -1,13 +1,9 @@
 package souther.architecture;
 
-import souther.test.RepositoryLayout;
 
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.lang.classfile.Attributes;
-import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassModel;
 import java.lang.classfile.MethodModel;
 import java.lang.classfile.Signature;
@@ -20,7 +16,6 @@ import java.lang.classfile.instruction.InvokeInstruction;
 import java.lang.constant.ClassDesc;
 import java.lang.constant.DirectMethodHandleDesc;
 import java.lang.reflect.AccessFlag;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -28,7 +23,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -77,7 +71,7 @@ class AReadingOfValuesIsStartedComposedOrWorkedOutTest {
         return "L" + type + ";";
     }
 
-    private static final RepositoryLayout REPOSITORY = RepositoryLayout.ofWorkingDirectory();
+    private static final CompiledOutputs COMPILED = CompiledOutputs.ofWhatThisRepositoryPublishes();
 
     /** Handed nothing at all, which is what a reading starts from. */
     private static final String A_START = "handed nothing";
@@ -143,24 +137,13 @@ class AReadingOfValuesIsStartedComposedOrWorkedOutTest {
      */
     @Test
     void andEveryModuleTheRepositoryHoldsWasRead() {
-        List<String> unbuilt = new ArrayList<>();
-        for (Path module : REPOSITORY.modules()) {
-            if (classesUnder(module).isEmpty() && hasMainSources(module)) {
-                unbuilt.add(module.getFileName().toString());
-            }
-        }
-
-        assertEquals(List.of(), unbuilt,
-                "a module whose classes are not built is one this walk passes over");
+        // A module that has sources and left no classes is refused where the outputs are taken, so
+        // a walk reading fewer modules than the repository has does not get this far.
         assertTrue(modulesRead() > 1,
                 "the classes this reads are in more than the module that declares the reading");
     }
 
-    /** Whether the module has main sources to have been built from. A module holding only tests or
-     *  only a pom leaves no classes and is not one this walk is missing. */
-    private static boolean hasMainSources(Path module) {
-        return Files.isDirectory(module.resolve("src").resolve("main").resolve("java"));
-    }
+
 
     /**
      * Every method whose code makes a reading, as the method and the warrant its signature gives
@@ -179,9 +162,9 @@ class AReadingOfValuesIsStartedComposedOrWorkedOutTest {
      */
     private static List<String> makers() {
         List<String> found = new ArrayList<>();
-        for (Path module : REPOSITORY.modules()) {
-            for (Path each : classesUnder(module)) {
-                ClassModel owner = parse(each);
+        for (Path module : COMPILED.modules()) {
+            for (ClassModel each : COMPILED.classesOf(module)) {
+                ClassModel owner = each;
                 if (!namesTheConstructor(owner)) {
                     continue;
                 }
@@ -319,33 +302,15 @@ class AReadingOfValuesIsStartedComposedOrWorkedOutTest {
 
     private static int modulesRead() {
         int read = 0;
-        for (Path module : REPOSITORY.modules()) {
-            if (!classesUnder(module).isEmpty()) {
+        for (Path module : COMPILED.modules()) {
+            if (!COMPILED.classesOf(module).isEmpty()) {
                 read++;
             }
         }
         return read;
     }
 
-    private static ClassModel parse(Path compiled) {
-        try {
-            return ClassFile.of().parse(Files.readAllBytes(compiled));
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
-    }
 
-    /** The compiled classes of one module that the compiler is made of. Its own tests are not among
-     *  them: a test makes a reading to look at it and ships nothing. */
-    private static List<Path> classesUnder(Path module) {
-        Path where = module.resolve("target").resolve("classes");
-        if (!Files.isDirectory(where)) {
-            return List.of();
-        }
-        try (Stream<Path> found = Files.walk(where)) {
-            return found.filter(p -> p.toString().endsWith(".class")).toList();
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
-    }
+
+
 }

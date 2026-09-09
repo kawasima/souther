@@ -34,8 +34,7 @@ import java.util.Set;
  */
 record ReadByClauses(Confinement.Worked<FactSubject> confinement,
                      Adoption<FactSubject, ReadingLanguage.Values> byValues,
-                     Adoption<FactSubject, ReadingLanguage.Order> byOrder,
-                     java.util.Map<souther.compiler.core.Core, OfAPart> parts) {
+                     Adoption<FactSubject, ReadingLanguage.Order> byOrder) {
 
     /** What every position of this reading may hold. */
     AdmissibleValues<FactSubject> values() {

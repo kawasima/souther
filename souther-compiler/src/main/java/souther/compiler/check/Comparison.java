@@ -26,9 +26,8 @@ import java.util.Optional;
  * what stopped one doing so was that nobody had yet. It is also how a reader said <em>which</em>
  * comparison it was talking about — two readers meant one place when they had been handed the same
  * object — and that question has an answer of its own now
- * ({@link souther.compiler.coverage.ComparisonOccurrence}), issued where the comparisons of a
- * module's bodies are enumerated. So there are three questions and three answers: what is compared,
- * which comparison it is, and where it is written.
+ * ({@link souther.compiler.types.ConstructOccurrence}), which the node carries. So there are three
+ * questions and three answers: what is compared, which comparison it is, and where it is written.
  */
 public final class Comparison {
 

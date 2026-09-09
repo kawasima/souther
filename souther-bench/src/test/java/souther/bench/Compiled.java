@@ -1,7 +1,5 @@
 package souther.bench;
 
-import java.io.IOException;
-import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassModel;
 import java.lang.classfile.CodeModel;
 import java.lang.classfile.Instruction;
@@ -14,8 +12,6 @@ import java.lang.classfile.instruction.NewObjectInstruction;
 import java.lang.classfile.instruction.TypeCheckInstruction;
 import java.lang.constant.ClassDesc;
 import java.lang.constant.DirectMethodHandleDesc;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -139,23 +135,99 @@ final class Compiled {
      */
     record Invocation(Site site, List<String> said) {}
 
-    /** Every call of every compiled class, with the text read at it. */
-    static List<Invocation> invocations() throws IOException {
-        return invocationsIn(Reactor.classes());
+    /**
+     * Every call of every compiled class, with the text read at it, worked out once.
+     *
+     * <p>Beside the parsed classes, which the fork shares, and not the same thing: this is what
+     * <em>this</em> module makes of them. Every check here walks the whole reactor's code, and the
+     * walk allocates one of these for every call there is, so sharing the files and then decoding
+     * them again per check would leave the reading shared and the work not.
+     */
+    static List<Invocation> invocations() {
+        return theReactor().invocations();
+    }
+
+    /** Everything every compiled class of every module does, beside {@link #invocations} and out of
+     *  the same walk. */
+    static List<Site> sites() {
+        return theReactor().sites();
     }
 
     /**
-     * The same of the classes named, so that what this reads can be asked of code written to be
-     * read.
+     * What one walk over some classes came to.
+     *
+     * <p>Both of them, because they are two projections of one decoding and not two readings. What
+     * a call is appears in each — a site saying that a call was made, and the same site with the
+     * text this could read at it — so a reading that answered them separately would walk the code
+     * twice, decode every method twice, and build two of the site for every call there is. Which is
+     * what it did, while the count for each of them said one.
+     *
+     * <p>Handed out as it stands, and so held as what it is: a caller of a reading the whole fork
+     * shares can empty a list everything after it reads. Made per ask, that was the caller's own
+     * copy to spoil; shared, the lifetime is shared and the way to change it has to go.
+     */
+    record Reading(List<Site> sites, List<Invocation> invocations) {
+
+        Reading {
+            sites = List.copyOf(sites);
+            invocations = List.copyOf(invocations);
+        }
+    }
+
+    private static Reading EVERY;
+
+    private static Reading theReactor() {
+        if (EVERY == null) {
+            EVERY = read(Reactor.classes());
+            BUILDS++;
+        }
+        return EVERY;
+    }
+
+    /**
+     * How many times the reading the fork shares has been built, for the check that says once.
+     *
+     * <p>Counted rather than compared: what a reading holds is a site for every call the reactor's
+     * code makes, and a check asking whether it was handed the same lists twice says so by printing
+     * all of them.
+     *
+     * <p><b>About the store and not about the walk.</b> A walk started anywhere else is not counted
+     * here — {@link #read} is a walk over whatever it is handed, and a caller handing it the
+     * reactor's classes is decoding them without filling this. What is true of one walk rather than
+     * two is asked of the answers themselves, where the site an invocation carries is the site the
+     * other answer holds.
+     */
+    private static int BUILDS;
+
+    /** How many times the reading the fork shares has been built in this fork. */
+    static int timesTheSharedReadingWasBuilt() {
+        return BUILDS;
+    }
+
+    /** The invocations of the classes named, so that what this reads can be asked of code written
+     *  to be read. */
+    static List<Invocation> invocationsIn(List<ClassModel> classes) {
+        return read(classes).invocations();
+    }
+
+    /** The sites of the same, beside {@link #invocationsIn} and for the same reason. */
+    static List<Site> sitesIn(List<ClassModel> classes) {
+        return read(classes).sites();
+    }
+
+    /**
+     * One walk over {@code classes}, which is where everything this answers comes from.
      *
      * <p>The population is the argument and the reading is not: a check that wanted to know what
      * this does to a particular shape would otherwise write the walk again, and then what it
-     * measured would be its own copy rather than the thing every rule here is built on.
+     * measured would be its own copy rather than the thing every rule here is built on. Which
+     * classes are read and what is read of them are two things, and a rule that fixed both could
+     * only ever be asked about the repository as it stands.
      */
-    static List<Invocation> invocationsIn(List<Path> classes) throws IOException {
-        List<Invocation> found = new ArrayList<>();
-        for (Path each : classes) {
-            ClassModel model = ClassFile.of().parse(Files.readAllBytes(each));
+    static Reading read(List<ClassModel> classes) {
+        List<Site> sites = new ArrayList<>();
+        List<Invocation> invocations = new ArrayList<>();
+        for (ClassModel model : classes) {
             String from = named(model.thisClass().asInternalName());
             for (var method : model.methods()) {
                 CodeModel code = method.code().orElse(null);
@@ -176,11 +248,44 @@ final class Compiled {
                                 loaded = constant.constantValue() instanceof String text
                                         ? text : null;
                         case InvokeInstruction call -> {
-                            found.add(new Invocation(new Site(from, name, descriptor, How.CALLS,
+                            Site site = new Site(from, name, descriptor, How.CALLS,
                                     named(call.owner().asInternalName()),
                                     call.name().stringValue(),
-                                    call.opcode() == Opcode.INVOKESTATIC),
+                                    call.opcode() == Opcode.INVOKESTATIC);
+                            sites.add(site);
+                            invocations.add(new Invocation(site,
                                     loaded == null ? List.of() : List.of(loaded)));
+                            loaded = null;
+                        }
+                        case NewObjectInstruction made -> {
+                            sites.add(new Site(from, name, descriptor, How.MAKES,
+                                    named(made.className().asInternalName()), "<init>", false));
+                            loaded = null;
+                        }
+                        case TypeCheckInstruction asked
+                                when asked.opcode() == Opcode.INSTANCEOF -> {
+                            sites.add(new Site(from, name, descriptor, How.ASKS,
+                                    named(asked.type().asInternalName()), "instanceof", false));
+                            loaded = null;
+                        }
+                        case FieldInstruction field -> {
+                            sites.add(new Site(from, name, descriptor, How.READS,
+                                    named(field.owner().asInternalName()),
+                                    field.name().stringValue(),
+                                    field.opcode() == Opcode.GETSTATIC
+                                            || field.opcode() == Opcode.PUTSTATIC));
+                            loaded = null;
+                        }
+                        case InvokeDynamicInstruction reference -> {
+                            boolean switching = isATypeSwitch(reference);
+                            for (var argument : reference.bootstrapArgs()) {
+                                if (argument instanceof DirectMethodHandleDesc handle) {
+                                    sites.add(referred(from, name, descriptor, handle));
+                                } else if (switching && argument instanceof ClassDesc labelled) {
+                                    sites.add(new Site(from, name, descriptor, How.NAMES,
+                                            describedBy(labelled), "case", false));
+                                }
+                            }
                             loaded = null;
                         }
                         case Instruction _ -> loaded = null;
@@ -189,71 +294,11 @@ final class Compiled {
                 }
             }
         }
-        assertFalse(found.isEmpty(), "no compiled call was read at all");
-        return found;
-    }
-
-    /** Everything every compiled class of every module does. */
-    static List<Site> sites() throws IOException {
-        return sitesIn(Reactor.classes());
-    }
-
-    /**
-     * The same of the classes named, beside {@link #invocationsIn} and for the same reason.
-     *
-     * <p>Which classes are read and what is read of them are two things, and a rule that fixed both
-     * could only ever be asked about the repository as it stands. A check of what this reading
-     * <em>does</em> — that a call two methods away is still a call, that a switch over a sum names
-     * its cases — has to be able to hand it code written to be read, and a copy of the walk written
-     * for that would be a check of the copy.
-     */
-    static List<Site> sitesIn(List<Path> classes) throws IOException {
-        List<Site> found = new ArrayList<>();
-        for (Path each : classes) {
-            ClassModel model = ClassFile.of().parse(Files.readAllBytes(each));
-            String from = named(model.thisClass().asInternalName());
-            for (var method : model.methods()) {
-                CodeModel code = method.code().orElse(null);
-                if (code == null) {
-                    continue;
-                }
-                String name = method.methodName().stringValue();
-                String descriptor = method.methodType().stringValue();
-                for (var element : code) {
-                    switch (element) {
-                        case InvokeInstruction call -> found.add(new Site(from, name, descriptor,
-                                How.CALLS, named(call.owner().asInternalName()),
-                                call.name().stringValue(), call.opcode() == Opcode.INVOKESTATIC));
-                        case NewObjectInstruction made -> found.add(new Site(from, name, descriptor,
-                                How.MAKES, named(made.className().asInternalName()), "<init>",
-                                false));
-                        case TypeCheckInstruction asked
-                                when asked.opcode() == Opcode.INSTANCEOF ->
-                                found.add(new Site(from, name, descriptor, How.ASKS,
-                                        named(asked.type().asInternalName()), "instanceof", false));
-                        case FieldInstruction field -> found.add(new Site(from, name, descriptor,
-                                How.READS, named(field.owner().asInternalName()),
-                                field.name().stringValue(),
-                                field.opcode() == Opcode.GETSTATIC
-                                        || field.opcode() == Opcode.PUTSTATIC));
-                        case InvokeDynamicInstruction reference -> {
-                            boolean switching = isATypeSwitch(reference);
-                            for (var argument : reference.bootstrapArgs()) {
-                                if (argument instanceof DirectMethodHandleDesc handle) {
-                                    found.add(referred(from, name, descriptor, handle));
-                                } else if (switching && argument instanceof ClassDesc labelled) {
-                                    found.add(new Site(from, name, descriptor, How.NAMES,
-                                            describedBy(labelled), "case", false));
-                                }
-                            }
-                        }
-                        default -> { }
-                    }
-                }
-            }
-        }
-        assertFalse(found.isEmpty(), "no compiled call was read at all");
-        return found;
+        assertFalse(sites.isEmpty(), "these classes do nothing at all, so a rule read off what they"
+                + " do holds nothing");
+        assertFalse(invocations.isEmpty(), "these classes make no call at all, so a rule read off"
+                + " the text at a call holds nothing");
+        return new Reading(sites, invocations);
     }
 
     /** Whether this {@code invokedynamic} is a {@code switch} over what a value is. Asked of the

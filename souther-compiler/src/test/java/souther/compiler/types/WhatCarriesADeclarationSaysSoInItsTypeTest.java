@@ -1,18 +1,14 @@
 package souther.compiler.types;
 
 import org.junit.jupiter.api.Test;
+import souther.compiler.WhatWasCompiled;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -37,8 +33,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * where the frontier is; this does, so the next one is a failing test rather than a reading.
  */
 class WhatCarriesADeclarationSaysSoInItsTypeTest {
-
-    private static final Path COMPILED = Path.of("target", "classes", "souther", "compiler");
 
     /**
      * The positions that carry any route, and why each of them does.
@@ -101,22 +95,15 @@ class WhatCarriesADeclarationSaysSoInItsTypeTest {
     }
 
     private static List<Class<?>> compiled() {
-        try (Stream<Path> found = Files.walk(COMPILED)) {
-            List<Class<?>> classes = new ArrayList<>();
-            for (Path each : found.filter(p -> p.toString().endsWith(".class")).toList()) {
-                String name = COMPILED.getParent().getParent().relativize(each).toString()
-                        .replace(java.io.File.separatorChar, '.')
-                        .replaceFirst("\\.class$", "");
-                try {
-                    classes.add(Class.forName(name, false,
-                            WhatCarriesADeclarationSaysSoInItsTypeTest.class.getClassLoader()));
-                } catch (ClassNotFoundException | NoClassDefFoundError _) {
-                    // A class the test classpath cannot load says nothing about what it holds.
-                }
+        List<Class<?>> classes = new ArrayList<>();
+        for (String name : WhatWasCompiled.classes()) {
+            try {
+                classes.add(Class.forName(name, false,
+                        WhatCarriesADeclarationSaysSoInItsTypeTest.class.getClassLoader()));
+            } catch (ClassNotFoundException | NoClassDefFoundError _) {
+                // A class the test classpath cannot load says nothing about what it holds.
             }
-            return classes;
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
         }
+        return classes;
     }
 }

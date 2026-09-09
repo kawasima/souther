@@ -2,13 +2,9 @@ package souther.architecture;
 
 import souther.compiler.partition.FixtureReferences;
 import souther.compiler.types.FixtureReferenceOrigin;
-import souther.test.RepositoryLayout;
 
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassModel;
 import java.lang.classfile.CodeElement;
 import java.lang.classfile.CodeModel;
@@ -17,13 +13,11 @@ import java.lang.classfile.Opcode;
 import java.lang.classfile.constantpool.MemberRefEntry;
 import java.lang.classfile.constantpool.PoolEntry;
 import java.lang.classfile.instruction.InvokeInstruction;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -56,7 +50,7 @@ class WhoMayComposeAFixtureReferenceTest {
 
     private static final String GENERATOR = "souther/compiler/partition/Generator";
 
-    private static final RepositoryLayout REPOSITORY = RepositoryLayout.ofWorkingDirectory();
+    private static final CompiledOutputs COMPILED = CompiledOutputs.ofWhatThisRepositoryPublishes();
 
     /**
      * Every class that makes a minter or numbers a reference, with what it names.
@@ -105,17 +99,6 @@ class WhoMayComposeAFixtureReferenceTest {
      */
     @Test
     void andEveryModuleTheRepositoryHoldsWasRead() {
-        List<String> unbuilt = new ArrayList<>();
-        for (Path module : REPOSITORY.modules()) {
-            if (!Files.isDirectory(classesOf(module)) && hasMainSources(module)) {
-                unbuilt.add(module.getFileName().toString());
-            }
-        }
-
-        assertEquals(List.of(), unbuilt,
-                "a module whose classes are not built is one this walk passes over, and a walk that"
-                        + " passes over a module answers about the rest while saying it answers"
-                        + " about all of them");
         assertTrue(modulesRead() > 1,
                 "the classes this reads are in more than the one module that declares a minter");
     }
@@ -129,12 +112,12 @@ class WhoMayComposeAFixtureReferenceTest {
      */
     private static int timesGeneratorMakesAMinter() {
         int made = 0;
-        for (Path module : REPOSITORY.modules()) {
-            for (Path each : classesUnder(module)) {
-                if (!internalName(module, each).equals(GENERATOR)) {
+        for (Path module : COMPILED.modules()) {
+            for (ClassModel each : COMPILED.classesOf(module)) {
+                if (!each.thisClass().asInternalName().equals(GENERATOR)) {
                     continue;
                 }
-                for (MethodModel method : classOf(each).methods()) {
+                for (MethodModel method : each.methods()) {
                     made += method.code().map(WhoMayComposeAFixtureReferenceTest::minters).orElse(0);
                 }
             }
@@ -160,14 +143,14 @@ class WhoMayComposeAFixtureReferenceTest {
     private static Set<String> namingAMaker() {
         Set<String> makers = Set.of(ORIGIN + "#<init>(I)V", MINTER + "#<init>()V");
         Set<String> found = new TreeSet<>();
-        for (Path module : REPOSITORY.modules()) {
-            for (Path each : classesUnder(module)) {
-                for (PoolEntry entry : constantPoolOf(each)) {
+        for (Path module : COMPILED.modules()) {
+            for (ClassModel each : COMPILED.classesOf(module)) {
+                for (PoolEntry entry : each.constantPool()) {
                     if (entry instanceof MemberRefEntry member) {
                         String named = member.owner().name().stringValue() + "#"
                                 + member.name().stringValue() + member.type().stringValue();
                         if (makers.contains(named)) {
-                            found.add(internalName(module, each) + " -> " + named);
+                            found.add(each.thisClass().asInternalName() + " -> " + named);
                         }
                     }
                 }
@@ -178,53 +161,25 @@ class WhoMayComposeAFixtureReferenceTest {
 
     private static int modulesRead() {
         int read = 0;
-        for (Path module : REPOSITORY.modules()) {
-            if (!classesUnder(module).isEmpty()) {
+        for (Path module : COMPILED.modules()) {
+            if (!COMPILED.classesOf(module).isEmpty()) {
                 read++;
             }
         }
         return read;
     }
 
-    private static Iterable<PoolEntry> constantPoolOf(Path compiled) {
-        return classOf(compiled).constantPool();
-    }
 
-    private static ClassModel classOf(Path compiled) {
-        try {
-            return ClassFile.of().parse(Files.readAllBytes(compiled));
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
-    }
 
-    private static String internalName(Path module, Path compiled) {
-        String name = classesOf(module).relativize(compiled).toString().replace('\\', '/');
-        return name.substring(0, name.length() - ".class".length());
-    }
 
-    private static Path classesOf(Path module) {
-        return module.resolve("target").resolve("classes");
-    }
 
-    private static boolean hasMainSources(Path module) {
-        return Files.isDirectory(module.resolve("src").resolve("main").resolve("java"));
-    }
 
-    /** The compiled classes of one module the compiler is made of. Its own tests are not among them:
-     *  a test composing a reference to look at it ships nothing, and a list that moved whenever one
-     *  was written is a list nobody keeps up. */
-    private static List<Path> classesUnder(Path module) {
-        Path where = classesOf(module);
-        if (!Files.isDirectory(where)) {
-            return List.of();
-        }
-        try (Stream<Path> found = Files.walk(where)) {
-            return found.filter(p -> p.toString().endsWith(".class")).toList();
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
-    }
+
+
+
+
+
+
 
     private static String internalNameOf(Class<?> type) {
         return type.getName().replace('.', '/');

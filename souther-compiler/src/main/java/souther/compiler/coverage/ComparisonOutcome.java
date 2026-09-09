@@ -17,7 +17,8 @@ package souther.compiler.coverage;
  * <p>Written in the emitter's vocabulary, which is the one a run is recorded in. What a probed class
  * calls is {@code Probe.compared} with the number the emitter put in the call, and nothing running
  * has a catalog to say which comparison that is. Which comparison a reading is talking about is
- * {@link ComparisonOccurrence}, and the plan is what turns one into the other.
+ * {@link souther.compiler.types.ConstructOccurrence}, and the plan is what turns one into the
+ * other.
  *
  * <p><b>The number and not an address.</b> A probed class is handed the number the emitter wrote
  * into the call and has no numbering to ask what it addresses; a recording is what that class left

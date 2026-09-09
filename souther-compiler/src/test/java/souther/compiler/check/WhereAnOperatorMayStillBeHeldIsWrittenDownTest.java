@@ -1,9 +1,8 @@
 package souther.compiler.check;
 
 import org.junit.jupiter.api.Test;
+import souther.compiler.WhatWasCompiled;
 
-import java.io.IOException;
-import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassModel;
 import java.lang.classfile.CodeElement;
 import java.lang.classfile.FieldModel;
@@ -34,17 +33,13 @@ import java.lang.classfile.instruction.InvokeInstruction;
 import java.lang.classfile.instruction.NewObjectInstruction;
 import java.lang.classfile.instruction.NewReferenceArrayInstruction;
 import java.lang.classfile.instruction.TypeCheckInstruction;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 
 /**
  * Everywhere an operator can be, and what each of them wants one for.
@@ -500,36 +495,22 @@ class WhereAnOperatorMayStillBeHeldIsWrittenDownTest {
     }
 
     private static void forEachClass(EachClass each) {
-        int read = 0;
-        try {
-            for (Path path : classes()) {
-                ClassModel model = ClassFile.of().parse(Files.readAllBytes(path));
-                String owner = model.thisClass().asInternalName()
-                        .replace('/', '.').replace('$', '.');
-                if (owner.equals("souther.compiler.types.BinOp")) {
-                    // The operator itself, whose own members are what an enum is made of.
-                    continue;
-                }
-                if (model.flags().has(java.lang.reflect.AccessFlag.SYNTHETIC)) {
-                    // A class the compiler wrote, not a place anybody reads an operator: what
-                    // javac emits to switch over an enum holds one, on behalf of the method that
-                    // does the switching — and that method is in the list under its own name. An
-                    // anonymous class is not one of these; it holds what somebody wrote.
-                    continue;
-                }
-                read++;
-                each.read(owner, model);
+        for (ClassModel model : WhatWasCompiled.compiled().all()) {
+            String owner = model.thisClass().asInternalName()
+                    .replace('/', '.').replace('$', '.');
+            if (owner.equals("souther.compiler.types.BinOp")) {
+                // The operator itself, whose own members are what an enum is made of.
+                continue;
             }
-        } catch (IOException e) {
-            throw new java.io.UncheckedIOException(e);
+            if (model.flags().has(java.lang.reflect.AccessFlag.SYNTHETIC)) {
+                // A class the compiler wrote, not a place anybody reads an operator: what
+                // javac emits to switch over an enum holds one, on behalf of the method that
+                // does the switching — and that method is in the list under its own name. An
+                // anonymous class is not one of these; it holds what somebody wrote.
+                continue;
+            }
+            each.read(owner, model);
         }
-        assertFalse(read == 0, "no compiled class was read at all, so this says nothing");
     }
 
-    private static List<Path> classes() throws IOException {
-        Path root = Path.of("target", "classes").toAbsolutePath();
-        try (Stream<Path> walk = Files.walk(root)) {
-            return new ArrayList<>(walk.filter(p -> p.toString().endsWith(".class")).toList());
-        }
-    }
 }

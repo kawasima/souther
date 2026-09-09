@@ -7,19 +7,15 @@ import souther.compiler.jvm.SoutherJvmAbi;
 import souther.compiler.types.TypeKey;
 import souther.compiler.types.TypeSymbols;
 import souther.compiler.types.TypeSymbol;
+import souther.test.CompiledClasses;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.lang.classfile.ClassFile;
 import java.lang.classfile.constantpool.PoolEntry;
 import java.lang.classfile.constantpool.StringEntry;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -79,20 +75,11 @@ class TheAbiIsSpelledInOnePlaceTest {
         List<Path> scanned = new ArrayList<>();
         List<Path> modules = Reactor.modules();
         for (Path module : modules) {
-            for (String where : List.of("target/classes", "target/test-classes")) {
-                Path classes = module.resolve(where);
-                if (where.endsWith("test-classes") && !Files.isDirectory(classes)) {
-                    continue;   // a module with no tests of its own
-                }
-                if (where.endsWith("target/classes") && !Reactor.hasMainSources(module)) {
-                    continue;   // a module with no main sources of its own
-                }
-                assertTrue(Files.isDirectory(classes),
-                        Reactor.name(module) + " has no built classes: this test covers what has been"
-                                + " built, so a"
-                                + " module that has not been is a hole rather than a pass");
-                walk(classes, violations, spellings);
+            if (Reactor.hasMainSources(module)) {
+                walk(Reactor.mainOutputOf(module), violations, spellings);
             }
+            // A module with no tests of its own compiled none, and there is nothing to read.
+            Reactor.testOutputOf(module).ifPresent(built -> walk(built, violations, spellings));
             scanned.add(module);
         }
         assertEquals(modules, scanned, "every module the reactor builds was read");
@@ -140,9 +127,7 @@ class TheAbiIsSpelledInOnePlaceTest {
             if (!Reactor.hasMainSources(module)) {
                 continue;   // a module with no main sources of its own
             }
-            Path classes = module.resolve("target/classes");
-            assertTrue(Files.isDirectory(classes), Reactor.name(module) + " has no built classes");
-            walkFor(classes, callers, TheAbiIsSpelledInOnePlaceTest::capitalizes);
+            walkFor(Reactor.mainOutputOf(module), callers, TheAbiIsSpelledInOnePlaceTest::capitalizes);
         }
         assertEquals(List.of(), callers,
                 "the rule a behavior's class name follows is stated somewhere else too");
@@ -160,25 +145,14 @@ class TheAbiIsSpelledInOnePlaceTest {
         return false;
     }
 
-    private static void walkFor(Path classes, List<String> found,
+    private static void walkFor(CompiledClasses classes, List<String> found,
                                 java.util.function.Predicate<java.lang.classfile.ClassModel> offending) {
-        try (Stream<Path> files = Files.walk(classes)) {
-            files.filter(p -> p.toString().endsWith(".class")).forEach(p -> {
-                byte[] bytes;
-                try {
-                    bytes = Files.readAllBytes(p);
-                } catch (IOException e) {
-                    throw new UncheckedIOException(e);
-                }
-                var model = ClassFile.of().parse(bytes);
-                String owner = model.thisClass().asInternalName().replace('/', '.');
-                if (!owner.startsWith(ABI_PACKAGE) && offending.test(model)) {
-                    found.add(owner);
-                }
-            });
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
+        classes.all().forEach(model -> {
+            String owner = model.thisClass().asInternalName().replace('/', '.');
+            if (!owner.startsWith(ABI_PACKAGE) && offending.test(model)) {
+                found.add(owner);
+            }
+        });
     }
 
     /**
@@ -250,22 +224,13 @@ class TheAbiIsSpelledInOnePlaceTest {
         return false;
     }
 
-    private static void walk(Path classes, List<String> violations, Set<String> spellings) {
-        try (Stream<Path> files = Files.walk(classes)) {
-            files.filter(p -> p.toString().endsWith(".class")).forEach(p -> read(p, violations, spellings));
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
+    private static void walk(CompiledClasses classes, List<String> violations,
+                             Set<String> spellings) {
+        classes.all().forEach(model -> read(model, violations, spellings));
     }
 
-    private static void read(Path file, List<String> violations, Set<String> spellings) {
-        byte[] bytes;
-        try {
-            bytes = Files.readAllBytes(file);
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
-        var model = ClassFile.of().parse(bytes);
+    private static void read(java.lang.classfile.ClassModel model, List<String> violations,
+                             Set<String> spellings) {
         String owner = model.thisClass().asInternalName().replace('/', '.');
         if (owner.startsWith(ABI_PACKAGE) || owner.equals(THE_CONTRACT_TEST)
                 || owner.startsWith(THE_CONTRACT_TEST + "$")) {

@@ -4,12 +4,9 @@ import souther.test.RepositoryLayout;
 
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.lang.classfile.Annotation;
 import java.lang.classfile.AnnotationValue;
 import java.lang.classfile.Attributes;
-import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassModel;
 import java.lang.classfile.constantpool.ClassEntry;
 import java.lang.classfile.constantpool.PoolEntry;
@@ -24,7 +21,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -57,6 +53,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class EveryTestAboutTheRepositorysPopulationSaysSoTest {
 
     private static final RepositoryLayout REPOSITORY = RepositoryLayout.ofWorkingDirectory();
+
+    private static final CompiledOutputs TESTS = CompiledOutputs.ofEverythingCompiledHere();
 
     /** What this tag is spelled as where a test carries it. */
     private static final String TAG = "population";
@@ -162,20 +160,16 @@ class EveryTestAboutTheRepositorysPopulationSaysSoTest {
      * meant is what this cannot say, and asking for the tag where either would want it is the side
      * of that to be wrong on.
      */
-    private static Map<String, List<Path>> compiled;
+    private static Map<String, List<ClassModel>> compiled;
 
-    private static Map<String, List<Path>> compiledTests() {
+    private static Map<String, List<ClassModel>> compiledTests() {
         if (compiled != null) {
             return compiled;
         }
-        Map<String, List<Path>> out = new LinkedHashMap<>();
+        Map<String, List<ClassModel>> out = new LinkedHashMap<>();
         for (Path module : REPOSITORY.modules()) {
-            Path where = testClassesOf(module);
-            if (!Files.isDirectory(where)) {
-                continue;
-            }
-            for (Path each : classesUnder(where)) {
-                String name = parse(each).thisClass().asInternalName();
+            for (ClassModel each : TESTS.testClassesOf(module)) {
+                String name = each.thisClass().asInternalName();
                 if (!Files.isRegularFile(sourceOf(module, name))) {
                     continue;
                 }
@@ -198,8 +192,8 @@ class EveryTestAboutTheRepositorysPopulationSaysSoTest {
         Map<String, Set<String>> out = new LinkedHashMap<>();
         compiledTests().forEach((name, every) -> {
             Set<String> named = new LinkedHashSet<>();
-            for (Path each : every) {
-                for (PoolEntry entry : parse(each).constantPool()) {
+            for (ClassModel each : every) {
+                for (PoolEntry entry : each.constantPool()) {
                     if (entry instanceof ClassEntry it) {
                         named.add(it.asInternalName());
                     }
@@ -236,11 +230,11 @@ class EveryTestAboutTheRepositorysPopulationSaysSoTest {
      * add a tag that is already deciding its run.
      */
     private static Set<String> tags(String internalName) {
-        Map<String, List<Path>> tests = compiledTests();
+        Map<String, List<ClassModel>> tests = compiledTests();
         Set<String> out = new LinkedHashSet<>();
         for (String each = internalName; each != null; each = enclosing(each)) {
-            for (Path where : tests.getOrDefault(each, List.of())) {
-                out.addAll(tagsOf(parse(where)));
+            for (ClassModel where : tests.getOrDefault(each, List.of())) {
+                out.addAll(tagsOf(where));
             }
         }
         return out;
@@ -272,25 +266,9 @@ class EveryTestAboutTheRepositorysPopulationSaysSoTest {
         return out;
     }
 
-    private static ClassModel parse(Path compiled) {
-        try {
-            return ClassFile.of().parse(Files.readAllBytes(compiled));
-        } catch (IOException e) {
-            throw new UncheckedIOException("a compiled test is not readable: " + compiled, e);
-        }
-    }
 
-    private static Path testClassesOf(Path module) {
-        return module.resolve("target").resolve("test-classes");
-    }
 
-    private static List<Path> classesUnder(Path where) {
-        try (Stream<Path> found = Files.walk(where)) {
-            List<Path> out = new ArrayList<>();
-            found.filter(each -> each.toString().endsWith(".class")).forEach(out::add);
-            return out;
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
-    }
+
+
+
 }

@@ -47,6 +47,12 @@ class AReadingOfAClauseIsTheTreeItsAuthorWroteTest {
     private static final Core BESIDE_THE_BRACKET =
             joined(BinOp.AND, joined(BinOp.OR, A, B), C);
 
+    /** Where in the clause each of its nodes is, read off the one thing that hands the numbers
+     *  out rather than written down again here. */
+    private static final ClauseExpr.Joined SHAPE =
+            (ClauseExpr.Joined) ClauseExpr.of(BESIDE_THE_BRACKET, true);
+    private static final ClauseExpr.Joined CHOICE = (ClauseExpr.Joined) SHAPE.left();
+
     /**
      * What the reading makes of it, node for node.
      *
@@ -55,10 +61,12 @@ class AReadingOfAClauseIsTheTreeItsAuthorWroteTest {
      */
     private static StatedByClauses asWritten() {
         Core choice = ((Core.Binary) BESIDE_THE_BRACKET).left();
-        return part(BESIDE_THE_BRACKET, part(BESIDE_THE_BRACKET, new StatedByClauses.Both(
-                part(choice, new StatedByClauses.Either(new ChoiceId(), choice,
-                        part(A, said()), part(B, said()))),
-                part(C, said()))));
+        return part(BESIDE_THE_BRACKET, SHAPE,
+                part(BESIDE_THE_BRACKET, SHAPE, new StatedByClauses.Both(
+                        part(choice, CHOICE, new StatedByClauses.Either(new ChoiceId(), choice,
+                                part(A, CHOICE.left(), said()),
+                                part(B, CHOICE.right(), said()))),
+                        part(C, SHAPE.right(), said()))));
     }
 
     /**
@@ -70,10 +78,12 @@ class AReadingOfAClauseIsTheTreeItsAuthorWroteTest {
     private static StatedByClauses distributed() {
         Core choice = ((Core.Binary) BESIDE_THE_BRACKET).left();
         ChoiceId id = new ChoiceId();
-        return part(BESIDE_THE_BRACKET, part(BESIDE_THE_BRACKET,
+        return part(BESIDE_THE_BRACKET, SHAPE, part(BESIDE_THE_BRACKET, SHAPE,
                 new StatedByClauses.Either(id, choice,
-                        new StatedByClauses.Both(part(A, said()), part(C, said())),
-                        new StatedByClauses.Both(part(B, said()), part(C, said())))));
+                        new StatedByClauses.Both(part(A, CHOICE.left(), said()),
+                                part(C, SHAPE.right(), said())),
+                        new StatedByClauses.Both(part(B, CHOICE.right(), said()),
+                                part(C, SHAPE.right(), said())))));
     }
 
     @Test
@@ -103,13 +113,15 @@ class AReadingOfAClauseIsTheTreeItsAuthorWroteTest {
     void aPartPushedIntoTheBranchesIsRefused() {
         Core choice = ((Core.Binary) BESIDE_THE_BRACKET).left();
         assertFalse(StatedByClauses.mirrors(BESIDE_THE_BRACKET,
-                        part(BESIDE_THE_BRACKET, part(BESIDE_THE_BRACKET,
+                        part(BESIDE_THE_BRACKET, SHAPE, part(BESIDE_THE_BRACKET, SHAPE,
                                 new StatedByClauses.Both(
-                                        part(choice, new StatedByClauses.Either(
+                                        part(choice, CHOICE, new StatedByClauses.Either(
                                                 new ChoiceId(), choice,
-                                                part(C, part(A, said())),
-                                                part(C, part(B, said())))),
-                                        part(C, said())))),
+                                                part(C, SHAPE.right(),
+                                                        part(A, CHOICE.left(), said())),
+                                                part(C, SHAPE.right(),
+                                                        part(B, CHOICE.right(), said())))),
+                                        part(C, SHAPE.right(), said())))),
                         ClauseView.asWritten()),
                 "the whole clause is recorded as what each alternative came to, so a reader asking"
                         + " what it came to is answered by one branch of a choice");
@@ -120,8 +132,8 @@ class AReadingOfAClauseIsTheTreeItsAuthorWroteTest {
                 StatedByClauses.Part.nothing());
     }
 
-    private static StatedByClauses part(Core node, StatedByClauses of) {
-        return new StatedByClauses.CameFrom(node, of);
+    private static StatedByClauses part(Core node, ClauseExpr where, StatedByClauses of) {
+        return new StatedByClauses.CameFrom(node, where.at(), of);
     }
 
     private static Core joined(BinOp op, Core left, Core right) {

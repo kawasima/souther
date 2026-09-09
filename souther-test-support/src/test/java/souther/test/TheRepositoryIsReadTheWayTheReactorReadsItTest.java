@@ -111,7 +111,7 @@ class TheRepositoryIsReadTheWayTheReactorReadsItTest {
         List<Path> sources = REPOSITORY.southerSources();
         assertFalse(sources.isEmpty(), "this repository has Souther sources");
         for (Path source : sources) {
-            assertFalse(source.toString().contains("/target/"), source.toString());
+            assertFalse(RepositoryLayout.namesBuildOutput(source.toString()), source.toString());
             assertFalse(source.getFileName().toString().startsWith(".surefire-"), source.toString());
         }
         assertEquals(sources.stream().sorted().toList(), sources, "sorted, so a sweep is ordered");

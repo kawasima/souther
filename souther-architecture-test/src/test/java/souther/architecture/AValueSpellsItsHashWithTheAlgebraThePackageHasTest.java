@@ -1,13 +1,9 @@
 package souther.architecture;
 
-import souther.test.RepositoryLayout;
 
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.lang.classfile.Attributes;
-import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassModel;
 import java.lang.classfile.Instruction;
 import java.lang.classfile.MethodModel;
@@ -17,12 +13,9 @@ import java.lang.classfile.instruction.InvokeDynamicInstruction;
 import java.lang.classfile.instruction.InvokeInstruction;
 import java.lang.classfile.instruction.LoadInstruction;
 import java.lang.classfile.instruction.ReturnInstruction;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -70,12 +63,12 @@ class AValueSpellsItsHashWithTheAlgebraThePackageHasTest {
      *  question. */
     private static final String ANY_SHAPE = "";
 
-    private static final RepositoryLayout REPOSITORY = RepositoryLayout.ofWorkingDirectory();
+    private static final CompiledOutputs COMPILED = CompiledOutputs.ofWhatThisRepositoryPublishes();
 
     @Test
     void everyValueThereThatWorksOutItsOwnHashTakesItFromTheAlgebra() {
         List<String> gatheringItThemselves = new ArrayList<>();
-        for (ClassModel read : valuesClasses()) {
+        for (ClassModel read : COMPILED.inTheClassesOf(WHERE)) {
             Optional<MethodModel> spelled = spelledOut(read, "hashCode", "()I");
             if (spelled.isPresent() && !fromTheAlgebra(read, spelled.get())) {
                 gatheringItThemselves.add(read.thisClass().name().stringValue());
@@ -101,7 +94,7 @@ class AValueSpellsItsHashWithTheAlgebraThePackageHasTest {
     @Test
     void andARecordThereSpellsItsOwnEqualityWhereAndOnlyWhereTheGeneratedOneWouldSayAnother() {
         List<String> disagreeing = new ArrayList<>();
-        for (ClassModel read : valuesClasses()) {
+        for (ClassModel read : COMPILED.inTheClassesOf(WHERE)) {
             if (read.findAttribute(Attributes.record()).isEmpty()) {
                 continue;
             }
@@ -129,7 +122,7 @@ class AValueSpellsItsHashWithTheAlgebraThePackageHasTest {
      */
     @Test
     void andTheValuesThoseRulesAreAboutWereRead() {
-        List<ClassModel> read = valuesClasses();
+        List<ClassModel> read = COMPILED.inTheClassesOf(WHERE);
 
         assertTrue(read.size() > 1, "the classes about relations were not built here");
         assertTrue(read.stream().anyMatch(each -> spelledOut(each, "hashCode", "()I").isPresent()),
@@ -242,29 +235,7 @@ class AValueSpellsItsHashWithTheAlgebraThePackageHasTest {
                 .toList()).orElse(List.of());
     }
 
-    private static List<ClassModel> valuesClasses() {
-        List<ClassModel> out = new ArrayList<>();
-        for (Path module : REPOSITORY.modules()) {
-            Path where = module.resolve("target").resolve("classes").resolve(WHERE);
-            if (!Files.isDirectory(where)) {
-                continue;
-            }
-            try (Stream<Path> found = Files.list(where)) {
-                for (Path each : found.filter(p -> p.toString().endsWith(".class")).toList()) {
-                    out.add(parse(each));
-                }
-            } catch (IOException e) {
-                throw new UncheckedIOException(e);
-            }
-        }
-        return out;
-    }
 
-    private static ClassModel parse(Path compiled) {
-        try {
-            return ClassFile.of().parse(Files.readAllBytes(compiled));
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
-    }
+
+
 }

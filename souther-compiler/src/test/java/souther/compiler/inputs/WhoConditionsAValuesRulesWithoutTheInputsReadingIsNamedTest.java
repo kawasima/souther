@@ -1,20 +1,13 @@
 package souther.compiler.inputs;
 
 import org.junit.jupiter.api.Test;
+import souther.compiler.WhatWasCompiled;
 
-import java.io.IOException;
-import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassModel;
 import java.lang.classfile.CodeModel;
 import java.lang.classfile.instruction.InvokeInstruction;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -61,10 +54,9 @@ class WhoConditionsAValuesRulesWithoutTheInputsReadingIsNamedTest {
             "souther.compiler.partition.Generator");
 
     @Test
-    void nothingElseSettlesAPositionOfAValuesRules() throws IOException {
+    void nothingElseSettlesAPositionOfAValuesRules() {
         Set<String> found = new TreeSet<>();
-        for (Path each : classes()) {
-            ClassModel model = ClassFile.of().parse(Files.readAllBytes(each));
+        for (ClassModel model : WhatWasCompiled.compiled().all()) {
             String from = nestOf(model.thisClass().asInternalName().replace('/', '.'));
             if (from.equals(CONDITIONS)) {
                 continue;   // what the reading does with itself is its own business
@@ -111,11 +103,4 @@ class WhoConditionsAValuesRulesWithoutTheInputsReadingIsNamedTest {
         return nested < 0 ? binaryName : binaryName.substring(0, nested);
     }
 
-    private static List<Path> classes() throws IOException {
-        Path root = Path.of("target", "classes").toAbsolutePath();
-        try (Stream<Path> walk = Files.walk(root)) {
-            return new ArrayList<>(new LinkedHashSet<>(
-                    walk.filter(each -> each.toString().endsWith(".class")).toList()));
-        }
-    }
 }

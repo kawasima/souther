@@ -1,25 +1,19 @@
 package souther.compiler.check;
 
 import org.junit.jupiter.api.Test;
+import souther.compiler.WhatWasCompiled;
 
-import java.io.IOException;
-import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassModel;
 import java.lang.classfile.MethodModel;
 import java.lang.classfile.constantpool.LoadableConstantEntry;
 import java.lang.classfile.constantpool.MethodHandleEntry;
 import java.lang.classfile.instruction.InvokeDynamicInstruction;
 import java.lang.classfile.instruction.InvokeInstruction;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 
 /**
  * What a branch nobody can be in leaves is said once, and every account of a choice is that rule
@@ -96,7 +90,7 @@ class OnePlaceSaysWhatABranchNobodyCanBeInLeavesTest {
                     "the account of a rule, asking each alternative of a choice what became of it"));
 
     @Test
-    void theRuleForABranchNobodyCanBeInIsAppliedDownOneRoad() throws IOException {
+    void theRuleForABranchNobodyCanBeInIsAppliedDownOneRoad() {
         assertEquals(declared(DEADENING_AN_ADOPTION), callsTo(ADOPTION, "inADeadBranch"),
                 "a second caller states the rule for a language a second time, and the two are free"
                         + " to disagree: " + why(DEADENING_AN_ADOPTION));
@@ -109,7 +103,7 @@ class OnePlaceSaysWhatABranchNobodyCanBeInLeavesTest {
     }
 
     @Test
-    void andAFateIsSpentOnOneBranchInOnePlace() throws IOException {
+    void andAFateIsSpentOnOneBranchInOnePlace() {
         assertEquals(declared(SPENDING_A_FATE_ON_A_BRANCH), callsTo(TAKEN, "under"),
                 "a second caller of this is a second place deciding what a fate does to an account,"
                         + " and what a branch left would be back to turning on the pair: "
@@ -129,12 +123,9 @@ class OnePlaceSaysWhatABranchNobodyCanBeInLeavesTest {
     }
 
     /** How many times each method of the compiler names {@code owner.name}. */
-    private static Map<String, Integer> callsTo(String owner, String name) throws IOException {
+    private static Map<String, Integer> callsTo(String owner, String name) {
         Map<String, Integer> calls = new TreeMap<>();
-        int read = 0;
-        for (Path each : classes()) {
-            ClassModel model = ClassFile.of().parse(Files.readAllBytes(each));
-            read++;
+        for (ClassModel model : WhatWasCompiled.compiled().all()) {
             String from = model.thisClass().asInternalName().replace('/', '.').replace('$', '.');
             for (MethodModel method : model.methods()) {
                 String where = from + "." + method.methodName().stringValue();
@@ -145,7 +136,6 @@ class OnePlaceSaysWhatABranchNobodyCanBeInLeavesTest {
                 }));
             }
         }
-        assertFalse(read == 0, "no compiled class was read at all, so this says nothing");
         return calls;
     }
 
@@ -173,12 +163,5 @@ class OnePlaceSaysWhatABranchNobodyCanBeInLeavesTest {
             }
         }
         return false;
-    }
-
-    private static List<Path> classes() throws IOException {
-        Path root = Path.of("target", "classes").toAbsolutePath();
-        try (Stream<Path> walk = Files.walk(root)) {
-            return new ArrayList<>(walk.filter(p -> p.toString().endsWith(".class")).toList());
-        }
     }
 }

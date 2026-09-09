@@ -1,5 +1,6 @@
 package souther.test;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.lang.classfile.ClassModel;
@@ -19,11 +20,12 @@ import java.util.Optional;
  * question. What each check does with them differs, so what is answered here is the classes and
  * never a verdict about them.
  *
- * <p><b>Three ways of asking, and each pays for what it asks.</b> A rule about a whole module walks
+ * <p><b>Four ways of asking, and each pays for what it asks.</b> A rule about a whole module walks
  * {@link #all}; a rule about one class asks {@link #find}, which reaches that file and no other; a
  * rule about a package asks {@link #inPackage}, which settles which files are in it before any of
- * them is parsed. A rule that could only have the whole module would make the narrow questions pay
- * for the wide one, and the narrowest of them reads eight classes of four thousand.
+ * them is parsed; a rule that wants only what there is asks {@link #names}, which reads none of
+ * them. A rule that could only have the whole module would make the narrow questions pay for the
+ * wide one, and the narrowest of them reads eight classes of four thousand.
  *
  * <p><b>Which output is asked is the caller's to name, and so is what to do with two of them.</b> A
  * rule about what this repository publishes and a rule about what a test compiled beside it are
@@ -47,8 +49,15 @@ public final class CompiledClasses {
         this.readings = readings;
     }
 
-    /** The output at {@code root}, read by the fork this runs in. */
-    public static CompiledClasses at(Path root) {
+    /**
+     * The output at {@code root}, read by the fork this runs in.
+     *
+     * <p>Not handed out either. Where a module's output is is worked out by
+     * {@link RepositoryLayout}, which knows how this repository is laid out; a caller that could
+     * make one of these from a path of its own would be working that out for itself, and would have
+     * had to say where a build writes to do it.
+     */
+    static CompiledClasses at(Path root) {
         return at(root, CompiledClassReadings.forThisFork());
     }
 
@@ -93,8 +102,15 @@ public final class CompiledClasses {
         }
     }
 
-    /** Which output this is, settled. */
-    public Path root() {
+    /**
+     * Which output this is, settled.
+     *
+     * <p>Not handed out. What a caller can do with an output root is walk it, and a caller that
+     * walks one reads the files this exists to read once — so a reading that answered where it is
+     * would be handing back the way round itself. What the output holds is asked for above; where
+     * it is stays here.
+     */
+    Path root() {
         return root;
     }
 
@@ -114,6 +130,27 @@ public final class CompiledClasses {
     }
 
     /**
+     * What the output holds, by binary name, without reading any of it.
+     *
+     * <p>Which classes there are is a question the listing answers, and a rule that only wants the
+     * names — to load them, or to say which packages there are — would otherwise pay for parsing
+     * every one of them to be told what the file names already said.
+     */
+    public List<String> names() {
+        List<String> found = new ArrayList<>();
+        for (Path each : readings.listing(root)) {
+            found.add(root.relativize(each).toString()
+                    .replace(File.separatorChar, '.')
+                    .replaceAll("\\.class$", ""));
+        }
+        if (found.isEmpty()) {
+            throw new IllegalStateException(root + " holds no classes, so a rule read from it holds"
+                    + " nothing");
+        }
+        return found;
+    }
+
+    /**
      * The class {@code binaryName} names, or nothing where the output holds no such class.
      *
      * <p>Reaches that one file. What the rest of the output holds is not part of this question, and
@@ -124,6 +161,28 @@ public final class CompiledClasses {
      */
     public Optional<ClassModel> find(String binaryName) {
         return readings.at(root.resolve(binaryName.replace('.', '/') + ".class"));
+    }
+
+    /**
+     * The classes written directly in {@code packageName}, and none of the packages under it.
+     *
+     * <p>Beside {@link #inPackage} rather than instead of it: which of the two a rule wants is the
+     * rule's to say. A rule about what one package holds would otherwise grow a package written
+     * under it later, which is a package nobody has said anything about; a rule about a package and
+     * what is beneath it would otherwise stop at a directory.
+     *
+     * <p>Which files are in it is settled from the listing, so what is parsed is what the question
+     * is about — the same as its neighbour and for the same reason.
+     */
+    public List<ClassModel> inTheClassesOf(String packageName) {
+        Path directory = root.resolve(packageName.replace('.', '/'));
+        List<Path> under = new ArrayList<>();
+        for (Path each : readings.listing(root)) {
+            if (directory.equals(each.getParent())) {
+                under.add(each);
+            }
+        }
+        return read(under);
     }
 
     /**
