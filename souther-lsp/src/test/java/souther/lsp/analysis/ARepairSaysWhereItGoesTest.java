@@ -155,6 +155,50 @@ class ARepairSaysWhereItGoesTest {
                 "and the file that holds it is offered the edit");
     }
 
+    /**
+     * A module written over two files answers about the file the edit is in, not the file its
+     * module is declared in. What a report is filed under falls back to the module's own source
+     * where the report claims none, and the rows are in the attached file — so a fix offered by
+     * publication would be offered on the model's text and applied to whatever sits at those
+     * numbers there.
+     */
+    @Test
+    void anEditInAnAttachedFileIsOfferedOnThatFile() {
+        String model = """
+            module m
+
+            data D = { v: Int }
+            behavior f : (d: D) -> D
+            let f (d) = d
+            """;
+        String attached = """
+            examples for m
+
+            let origin = D { v = 1 }
+
+            example f
+                | "a" : (orign) -> D { v = 1 }
+            """;
+        Map<String, String> sources = new LinkedHashMap<>();
+        sources.put(URI, model);
+        sources.put("file:///m.examples.sou", attached);
+        ModuleGraph graph = ModuleGraph.of(sources);
+        Analyzer analyzer = new Analyzer();
+
+        List<CodeAction> onTheAttached = analyzer.codeActions("file:///m.examples.sou", attached,
+                on(attached, "orign"), graph);
+        assertEquals(1, onTheAttached.size(), onTheAttached.toString());
+        CodeAction.Edit edit =
+                assertInstanceOf(CodeAction.Applied.class, onTheAttached.get(0)).edit();
+        assertEquals("origin", edit.newText());
+        assertEquals(spanOf(attached, "orign"), edit.range());
+
+        Range everywhereInTheModel = new Range(new Position(0, 0),
+                new Position((int) model.lines().count(), 0));
+        assertEquals(List.of(), analyzer.codeActions(URI, model, everywhereInTheModel, graph),
+                "the model's own file holds none of the characters this edit rewrites");
+    }
+
     private static List<CodeAction> actions(String text, Range requested) {
         Map<String, String> sources = new LinkedHashMap<>();
         sources.put(URI, text);

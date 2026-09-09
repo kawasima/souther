@@ -237,6 +237,43 @@ class LspServerTest {
         assertEquals("value", newText);
     }
 
+    /**
+     * A client sends back the diagnostics it holds, which are the ones it was last published, and
+     * the document may have been edited since. So what it sends says there may be something to offer
+     * here and never what: the offer is worked out from the text this server holds now.
+     */
+    @Test
+    void aDiagnosticTheDocumentNoLongerHasOffersNothing() {
+        String uri = "file:///q3.sou";
+        String typo = "module demo\nbehavior f : (value: Int) -> Int\nlet f (value) = valuee\n";
+        String fixed = "module demo\nbehavior f : (value: Int) -> Int\nlet f (value) = value\n";
+        Map<String, Object> changed = new LinkedHashMap<>();
+        changed.put("textDocument", Map.of("uri", uri));
+        changed.put("contentChanges", List.of(Map.of("text", fixed)));
+        byte[] input = frames(
+                message(1, "initialize", Map.of()),
+                message(null, "initialized", Map.of()),
+                message(null, "textDocument/didOpen", Map.of(
+                        "textDocument", Map.of("uri", uri, "text", typo))),
+                message(null, "textDocument/didChange", changed),
+                message(2, "textDocument/codeAction", Map.of(
+                        "textDocument", Map.of("uri", uri),
+                        "range", Map.of("start", Map.of("line", 2, "character", 16),
+                                "end", Map.of("line", 2, "character", 21)),
+                        // what the client still holds from before the edit
+                        "context", Map.of("diagnostics", List.of(Map.of(
+                                "range", Map.of("start", Map.of("line", 2, "character", 16),
+                                        "end", Map.of("line", 2, "character", 22)),
+                                "message", "unknown identifier"))))));
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        new LspServer(new MessageConnection(new ByteArrayInputStream(input), out)).run();
+
+        JsonNode actions = responseFor(readFrames(out.toByteArray()), 2);
+        assertEquals(0, actions.size(),
+                () -> "the name is spelled right now: " + actions);
+    }
+
     @Test
     void codeActionWithNoContextDiagnosticsOffersNothing() {
         String uri = "file:///q2.sou";
