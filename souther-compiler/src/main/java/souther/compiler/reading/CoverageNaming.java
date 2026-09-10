@@ -110,10 +110,18 @@ final class CoverageNaming implements Naming<Outcome> {
             return null;
         }
         NumericTerm at = drawn.term();
-        return plan.outcomeOf(site, held)
-                .flatMap(ControlClaim::of)
+        ControlPlace.Outcome outcome = plan.outcomeOf(site, held).orElse(null);
+        if (outcome == null) {
+            return null;
+        }
+        // The condition and the claim are about one comparison, so they are read off one value. The
+        // place the claim is made at says which comparison it is a way out of; asked of the node
+        // instead, the two halves of this decision would be two answers, and a decision whose
+        // condition named one comparison and whose claim was recorded at another is one nothing
+        // here reads both halves of to notice.
+        return ControlClaim.of(outcome)
                 .map(claim -> one(new Decision(
-                        new Condition.Side(at, comparison.occurrence(), held), claim)))
+                        new Condition.Side(at, outcome.comparison(), held), claim)))
                 .orElse(null);
     }
 
