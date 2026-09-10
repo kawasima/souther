@@ -107,7 +107,28 @@ class AFieldListIsOfferedForTheValueTheDotIsTakenOffTest {
 
     @Test
     void aValueNoDeclarationSpeaksForIsOfferedNothingRatherThanEverything() {
+        // A helper answering a fork: what a fork answers is the join of its arms, which is the
+        // elaboration's and not a declaration, so nothing here states what the receiver is.
         List<CompletionItem> offered = completions("""
+                module m
+
+                data Draft = { plannedCost: Int }
+
+                let larger (a, b) = if a.plannedCost > b.plannedCost then a else b
+
+                behavior submit : (request: Draft) -> Int
+                let submit (request) = larger(request, request).
+                """);
+
+        assertTrue(offered.isEmpty(),
+                "a call's answer is a value this reading cannot type, and what may be written after"
+                        + " the dot is not every name in scope");
+    }
+
+    /** And a call whose answer the declarations do state offers what that answer holds. */
+    @Test
+    void andACallTheDeclarationsDoSpeakForOffersWhatItAnswers() {
+        List<String> offered = labelsOf(completions("""
                 module m
 
                 data Draft = { plannedCost: Int }
@@ -115,11 +136,10 @@ class AFieldListIsOfferedForTheValueTheDotIsTakenOffTest {
                 behavior make : () -> Draft
                 behavior submit : (request: Draft) -> Int
                 let submit (request) = make().
-                """);
+                """));
 
-        assertTrue(offered.isEmpty(),
-                "a call's answer is a value this reading cannot type, and what may be written after"
-                        + " the dot is not every name in scope");
+        assertTrue(offered.contains("plannedCost"),
+                "`make()` answers a `Draft`, whose field is what may follow the dot: " + offered);
     }
 
     @Test

@@ -552,6 +552,73 @@ public final class TypeOps {
         };
     }
 
+    /**
+     * Whether what {@code declared} states of a position admits a value of {@code actual}, reading a
+     * position that states nothing as one that refuses nothing.
+     *
+     * <p>Not {@link #assignable}. That one answers about a type somebody settled, and refuses
+     * whatever does not fit it; this one is asked of a declaration that has only been settled as far
+     * as something said, and a variable still standing at a position is that position saying
+     * nothing yet. A declaration is settled by what its arguments state, and a function argument
+     * states nothing until it is typed — so a signature relating a function to the rest of what it
+     * wrote is open at exactly the positions the function would close, and asked for assignability
+     * it would refuse every argument that did not close them.
+     *
+     * <p>Every position is asked on its own. There is no test for whether the type holds a hole
+     * somewhere before descending into it, because that is the question this is: a hole is one
+     * position, and asking about the type as a whole is what would let one silence the rest.
+     *
+     * <p>Written here and read by both readers of a declaration: the walk that types a text applies
+     * a signature and holds the arguments to what it settled, and the walk that says what
+     * declarations state does the same with what it read. Answered apart, the two parted at exactly
+     * the positions a declaration leaves open.
+     */
+    public static boolean admits(Type declared, Type actual, Symbols symbols) {
+        // A position states nothing where a variable stands at it — one an application has not
+        // decided, or one a declaration wrote, which stands for whatever each use of it makes — and
+        // where it stands at what an empty collection carries, which is a reading so far and is
+        // widened by a later one (ADR-0028). Nothing is refused at any of them, and everything
+        // around them is read.
+        if (declared instanceof Type.Open || declared instanceof Type.Nothing
+                || actual instanceof Type.Open) {
+            return true;
+        }
+        if (actual instanceof Type.Nothing || actual instanceof Type.Never
+                || actual instanceof Type.Erroneous) {
+            return true;   // nothing arrives from there, so nothing of the wrong shape can
+        }
+        return switch (declared) {
+            case Type.ListOf l -> actual instanceof Type.ListOf a
+                    && admits(l.element(), a.element(), symbols);
+            case Type.SetOf s -> actual instanceof Type.SetOf a
+                    && admits(s.element(), a.element(), symbols);
+            case Type.OptionOf o -> actual instanceof Type.OptionOf a
+                    && admits(o.element(), a.element(), symbols);
+            case Type.MapOf m -> actual instanceof Type.MapOf a
+                    && admits(m.key(), a.key(), symbols) && admits(m.value(), a.value(), symbols);
+            case Type.TupleOf t -> actual instanceof Type.TupleOf a
+                    && t.elements().size() == a.elements().size()
+                    && admitsEach(t.elements(), a.elements(), symbols);
+            case Type.FnOf f -> actual instanceof Type.FnOf a
+                    && f.params().size() == a.params().size()
+                    && admitsEach(f.params(), a.params(), symbols)
+                    && admits(f.result(), a.result(), symbols);
+            // Nothing inside it to weigh position by position, so what is left is the ordinary
+            // question. It answers a variable the declaration wrote too, which is not an
+            // application's to decide and stands for whatever each use of it makes it.
+            case Type.Leaf _ -> assignable(actual, declared, symbols);
+        };
+    }
+
+    private static boolean admitsEach(List<Type> declared, List<Type> actual, Symbols symbols) {
+        for (int i = 0; i < declared.size(); i++) {
+            if (!admits(declared.get(i), actual.get(i), symbols)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     /** Whether a {@code from} value can be assigned where {@code to} is expected. Lists are
      * covariant, and a data-like type widens to the set of leaf cases it can be — so a list of
      * a sum's cases is assignable to a list of the sum (spec §sum-data, §unmarked-output). */

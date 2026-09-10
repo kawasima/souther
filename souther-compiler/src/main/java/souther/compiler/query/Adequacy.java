@@ -34,6 +34,7 @@ import souther.compiler.check.SpecImplementation;
 import souther.compiler.check.DerivedSymbols;
 import souther.compiler.check.Symbols;
 import souther.compiler.check.TypeOps;
+import souther.compiler.types.ValueName;
 import souther.compiler.observe.Disposition;
 import souther.compiler.observe.ExpectationState;
 import souther.compiler.observe.Incompleteness;
@@ -2957,7 +2958,16 @@ public final class Adequacy {
             // that answer says the model holds nothing to cover, and read for this one it turned a
             // compile that stopped into a module with no work in it (issue #996).
             Answer<Map<String, PartitionEvidence>> coverage = db.ask(new Coverage(name));
-            if (!prepared.present() || !scope.present() || !sigs.present() || !coverage.present()) {
+            // What the module states of a parameter's type is read off its definitions and the
+            // behaviors a body of it can name, and both are answers that can be absent. Absence and
+            // not an empty table, for the reason above: read as a table with nothing in it, a module
+            // whose signatures could not be worked out became a module that states no value of any
+            // type, and every row it is offered was composed as though the author had written none.
+            Answer<Map<String, Hir.FnDef>> definitions =
+                    db.ask(new Bodies.ModuleDefinitions(name));
+            Answer<Map<ValueName.Behavior, Sig>> reachable = db.ask(new Bodies.Reachable(name));
+            if (!prepared.present() || !scope.present() || !sigs.present() || !coverage.present()
+                    || !definitions.present() || !reachable.present()) {
                 return Answer.absent();
             }
             souther.compiler.query.Bodies.Elaborated checked =
@@ -3030,8 +3040,7 @@ public final class Adequacy {
             souther.compiler.partition.FillResult composed;
             try {
                 composed = rowsFor(spec, sig, Shapes.ruleReading(db, name).value(), asked,
-                        baselines(name, spec, sig,
-                                db.ask(new Bodies.ModuleDefinitions(name)).value(),
+                        baselines(name, spec, sig, definitions.value(), reachable.value(),
                                 prepared.value(), symbols,
                                 // What the declarations of this module denote, and not what a check
                                 // settled about them: a generation is a measurement of a module
@@ -3444,6 +3453,7 @@ public final class Adequacy {
          */
         private static List<Generator.Baseline> baselines(
                 String module, Hir.SpecBehavior spec, Sig sig, Map<String, Hir.FnDef> values,
+                Map<ValueName.Behavior, Sig> behaviors,
                 CheckSurface prepared, Symbols symbols,
                 souther.compiler.observe.FieldTypes fields) {
             List<Generator.Baseline> out = new ArrayList<>();
@@ -3465,7 +3475,7 @@ public final class Adequacy {
             // Then every value the module states of a parameter's own type, in the order it states
             // them, one origin per turn. Narrowed to the only value of a type, a module that states
             // a second one lost the spread from every row of every behavior taking it.
-            out.addAll(named(module, spec, sig, values, symbols, fields));
+            out.addAll(named(module, spec, sig, values, behaviors, symbols, fields));
             return List.copyOf(out);
         }
 
@@ -3505,24 +3515,23 @@ public final class Adequacy {
          * value at each position is a set of values they reached for together, and that is read
          * from the rows rather than assembled ({@link #namesIn}).
          */
-        private static List<Generator.Baseline> named(String module, Hir.SpecBehavior spec, Sig sig,
+        static List<Generator.Baseline> named(String module, Hir.SpecBehavior spec, Sig sig,
                                                       Map<String, Hir.FnDef> values,
+                                                      Map<ValueName.Behavior, Sig> behaviors,
                                                       Symbols symbols,
                                                       souther.compiler.observe.FieldTypes fields) {
-            if (values == null) {
-                return List.of();
-            }
             // What a value is declared to be, asked of the one walk that answers it. A second
             // reading of a definition's type here would be a second answer about what a row may
             // name, differing from the reading that builds the row at whatever either forgot.
             // Refusing where a declaration does not read, because this is downstream of a check:
             // one that does not read was refused there, so meeting one here is this compiler being
             // wrong rather than a module being written.
-            souther.compiler.check.DeclaredTypeEvidence evidence =
-                    new souther.compiler.check.DeclaredTypeEvidence(
-                            new souther.compiler.check.FieldRead(symbols, fields,
-                                    souther.compiler.check.FieldRead.Unreadable.REFUSED),
-                            values);
+            souther.compiler.check.DeclaredTypeReading evidence =
+                    new souther.compiler.check.DeclaredTypeReading(
+                            new souther.compiler.check.DeclarationFacts(
+                                    new souther.compiler.check.FieldRead(symbols, fields,
+                                            souther.compiler.check.FieldRead.Unreadable.REFUSED)),
+                            values, behaviors);
             Map<TypeSymbol, List<String>> stated = new LinkedHashMap<>();
             for (Map.Entry<String, Hir.FnDef> each : values.entrySet()) {
                 if (!each.getValue().params().isEmpty()

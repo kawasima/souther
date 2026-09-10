@@ -739,7 +739,10 @@ public final class Elaborator {
                 : carriedType(TypeOps.resolveParamType(declared), valueType, symbols);
     }
 
-    private static Type carriedType(Type declared, Type valueType, Symbols symbols) {
+    /** The same, for a caller holding the declared type as this application settled it rather than
+     *  as it was written — which is what a reader of an expansion has once it has decided the
+     *  application's variables. */
+    static Type carriedType(Type declared, Type valueType, Symbols symbols) {
         if (Type.mentions(declared, x -> x instanceof Type.MetaVar)) {
             return valueType;   // it stands for what this application decides, and is not a sum
         }

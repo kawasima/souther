@@ -4,8 +4,9 @@ import souther.compiler.Reserved;
 import souther.compiler.ast.Hir;
 import souther.compiler.ast.WrittenName;
 import souther.compiler.check.BindingEvidence;
+import souther.compiler.check.DeclarationFacts;
 import souther.compiler.check.DeclaredSig;
-import souther.compiler.check.DeclaredTypeEvidence;
+import souther.compiler.check.DeclaredTypeReading;
 import souther.compiler.check.FieldRead;
 import souther.compiler.check.ResolvedFieldTypes;
 import souther.compiler.check.Sig;
@@ -27,8 +28,6 @@ import souther.compiler.types.Type;
 import souther.compiler.types.TypeSpelling;
 
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -164,18 +163,22 @@ public final class SemanticSnapshot {
      * What the declarations say about a type, asked of the one reading of them.
      *
      * <p>Every question of that shape goes through here: what fields a value has, what rules it is
-     * held to, what a name it was given comes to. Working one out from the declaration instead —
-     * reading a data's own clauses, naming a newtype's one field — is that reading written a second
+     * held to, whether the name it wears is a newtype. Working one out from the declaration instead
+     * — reading a data's own clauses, naming a newtype's one field — is that reading written a second
      * time, and the copy is right until the language adds a step to the original. It has twice been
      * exactly that: a spread brings in fields and the rules that came with them, and both were being
      * missed by a reading that looked at what the declaration wrote rather than at what applies.
+     *
+     * <p>What an expression is declared to be is not asked here. That reading needs the definitions a
+     * body may name and the signatures it may call, which a question about a type in hand does not,
+     * and it is {@link DeclaredTypeReading}'s.
      *
      * <p>What this reading is not asked is the shape of the module itself — what it declares, what
      * it exposes, what its behaviors are called. Nothing else answers those, and they are read off
      * the resolved module here.
      */
-    private DeclaredTypeEvidence declarations() {
-        return new DeclaredTypeEvidence(fieldRead(), Map.of());
+    private DeclarationFacts declarations() {
+        return new DeclarationFacts(fieldRead());
     }
 
     /**
@@ -486,12 +489,12 @@ public final class SemanticSnapshot {
      *  than this reading being. */
     private Type declaredTypeOf(Hir.Expr e) {
         Answer<Map<String, Hir.FnDef>> values = db.ask(new Bodies.ModuleDefinitions(module));
-        if (!values.present()) {
+        Answer<Map<ValueName.Behavior, Sig>> reachable = db.ask(new Bodies.Reachable(module));
+        if (!values.present() || !reachable.present()) {
             return null;
         }
-        Map<BindingId, BindingEvidence> parameters = parametersOfEveryBehavior();
-        return new DeclaredTypeEvidence(fieldRead(), values.value(), parameters)
-                .declaredTypeOf(e, new HashSet<>(), new HashMap<>(parameters));
+        return new DeclaredTypeReading(declarations(), values.value(), reachable.value(),
+                parametersOfEveryBehavior()).declaredTypeOf(e);
     }
 
     /**
