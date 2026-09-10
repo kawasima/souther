@@ -61,4 +61,25 @@ public enum Rel {
             case NE -> EQ;
         };
     }
+
+    /**
+     * The one of this relation and its denial that stands for the pair.
+     *
+     * <p>Here because the pair is here. A reader that has to write one proposition down once —
+     * where {@code n > 100} and {@code n <= 100} are one distinction and not two — needs the two
+     * sides to pick the same side, and which side that is is a fact about these six values. Worked
+     * out beside them, from the order they are declared in, it would move when anything moves them
+     * and would be a second answer to what {@link #denied} already says.
+     *
+     * <p>Written out rather than computed, so a relation added is a case to decide about. What
+     * decides it is nothing a reader is owed a reason for: the two sides of one distinction have to
+     * agree, and either of them would do.
+     */
+    public Rel orItsDenial() {
+        return switch (this) {
+            case GE, LT -> GE;
+            case GT, LE -> GT;
+            case EQ, NE -> EQ;
+        };
+    }
 }

@@ -6,6 +6,10 @@ import souther.compiler.core.Core;
 import souther.compiler.inputs.InputReads;
 import souther.compiler.inputs.ReadMeaning;
 import souther.compiler.semantics.ConditionJoin;
+import souther.compiler.types.ConstructOccurrence;
+import souther.compiler.types.ModelOccurrence;
+
+import java.util.Optional;
 
 /**
  * What a condition of a body is made of.
@@ -97,8 +101,22 @@ sealed interface Condition {
      *                   an expanded helper is about the argument the call handed it, and read
      *                   against the outer names it is about nothing
      */
-    record Compares(Comparison comparison, ConditionOccurrence occurrence,
-                    ConditionReportAnchor anchor, InputReads reads) implements Condition {}
+    record Compares(Comparison comparison, ConstructOccurrence stands,
+                    ConditionOccurrence occurrence,
+                    ConditionReportAnchor anchor, InputReads reads) implements Condition {
+
+        /**
+         * Which construct of the model this comparison is, where the source wrote one.
+         *
+         * <p>What a reader joining this to a run joins on: a rule is read where the language's
+         * operations stand and a run through it is recorded where they are expanded, and the
+         * construct of the model is what the two trees agree about. Empty for a comparison this
+         * compiler composed, which states no rule and is nothing a run through can be about.
+         */
+        Optional<ModelOccurrence> states() {
+            return ModelOccurrence.statedAt(stands);
+        }
+    }
 
     /** Where this reading stops: a condition of a shape it has no words for. */
     record NotRead(ConditionOccurrence occurrence, ConditionReportAnchor anchor)
@@ -161,7 +179,7 @@ sealed interface Condition {
                         of(binary.right(), reads, symbols, numbering));
             } else if (comparison != null) {
                 ConditionOccurrence met = numbering.met();
-                made = new Compares(comparison, met,
+                made = new Compares(comparison, binary.occurrence(), met,
                         numbering.anchorOf(binary.origin(), binary.pos(), met), reads);
             }
         }
