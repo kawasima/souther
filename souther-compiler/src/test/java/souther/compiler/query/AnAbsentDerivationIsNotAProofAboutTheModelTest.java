@@ -1,6 +1,7 @@
 package souther.compiler.query;
 
 import org.junit.jupiter.api.Test;
+import souther.compiler.check.PathReachability;
 import souther.compiler.report.AdequacyReport;
 
 import tools.jackson.databind.JsonNode;
@@ -266,5 +267,55 @@ class AnAbsentDerivationIsNotAProofAboutTheModelTest {
         Measure.NotApplicable<?> none = assertInstanceOf(Measure.NotApplicable.class, measured,
                 () -> "the body is here and decides nothing: " + measured);
         assertEquals(Adequacy.BranchEvidence.NoArms.NO_ARM_OBLIGATIONS, none.why());
+    }
+
+    /**
+     * The reading of what the guards above each place leave is not made where the bodies were not.
+     *
+     * <p>The same rule the arm measure is held to, one derivation over. The reading is read off the
+     * elaborated bodies; a module the compile stopped in has none, and the answer that came back was
+     * a map with nothing in it — which is what a module whose bodies hold no place answers too.
+     * Nothing between the two, so a reader that walked the reading and found nowhere was told the
+     * model divides nowhere, on a compile that never looked.
+     */
+    @Test
+    void thePlacesOfABodyThatWasNotElaboratedAreNotReadAsNoPlaces() {
+        Compilation compilation = measured(STOPPED);
+
+        assertFalse(compilation.errors().isEmpty(), "this model is one the compile stops in");
+        assertFalse(compilation.db().ask(new Bodies.Checked("example.rooms")).present(),
+                "and stops before the bodies are elaborated, which is what this is about");
+
+        assertFalse(compilation.db().ask(new Adequacy.PathReached("example.rooms")).present(),
+                "so there is no reading of its places, rather than a reading that found none");
+    }
+
+    /**
+     * And a module whose bodies were elaborated and hold no place is read as holding none.
+     *
+     * <p>The other direction, and the reason the answer above is absent rather than the reading
+     * being made absent whenever it is empty: a module of injected behaviors has been read to the
+     * end, and what it holds is nothing.
+     */
+    @Test
+    void thePlacesOfAModuleThatDeclaresNoBodyAreNone() {
+        Compilation compilation = measured("""
+                module example.injected
+
+                data A = { n: Int }
+                data B = { n: Int }
+
+                behavior asked : (a: A) -> B
+                """);
+
+        assertTrue(compilation.errors().isEmpty(), () -> "this one compiles: "
+                + compilation.errors());
+        assertTrue(compilation.db().ask(new Bodies.Checked("example.injected")).present(),
+                "its bodies were elaborated");
+
+        Answer<Map<String, PathReachability.Answers>> read =
+                compilation.db().ask(new Adequacy.PathReached("example.injected"));
+        assertTrue(read.present(), "so the reading was made");
+        assertEquals(Map.of(), read.value(), "and what it found is nothing");
     }
 }
