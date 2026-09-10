@@ -436,6 +436,14 @@ final class AnswerClosure {
             new Known(at(Q + "Bodies$Expanding", "souther.compiler.stdlib.Stdlib",
                     m(ANSWER, "value"), m("souther.compiler.query.Bodies$Expanding$Of", "table"), m("souther.compiler.check.HelperTable", "stdlib")),
                     STDLIB, ONLY_WALKED),
+            // What the declarations a reading of an input reached have already been made into,
+            // borrowed by the reading for the readers of those declarations that come after it. The
+            // walk of the declarations stops at the way of asking, which nothing closes; this is
+            // the object a compile put there, which is the same allowance one step further down.
+            new Known(at(Q + "Adequacy$Inputs", "souther.compiler.check.LentReadings",
+                    m(ANSWER, "value"), VALUE,
+                    m("souther.compiler.inputs.InputDomain", "machines")),
+                    A_LENDING_OF_READINGS, ONLY_WALKED),
             narrowedEnd(Q + "Adequacy$Inputs", walked(Scenario.THE_CORPORA),
                     m(ANSWER, "value"), VALUE,
                     m("souther.compiler.inputs.InputDomain", "byPath"), VALUE,
@@ -453,6 +461,16 @@ final class AnswerClosure {
             // has — and the walk that asks each object what it is meets the end on the way.
             narrowedEnd(Q + "Adequacy$Divided", walked(Scenario.THE_CORPORA),
                     m(ANSWER, "value"),
+                    m("souther.compiler.partition.Partitions$Partitioning", "measurements"),
+                    ELEMENT, m("souther.compiler.partition.PositionMeasurements", "axes"), ELEMENT,
+                    m("souther.compiler.partition.Axis", "narrowed"),
+                    m("souther.compiler.check.NarrowedBounds$Reading", "lower")),
+            // And the same end again through the reading the geometry is a projection of. Two
+            // questions are asked of one reading of a body — what the model divides, and where that
+            // reading met each condition it places itself — so a walk arrives at everything the
+            // geometry holds by both names. One thing to fix, met twice.
+            narrowedEnd(Q + "Adequacy$Dividing", walked(Scenario.THE_CORPORA),
+                    m(ANSWER, "value"), m(Q + "Adequacy$BodyDivided", "geometry"),
                     m("souther.compiler.partition.Partitions$Partitioning", "measurements"),
                     ELEMENT, m("souther.compiler.partition.PositionMeasurements", "axes"), ELEMENT,
                     m("souther.compiler.partition.Axis", "narrowed"),
