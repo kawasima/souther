@@ -89,24 +89,21 @@ public sealed interface LineProvenance {
     }
 
     /**
-     * The line this end is, which is where the evidence is spent.
+     * The one statement this is about, or null where it is about several.
      *
-     * <p>One statement's where the evidence is about one of them, whichever reading established it:
-     * a comparison that placed the end names its own statement, and a counterfactual that took a
-     * conjunct away naming one statement about this number is that same line found a second way.
-     * Folded here rather than at each reader, the two came out as two lines and every report counted
-     * one line twice.
+     * <p>What a piece of evidence can say on its own, which is not which lines there are. A comparison
+     * that placed an end is about the statement it read; a counterfactual is about the statements of
+     * the conjunct it took away which are on this number, and where the conjunct stated one of them
+     * the intervention was of that statement and nothing else.
      *
-     * <p>The conjunct's where the evidence is about several. Taking a part away takes away
-     * everything it stated, so an end a conjunct accounts for through two of its statements is a
-     * line neither of them drew — which is what a choice's line is, and what it is called
-     * ({@link DeclaredLine.OfAChoice}).
+     * <p>Null rather than a statement chosen from several, because taking a part away takes away
+     * everything it stated: an answer picking one of them would be a claim the intervention never
+     * tested. What the several come to is read where every piece of evidence about one end is in
+     * hand ({@link DeclaredBounds.End#drawn}).
      */
-    default DeclaredLine line() {
+    default InvariantStatementId aboutOneStatement() {
         Set<InvariantStatementId> said = statements();
-        return said.size() == 1
-                ? new DeclaredLine.OfAStatement(said.iterator().next())
-                : new DeclaredLine.OfAChoice(said);
+        return said.size() == 1 ? said.iterator().next() : null;
     }
 
     /** Every statement of every one of them, which is what a reader asking whether a set of ends

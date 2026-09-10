@@ -134,7 +134,7 @@ class OneConjunctStatesAsManyLinesAsItHasStatementsTest {
         PartId<RuleRef.Invariant> floor = new PartId<>(holes, 1);
 
         assertEquals(java.util.Set.of(
-                        new DeclaredLine.OfAChoice(java.util.Set.of(
+                        new DeclaredLine.OfStatementsTogether(java.util.Set.of(
                                 new InvariantStatementId(apart, 0),
                                 new InvariantStatementId(apart, 1))),
                         new DeclaredLine.OfAStatement(new InvariantStatementId(floor, 0))),
@@ -142,6 +142,65 @@ class OneConjunctStatesAsManyLinesAsItHasStatementsTest {
                 "what `apart` accounts for is the conjunct's line, drawn between the statements"
                         + " about the number, and neither of them alone drew it");
     }
+
+    /**
+     * A conjunct that accounts for an end one of its own statements placed draws no line beside it.
+     *
+     * <p>The control for the case above, and what says the rule is not a precedence between the two
+     * readings. Taking a conjunct away takes away every statement it made, so where one of them
+     * placed this end the coarser reading was bound to move it: what it establishes is the line that
+     * is already here. Counted as a line of its own, {@code n >= 0 && n /= 100} owes two rows at the
+     * bottom of its range where the author drew one.
+     */
+    @Test
+    void andDrawsNoneWhereOneOfItsOwnStatementsPlacedTheEnd() {
+        List<DeclaredLine> drawn = drawnAt(TOGETHER, "m.v = 0");
+        RuleRef.Invariant bounded = drawn.get(0).part().rule();
+
+        assertEquals(List.of(new DeclaredLine.OfAStatement(
+                        new InvariantStatementId(new PartId<>(bounded, 0), 0))),
+                drawn,
+                "the end is the one `n >= 0` places, and taking the conjunct away shows nothing"
+                        + " beside it");
+    }
+
+    /**
+     * And where the ends are apart, both are lines.
+     *
+     * <p>What tells this from the control is where the conjunct leaves the values. {@code n >= 0}
+     * places an end at nought and {@code n /= 0} takes that value away, so the number starts at one
+     * — which is not the end either statement placed, and is a line of the conjunct's own.
+     */
+    @Test
+    void andBothWhereTheEndsAreApart() {
+        List<DeclaredLine> drawn = drawnAt(MOVED, "m.v = 1");
+        PartId<RuleRef.Invariant> part = new PartId<>(drawn.get(0).part().rule(), 0);
+
+        assertEquals(List.of(new DeclaredLine.OfStatementsTogether(java.util.Set.of(
+                        new InvariantStatementId(part, 0), new InvariantStatementId(part, 1)))),
+                drawn,
+                "where the values start is the conjunct's, which no statement of it placed");
+    }
+
+    private static final String TOGETHER = """
+            module example.forms
+
+            let mixed (n: Int) = n >= 0 && n /= 100
+
+            data Mixed = { v: Int }
+                invariant bounded = mixed(v)
+
+            data Ok
+
+            behavior m : (m: Mixed) -> Ok
+            let m (m) = Ok
+
+            example m
+                | "a" : (Mixed { v = 5 }) -> Ok
+            """;
+
+    private static final String MOVED =
+            TOGETHER.replace("n >= 0 && n /= 100", "n >= 0 && n /= 0");
 
     private static final String DENIED = """
             module example.forms

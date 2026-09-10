@@ -58,13 +58,13 @@ public sealed interface LineOrigin extends RuleEvidenceOrigin {
      * value are two rules, and a cut keeps every rule that drew it; named by the declaration and the
      * word, they are one.
      *
-     * @param part            which part of which clause drew this end. What tells one line of a
+     * @param drawnBy         which line of which clause this end is. What tells one line of a
      *                        clause from another where the clause drew several: {@code
      *                        String.length(name) >= 1 && String.length(code) >= 1} is one clause and
      *                        two lines at one value, and a row at either says nothing about the
      *                        other. The clause's own text and not the number it was written about,
      *                        which is spelled differently by every reading that reaches it
-     *                        ({@link souther.compiler.check.DeclaredBounds.Drawn})
+     *                        ({@link DeclaredLine})
      * @param keeps           which of the two ends the bound placed. Read where the end is read,
      *                        and carried for the same reason the inclusivity beside it is — a bound
      *                        orders nothing across its line, so there is no side to read off the

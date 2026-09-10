@@ -48,7 +48,7 @@ class AskingForOneNumbersEndsDoesNotAnswerWithAnothersTest {
     /** The clauses an end names, which is what these assertions are about: which conjunct of each
      *  drew it is beside that and is not what a reader is sent to look at. */
     private static List<RuleRef.Invariant> rulesOf(DeclaredBounds.End end) {
-        return end.from().stream().map(each -> each.part().rule()).toList();
+        return end.found().stream().map(each -> each.part().rule()).toList();
     }
 
     /** An end above one number of `names`, placed by the clause at {@code by}. */

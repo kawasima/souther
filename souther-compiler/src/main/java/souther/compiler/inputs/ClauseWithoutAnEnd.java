@@ -21,9 +21,9 @@ import souther.compiler.types.TypeSymbol;
  * why it placed none is no part of the question: the two read one clause with different atoms, and a
  * clause over a number one of them has no atom for is one the other names two positions in.
  *
- * @param part     which part of which rule this is, as the split that wrote the parts down named
- *                 it. What tells one authored line from another is this name, and a reader holding
- *                 the expression alone cannot tell two identical conjuncts apart
+ * @param statement which statement of which conjunct this is, as the reading that arrived at it
+ *                 named it. What tells one authored line from another is this name, and a reader
+ *                 holding the expression alone cannot tell two identical statements apart
  * @param states   what the conjunct compares and what it claims of the two sides, as the clause
  *                 states it. The comparison and not the node it was written as: a rule written
  *                 under a denial reads off its operator as the comparison that holds exactly where

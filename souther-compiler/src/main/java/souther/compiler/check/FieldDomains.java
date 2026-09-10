@@ -550,9 +550,10 @@ public final class FieldDomains {
      * @param at    which number at which name the end is on. The number and not a name beside a
      *              flag: one name carries more than one, and which of them an end is on is what
      *              the operation beside the name says
-     * @param part  which part of which rule placed the end, which is what names the line. A part
-     *              of a declaration's clause: these are the ends the clauses of a declaration
-     *              place, and no other kind of rule reaches this reading
+     * @param from  what this reading established about what put the end here. The evidence and not
+     *              the line it comes to: which lines an end is owed to is a question about the end,
+     *              and this is one piece of what was found there
+     *              ({@link DeclaredBounds.End#drawn})
      * @param lower whether this bounds the coordinate below; otherwise above
      */
     public record Placed(NumberAt<RuleKey> at, LineProvenance from, boolean lower,

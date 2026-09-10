@@ -1389,12 +1389,12 @@ public final class InvariantChecker {
      *
      * @param at       where the coordinate sits, read from the value these are of, and which of the
      *                 numbers there this end is on — a count taken of the position, or its value
-     * @param part     which part of which rule placed it, which is what names the line. The clause
-     *                 and not the declaration it is on: two clauses of one declaration placing an
-     *                 end at one value are two rules a row could be owed to, and held as
-     *                 declarations they came back as one. And the part and not the clause: one part
-     *                 states as many rules as its author wrote into it, and each of them places its
-     *                 own end
+     * @param statement which statement of which conjunct placed it, which is what names the line.
+     *                 The clause and not the declaration it is on: two clauses of one declaration
+     *                 placing an end at one value are two rules a row could be owed to, and held as
+     *                 declarations they came back as one. And the statement and not the conjunct:
+     *                 one conjunct states as many rules as the reading arrives at inside it, and
+     *                 each of them places its own end
      * @param stands   where, and in which reading, the part that placed it is. One part states as
      *                 many rules as its author wrote into it and each of them stands somewhere, so
      *                 what says which of them this end came of is the place; and a rule is read

@@ -1,9 +1,12 @@
 package souther.compiler.check;
 
 import souther.compiler.diag.Citation;
+import souther.compiler.numeric.Endpoint;
 import souther.compiler.types.TypeSymbol;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -54,6 +57,20 @@ public record DeclaredBorders(souther.compiler.diag.Citation at,
      */
     public record Key(DeclaredLine line) {}
 
+    /**
+     * One end of one of a declaration's numbers, which is what the evidence about it is gathered
+     * under.
+     *
+     * <p>All three, because an end is where a number stops on one side: two rules stopping one
+     * number at one value are evidence about one end, and the same rules stopping it at two values
+     * are not.
+     *
+     * @param on    which number of the declaration
+     * @param lower whether this is where its values start; otherwise where they stop
+     * @param at    the value the end sits at
+     */
+    private record AnEnd(NumberAt<RuleKey> on, boolean lower, Endpoint at) {}
+
     public DeclaredBorders {
         if (at == null) {
             throw new IllegalArgumentException("a declaration is written somewhere");
@@ -91,16 +108,25 @@ public record DeclaredBorders(souther.compiler.diag.Citation at,
                     "there is no declaration of " + declaredOn.name() + " to read");
         }
         Citation at = citations.of(named.key());
-        Map<Key, NumberAt<RuleKey>> forms = new LinkedHashMap<>();
+        // The evidence gathered by the end it is about, because which lines an end is owed to is a
+        // question about the end and not about one piece of what was established there
+        // ({@link DeclaredBounds.End#drawn}). Asked of each piece as it arrives, this named lines
+        // the reading of cuts does not draw, and a report would hold words for one of them.
+        Map<AnEnd, List<LineProvenance>> byEnd = new LinkedHashMap<>();
         for (FieldDomains.Placed placed
                 : Rules.of(declaredOn, source, policy, machines).bounds().placed()) {
             // A clause reaching this declaration through a spread is written on another one and is
             // that one's to name, the way a line is named by the rule that drew it (ADR-0090). Its
             // own reading answers for it.
-            if (placed.part().rule().clause().id().declaredOn().equals(declaredOn)) {
-                forms.put(new Key(placed.from().line()), placed.at());
+            if (!placed.part().rule().clause().id().declaredOn().equals(declaredOn)) {
+                continue;
             }
+            byEnd.computeIfAbsent(new AnEnd(placed.at(), placed.lower(), placed.end()),
+                    _ -> new ArrayList<>()).add(placed.from());
         }
+        Map<Key, NumberAt<RuleKey>> forms = new LinkedHashMap<>();
+        byEnd.forEach((end, found) -> new DeclaredBounds.End(end.at(), found).drawn()
+                .forEach(line -> forms.put(new Key(line), end.on())));
         return new DeclaredBorders(at, forms);
     }
 

@@ -6,7 +6,9 @@ import souther.compiler.numeric.Place;
 import souther.compiler.types.ValueName;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * What the rules written on a type leave a value of it between, and which of the names it wears
@@ -28,71 +30,68 @@ import java.util.List;
 public final class DeclaredBounds {
 
     /**
-     * One rule that put an end here, and which number of the declaration it was written about.
+     * One end of a range, and everything the readings established about what put it there.
      *
-     * <p>The pair and not the rule alone. One clause can bound two numbers of one declaration —
-     * {@code invariant both = String.length(name) >= 1 && String.length(code) >= 1} places two ends
-     * at one value — and they are two lines an author drew: a row whose {@code name} is one
-     * character says nothing about {@code code}. Held as the rule, the two came out as one thing to
-     * write a row for, which is the mistake issue #1062 is about with the halves the other way round.
-     *
-     * <p><b>The clause's own text and not the number it was written about.</b> Which coordinate a
-     * clause bounded is read from whatever value the reading started at — {@code Day}'s own clause
-     * is about {@code value} read from {@code Day} and about {@code d} read from the {@code Span}
-     * holding it — so two readings of one line spell the coordinate two ways, and an identity built
-     * on it calls one authored line two.
-     *
-     * <p><b>And not the conjunct alone.</b> A conjunct states as many comparisons as the reading
-     * arrives at inside it: a denial is carried to the leaves, so {@code Bool.not(String.length(name)
-     * < 1 || String.length(code) < 1)} is one conjunct placing an end on each of two numbers. Held
-     * as the conjunct, those two are one line, and a reader naming either of them names whichever
-     * was written down last.
-     *
-     * <p><b>The statement and not how it was arrived at.</b> Two readings reach one end of one
-     * statement — a comparison places it, and a counterfactual finds the conjunct accounts for it —
-     * and that is one line owed one row, which is what {@link End#tighter} folds them into. Held
-     * with the evidence in it, the same line came back twice because two readers had found it, and
-     * every report counted it twice. What each reading knew stays where it was established
-     * ({@link LineProvenance}) and is spent on the way here.
-     *
-     * <p>Counted over every conjunct and not over the ones a line came out of, so that a reading
-     * that could make nothing of one conjunct still numbers the next the same as a reading that
-     * could.
-     */
-    public record Drawn(DeclaredLine line) {
-
-        public Drawn {
-            if (line == null) {
-                throw new IllegalArgumentException("a rule put an end here, and this is which");
-            }
-        }
-
-        /** Which conjunct of which rule put the end here, which is what a report names it by. */
-        public PartId<RuleRef.Invariant> part() {
-            return line.part();
-        }
-    }
-
-    /**
-     * One end of a range, and every rule that put it there.
-     *
-     * <p>Rules, plural. Two layers can state the same bound — a wrapper repeating what it wraps — and
-     * they are two rules a row could be owed to, which is the accounting a cut already keeps. Holding
-     * one would drop an obligation rather than a line of text.
+     * <p>Evidence, plural. Two layers can state the same bound — a wrapper repeating what it wraps —
+     * and they are two rules a row could be owed to, which is the accounting a cut already keeps.
+     * Holding one would drop an obligation rather than a line of text.
      *
      * <p>The clauses and not the declarations they are written on. Held as declarations, two clauses
      * of one declaration at one value came out as one rule, and a report owed one line for a
      * boundary two rules had drawn ({@link Clause}).
      *
-     * <p>Each as the rule a report names it by. An end here is read by the measure that turns it
-     * into lines to write rows at, and that measure names the rule that drew it — handed the clause
-     * reference, it built the identity back for itself, which is a decision about what a rule is
-     * being taken by whoever happened to consume one.
+     * <p><b>What was established, and not the lines it comes to.</b> Which lines an end is owed to
+     * is a question about the end: a conjunct taken away moves an end that one of its own statements
+     * placed, and what that shows is the statement's line found a second way rather than a line
+     * beside it. Answered where each piece of evidence is made, that reading has only its own piece
+     * in hand and there is no answer to give — so it is answered here, where every piece about this
+     * end is ({@link #drawn}).
      */
-    public record End(Endpoint at, List<Drawn> from) {
+    public record End(Endpoint at, List<LineProvenance> found) {
 
         public Place value() {
             return at.at();
+        }
+
+        /**
+         * The lines this end is owed to, read off everything established about it.
+         *
+         * <p>A statement's line wherever the evidence is about one statement, whichever reading
+         * established it: a comparison that placed the end, and a conjunct whose one statement on
+         * this number accounts for it, are the same line found two ways and one row to write.
+         *
+         * <p>And a line of several statements together only where none of them is a line here
+         * already. Taking a conjunct away takes away every statement it made, so where one of them
+         * placed this end on its own the intervention was bound to move it — what the coarser
+         * reading established is the line that is already here, and nothing beside it. Read as a
+         * line of its own, {@code n >= 0 && n /= 100} written into one conjunct owes two rows at the
+         * bottom of its range, where the author drew one.
+         *
+         * <p>Not a rule about which reading wins. Where the ends are apart there is no such
+         * subsumption to make and both are lines: {@code n >= 0 && n /= 0} places one at nought and
+         * leaves the values starting at one, and the second is a line neither statement drew.
+         */
+        public List<DeclaredLine> drawn() {
+            Set<InvariantStatementId> here = new LinkedHashSet<>();
+            for (LineProvenance each : found) {
+                InvariantStatementId one = each.aboutOneStatement();
+                if (one != null) {
+                    here.add(one);
+                }
+            }
+            List<DeclaredLine> out = new ArrayList<>();
+            here.forEach(each -> out.add(new DeclaredLine.OfAStatement(each)));
+            for (LineProvenance each : found) {
+                if (each.aboutOneStatement() != null
+                        || each.statements().stream().anyMatch(here::contains)) {
+                    continue;
+                }
+                DeclaredLine together = new DeclaredLine.OfStatementsTogether(each.statements());
+                if (!out.contains(together)) {
+                    out.add(together);
+                }
+            }
+            return List.copyOf(out);
         }
 
         /**
@@ -114,8 +113,8 @@ public final class DeclaredBounds {
             if (had.value().compareTo(one.value()) != 0) {
                 return at == had.at() ? had : one;
             }
-            List<Drawn> both = new ArrayList<>(had.from());
-            one.from().stream().filter(n -> !both.contains(n)).forEach(both::add);
+            List<LineProvenance> both = new ArrayList<>(had.found());
+            one.found().stream().filter(n -> !both.contains(n)).forEach(both::add);
             return new End(at, List.copyOf(both));
         }
     }
@@ -240,7 +239,7 @@ public final class DeclaredBounds {
             if (!each.at().of().equals(kind)) {
                 continue;
             }
-            End end = new End(each.end(), List.of(new Drawn(each.from().line())));
+            End end = new End(each.end(), List.of(each.from()));
             if (each.lower()) {
                 min = End.tighter(min, end, false);
             } else {
