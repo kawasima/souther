@@ -1,0 +1,26 @@
+// A condition the arithmetic reads nothing of, written where a reader can open it.
+//
+// The line here is the one the second guard draws, and the way to it runs through the first. That
+// one is a string equality, which is a comparison this compiler has no cut for: the walk declines
+// it, and every row composed for the line is composed without it. Such a row does not arrive, so
+// the search comes back with nothing and the condition it was composed without is owed to a reader
+// — pointed at where the module that wrote it says it is written.
+module conformance.vouchers exposing ( Voucher, Party, Redeemed, redeem )
+
+data Voucher = String
+    invariant String.length(value) >= 1
+
+data Party = Int
+    invariant value >= 1 && value <= 8
+
+data Redeemed = { voucher: Voucher, party: Party }
+
+behavior redeem : (voucher: Voucher, party: Party)
+    -> Redeemed | NotThisVoucher | TooManyForOneVoucher
+    constructs Redeemed
+
+let redeem (voucher, party) = {
+    guard voucher.value == "spring" else NotThisVoucher
+    guard party.value <= 4 else TooManyForOneVoucher
+    Redeemed { voucher = voucher, party = party }
+}

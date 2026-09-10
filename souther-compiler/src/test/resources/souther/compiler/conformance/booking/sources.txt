@@ -1,3 +1,5 @@
 booking.sou
+vouchers.sou
+waitlist.sou
 holds.sou
 deposits.sou

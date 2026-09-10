@@ -887,6 +887,1824 @@
       "findings" : [ ]
     } ]
   }, {
+    "module" : "conformance.vouchers",
+    "status" : "complete",
+    "incompleteness" : [ ],
+    "declarations" : [ {
+      "owners" : [ {
+        "kind" : "declared",
+        "module" : "conformance.vouchers",
+        "name" : "Voucher"
+      } ],
+      "name" : "Voucher",
+      "obligations" : [ {
+        "obligationId" : {
+          "line" : {
+            "which" : {
+              "kind" : "part",
+              "rule" : {
+                "kind" : "invariant",
+                "declaredIn" : "conformance.vouchers",
+                "declaredOn" : "Voucher",
+                "clause" : 0
+              },
+              "part" : 0
+            },
+            "facts" : {
+              "valueBelongsBelow" : false,
+              "holdsAtTheValue" : true,
+              "singles" : false
+            },
+            "narrowedWithin" : [ ]
+          },
+          "level" : {
+            "kind" : "on_a_carrier",
+            "carrier" : {
+              "kind" : "whole"
+            },
+            "at" : "1"
+          },
+          "location" : {
+            "kind" : "at_the_line"
+          }
+        },
+        "point" : "on",
+        "rule" : "invariant Voucher #1",
+        "ruleId" : {
+          "kind" : "invariant",
+          "declaredIn" : "conformance.vouchers",
+          "declaredOn" : "Voucher",
+          "clause" : 0
+        },
+        "relation" : "=",
+        "axis" : "String.length(value)",
+        "against" : "1",
+        "knownWritable" : true,
+        "writableBecause" : [ "the_rules_prove_it", "a_value_was_built" ],
+        "status" : "unavailable",
+        "reason" : "no_rows",
+        "disposition" : "undecided",
+        "undecidedAbout" : [ "whether_a_row_is_at_it" ],
+        "readings" : [ {
+          "behavior" : "redeem",
+          "axis" : "redeem/String.length(voucher)",
+          "relation" : "=",
+          "against" : "1",
+          "status" : "unavailable",
+          "reason" : "no_rows"
+        } ]
+      }, {
+        "obligationId" : {
+          "line" : {
+            "which" : {
+              "kind" : "part",
+              "rule" : {
+                "kind" : "invariant",
+                "declaredIn" : "conformance.vouchers",
+                "declaredOn" : "Voucher",
+                "clause" : 0
+              },
+              "part" : 0
+            },
+            "facts" : {
+              "valueBelongsBelow" : false,
+              "holdsAtTheValue" : true,
+              "singles" : false
+            },
+            "narrowedWithin" : [ ]
+          },
+          "level" : {
+            "kind" : "on_a_carrier",
+            "carrier" : {
+              "kind" : "whole"
+            },
+            "at" : "1"
+          },
+          "location" : {
+            "kind" : "in_the_region",
+            "side" : "above"
+          },
+          "stops" : {
+            "kind" : "at_the_order_end",
+            "towards" : "above"
+          }
+        },
+        "point" : "in",
+        "rule" : "invariant Voucher #1",
+        "ruleId" : {
+          "kind" : "invariant",
+          "declaredIn" : "conformance.vouchers",
+          "declaredOn" : "Voucher",
+          "clause" : 0
+        },
+        "relation" : "in",
+        "axis" : "String.length(value)",
+        "against" : "1 < String.length(value)",
+        "knownWritable" : true,
+        "writableBecause" : [ "the_rules_prove_it", "a_value_was_built" ],
+        "status" : "unavailable",
+        "reason" : "no_rows",
+        "disposition" : "undecided",
+        "undecidedAbout" : [ "whether_a_row_is_at_it" ],
+        "readings" : [ {
+          "behavior" : "redeem",
+          "axis" : "redeem/String.length(voucher)",
+          "relation" : "in",
+          "against" : "1 < String.length(voucher)",
+          "status" : "unavailable",
+          "reason" : "no_rows"
+        } ]
+      } ],
+      "findings" : [ ]
+    }, {
+      "owners" : [ {
+        "kind" : "declared",
+        "module" : "conformance.vouchers",
+        "name" : "Party"
+      } ],
+      "name" : "Party",
+      "obligations" : [ {
+        "obligationId" : {
+          "line" : {
+            "which" : {
+              "kind" : "part",
+              "rule" : {
+                "kind" : "invariant",
+                "declaredIn" : "conformance.vouchers",
+                "declaredOn" : "Party",
+                "clause" : 0
+              },
+              "part" : 0
+            },
+            "facts" : {
+              "valueBelongsBelow" : false,
+              "holdsAtTheValue" : true,
+              "singles" : false
+            },
+            "narrowedWithin" : [ ]
+          },
+          "level" : {
+            "kind" : "on_a_carrier",
+            "carrier" : {
+              "kind" : "whole"
+            },
+            "at" : "1"
+          },
+          "location" : {
+            "kind" : "at_the_line"
+          }
+        },
+        "point" : "on",
+        "rule" : "invariant Party #1",
+        "ruleId" : {
+          "kind" : "invariant",
+          "declaredIn" : "conformance.vouchers",
+          "declaredOn" : "Party",
+          "clause" : 0
+        },
+        "relation" : "=",
+        "axis" : "value",
+        "against" : "1",
+        "knownWritable" : true,
+        "writableBecause" : [ "the_rules_prove_it", "a_value_was_built" ],
+        "status" : "unavailable",
+        "reason" : "no_rows",
+        "disposition" : "undecided",
+        "undecidedAbout" : [ "whether_a_row_is_at_it" ],
+        "readings" : [ {
+          "behavior" : "redeem",
+          "axis" : "redeem/party",
+          "relation" : "=",
+          "against" : "1",
+          "status" : "unavailable",
+          "reason" : "no_rows"
+        } ]
+      }, {
+        "obligationId" : {
+          "line" : {
+            "which" : {
+              "kind" : "part",
+              "rule" : {
+                "kind" : "invariant",
+                "declaredIn" : "conformance.vouchers",
+                "declaredOn" : "Party",
+                "clause" : 0
+              },
+              "part" : 1
+            },
+            "facts" : {
+              "valueBelongsBelow" : true,
+              "holdsAtTheValue" : true,
+              "singles" : false
+            },
+            "narrowedWithin" : [ ]
+          },
+          "level" : {
+            "kind" : "on_a_carrier",
+            "carrier" : {
+              "kind" : "whole"
+            },
+            "at" : "8"
+          },
+          "location" : {
+            "kind" : "at_the_line"
+          }
+        },
+        "point" : "on",
+        "rule" : "invariant Party #1",
+        "ruleId" : {
+          "kind" : "invariant",
+          "declaredIn" : "conformance.vouchers",
+          "declaredOn" : "Party",
+          "clause" : 0
+        },
+        "relation" : "=",
+        "axis" : "value",
+        "against" : "8",
+        "knownWritable" : true,
+        "writableBecause" : [ "the_rules_prove_it", "a_value_was_built" ],
+        "status" : "unavailable",
+        "reason" : "no_rows",
+        "disposition" : "undecided",
+        "undecidedAbout" : [ "whether_a_row_is_at_it" ],
+        "readings" : [ {
+          "behavior" : "redeem",
+          "axis" : "redeem/party",
+          "relation" : "=",
+          "against" : "8",
+          "status" : "unavailable",
+          "reason" : "no_rows"
+        } ]
+      } ],
+      "findings" : [ ]
+    } ],
+    "behaviors" : [ {
+      "name" : "redeem",
+      "implementation" : "implemented",
+      "rows" : 0,
+      "pending" : 0,
+      "status" : "complete",
+      "signature" : {
+        "status" : "unavailable",
+        "reason" : "no_rows",
+        "output" : {
+          "declared" : [ "NotThisVoucher", "Redeemed", "TooManyForOneVoucher" ],
+          "status" : "unavailable",
+          "reason" : "no_rows"
+        },
+        "inputs" : [ {
+          "declared" : [ ],
+          "excluded" : [ ],
+          "status" : "unavailable",
+          "reason" : "not_a_sum"
+        }, {
+          "declared" : [ ],
+          "excluded" : [ ],
+          "status" : "unavailable",
+          "reason" : "not_a_sum"
+        } ]
+      },
+      "partition" : {
+        "axesMeasure" : {
+          "status" : "complete"
+        },
+        "boundariesMeasure" : {
+          "status" : "complete"
+        },
+        "axes" : [ {
+          "axis" : "redeem/party",
+          "path" : "party",
+          "read" : {
+            "extent" : "complete"
+          },
+          "classes" : [ "party/1 <= x <= 4", "party/4 < x <= 8" ],
+          "excluded" : [ ],
+          "unprovenClaims" : [ ],
+          "status" : "unavailable",
+          "reason" : "no_rows"
+        } ],
+        "claimsOffAxis" : [ ],
+        "boundaries" : [ {
+          "axis" : "redeem/String.length(voucher)",
+          "origin" : "invariant Voucher #1",
+          "kind" : "at_value",
+          "value" : "1",
+          "items" : [ {
+            "point" : "on",
+            "location" : {
+              "kind" : "at_the_line"
+            },
+            "relation" : "=",
+            "against" : "1",
+            "knownWritable" : true,
+            "writableBecause" : [ "the_rules_prove_it", "a_value_was_built" ],
+            "status" : "unavailable",
+            "reason" : "no_rows"
+          }, {
+            "point" : "off",
+            "location" : {
+              "kind" : "beside_the_line",
+              "side" : "below"
+            },
+            "notOwed" : "the_rules_refuse_it"
+          }, {
+            "point" : "in",
+            "location" : {
+              "kind" : "in_the_region",
+              "side" : "above"
+            },
+            "relation" : "in",
+            "against" : "1 < String.length(voucher)",
+            "knownWritable" : true,
+            "writableBecause" : [ "the_rules_prove_it", "a_value_was_built" ],
+            "status" : "unavailable",
+            "reason" : "no_rows"
+          }, {
+            "point" : "out",
+            "location" : {
+              "kind" : "in_the_region",
+              "side" : "below"
+            },
+            "notOwed" : "the_rules_refuse_it"
+          } ]
+        }, {
+          "axis" : "redeem/party",
+          "origin" : "invariant Party #1",
+          "kind" : "at_value",
+          "value" : "1",
+          "items" : [ {
+            "point" : "on",
+            "location" : {
+              "kind" : "at_the_line"
+            },
+            "relation" : "=",
+            "against" : "1",
+            "knownWritable" : true,
+            "writableBecause" : [ "the_rules_prove_it", "a_value_was_built" ],
+            "status" : "unavailable",
+            "reason" : "no_rows"
+          }, {
+            "point" : "off",
+            "location" : {
+              "kind" : "beside_the_line",
+              "side" : "below"
+            },
+            "notOwed" : "the_rules_refuse_it"
+          }, {
+            "point" : "in",
+            "location" : {
+              "kind" : "in_the_region",
+              "side" : "above"
+            },
+            "relation" : "in",
+            "against" : "1 < party <= 4",
+            "knownWritable" : true,
+            "writableBecause" : [ "the_rules_prove_it", "a_value_was_built" ],
+            "status" : "unavailable",
+            "reason" : "no_rows"
+          }, {
+            "point" : "out",
+            "location" : {
+              "kind" : "in_the_region",
+              "side" : "below"
+            },
+            "notOwed" : "the_rules_refuse_it"
+          } ]
+        }, {
+          "axis" : "redeem/party",
+          "origin" : "invariant Party #1",
+          "kind" : "at_value",
+          "value" : "8",
+          "items" : [ {
+            "point" : "on",
+            "location" : {
+              "kind" : "at_the_line"
+            },
+            "relation" : "=",
+            "against" : "8",
+            "knownWritable" : true,
+            "writableBecause" : [ "the_rules_prove_it", "a_value_was_built" ],
+            "status" : "unavailable",
+            "reason" : "no_rows"
+          }, {
+            "point" : "off",
+            "location" : {
+              "kind" : "beside_the_line",
+              "side" : "above"
+            },
+            "notOwed" : "the_rules_refuse_it"
+          }, {
+            "point" : "in",
+            "location" : {
+              "kind" : "in_the_region",
+              "side" : "below"
+            },
+            "relation" : "in",
+            "against" : "4 < party < 8",
+            "knownWritable" : true,
+            "writableBecause" : [ "the_rules_prove_it", "a_value_was_built" ],
+            "status" : "unavailable",
+            "reason" : "no_rows"
+          }, {
+            "point" : "out",
+            "location" : {
+              "kind" : "in_the_region",
+              "side" : "above"
+            },
+            "notOwed" : "the_rules_refuse_it"
+          } ]
+        }, {
+          "axis" : "redeem/party",
+          "origin" : "comparison@1:24:23",
+          "kind" : "at_value",
+          "value" : "4",
+          "items" : [ {
+            "point" : "on",
+            "location" : {
+              "kind" : "at_the_line"
+            },
+            "relation" : "=",
+            "against" : "4",
+            "knownWritable" : true,
+            "writableBecause" : [ "the_rules_prove_it" ],
+            "status" : "unavailable",
+            "reason" : "no_rows"
+          }, {
+            "point" : "off",
+            "location" : {
+              "kind" : "beside_the_line",
+              "side" : "above"
+            },
+            "relation" : "=",
+            "against" : "5",
+            "knownWritable" : true,
+            "writableBecause" : [ "the_rules_prove_it" ],
+            "status" : "unavailable",
+            "reason" : "no_rows"
+          }, {
+            "point" : "in",
+            "location" : {
+              "kind" : "in_the_region",
+              "side" : "below"
+            },
+            "relation" : "in",
+            "against" : "1 <= party < 4",
+            "knownWritable" : true,
+            "writableBecause" : [ "the_rules_prove_it" ],
+            "status" : "unavailable",
+            "reason" : "no_rows"
+          }, {
+            "point" : "out",
+            "location" : {
+              "kind" : "in_the_region",
+              "side" : "above"
+            },
+            "relation" : "in",
+            "against" : "5 < party <= 8",
+            "knownWritable" : true,
+            "writableBecause" : [ "the_rules_prove_it" ],
+            "status" : "unavailable",
+            "reason" : "no_rows"
+          } ]
+        } ],
+        "obligations" : [ {
+          "obligationId" : {
+            "line" : {
+              "which" : {
+                "kind" : "part",
+                "rule" : {
+                  "kind" : "invariant",
+                  "declaredIn" : "conformance.vouchers",
+                  "declaredOn" : "Party",
+                  "clause" : 0
+                },
+                "part" : 0
+              },
+              "facts" : {
+                "valueBelongsBelow" : false,
+                "holdsAtTheValue" : true,
+                "singles" : false
+              },
+              "narrowedWithin" : [ ]
+            },
+            "level" : {
+              "kind" : "on_a_carrier",
+              "carrier" : {
+                "kind" : "whole"
+              },
+              "at" : "1"
+            },
+            "location" : {
+              "kind" : "in_the_region",
+              "side" : "above"
+            },
+            "stops" : {
+              "kind" : "at_a_line",
+              "line" : {
+                "which" : {
+                  "kind" : "comparison",
+                  "rule" : {
+                    "kind" : "comparison",
+                    "declaredIn" : "conformance.vouchers",
+                    "definition" : "redeem",
+                    "behavior" : "redeem",
+                    "ordinal" : 1,
+                    "lowered" : 0
+                  }
+                },
+                "facts" : {
+                  "valueBelongsBelow" : true,
+                  "holdsAtTheValue" : true,
+                  "singles" : false
+                },
+                "narrowedWithin" : [ ]
+              },
+              "where" : "4|5"
+            }
+          },
+          "point" : "in",
+          "rule" : "invariant Party #1",
+          "ruleId" : {
+            "kind" : "invariant",
+            "declaredIn" : "conformance.vouchers",
+            "declaredOn" : "Party",
+            "clause" : 0
+          },
+          "relation" : "in",
+          "knownWritable" : true,
+          "writableBecause" : [ "the_rules_prove_it", "a_value_was_built" ],
+          "status" : "unavailable",
+          "reason" : "no_rows",
+          "disposition" : "undecided",
+          "undecidedAbout" : [ "whether_a_row_is_at_it" ],
+          "readings" : [ {
+            "behavior" : "redeem",
+            "axis" : "redeem/party",
+            "relation" : "in",
+            "against" : "1 < party <= 4",
+            "status" : "unavailable",
+            "reason" : "no_rows"
+          } ]
+        }, {
+          "obligationId" : {
+            "line" : {
+              "which" : {
+                "kind" : "part",
+                "rule" : {
+                  "kind" : "invariant",
+                  "declaredIn" : "conformance.vouchers",
+                  "declaredOn" : "Party",
+                  "clause" : 0
+                },
+                "part" : 1
+              },
+              "facts" : {
+                "valueBelongsBelow" : true,
+                "holdsAtTheValue" : true,
+                "singles" : false
+              },
+              "narrowedWithin" : [ ]
+            },
+            "level" : {
+              "kind" : "on_a_carrier",
+              "carrier" : {
+                "kind" : "whole"
+              },
+              "at" : "8"
+            },
+            "location" : {
+              "kind" : "in_the_region",
+              "side" : "below"
+            },
+            "stops" : {
+              "kind" : "at_a_line",
+              "line" : {
+                "which" : {
+                  "kind" : "comparison",
+                  "rule" : {
+                    "kind" : "comparison",
+                    "declaredIn" : "conformance.vouchers",
+                    "definition" : "redeem",
+                    "behavior" : "redeem",
+                    "ordinal" : 1,
+                    "lowered" : 0
+                  }
+                },
+                "facts" : {
+                  "valueBelongsBelow" : true,
+                  "holdsAtTheValue" : true,
+                  "singles" : false
+                },
+                "narrowedWithin" : [ ]
+              },
+              "where" : "4|5"
+            }
+          },
+          "point" : "in",
+          "rule" : "invariant Party #1",
+          "ruleId" : {
+            "kind" : "invariant",
+            "declaredIn" : "conformance.vouchers",
+            "declaredOn" : "Party",
+            "clause" : 0
+          },
+          "relation" : "in",
+          "knownWritable" : true,
+          "writableBecause" : [ "the_rules_prove_it", "a_value_was_built" ],
+          "status" : "unavailable",
+          "reason" : "no_rows",
+          "disposition" : "undecided",
+          "undecidedAbout" : [ "whether_a_row_is_at_it" ],
+          "readings" : [ {
+            "behavior" : "redeem",
+            "axis" : "redeem/party",
+            "relation" : "in",
+            "against" : "4 < party < 8",
+            "status" : "unavailable",
+            "reason" : "no_rows"
+          } ]
+        }, {
+          "obligationId" : {
+            "line" : {
+              "which" : {
+                "kind" : "comparison",
+                "rule" : {
+                  "kind" : "comparison",
+                  "declaredIn" : "conformance.vouchers",
+                  "definition" : "redeem",
+                  "behavior" : "redeem",
+                  "ordinal" : 1,
+                  "lowered" : 0
+                }
+              },
+              "facts" : {
+                "valueBelongsBelow" : true,
+                "holdsAtTheValue" : true,
+                "singles" : false
+              },
+              "narrowedWithin" : [ ]
+            },
+            "level" : {
+              "kind" : "on_a_carrier",
+              "carrier" : {
+                "kind" : "whole"
+              },
+              "at" : "4"
+            },
+            "location" : {
+              "kind" : "at_the_line"
+            }
+          },
+          "point" : "on",
+          "rule" : "comparison@1:24:23",
+          "ruleId" : {
+            "kind" : "comparison",
+            "declaredIn" : "conformance.vouchers",
+            "definition" : "redeem",
+            "behavior" : "redeem",
+            "ordinal" : 1,
+            "lowered" : 0
+          },
+          "relation" : "=",
+          "knownWritable" : true,
+          "writableBecause" : [ "the_rules_prove_it" ],
+          "status" : "unavailable",
+          "reason" : "no_rows",
+          "disposition" : "undecided",
+          "undecidedAbout" : [ "whether_a_row_is_at_it" ],
+          "readings" : [ {
+            "behavior" : "redeem",
+            "axis" : "redeem/party",
+            "relation" : "=",
+            "against" : "4",
+            "status" : "unavailable",
+            "reason" : "no_rows"
+          } ]
+        }, {
+          "obligationId" : {
+            "line" : {
+              "which" : {
+                "kind" : "comparison",
+                "rule" : {
+                  "kind" : "comparison",
+                  "declaredIn" : "conformance.vouchers",
+                  "definition" : "redeem",
+                  "behavior" : "redeem",
+                  "ordinal" : 1,
+                  "lowered" : 0
+                }
+              },
+              "facts" : {
+                "valueBelongsBelow" : true,
+                "holdsAtTheValue" : true,
+                "singles" : false
+              },
+              "narrowedWithin" : [ ]
+            },
+            "level" : {
+              "kind" : "on_a_carrier",
+              "carrier" : {
+                "kind" : "whole"
+              },
+              "at" : "4"
+            },
+            "location" : {
+              "kind" : "beside_the_line",
+              "side" : "above"
+            }
+          },
+          "point" : "off",
+          "rule" : "comparison@1:24:23",
+          "ruleId" : {
+            "kind" : "comparison",
+            "declaredIn" : "conformance.vouchers",
+            "definition" : "redeem",
+            "behavior" : "redeem",
+            "ordinal" : 1,
+            "lowered" : 0
+          },
+          "relation" : "=",
+          "knownWritable" : true,
+          "writableBecause" : [ "the_rules_prove_it" ],
+          "status" : "unavailable",
+          "reason" : "no_rows",
+          "disposition" : "undecided",
+          "undecidedAbout" : [ "whether_a_row_is_at_it" ],
+          "readings" : [ {
+            "behavior" : "redeem",
+            "axis" : "redeem/party",
+            "relation" : "=",
+            "against" : "5",
+            "status" : "unavailable",
+            "reason" : "no_rows"
+          } ]
+        }, {
+          "obligationId" : {
+            "line" : {
+              "which" : {
+                "kind" : "comparison",
+                "rule" : {
+                  "kind" : "comparison",
+                  "declaredIn" : "conformance.vouchers",
+                  "definition" : "redeem",
+                  "behavior" : "redeem",
+                  "ordinal" : 1,
+                  "lowered" : 0
+                }
+              },
+              "facts" : {
+                "valueBelongsBelow" : true,
+                "holdsAtTheValue" : true,
+                "singles" : false
+              },
+              "narrowedWithin" : [ ]
+            },
+            "level" : {
+              "kind" : "on_a_carrier",
+              "carrier" : {
+                "kind" : "whole"
+              },
+              "at" : "4"
+            },
+            "location" : {
+              "kind" : "in_the_region",
+              "side" : "below"
+            },
+            "stops" : {
+              "kind" : "at_the_domain",
+              "at" : {
+                "kind" : "on_a_carrier",
+                "carrier" : {
+                  "kind" : "whole"
+                },
+                "at" : "1"
+              },
+              "per" : "1",
+              "inclusive" : true
+            }
+          },
+          "point" : "in",
+          "rule" : "comparison@1:24:23",
+          "ruleId" : {
+            "kind" : "comparison",
+            "declaredIn" : "conformance.vouchers",
+            "definition" : "redeem",
+            "behavior" : "redeem",
+            "ordinal" : 1,
+            "lowered" : 0
+          },
+          "relation" : "in",
+          "knownWritable" : true,
+          "writableBecause" : [ "the_rules_prove_it" ],
+          "status" : "unavailable",
+          "reason" : "no_rows",
+          "disposition" : "undecided",
+          "undecidedAbout" : [ "whether_a_row_is_at_it" ],
+          "readings" : [ {
+            "behavior" : "redeem",
+            "axis" : "redeem/party",
+            "relation" : "in",
+            "against" : "1 <= party < 4",
+            "status" : "unavailable",
+            "reason" : "no_rows"
+          } ]
+        }, {
+          "obligationId" : {
+            "line" : {
+              "which" : {
+                "kind" : "comparison",
+                "rule" : {
+                  "kind" : "comparison",
+                  "declaredIn" : "conformance.vouchers",
+                  "definition" : "redeem",
+                  "behavior" : "redeem",
+                  "ordinal" : 1,
+                  "lowered" : 0
+                }
+              },
+              "facts" : {
+                "valueBelongsBelow" : true,
+                "holdsAtTheValue" : true,
+                "singles" : false
+              },
+              "narrowedWithin" : [ ]
+            },
+            "level" : {
+              "kind" : "on_a_carrier",
+              "carrier" : {
+                "kind" : "whole"
+              },
+              "at" : "4"
+            },
+            "location" : {
+              "kind" : "in_the_region",
+              "side" : "above"
+            },
+            "stops" : {
+              "kind" : "at_the_domain",
+              "at" : {
+                "kind" : "on_a_carrier",
+                "carrier" : {
+                  "kind" : "whole"
+                },
+                "at" : "8"
+              },
+              "per" : "1",
+              "inclusive" : true
+            }
+          },
+          "point" : "out",
+          "rule" : "comparison@1:24:23",
+          "ruleId" : {
+            "kind" : "comparison",
+            "declaredIn" : "conformance.vouchers",
+            "definition" : "redeem",
+            "behavior" : "redeem",
+            "ordinal" : 1,
+            "lowered" : 0
+          },
+          "relation" : "in",
+          "knownWritable" : true,
+          "writableBecause" : [ "the_rules_prove_it" ],
+          "status" : "unavailable",
+          "reason" : "no_rows",
+          "disposition" : "undecided",
+          "undecidedAbout" : [ "whether_a_row_is_at_it" ],
+          "readings" : [ {
+            "behavior" : "redeem",
+            "axis" : "redeem/party",
+            "relation" : "in",
+            "against" : "5 < party <= 8",
+            "status" : "unavailable",
+            "reason" : "no_rows"
+          } ]
+        } ],
+        "pairs" : {
+          "total" : 0,
+          "between" : [ ],
+          "status" : "complete",
+          "covered" : 0,
+          "unknown" : 0
+        },
+        "notDerivable" : [ ],
+        "notRead" : [ ]
+      },
+      "branch" : {
+        "status" : "unavailable",
+        "reason" : "no_rows"
+      },
+      "findings" : [ ]
+    } ]
+  }, {
+    "module" : "conformance.waitlist",
+    "status" : "complete",
+    "incompleteness" : [ ],
+    "declarations" : [ {
+      "owners" : [ {
+        "kind" : "declared",
+        "module" : "conformance.waitlist",
+        "name" : "Ticket"
+      } ],
+      "name" : "Ticket",
+      "obligations" : [ {
+        "obligationId" : {
+          "line" : {
+            "which" : {
+              "kind" : "part",
+              "rule" : {
+                "kind" : "invariant",
+                "declaredIn" : "conformance.waitlist",
+                "declaredOn" : "Ticket",
+                "clause" : 0
+              },
+              "part" : 0
+            },
+            "facts" : {
+              "valueBelongsBelow" : false,
+              "holdsAtTheValue" : true,
+              "singles" : false
+            },
+            "narrowedWithin" : [ ]
+          },
+          "level" : {
+            "kind" : "on_a_carrier",
+            "carrier" : {
+              "kind" : "whole"
+            },
+            "at" : "1"
+          },
+          "location" : {
+            "kind" : "at_the_line"
+          }
+        },
+        "point" : "on",
+        "rule" : "invariant Ticket #1",
+        "ruleId" : {
+          "kind" : "invariant",
+          "declaredIn" : "conformance.waitlist",
+          "declaredOn" : "Ticket",
+          "clause" : 0
+        },
+        "relation" : "=",
+        "axis" : "String.length(value)",
+        "against" : "1",
+        "knownWritable" : true,
+        "writableBecause" : [ "the_rules_prove_it", "a_value_was_built" ],
+        "status" : "unavailable",
+        "reason" : "no_rows",
+        "disposition" : "undecided",
+        "undecidedAbout" : [ "whether_a_row_is_at_it" ],
+        "readings" : [ {
+          "behavior" : "seat",
+          "axis" : "seat/String.length(ticket)",
+          "relation" : "=",
+          "against" : "1",
+          "status" : "unavailable",
+          "reason" : "no_rows"
+        } ]
+      }, {
+        "obligationId" : {
+          "line" : {
+            "which" : {
+              "kind" : "part",
+              "rule" : {
+                "kind" : "invariant",
+                "declaredIn" : "conformance.waitlist",
+                "declaredOn" : "Ticket",
+                "clause" : 0
+              },
+              "part" : 0
+            },
+            "facts" : {
+              "valueBelongsBelow" : false,
+              "holdsAtTheValue" : true,
+              "singles" : false
+            },
+            "narrowedWithin" : [ ]
+          },
+          "level" : {
+            "kind" : "on_a_carrier",
+            "carrier" : {
+              "kind" : "whole"
+            },
+            "at" : "1"
+          },
+          "location" : {
+            "kind" : "in_the_region",
+            "side" : "above"
+          },
+          "stops" : {
+            "kind" : "at_the_order_end",
+            "towards" : "above"
+          }
+        },
+        "point" : "in",
+        "rule" : "invariant Ticket #1",
+        "ruleId" : {
+          "kind" : "invariant",
+          "declaredIn" : "conformance.waitlist",
+          "declaredOn" : "Ticket",
+          "clause" : 0
+        },
+        "relation" : "in",
+        "axis" : "String.length(value)",
+        "against" : "1 < String.length(value)",
+        "knownWritable" : true,
+        "writableBecause" : [ "the_rules_prove_it", "a_value_was_built" ],
+        "status" : "unavailable",
+        "reason" : "no_rows",
+        "disposition" : "undecided",
+        "undecidedAbout" : [ "whether_a_row_is_at_it" ],
+        "readings" : [ {
+          "behavior" : "seat",
+          "axis" : "seat/String.length(ticket)",
+          "relation" : "in",
+          "against" : "1 < String.length(ticket)",
+          "status" : "unavailable",
+          "reason" : "no_rows"
+        } ]
+      } ],
+      "findings" : [ ]
+    }, {
+      "owners" : [ {
+        "kind" : "declared",
+        "module" : "conformance.waitlist",
+        "name" : "Party"
+      } ],
+      "name" : "Party",
+      "obligations" : [ {
+        "obligationId" : {
+          "line" : {
+            "which" : {
+              "kind" : "part",
+              "rule" : {
+                "kind" : "invariant",
+                "declaredIn" : "conformance.waitlist",
+                "declaredOn" : "Party",
+                "clause" : 0
+              },
+              "part" : 0
+            },
+            "facts" : {
+              "valueBelongsBelow" : false,
+              "holdsAtTheValue" : true,
+              "singles" : false
+            },
+            "narrowedWithin" : [ ]
+          },
+          "level" : {
+            "kind" : "on_a_carrier",
+            "carrier" : {
+              "kind" : "whole"
+            },
+            "at" : "1"
+          },
+          "location" : {
+            "kind" : "at_the_line"
+          }
+        },
+        "point" : "on",
+        "rule" : "invariant Party #1",
+        "ruleId" : {
+          "kind" : "invariant",
+          "declaredIn" : "conformance.waitlist",
+          "declaredOn" : "Party",
+          "clause" : 0
+        },
+        "relation" : "=",
+        "axis" : "value",
+        "against" : "1",
+        "knownWritable" : true,
+        "writableBecause" : [ "the_rules_prove_it", "a_value_was_built" ],
+        "status" : "unavailable",
+        "reason" : "no_rows",
+        "disposition" : "undecided",
+        "undecidedAbout" : [ "whether_a_row_is_at_it" ],
+        "readings" : [ {
+          "behavior" : "seat",
+          "axis" : "seat/party",
+          "relation" : "=",
+          "against" : "1",
+          "status" : "unavailable",
+          "reason" : "no_rows"
+        } ]
+      }, {
+        "obligationId" : {
+          "line" : {
+            "which" : {
+              "kind" : "part",
+              "rule" : {
+                "kind" : "invariant",
+                "declaredIn" : "conformance.waitlist",
+                "declaredOn" : "Party",
+                "clause" : 0
+              },
+              "part" : 1
+            },
+            "facts" : {
+              "valueBelongsBelow" : true,
+              "holdsAtTheValue" : true,
+              "singles" : false
+            },
+            "narrowedWithin" : [ ]
+          },
+          "level" : {
+            "kind" : "on_a_carrier",
+            "carrier" : {
+              "kind" : "whole"
+            },
+            "at" : "8"
+          },
+          "location" : {
+            "kind" : "at_the_line"
+          }
+        },
+        "point" : "on",
+        "rule" : "invariant Party #1",
+        "ruleId" : {
+          "kind" : "invariant",
+          "declaredIn" : "conformance.waitlist",
+          "declaredOn" : "Party",
+          "clause" : 0
+        },
+        "relation" : "=",
+        "axis" : "value",
+        "against" : "8",
+        "knownWritable" : true,
+        "writableBecause" : [ "the_rules_prove_it", "a_value_was_built" ],
+        "status" : "unavailable",
+        "reason" : "no_rows",
+        "disposition" : "undecided",
+        "undecidedAbout" : [ "whether_a_row_is_at_it" ],
+        "readings" : [ {
+          "behavior" : "seat",
+          "axis" : "seat/party",
+          "relation" : "=",
+          "against" : "8",
+          "status" : "unavailable",
+          "reason" : "no_rows"
+        } ]
+      } ],
+      "findings" : [ ]
+    } ],
+    "behaviors" : [ {
+      "name" : "seat",
+      "implementation" : "implemented",
+      "rows" : 0,
+      "pending" : 0,
+      "status" : "complete",
+      "signature" : {
+        "status" : "unavailable",
+        "reason" : "no_rows",
+        "output" : {
+          "declared" : [ "NotOnTheList", "Seated", "TooManyForOneTicket" ],
+          "status" : "unavailable",
+          "reason" : "no_rows"
+        },
+        "inputs" : [ {
+          "declared" : [ ],
+          "excluded" : [ ],
+          "status" : "unavailable",
+          "reason" : "not_a_sum"
+        }, {
+          "declared" : [ ],
+          "excluded" : [ ],
+          "status" : "unavailable",
+          "reason" : "not_a_sum"
+        } ]
+      },
+      "partition" : {
+        "axesMeasure" : {
+          "status" : "complete"
+        },
+        "boundariesMeasure" : {
+          "status" : "complete"
+        },
+        "axes" : [ {
+          "axis" : "seat/party",
+          "path" : "party",
+          "read" : {
+            "extent" : "complete"
+          },
+          "classes" : [ "party/1 <= x <= 4", "party/4 < x <= 8" ],
+          "excluded" : [ ],
+          "unprovenClaims" : [ ],
+          "status" : "unavailable",
+          "reason" : "no_rows"
+        } ],
+        "claimsOffAxis" : [ ],
+        "boundaries" : [ {
+          "axis" : "seat/String.length(ticket)",
+          "origin" : "invariant Ticket #1",
+          "kind" : "at_value",
+          "value" : "1",
+          "items" : [ {
+            "point" : "on",
+            "location" : {
+              "kind" : "at_the_line"
+            },
+            "relation" : "=",
+            "against" : "1",
+            "knownWritable" : true,
+            "writableBecause" : [ "the_rules_prove_it", "a_value_was_built" ],
+            "status" : "unavailable",
+            "reason" : "no_rows"
+          }, {
+            "point" : "off",
+            "location" : {
+              "kind" : "beside_the_line",
+              "side" : "below"
+            },
+            "notOwed" : "the_rules_refuse_it"
+          }, {
+            "point" : "in",
+            "location" : {
+              "kind" : "in_the_region",
+              "side" : "above"
+            },
+            "relation" : "in",
+            "against" : "1 < String.length(ticket)",
+            "knownWritable" : true,
+            "writableBecause" : [ "the_rules_prove_it", "a_value_was_built" ],
+            "status" : "unavailable",
+            "reason" : "no_rows"
+          }, {
+            "point" : "out",
+            "location" : {
+              "kind" : "in_the_region",
+              "side" : "below"
+            },
+            "notOwed" : "the_rules_refuse_it"
+          } ]
+        }, {
+          "axis" : "seat/party",
+          "origin" : "invariant Party #1",
+          "kind" : "at_value",
+          "value" : "1",
+          "items" : [ {
+            "point" : "on",
+            "location" : {
+              "kind" : "at_the_line"
+            },
+            "relation" : "=",
+            "against" : "1",
+            "knownWritable" : true,
+            "writableBecause" : [ "the_rules_prove_it", "a_value_was_built" ],
+            "status" : "unavailable",
+            "reason" : "no_rows"
+          }, {
+            "point" : "off",
+            "location" : {
+              "kind" : "beside_the_line",
+              "side" : "below"
+            },
+            "notOwed" : "the_rules_refuse_it"
+          }, {
+            "point" : "in",
+            "location" : {
+              "kind" : "in_the_region",
+              "side" : "above"
+            },
+            "relation" : "in",
+            "against" : "1 < party <= 4",
+            "knownWritable" : true,
+            "writableBecause" : [ "the_rules_prove_it", "a_value_was_built" ],
+            "status" : "unavailable",
+            "reason" : "no_rows"
+          }, {
+            "point" : "out",
+            "location" : {
+              "kind" : "in_the_region",
+              "side" : "below"
+            },
+            "notOwed" : "the_rules_refuse_it"
+          } ]
+        }, {
+          "axis" : "seat/party",
+          "origin" : "invariant Party #1",
+          "kind" : "at_value",
+          "value" : "8",
+          "items" : [ {
+            "point" : "on",
+            "location" : {
+              "kind" : "at_the_line"
+            },
+            "relation" : "=",
+            "against" : "8",
+            "knownWritable" : true,
+            "writableBecause" : [ "the_rules_prove_it", "a_value_was_built" ],
+            "status" : "unavailable",
+            "reason" : "no_rows"
+          }, {
+            "point" : "off",
+            "location" : {
+              "kind" : "beside_the_line",
+              "side" : "above"
+            },
+            "notOwed" : "the_rules_refuse_it"
+          }, {
+            "point" : "in",
+            "location" : {
+              "kind" : "in_the_region",
+              "side" : "below"
+            },
+            "relation" : "in",
+            "against" : "4 < party < 8",
+            "knownWritable" : true,
+            "writableBecause" : [ "the_rules_prove_it", "a_value_was_built" ],
+            "status" : "unavailable",
+            "reason" : "no_rows"
+          }, {
+            "point" : "out",
+            "location" : {
+              "kind" : "in_the_region",
+              "side" : "above"
+            },
+            "notOwed" : "the_rules_refuse_it"
+          } ]
+        }, {
+          "axis" : "seat/party",
+          "origin" : "comparison@2:24:23",
+          "kind" : "at_value",
+          "value" : "4",
+          "items" : [ {
+            "point" : "on",
+            "location" : {
+              "kind" : "at_the_line"
+            },
+            "relation" : "=",
+            "against" : "4",
+            "knownWritable" : true,
+            "writableBecause" : [ "the_rules_prove_it" ],
+            "status" : "unavailable",
+            "reason" : "no_rows"
+          }, {
+            "point" : "off",
+            "location" : {
+              "kind" : "beside_the_line",
+              "side" : "above"
+            },
+            "relation" : "=",
+            "against" : "5",
+            "knownWritable" : true,
+            "writableBecause" : [ "the_rules_prove_it" ],
+            "status" : "unavailable",
+            "reason" : "no_rows"
+          }, {
+            "point" : "in",
+            "location" : {
+              "kind" : "in_the_region",
+              "side" : "below"
+            },
+            "relation" : "in",
+            "against" : "1 <= party < 4",
+            "knownWritable" : true,
+            "writableBecause" : [ "the_rules_prove_it" ],
+            "status" : "unavailable",
+            "reason" : "no_rows"
+          }, {
+            "point" : "out",
+            "location" : {
+              "kind" : "in_the_region",
+              "side" : "above"
+            },
+            "relation" : "in",
+            "against" : "5 < party <= 8",
+            "knownWritable" : true,
+            "writableBecause" : [ "the_rules_prove_it" ],
+            "status" : "unavailable",
+            "reason" : "no_rows"
+          } ]
+        } ],
+        "obligations" : [ {
+          "obligationId" : {
+            "line" : {
+              "which" : {
+                "kind" : "part",
+                "rule" : {
+                  "kind" : "invariant",
+                  "declaredIn" : "conformance.waitlist",
+                  "declaredOn" : "Party",
+                  "clause" : 0
+                },
+                "part" : 0
+              },
+              "facts" : {
+                "valueBelongsBelow" : false,
+                "holdsAtTheValue" : true,
+                "singles" : false
+              },
+              "narrowedWithin" : [ ]
+            },
+            "level" : {
+              "kind" : "on_a_carrier",
+              "carrier" : {
+                "kind" : "whole"
+              },
+              "at" : "1"
+            },
+            "location" : {
+              "kind" : "in_the_region",
+              "side" : "above"
+            },
+            "stops" : {
+              "kind" : "at_a_line",
+              "line" : {
+                "which" : {
+                  "kind" : "comparison",
+                  "rule" : {
+                    "kind" : "comparison",
+                    "declaredIn" : "conformance.waitlist",
+                    "definition" : "seat",
+                    "behavior" : "seat",
+                    "ordinal" : 1,
+                    "lowered" : 0
+                  }
+                },
+                "facts" : {
+                  "valueBelongsBelow" : true,
+                  "holdsAtTheValue" : true,
+                  "singles" : false
+                },
+                "narrowedWithin" : [ ]
+              },
+              "where" : "4|5"
+            }
+          },
+          "point" : "in",
+          "rule" : "invariant Party #1",
+          "ruleId" : {
+            "kind" : "invariant",
+            "declaredIn" : "conformance.waitlist",
+            "declaredOn" : "Party",
+            "clause" : 0
+          },
+          "relation" : "in",
+          "knownWritable" : true,
+          "writableBecause" : [ "the_rules_prove_it", "a_value_was_built" ],
+          "status" : "unavailable",
+          "reason" : "no_rows",
+          "disposition" : "undecided",
+          "undecidedAbout" : [ "whether_a_row_is_at_it" ],
+          "readings" : [ {
+            "behavior" : "seat",
+            "axis" : "seat/party",
+            "relation" : "in",
+            "against" : "1 < party <= 4",
+            "status" : "unavailable",
+            "reason" : "no_rows"
+          } ]
+        }, {
+          "obligationId" : {
+            "line" : {
+              "which" : {
+                "kind" : "part",
+                "rule" : {
+                  "kind" : "invariant",
+                  "declaredIn" : "conformance.waitlist",
+                  "declaredOn" : "Party",
+                  "clause" : 0
+                },
+                "part" : 1
+              },
+              "facts" : {
+                "valueBelongsBelow" : true,
+                "holdsAtTheValue" : true,
+                "singles" : false
+              },
+              "narrowedWithin" : [ ]
+            },
+            "level" : {
+              "kind" : "on_a_carrier",
+              "carrier" : {
+                "kind" : "whole"
+              },
+              "at" : "8"
+            },
+            "location" : {
+              "kind" : "in_the_region",
+              "side" : "below"
+            },
+            "stops" : {
+              "kind" : "at_a_line",
+              "line" : {
+                "which" : {
+                  "kind" : "comparison",
+                  "rule" : {
+                    "kind" : "comparison",
+                    "declaredIn" : "conformance.waitlist",
+                    "definition" : "seat",
+                    "behavior" : "seat",
+                    "ordinal" : 1,
+                    "lowered" : 0
+                  }
+                },
+                "facts" : {
+                  "valueBelongsBelow" : true,
+                  "holdsAtTheValue" : true,
+                  "singles" : false
+                },
+                "narrowedWithin" : [ ]
+              },
+              "where" : "4|5"
+            }
+          },
+          "point" : "in",
+          "rule" : "invariant Party #1",
+          "ruleId" : {
+            "kind" : "invariant",
+            "declaredIn" : "conformance.waitlist",
+            "declaredOn" : "Party",
+            "clause" : 0
+          },
+          "relation" : "in",
+          "knownWritable" : true,
+          "writableBecause" : [ "the_rules_prove_it", "a_value_was_built" ],
+          "status" : "unavailable",
+          "reason" : "no_rows",
+          "disposition" : "undecided",
+          "undecidedAbout" : [ "whether_a_row_is_at_it" ],
+          "readings" : [ {
+            "behavior" : "seat",
+            "axis" : "seat/party",
+            "relation" : "in",
+            "against" : "4 < party < 8",
+            "status" : "unavailable",
+            "reason" : "no_rows"
+          } ]
+        }, {
+          "obligationId" : {
+            "line" : {
+              "which" : {
+                "kind" : "comparison",
+                "rule" : {
+                  "kind" : "comparison",
+                  "declaredIn" : "conformance.waitlist",
+                  "definition" : "seat",
+                  "behavior" : "seat",
+                  "ordinal" : 1,
+                  "lowered" : 0
+                }
+              },
+              "facts" : {
+                "valueBelongsBelow" : true,
+                "holdsAtTheValue" : true,
+                "singles" : false
+              },
+              "narrowedWithin" : [ ]
+            },
+            "level" : {
+              "kind" : "on_a_carrier",
+              "carrier" : {
+                "kind" : "whole"
+              },
+              "at" : "4"
+            },
+            "location" : {
+              "kind" : "at_the_line"
+            }
+          },
+          "point" : "on",
+          "rule" : "comparison@2:24:23",
+          "ruleId" : {
+            "kind" : "comparison",
+            "declaredIn" : "conformance.waitlist",
+            "definition" : "seat",
+            "behavior" : "seat",
+            "ordinal" : 1,
+            "lowered" : 0
+          },
+          "relation" : "=",
+          "knownWritable" : true,
+          "writableBecause" : [ "the_rules_prove_it" ],
+          "status" : "unavailable",
+          "reason" : "no_rows",
+          "disposition" : "undecided",
+          "undecidedAbout" : [ "whether_a_row_is_at_it" ],
+          "readings" : [ {
+            "behavior" : "seat",
+            "axis" : "seat/party",
+            "relation" : "=",
+            "against" : "4",
+            "status" : "unavailable",
+            "reason" : "no_rows"
+          } ]
+        }, {
+          "obligationId" : {
+            "line" : {
+              "which" : {
+                "kind" : "comparison",
+                "rule" : {
+                  "kind" : "comparison",
+                  "declaredIn" : "conformance.waitlist",
+                  "definition" : "seat",
+                  "behavior" : "seat",
+                  "ordinal" : 1,
+                  "lowered" : 0
+                }
+              },
+              "facts" : {
+                "valueBelongsBelow" : true,
+                "holdsAtTheValue" : true,
+                "singles" : false
+              },
+              "narrowedWithin" : [ ]
+            },
+            "level" : {
+              "kind" : "on_a_carrier",
+              "carrier" : {
+                "kind" : "whole"
+              },
+              "at" : "4"
+            },
+            "location" : {
+              "kind" : "beside_the_line",
+              "side" : "above"
+            }
+          },
+          "point" : "off",
+          "rule" : "comparison@2:24:23",
+          "ruleId" : {
+            "kind" : "comparison",
+            "declaredIn" : "conformance.waitlist",
+            "definition" : "seat",
+            "behavior" : "seat",
+            "ordinal" : 1,
+            "lowered" : 0
+          },
+          "relation" : "=",
+          "knownWritable" : true,
+          "writableBecause" : [ "the_rules_prove_it" ],
+          "status" : "unavailable",
+          "reason" : "no_rows",
+          "disposition" : "undecided",
+          "undecidedAbout" : [ "whether_a_row_is_at_it" ],
+          "readings" : [ {
+            "behavior" : "seat",
+            "axis" : "seat/party",
+            "relation" : "=",
+            "against" : "5",
+            "status" : "unavailable",
+            "reason" : "no_rows"
+          } ]
+        }, {
+          "obligationId" : {
+            "line" : {
+              "which" : {
+                "kind" : "comparison",
+                "rule" : {
+                  "kind" : "comparison",
+                  "declaredIn" : "conformance.waitlist",
+                  "definition" : "seat",
+                  "behavior" : "seat",
+                  "ordinal" : 1,
+                  "lowered" : 0
+                }
+              },
+              "facts" : {
+                "valueBelongsBelow" : true,
+                "holdsAtTheValue" : true,
+                "singles" : false
+              },
+              "narrowedWithin" : [ ]
+            },
+            "level" : {
+              "kind" : "on_a_carrier",
+              "carrier" : {
+                "kind" : "whole"
+              },
+              "at" : "4"
+            },
+            "location" : {
+              "kind" : "in_the_region",
+              "side" : "below"
+            },
+            "stops" : {
+              "kind" : "at_the_domain",
+              "at" : {
+                "kind" : "on_a_carrier",
+                "carrier" : {
+                  "kind" : "whole"
+                },
+                "at" : "1"
+              },
+              "per" : "1",
+              "inclusive" : true
+            }
+          },
+          "point" : "in",
+          "rule" : "comparison@2:24:23",
+          "ruleId" : {
+            "kind" : "comparison",
+            "declaredIn" : "conformance.waitlist",
+            "definition" : "seat",
+            "behavior" : "seat",
+            "ordinal" : 1,
+            "lowered" : 0
+          },
+          "relation" : "in",
+          "knownWritable" : true,
+          "writableBecause" : [ "the_rules_prove_it" ],
+          "status" : "unavailable",
+          "reason" : "no_rows",
+          "disposition" : "undecided",
+          "undecidedAbout" : [ "whether_a_row_is_at_it" ],
+          "readings" : [ {
+            "behavior" : "seat",
+            "axis" : "seat/party",
+            "relation" : "in",
+            "against" : "1 <= party < 4",
+            "status" : "unavailable",
+            "reason" : "no_rows"
+          } ]
+        }, {
+          "obligationId" : {
+            "line" : {
+              "which" : {
+                "kind" : "comparison",
+                "rule" : {
+                  "kind" : "comparison",
+                  "declaredIn" : "conformance.waitlist",
+                  "definition" : "seat",
+                  "behavior" : "seat",
+                  "ordinal" : 1,
+                  "lowered" : 0
+                }
+              },
+              "facts" : {
+                "valueBelongsBelow" : true,
+                "holdsAtTheValue" : true,
+                "singles" : false
+              },
+              "narrowedWithin" : [ ]
+            },
+            "level" : {
+              "kind" : "on_a_carrier",
+              "carrier" : {
+                "kind" : "whole"
+              },
+              "at" : "4"
+            },
+            "location" : {
+              "kind" : "in_the_region",
+              "side" : "above"
+            },
+            "stops" : {
+              "kind" : "at_the_domain",
+              "at" : {
+                "kind" : "on_a_carrier",
+                "carrier" : {
+                  "kind" : "whole"
+                },
+                "at" : "8"
+              },
+              "per" : "1",
+              "inclusive" : true
+            }
+          },
+          "point" : "out",
+          "rule" : "comparison@2:24:23",
+          "ruleId" : {
+            "kind" : "comparison",
+            "declaredIn" : "conformance.waitlist",
+            "definition" : "seat",
+            "behavior" : "seat",
+            "ordinal" : 1,
+            "lowered" : 0
+          },
+          "relation" : "in",
+          "knownWritable" : true,
+          "writableBecause" : [ "the_rules_prove_it" ],
+          "status" : "unavailable",
+          "reason" : "no_rows",
+          "disposition" : "undecided",
+          "undecidedAbout" : [ "whether_a_row_is_at_it" ],
+          "readings" : [ {
+            "behavior" : "seat",
+            "axis" : "seat/party",
+            "relation" : "in",
+            "against" : "5 < party <= 8",
+            "status" : "unavailable",
+            "reason" : "no_rows"
+          } ]
+        } ],
+        "pairs" : {
+          "total" : 0,
+          "between" : [ ],
+          "status" : "complete",
+          "covered" : 0,
+          "unknown" : 0
+        },
+        "notDerivable" : [ ],
+        "notRead" : [ ]
+      },
+      "branch" : {
+        "status" : "unavailable",
+        "reason" : "no_rows"
+      },
+      "findings" : [ ]
+    } ]
+  }, {
     "module" : "conformance.holds",
     "status" : "partial",
     "weakening" : [ "bodies_not_elaborated" ],
@@ -955,5 +2773,8 @@
     "declarations" : [ ],
     "behaviors" : [ ]
   } ],
-  "sources" : { }
+  "sources" : {
+    "1" : "vouchers.sou",
+    "2" : "waitlist.sou"
+  }
 }
