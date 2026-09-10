@@ -53,9 +53,9 @@ final class DecisionReadings {
     static List<DecisionRule> readToTheEnd(String source, String behavior) {
         DecisionReading read = of(source, behavior);
         assertEquals(new DecisionReading.Enumeration.Complete(), read.enumeration(),
-                "a body this small is read to the end");
-        assertEquals(0, read.shownImpossible(),
-                "nothing here assumes one proposition both ways");
+                "a body this small has its ways held apart");
+        assertEquals(List.of(), read.found().stream().filter(ruled -> !ruled.whole()).toList(),
+                "and every one of them is written down whole");
         return read.rules();
     }
 }

@@ -73,14 +73,25 @@ public final class ValueArrivals<P> {
     private final Set<Core> walked =
             java.util.Collections.newSetFromMap(new IdentityHashMap<>());
 
-    private ValueArrivals(Naming<P> naming, ValueArrivals<AnonymousPath> semantics) {
+    /** Whether a call kept standing is a defect here or an operation the model names. */
+    private final WhereTheOperationsAre operations;
+
+    private ValueArrivals(Naming<P> naming, ValueArrivals<AnonymousPath> semantics,
+                          WhereTheOperationsAre operations) {
         this.naming = naming;
         this.semantics = semantics;
+        this.operations = operations;
     }
 
     /** The reading of {@code body} against what the body's own text says of its comparisons. */
     public static <P> ValueArrivals<P> ofBody(Core body, Naming<P> naming) {
         return ofBody(body, naming, ComparisonWays.OF_THE_TREE);
+    }
+
+    /** The same, of a tree the language's own operations stand in. */
+    public static <P> ValueArrivals<P> ofBodyWhereTheOperationsStand(Core body, Naming<P> naming) {
+        return ofBody(body, naming, ComparisonWays.OF_THE_TREE,
+                WhereTheOperationsAre.STAND_IN_IT);
     }
 
     /**
@@ -91,9 +102,21 @@ public final class ValueArrivals<P> {
      * one thing about what the body does and another about which ways it has.
      */
     public static <P> ValueArrivals<P> ofBody(Core body, Naming<P> naming, ComparisonWays ways) {
-        ValueArrivals<AnonymousPath> semantics =
-                naming == Anonymous.NAMING ? null : ofBody(body, Anonymous.NAMING, ways);
-        ValueArrivals<P> reading = new ValueArrivals<>(naming, semantics);
+        return ofBody(body, naming, ways, WhereTheOperationsAre.ARE_EXPANDED_IN_IT);
+    }
+
+    /**
+     * The same, of a tree that says whether the language's own operations stand in it.
+     *
+     * <p>Both halves against the one answer, for the reason both are against one {@code ways}: a
+     * reading whose halves read a kept call differently would answer one thing about what the body
+     * does and another about which ways it has.
+     */
+    public static <P> ValueArrivals<P> ofBody(Core body, Naming<P> naming, ComparisonWays ways,
+                                              WhereTheOperationsAre operations) {
+        ValueArrivals<AnonymousPath> semantics = naming == Anonymous.NAMING
+                ? null : ofBody(body, Anonymous.NAMING, ways, operations);
+        ValueArrivals<P> reading = new ValueArrivals<>(naming, semantics, operations);
         if (body != null) {
             reading.fill(body, naming, ways, Map.of());
         }
@@ -310,7 +333,16 @@ public final class ValueArrivals<P> {
             case Core.If iff -> fork(iff, naming, comparisons, bound);
             case Core.Match match -> arms(match, naming, comparisons, bound);
             case Core.IfConstructed constructed -> attempted(constructed, naming, comparisons, bound);
-            case Core.PreservedCall preserved -> throw preserved.unexpectedIn("value-flow analysis");
+            // A call kept standing where the operations are expanded is one this compiler failed to
+            // expand, and is refused. Where they stand, it is the model naming an operation: its
+            // arguments are evaluated and what it answers is a value with no truth this reading
+            // says, which is what a value made of several already comes to.
+            case Core.PreservedCall preserved -> {
+                if (operations == WhereTheOperationsAre.ARE_EXPANDED_IN_IT) {
+                    throw preserved.unexpectedIn("value-flow analysis");
+                }
+                yield built(e, naming, comparisons, bound);
+            }
             default -> built(e, naming, comparisons, bound);
         };
     }
