@@ -1021,6 +1021,10 @@ public sealed interface Carrier extends ValueOrder {
      * met with is where the order stops, and every stepping order stops somewhere a walk would
      * never come back from — anchored there, a position nothing bounds is walked from the least
      * count there is and the value it composes is one no reader would write.
+     *
+     * <p>Asked of whether this order counts, and not of which carriers do. A walk that named them
+     * would be a second list of the carriers with counts, and the day one is added the walk would
+     * start nowhere at a carrier the rest of this answers about.
      */
     private Place anchorIn(OrderedInterval range) {
         if (range.low() != null) {
@@ -1029,8 +1033,7 @@ public sealed interface Carrier extends ValueOrder {
         if (range.high() != null) {
             return range.high().at();
         }
-        return this instanceof Whole || this instanceof Dense || this instanceof Ordinal
-                ? Count.ZERO : null;
+        return counts() ? Count.ZERO : null;
     }
 
     /** Whether no place in {@code apart} is this one. */

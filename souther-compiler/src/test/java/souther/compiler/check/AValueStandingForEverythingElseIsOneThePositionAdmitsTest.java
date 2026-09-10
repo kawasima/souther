@@ -218,6 +218,17 @@ class AValueStandingForEverythingElseIsOneThePositionAdmitsTest {
                         + Carrier.DENSE.written(at));
     }
 
+    /** And the same order with nothing bounding it, where the stretches the named values leave run
+     *  to the ends of the order. */
+    @Test
+    void anOrderWithNoStepAndNothingBoundingItIsLookedThroughTheSameWay() {
+        Place at = otherThan(Carrier.DENSE, List.of(Count.of(new BigDecimal("0.5"))), null,
+                ValueSet.ANY);
+
+        assertNotNull(at, "the numbers away from a half are without end");
+        assertNotEquals("0.5", Carrier.DENSE.written(at));
+    }
+
     /** And both vocabularies together, so neither is answering for the other. */
     @Test
     void whatTheRangeLeavesAndWhatTheValuesLeaveAreBothAsked() {
