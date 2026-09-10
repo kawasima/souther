@@ -172,7 +172,7 @@ class ABehaviorDividesAPositionByWhatItsRulesTellApartTest {
         assertTrue(!axis.classes().isEmpty(),
                 "the two rules are sayable together, so the position has classes");
         assertTrue(axis.classes().stream().allMatch(
-                        each -> each.recognises() instanceof Recognition.OfASet),
+                        each -> isOfASet(each.recognises())),
                 "and they are the values on either side of what the two rules come to: "
                         + axis.classes().stream().map(PartitionClass::label).toList());
     }
@@ -316,15 +316,32 @@ class ABehaviorDividesAPositionByWhatItsRulesTellApartTest {
 
         for (Axis each : divided.axes()) {
             if (each.classes().stream()
-                    .anyMatch(one -> one.recognises() instanceof Recognition.OfASet)) {
+                    .anyMatch(one -> isOfASet(one.recognises()))) {
                 assertEquals(List.of(), each.cuts(),
                         "a class that is a set has no place on the order for a cut to be at: "
                                 + each);
             }
         }
         assertTrue(divided.axes().stream().anyMatch(each -> each.classes().stream()
-                        .anyMatch(one -> one.recognises() instanceof Recognition.OfASet)),
+                        .anyMatch(one -> isOfASet(one.recognises()))),
                 "and the rule does divide the position into sets: " + divided.axes());
+    }
+
+    /**
+     * Whether a class means a set of the position's values, under whatever names a row writes one
+     * of them under.
+     *
+     * <p>Asked through the wearing rather than of the arm in hand. A class of a position that
+     * wears a name is written down under it, so the outermost arm is the wearing and the meaning
+     * is one inside — and a model whose position wears one would read here as a position divided
+     * nowhere.
+     */
+    private static boolean isOfASet(Recognition recognition) {
+        return switch (recognition) {
+            case Recognition.OfASet _ -> true;
+            case Recognition.Under under -> isOfASet(under.inner());
+            default -> false;
+        };
     }
 
     /** The one measure the model under test makes of its position. */

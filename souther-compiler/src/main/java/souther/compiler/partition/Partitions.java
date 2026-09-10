@@ -678,8 +678,14 @@ public final class Partitions {
             // lies — so a position whose classes are sets has none, and a value singled out is in
             // them rather than beside them. Published as both, one distinction would be stated
             // twice in two algebras and every line would fall in no class ({@link Axis}).
+            // Under the names the position wears, which is where they are put on: the rules divided
+            // the values the position holds and knew nothing of what is written over them, and a
+            // row writes one of those values under every name the type puts on it. Left off, a
+            // class drawn over strings is asked about a construction and holds none of them —
+            // which is the classes of a position holding nothing the position holds.
             case Classing.Classed.Composed(List<PartitionClass> it) ->
-                    new Composition(it, composedFrom(dividing), false, null);
+                    new Composition(it.stream().map(each -> each.under(view.wrappers())).toList(),
+                            composedFrom(dividing), false, null);
             // No classes and nothing they were composed from, and the cuts stand: they are
             // observations of their own rather than a projection of the classes.
             case Classing.Classed.NotComposed(var why) ->
