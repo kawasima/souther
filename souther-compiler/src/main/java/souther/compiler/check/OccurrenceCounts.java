@@ -50,8 +50,21 @@ public final class OccurrenceCounts {
      * clauses.
      */
     public static OccurrenceCounts of(TypeSymbol.AtModule named, RuleReadingSource source,
+                                       ReadingPolicy policy, DeclarationReadings machines) {
+        return of(named, source, policy, Set.of(), machines);
+    }
+
+    /** The same, reading for itself. */
+    public static OccurrenceCounts of(TypeSymbol.AtModule named, RuleReadingSource source,
                                        ReadingPolicy policy) {
         return of(named, source, policy, Set.of(), DeclarationReadings.NONE);
+    }
+
+    /** The same, with the declarations {@code granted} names supposed to hold values, reading for
+     *  itself. */
+    static OccurrenceCounts of(TypeSymbol.AtModule named, RuleReadingSource source,
+                                 ReadingPolicy policy, Set<TypeSymbol> granted) {
+        return of(named, source, policy, granted, DeclarationReadings.NONE);
     }
 
     /**
@@ -61,13 +74,6 @@ public final class OccurrenceCounts {
      * rules are what say it has none — its own, and the ones under whatever it wraps — so supposing
      * it has a value is not reading it at all.
      */
-    static OccurrenceCounts of(TypeSymbol.AtModule named, RuleReadingSource source,
-                                 ReadingPolicy policy,
-                                 Set<TypeSymbol> granted) {
-        return of(named, source, policy, granted, DeclarationReadings.NONE);
-    }
-
-    /** The same, asking {@code machines} first. */
     static OccurrenceCounts of(TypeSymbol.AtModule named, RuleReadingSource source,
                                  ReadingPolicy policy,
                                  Set<TypeSymbol> granted,

@@ -50,7 +50,8 @@ public final class TypeCardinality {
 
     private TypeCardinality() {}
 
-    /** How many values each declaration {@code declarations} reaches has at most. */
+    /** How many values each declaration {@code declarations} reaches has at most, read for
+     *  itself. */
     public static Cardinalities solve(List<Hir.Def> declarations, RuleReadingSource source,
                                       ReadingPolicy policy) {
         return solve(declarations, source, policy, DeclarationReadings.NONE);
@@ -78,7 +79,8 @@ public final class TypeCardinality {
         return new Cardinalities(
                 Map.copyOf(pass(components, declared, edges, cuts, source, policy, Set.of(),
                         machines)),
-                components, declared, edges, cuts, source, policy, asked.everyRuleReached());
+                components, declared, edges, cuts, source, policy, machines,
+                asked.everyRuleReached());
     }
 
     /**
@@ -132,13 +134,18 @@ public final class TypeCardinality {
         private final CardinalityCuts cuts;
         private final RuleReadingSource source;
         private final ReadingPolicy policy;
+        /** Where the readings taken again here borrow what has already been made of a declaration:
+         *  the same place the first pass borrowed from, because it is the same declarations. */
+        private final DeclarationReadings machines;
         private final boolean everyRuleReached;
 
         private Cardinalities(Map<TypeSymbol, Cardinality> upper, List<List<TypeSymbol>> components,
                               Map<TypeSymbol, Hir.Def> declared,
                               Map<TypeSymbol, Set<TypeSymbol>> edges, CardinalityCuts cuts,
                               RuleReadingSource source, ReadingPolicy policy,
+                              DeclarationReadings machines,
                               boolean everyRuleReached) {
+            this.machines = machines;
             this.everyRuleReached = everyRuleReached;
             this.upper = upper;
             this.components = components;
@@ -199,10 +206,11 @@ public final class TypeCardinality {
          * was shown by under another.
          */
         Map<TypeSymbol, Cardinality> granting(Set<TypeSymbol> granted) {
-            // Read afresh with nothing lent: what is asked here is what a declaration would hold
-            // if another had values, and that reading is made once for the asking.
-            return pass(components, declared, edges, cuts, source, policy, granted,
-                    DeclarationReadings.NONE);
+            // The readings are made afresh — what is asked here is what a declaration would hold if
+            // another had values, and no reading with something supposed is a declaration's own —
+            // but what has already been made of the declarations is borrowed all the same: what a
+            // rule's strings come to is settled by the rule and not by what is supposed beside it.
+            return pass(components, declared, edges, cuts, source, policy, granted, machines);
         }
     }
 

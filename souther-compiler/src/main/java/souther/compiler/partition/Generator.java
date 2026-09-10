@@ -8,6 +8,7 @@ import souther.compiler.check.ReadingPolicy;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.RuleKey;
 import souther.compiler.check.DeclaredBounds;
+import souther.compiler.check.DeclarationReadings;
 import souther.compiler.check.FieldDomains;
 import souther.compiler.check.Shape;
 import souther.compiler.check.TypeView;
@@ -3665,7 +3666,7 @@ public final class Generator {
         // has to meet that too: a row holding an element in the class and breaking the rule about
         // how many the list holds is not a row.
         FieldDomains under = rulesOf(subject.types().get(p), subject.rules(),
-                subject.inputs().policy(), under(root, settled));
+                subject.inputs().policy(), under(root, settled), subject.machines());
         ConstructionPlan.Result planned = ConstructionPlan.of(subject.types().get(p), root,
                 subject.symbols(), decided.keySet(), additional,
                 (at, building) -> heldRange(under, at, building, subject.rules()));
@@ -4086,7 +4087,7 @@ public final class Generator {
         }
         TermPath at = TermPath.of(subject.parameters().get(p));
         FieldDomains left = rulesOf(subject.types().get(p), subject.rules(),
-                subject.inputs().policy(), under(at, settled));
+                subject.inputs().policy(), under(at, settled), subject.machines());
         RuleKey field = fieldUnder(position.at());
         return Partitions.displacedRepresentativesOf(position.type(), subject.rules(),
                 subject.inputs().policy(), field == null ? null : left.at(field).bounds(),
@@ -4161,7 +4162,8 @@ public final class Generator {
         // A position the caller fixed holds nothing back: it was given the value it is to take.
         List<List<FixtureTemplate>> reserves = new ArrayList<>(
                 java.util.Collections.nCopies(paths.size(), List.<FixtureTemplate>of()));
-        FieldDomains left = rulesOf(subject.types().get(p), ruleSource, policy, under(at, settled));
+        FieldDomains left = rulesOf(subject.types().get(p), ruleSource, policy, under(at, settled),
+                subject.machines());
         for (ConstructionPlan.Slot slot : plan.slots()) {
             if (paths.contains(slot.at())) {
                 continue;   // an axis decides here
@@ -4331,16 +4333,24 @@ public final class Generator {
      * <p>Written once because two readers want it: what a position is offered, and why a position
      * offered less than its rules allow. Those are the two halves of one floor and they were the two
      * halves this was already asymmetric about.
+     *
+     * <p>Read with what the walk that read the inputs has already made of these declarations.
+     * Settling a coordinate is what makes each of these a reading of its own — a probe fixes a
+     * different value every time and none of the readings is the declaration's own — but what the
+     * declaration's string rules come to is settled by the rules and not by what is fixed beside
+     * them, so a reading here that borrowed nothing would build every one of those machines again
+     * for each value probed.
      */
     private static FieldDomains rulesOf(Type type, RuleReadingSource source, ReadingPolicy policy,
-                                        Map<RuleKey, Count> settled) {
+                                        Map<RuleKey, Count> settled,
+                                        DeclarationReadings machines) {
         // Whether the position is a record, and which record, are one answer and it is the
         // reading's. The rules are then read on the declaration the fields came off — a position
         // written under a name takes its fields from what that name wraps, and reading the rules on
         // the name instead would be asking a declaration that has no such field.
         return TypeView.of(type, source.symbols()).shape()
                         instanceof Shape.Product(TypeSymbol.AtModule declared, Map<String, Type> _)
-                ? FieldDomains.of(declared, source, policy, settled) : FieldDomains.NONE;
+                ? FieldDomains.of(declared, source, policy, settled, machines) : FieldDomains.NONE;
     }
 
     /**

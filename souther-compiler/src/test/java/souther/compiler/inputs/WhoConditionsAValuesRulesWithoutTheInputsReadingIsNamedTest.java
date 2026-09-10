@@ -88,13 +88,19 @@ class WhoConditionsAValuesRulesWithoutTheInputsReadingIsNamedTest {
      * with a position settled are both called {@code of}, and the second is the one that takes the
      * settlings — so a check on the name alone would report every reader of a declaration as one
      * that settles a position of it.
+     *
+     * <p>Whether the settlings are taken, and not where in the list they are. A reader may be
+     * handed something else beside them — where it borrows what has already been made of the
+     * declaration is one such thing — and a check that looked at the last argument would go quiet
+     * the day one was added, which is a check that reads nothing while reporting nothing.
      */
     private static boolean conditions(String member, java.lang.constant.MethodTypeDesc taken) {
         if (member.equals("given")) {
             return true;
         }
-        return member.equals("of") && taken.parameterCount() > 0
-                && taken.parameterType(taken.parameterCount() - 1).displayName().equals("Map");
+        return (member.equals("of") || member.equals("unshared"))
+                && taken.parameterList().stream()
+                        .anyMatch(each -> each.displayName().equals("Map"));
     }
 
     /** The nest a class belongs to: a lambda written inside a reader is that reader. */

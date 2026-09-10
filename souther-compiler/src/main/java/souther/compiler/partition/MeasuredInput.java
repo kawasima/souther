@@ -1,5 +1,6 @@
 package souther.compiler.partition;
 
+import souther.compiler.check.DeclarationReadings;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.Symbols;
 import souther.compiler.inputs.InputReading;
@@ -47,9 +48,23 @@ public final class MeasuredInput {
     private final BehaviorInputs written;
     private final Quantities quantities;
     private final Partitions.Partitioning divided;
+    /**
+     * Where the declarations this input reaches get what the walk that read it already made of
+     * them.
+     *
+     * <p>Kept because choosing a value reads those declarations again. A probe fixes a coordinate
+     * and reads what is left beside it, which is a reading of its own every time; what the
+     * declarations' string rules come to is not, and is what the walk has already worked out.
+     *
+     * <p>No part of what makes two of these one. It is a capability: two built from one store
+     * answer alike and compare unlike, so a comparison that took it in would say a reading taken
+     * again was another reading.
+     */
+    private final DeclarationReadings machines;
 
     private MeasuredInput(String behavior, BehaviorInputs written, Quantities quantities,
-                          Partitions.Partitioning divided) {
+                          Partitions.Partitioning divided, DeclarationReadings machines) {
+        this.machines = machines;
         this.behavior = behavior;
         this.written = written;
         this.quantities = quantities;
@@ -92,7 +107,8 @@ public final class MeasuredInput {
             // refuses such a term, so asking it is the check.
             read.quantities().ordersOf(axis.term());
         }
-        return new MeasuredInput(behavior, BehaviorInputs.of(read), read.quantities(), divided);
+        return new MeasuredInput(behavior, BehaviorInputs.of(read), read.quantities(), divided,
+                read.domain().machines());
     }
 
     /**
@@ -138,6 +154,12 @@ public final class MeasuredInput {
      */
     public BehaviorInputs inputs() {
         return written;
+    }
+
+    /** Where a reader of the declarations this input reaches borrows what the walk that read it
+     *  already made of them. */
+    public DeclarationReadings machines() {
+        return machines;
     }
 
     /** What the rules reaching this input leave its numbers. */

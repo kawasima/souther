@@ -268,6 +268,25 @@ final class AnswerClosure {
                             + "answer is compared by is what the plan is a numbering of, which is a "
                             + "value");
 
+    /**
+     * Where a reading of a declaration borrows what has already been made of it.
+     *
+     * <p>Held by a reading of an input so that a later reader of the same declarations is not made
+     * to read them again: what a search asks about the record a parameter is is asked long after
+     * the walk that read it, and asked with nothing to borrow it pays every reading over.
+     *
+     * <p>Two of them built from one store answer alike and compare unlike, so the answers holding
+     * one are compared without it — a reading taken again would otherwise come back as another
+     * reading and put every measure through again. What it lends is dropped when the revision moves
+     * and it is the store's own, so an answer kept across one hands out nothing of the world it was
+     * read from.
+     */
+    private static final Reading A_LENDING_OF_READINGS =
+            new Reading("A_LENDING_OF_READINGS", CAPABILITY,
+                    "where a reading of a declaration borrows what somebody has already made of it,"
+                            + " which is a way of asking the store rather than an answer, and never"
+                            + " equals the same way of asking built again");
+
     /** How a module is found, which is something run rather than something said. */
     private static final Reading MODULE_PATH = new Reading("MODULE_PATH", CAPABILITY,
             "a module path resolves a module by running something, and a function never equals the "
@@ -588,6 +607,13 @@ final class AnswerClosure {
                     Traversal.Why.SAYS_NOTHING_OF_ITSELF),
             new KnownDeclared(declared(Q + "Front$Path", "souther.compiler.meta.ModulePath"),
                     MODULE_PATH, Traversal.Why.NOTHING_CLOSES_IT),
+            // Where the declarations a reading of an input reached borrow what has already been
+            // made of them, kept by the reading for the readers of those declarations that come
+            // after the walk.
+            new KnownDeclared(declared(Q + "Adequacy$Inputs",
+                    "souther.compiler.check.DeclarationReadings", MAP_VALUE,
+                    part("souther.compiler.inputs.InputDomain", "machines")),
+                    A_LENDING_OF_READINGS, Traversal.Why.NOTHING_CLOSES_IT),
             // Where the places of a module's bodies are, held by the check that walked them. One
             // place and not the maps under it: the plan says nothing of itself, so the walk stops
             // here — which is the whole of what is being allowed, and the maps under it are what
@@ -647,6 +673,15 @@ final class AnswerClosure {
             generationReader("souther.compiler.inputs.ReadQuantities",
                     part("souther.compiler.partition.MeasuredInput", "quantities"),
                     arm("souther.compiler.inputs.ReadQuantities")),
+            // Where the declarations this subject reaches borrow what has already been made of
+            // them. A search chooses a value by reading those declarations with a coordinate fixed,
+            // which is a reading of its own every time; what their string rules come to is not, and
+            // is what the walk that read the input already worked out.
+            new KnownDeclared(
+                    declared(Q + "Adequacy$Generated", "souther.compiler.check.DeclarationReadings",
+                            then(A_SUBJECT,
+                                    part("souther.compiler.partition.MeasuredInput", "machines"))),
+                    A_LENDING_OF_READINGS, Traversal.Why.NOTHING_CLOSES_IT),
             new KnownDeclared(declared(Q + "Names$Resolution",
                     "souther.compiler.diag.CompileException",
                     part("souther.compiler.check.Resolve$Resolution", "unresolved"), HELD),
