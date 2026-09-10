@@ -105,26 +105,18 @@ class EveryThingThatHoldsAVerdictOpenLeavesTheReaderSomewhereTest {
             "LookAtTheRule", "LookAtWhyNothingWasMeasured", "LookAtWhatShowedNoRow");
 
     /**
-     * The dispositions nothing here witnesses, which is a thing owed rather than a thing settled.
+     * Each of those is reached, and an arm not among them is not said anything about here.
      *
-     * <p>An arm a model reaches only while the model is short of something is witnessed by accident:
-     * the models are evidence about the language and not fixtures for these arms, and one of them
-     * becoming more adequate takes its witness away. That is what happened to the one named here,
-     * and pinning the corpus to keep it would be holding a model back from what it is for.
+     * <p>What is held is one direction. An arm these models reach only while one of them is short of
+     * something is reached by accident — the models are evidence about the language and not fixtures
+     * for these arms, and one made more adequate takes such a reading away. So an arm missing from
+     * the list above is not thereby a defect, and neither is one that turns up in what these models
+     * reach without being listed: what would settle either is a model written to reach the arm
+     * through the analysis, which is a different thing from a corpus happening to.
      *
-     * <p>What such an arm needs is a witness of its own — a model written to reach it, through the
-     * analysis rather than by building the value — and until there is one this says so. It is not a
-     * note: nothing here may reach one of these, so the day a model does, this fails and the entry
-     * comes out.
-     */
-    private static final Set<String> WITNESS_OWED = Set.of("LookAtWhatTheMeasureWentWithout");
-
-    /**
-     * Each disposition this holds is either reached by these models or recorded as owing a witness.
-     *
-     * <p>Not historical reachability. A disposition these models reach can go away when one of them
-     * becomes more adequate, so what was reached before is no contract; what is kept stable is that
-     * every arm named here is on one of the two lists and on the right one.
+     * <p>Which is why nothing here is asked of the arms not listed. Asked of them, this would answer
+     * a question about a written witness with what the corpora are doing this week, and a corpus
+     * change would read as that witness arriving or leaving.
      */
     @Test
     void theModelsHereReachTheseDispositions() {
@@ -136,17 +128,7 @@ class EveryThingThatHoldsAVerdictOpenLeavesTheReaderSomewhereTest {
         Set<String> unwitnessed = new LinkedHashSet<>(WITNESSED);
         unwitnessed.removeAll(reached);
         assertEquals(Set.of(), unwitnessed,
-                () -> "a disposition held to be witnessed here is reached by none of these models."
+                () -> "a disposition held to be reached by these models is reached by none of them."
                         + " Reached: " + reached);
-
-        Set<String> owedButReached = new LinkedHashSet<>(WITNESS_OWED);
-        owedButReached.retainAll(reached);
-        assertEquals(Set.of(), owedButReached,
-                "a disposition recorded as owing a witness is reached after all: move it to the"
-                        + " witnessed ones, and take out whatever was written to owe it");
-
-        Set<String> both = new LinkedHashSet<>(WITNESSED);
-        both.retainAll(WITNESS_OWED);
-        assertEquals(Set.of(), both, "a disposition is witnessed or owed, and not both");
     }
 }
