@@ -2,7 +2,9 @@ package souther.compiler.query;
 
 import souther.compiler.ast.Hir;
 import souther.compiler.check.Prepared;
+import souther.compiler.check.RuleCitation;
 import souther.compiler.check.RuleRef;
+import souther.compiler.check.RuleReportAnchor;
 import souther.compiler.coverage.ArmReportAnchor;
 import souther.compiler.diag.Citation;
 import souther.compiler.diag.SourcePos;
@@ -415,6 +417,45 @@ public final class Sites {
             };
             return at == null ? Answer.absent() : Answer.of(Citation.of(at));
         }
+    }
+
+    /**
+     * Where a report about {@code cited}'s rule points.
+     *
+     * <p>The one place the two questions come back together, and a switch rather than a fallback,
+     * for the reason {@link #placeOf(Db, ArmReportAnchor)} is one. Asked the other way round, a
+     * rule written in a file this compilation has stopped holding would quietly be reported at a
+     * call instead.
+     *
+     * <p>Takes the citation and not the anchor alone. Which rule the writing module is asked about
+     * is the citation's, and an anchor handed over on its own would be a question with the subject
+     * missing — so the pairing that keeps a handle of one rule from being placed as another's is
+     * what this is given.
+     *
+     * @throws NothingPlacesIt where the question the anchor names has no answer
+     */
+    public static Citation placeOf(Db db, RuleCitation.Written cited) {
+        Answer<Citation> at = switch (cited.anchor()) {
+            case RuleReportAnchor.ByTheModuleThatWroteIt _ ->
+                    db.ask(new WhereARuleIsWritten(cited.rule()));
+            case RuleReportAnchor.ByTheReadingThatMetIt(String module, String behavior, int reach) ->
+                    reachedIn(db, module, behavior, reach);
+        };
+        if (!at.present()) {
+            throw new NothingPlacesIt("a rule reported at " + cited);
+        }
+        return at.value();
+    }
+
+    /** Where the reading of {@code behavior} met the rule it addressed as {@code reach}. */
+    private static Answer<Citation> reachedIn(Db db, String module, String behavior, int reach) {
+        Answer<Map<Integer, Citation>> reached =
+                db.ask(new Adequacy.RulesReached(module, behavior));
+        if (!reached.present()) {
+            return Answer.absent();
+        }
+        Citation at = reached.value().get(reach);
+        return at == null ? Answer.absent() : Answer.of(at);
     }
 
     /**

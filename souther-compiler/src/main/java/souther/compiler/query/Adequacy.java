@@ -14,6 +14,7 @@ import souther.compiler.reach.Reachability;
 import souther.compiler.diag.DiagnosticCode;
 import souther.compiler.diag.msg.DeadBranchMessage;
 import souther.compiler.diag.msg.ExampleMessage;
+import souther.compiler.check.RuleCitation;
 import souther.compiler.diag.Citation;
 import souther.compiler.diag.Localizable;
 import souther.compiler.diag.SourcePos;
@@ -1453,7 +1454,8 @@ public final class Adequacy {
      */
     record BodyDivided(souther.compiler.partition.Partitions.Partitioning geometry,
                        java.util.Map<souther.compiler.partition.ConditionOccurrence,
-                               souther.compiler.diag.Citation> conditionsMet) {}
+                               souther.compiler.diag.Citation> conditionsMet,
+                       Map<Integer, Citation> rulesReachedAt) {}
 
     /**
      * Where the reading that divided one behavior met each condition it places itself.
@@ -1486,6 +1488,34 @@ public final class Adequacy {
                 souther.compiler.diag.Citation>> compute(Db db) {
             Answer<BodyDivided> read = db.ask(new Dividing(name, behavior));
             return read.present() ? Answer.of(read.value().conditionsMet()) : Answer.absent();
+        }
+    }
+
+    /**
+     * Where the reading that divided one behavior met each rule it places itself.
+     *
+     * <p>Beside {@link ConditionsMet} and read off the same reading, and the same question one
+     * level up: a rule a reader can go and open is placed by whoever wrote it
+     * ({@link Sites.WhereARuleIsWritten}), and what is here is the rest — a rule of a body written
+     * in a file this compilation holds none of, which a report shows at the call it came in
+     * through.
+     *
+     * <p>Under the address the reading handed out, which is a number counted within this
+     * behavior's reading. Which behavior that is is what the rule says, so a reader holding a
+     * handle asks for the module and the behavior it already has.
+     */
+    public record RulesReached(String name, String behavior)
+            implements Key<Map<Integer, Citation>> {
+
+        @Override
+        public String module() {
+            return name;
+        }
+
+        @Override
+        public Answer<Map<Integer, Citation>> compute(Db db) {
+            Answer<BodyDivided> read = db.ask(new Dividing(name, behavior));
+            return read.present() ? Answer.of(read.value().rulesReachedAt()) : Answer.absent();
         }
     }
 
@@ -1558,7 +1588,8 @@ public final class Adequacy {
                     // the two came to would be bought by nobody.
                     db.ask(new Front.Adequacy()).value().measures()
                             .allowanceForBehaviorDistinctions());
-            return Answer.of(new BodyDivided(read.geometry(), read.conditionsMet()));
+            return Answer.of(new BodyDivided(read.geometry(), read.conditionsMet(),
+                    read.rulesReachedAt()));
         }
     }
 
@@ -5017,7 +5048,7 @@ public final class Adequacy {
                                                     .NoRowIsAtThePointAwayFromTheLineARuleDrew(
                                                     point.role().name(),
                                                     named.rule().citedName());
-                            case souther.compiler.check.RuleCitation.WrittenAt written ->
+                            case RuleCitation.Written written ->
                                     point.role().againstTheLine()
                                             ? new ExampleMessage
                                                     .NoRowIsAtThePointOfTheLineAConstructDrew(
@@ -5099,8 +5130,8 @@ public final class Adequacy {
                     // the file the diagnostic is in; a label no longer takes its file from where it
                     // is shown, so what was left unsaid can be said.
                     if (point.cited()
-                            instanceof souther.compiler.check.RuleCitation.WrittenAt written) {
-                        switch (written.at()) {
+                            instanceof RuleCitation.Written written) {
+                        switch (Sites.placeOf(db, written)) {
                             case souther.compiler.diag.Citation.Written w ->
                                     built.secondary(souther.compiler.diag.Region.point(w.at()),
                                             new ExampleMessage.TheConstructThatDrawsTheLine(

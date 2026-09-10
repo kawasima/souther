@@ -6,6 +6,7 @@ import souther.compiler.partition.BoundaryTarget;
 import souther.compiler.partition.DomainPoint;
 import souther.compiler.partition.LineOrigin;
 import souther.compiler.partition.PointRole;
+import souther.compiler.publish.PublishedRuleHandle;
 import souther.compiler.publish.PublishedSentence;
 
 import java.util.Map;
@@ -121,9 +122,10 @@ public record BorderAssessment(Border border, Map<DomainPoint, ItemAssessment> i
         return border.cut().shape();
     }
 
-    /** The rule that drew the line, as what a report writes about it. */
-    public PublishedSentence describe() {
-        return border.describe();
+    /** The rule that drew the line, as what a report writes about it, with {@code places} asked
+     *  where the rule is one found by where it is written. */
+    public PublishedSentence describe(PublishedRuleHandle.WhereARuleIs places) {
+        return border.describe(places);
     }
 
     /**

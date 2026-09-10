@@ -1,11 +1,13 @@
 package souther.compiler.query;
 
+import souther.compiler.check.RuleCitation;
 import souther.compiler.coverage.CoverageSites;
 import souther.compiler.diag.SourcePos;
 import souther.compiler.observe.RowIdentity;
 import souther.compiler.types.TypeSymbol;
 
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * What one {@link Adequacy.Finding} is about.
@@ -222,6 +224,16 @@ public sealed interface About {
 
         /** Which rule, as everything that names a rule names it. */
         souther.compiler.check.RuleRef rule();
+
+        /**
+         * Every handle a reader was offered for that rule.
+         *
+         * <p>On the seal so that whoever has to ask where these rules are shown is asking one
+         * question of every kind of them. Read off the arms that happen to have one, a kind added
+         * later is a kind whose rules a report names with nowhere to point — which is the same
+         * fault {@link #rule()} is here to keep out, one question over.
+         */
+        Set<RuleCitation> cited();
     }
 
     /**
@@ -269,6 +281,11 @@ public sealed interface About {
         public souther.compiler.check.RuleRef rule() {
             return finding.rule();
         }
+
+        @Override
+        public Set<RuleCitation> cited() {
+            return finding.cited();
+        }
     }
 
     /**
@@ -288,6 +305,11 @@ public sealed interface About {
         @Override
         public souther.compiler.check.RuleRef rule() {
             return finding.rule();
+        }
+
+        @Override
+        public Set<RuleCitation> cited() {
+            return finding.cited();
         }
     }
 
@@ -352,6 +374,11 @@ public sealed interface About {
         @Override
         public souther.compiler.check.RuleRef rule() {
             return asked.rule();
+        }
+
+        @Override
+        public Set<RuleCitation> cited() {
+            return asked.cited();
         }
 
         public AQuestionNothingAnswered {

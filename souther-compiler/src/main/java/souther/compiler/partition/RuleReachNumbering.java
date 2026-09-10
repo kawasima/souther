@@ -2,7 +2,6 @@ package souther.compiler.partition;
 
 import souther.compiler.check.RuleReportAnchor;
 import souther.compiler.diag.Citation;
-import souther.compiler.diag.SourcePos;
 import souther.compiler.types.SourceConstructOrigin;
 
 import java.util.HashMap;
@@ -41,6 +40,7 @@ import java.util.Map;
 public final class RuleReachNumbering {
 
     private final String module;
+    private final String behavior;
     /** The address each place already has, so that one call met twice is one entry. Beside
      *  {@link #reachedAt} rather than searched for in it: what this is for is that the same place
      *  is not handed two addresses, and reading it back out of the answer would make what it costs
@@ -49,19 +49,23 @@ public final class RuleReachNumbering {
     private final Map<Integer, Citation> reachedAt = new LinkedHashMap<>();
     private int next;
 
-    public RuleReachNumbering(String module) {
+    public RuleReachNumbering(String module, String behavior) {
         this.module = module;
+        this.behavior = behavior;
     }
 
     /**
-     * Where a report about a rule written as {@code construct} at {@code at} points.
+     * Where a report about a rule written as {@code construct}, and cited at {@code where}, points.
      *
      * <p>The writing module answers where it wrote a construct of its own that a reader can open.
      * A rule written in a file this compilation holds none of is placed by this reading, which is
      * the only thing that met it.
+     *
+     * <p>Handed the citation the reading already made rather than the position under it. Projected
+     * again here, this would be a second answer to what a position may be said as, and the one that
+     * decides the question would be whichever this happened to use.
      */
-    public RuleReportAnchor anchorOf(SourceConstructOrigin construct, SourcePos at) {
-        Citation where = Citation.of(at);
+    public RuleReportAnchor anchorOf(SourceConstructOrigin construct, Citation where) {
         if (where instanceof Citation.Written && construct != null && construct.isWritten()) {
             return new RuleReportAnchor.ByTheModuleThatWroteIt();
         }
@@ -70,12 +74,12 @@ public final class RuleReachNumbering {
 
     /** An address of this reading, with the place it addresses written down in the same act. */
     private RuleReportAnchor metHere(Citation where) {
-        int address = addresses.computeIfAbsent(where, met -> {
+        int reach = addresses.computeIfAbsent(where, met -> {
             int next = this.next++;
             reachedAt.put(next, met);
             return next;
         });
-        return new RuleReportAnchor.ByTheReadingThatMetIt(module, address);
+        return new RuleReportAnchor.ByTheReadingThatMetIt(module, behavior, reach);
     }
 
     /** Where this reading met each rule it places itself. */

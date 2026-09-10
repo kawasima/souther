@@ -101,6 +101,19 @@ public sealed interface RuleRef permits RuleRef.Named, RuleRef.Written {
         SourceConstructOrigin origin();
 
         /**
+         * Whose reading of it this rule belongs to, which is the behavior a question about it is
+         * raised per.
+         *
+         * <p>The reading and not whoever wrote the construct. Two behaviors calling one helper each
+         * read the rule it holds, and those readings are what a coverage question is raised per —
+         * so this says which of them, and where the rule is written is {@link #origin}'s.
+         *
+         * <p>On the seal for the reason {@link #origin} is: a reader that has to know which of the
+         * three it holds before it can ask is a reader a kind added later leaves behind.
+         */
+        String behavior();
+
+        /**
          * What a report calls a rule that has no name, which is one word per kind of them.
          *
          * <p>A word about the rule and not about the construct it stands in. A comparison may stand

@@ -7,7 +7,9 @@ import souther.compiler.cst.SyntaxKind;
 import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.fmt.Formatter;
 import souther.compiler.publish.PublishedIncompleteness;
+import souther.compiler.publish.PublishedRuleHandle;
 import souther.compiler.publish.RuleHandleProse;
+import souther.compiler.query.Sites;
 import souther.compiler.partition.BorderObligationPoint;
 import souther.compiler.partition.GenerationReason;
 import souther.compiler.partition.GenerationOutcome;
@@ -112,7 +114,8 @@ public final class GeneratedRows {
             if (offering == null) {
                 continue;
             }
-            Block one = of(offering, WrittenEnsures.of(compilation.db(), name), names);
+            Block one = of(offering, WrittenEnsures.of(compilation.db(), name), names,
+                    cited -> Sites.placeOf(compilation.db(), cited));
             out.append(one.text());
             rows += one.rowCount();
         }
@@ -193,7 +196,8 @@ public final class GeneratedRows {
      * word, and a heading, a note and a comment marker are not things a row carries.
      */
     public static Block of(Offering offering, Map<String, List<String>> ensures,
-                           SourceNameResolver names) {
+                           SourceNameResolver names,
+                           PublishedRuleHandle.WhereARuleIs places) {
         String module = offering.request().module();
         boolean boundaries = offering.request().boundaries();
         BorderAccount account = offering.account();
@@ -213,7 +217,8 @@ public final class GeneratedRows {
             out.append(stated(blocks(module, offered), ensures));
         }
         for (Map.Entry<String, Adequacy.Filling> behavior : offering.searched().entrySet()) {
-            notes(out, behavior.getKey(), behavior.getValue(), boundaries, names, offering);
+            notes(out, behavior.getKey(), behavior.getValue(), boundaries, names, offering,
+                    places);
         }
         // And what the module's declarations are owed that nothing composed a row for. Here rather
         // than after this returns, because what this builds is the block: a caller that rendered
@@ -534,7 +539,8 @@ public final class GeneratedRows {
      * the rows it was offering were printed two lines above the line saying it had stopped.
      */
     private static void notes(StringBuilder out, String behavior, Adequacy.Filling filling,
-                              boolean boundaries, SourceNameResolver names, Offering offering) {
+                              boolean boundaries, SourceNameResolver names, Offering offering,
+                              PublishedRuleHandle.WhereARuleIs places) {
         Set<String> said = new LinkedHashSet<>();
         List<Generator.UnresolvedCombination> left =
                 new ArrayList<>(filling.composed().unresolved());
@@ -561,7 +567,7 @@ public final class GeneratedRows {
                 case GenerationOutcome.CannotGenerate cannot -> cannot.why().forEach(why ->
                         say(out, said, String.format("// no row for `%s` in `%s`: %s%n",
                                 each.finding().about() instanceof About.AnArmNoRowGoesThrough
-                                        ? about(each.finding()) : why.subject(),
+                                        ? about(each.finding(), places) : why.subject(),
                                 behavior, saidOf(why))));
                 // Told apart from the one above it in its own words. A strategy that tried and
                 // composed nothing and a finding nothing takes are different pieces of news: the
@@ -570,7 +576,7 @@ public final class GeneratedRows {
                 // something is written for it.
                 case GenerationOutcome.NotSupported none -> say(out, said,
                         String.format("// nothing offers a row for `%s` in `%s`: %s%n",
-                                about(each.finding()), behavior, none.reason().said()));
+                                about(each.finding(), places), behavior, none.reason().said()));
                 // Said rather than passed over, because the report counts this coordinate among
                 // what is missing and no row is offered for it. Left out, an author reads a gap
                 // above and no account of why nothing was written for it; the account is that the
@@ -579,7 +585,7 @@ public final class GeneratedRows {
                 case GenerationOutcome.ObligationAlreadySettled _ -> say(out, said,
                         String.format("// no row offered for `%s` in `%s`: this line is answered"
                                 + " by a row elsewhere%n",
-                                about(each.finding()), behavior));
+                                about(each.finding(), places), behavior));
                 // Filtered out above, and listed here so that the switch stays exhaustive: an
                 // answer added later has to be given words rather than falling silently into
                 // whichever arm a default would have put it in.
@@ -673,14 +679,15 @@ public final class GeneratedRows {
      * <p>Read off the value the finding was established with, so that a subject printed here and
      * a subject printed in the report are the same words about the same thing.
      */
-    private static String about(Adequacy.Finding finding) {
+    private static String about(Adequacy.Finding finding,
+                                PublishedRuleHandle.WhereARuleIs places) {
         return switch (finding.about()) {
             // The point's own words, which is what the edge's own attempt is named by a few lines
             // above ({@code saidOf}). Spelled out here as well, the two vocabularies differed by
             // the role: a point away from the line was written as the value the line is at, which
             // is the one place in reach that such a point is not.
             case About.APointOfABorder(var point) ->
-                    RuleHandleProse.said(point.said(), SourceId::value, null);
+                    RuleHandleProse.said(point.said(places), SourceId::value, null);
             // The same words on what the declaration wrote. Nothing composes a row for one of
             // these yet — the search walks one behavior's inputs and this line is owed once over
             // all of them — so what is printed beside it is that, in its own sentence.

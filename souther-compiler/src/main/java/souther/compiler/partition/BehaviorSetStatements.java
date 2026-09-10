@@ -191,9 +191,11 @@ public final class BehaviorSetStatements {
                           InputReading read,
                           Map<BindingId, String> parameters, ElementBindings elements,
                           Allowance<NumericTerm.FromOnePosition> allowance,
-                          List<ComparisonReadings.ForkMet> forks) {
-        return of(behavior, PredicateReadings.of(behavior, body, stated, read, parameters, elements),
-                read.symbols(), allowance, forks);
+                          List<ComparisonReadings.ForkMet> forks,
+                          RuleReachNumbering reaches) {
+        return of(behavior,
+                PredicateReadings.of(behavior, body, stated, read, parameters, elements, reaches),
+                read.symbols(), allowance, forks, reaches);
     }
 
     /**
@@ -206,7 +208,8 @@ public final class BehaviorSetStatements {
      */
     static Read of(String behavior, PredicateReadings read, Symbols symbols,
                    Allowance<NumericTerm.FromOnePosition> allowance,
-                   List<ComparisonReadings.ForkMet> forks) {
+                   List<ComparisonReadings.ForkMet> forks,
+                   RuleReachNumbering reaches) {
         List<Asked> asked = new ArrayList<>();
         List<ClassingBlocker> blocked = new ArrayList<>();
         List<RuleWithoutALine> saying = new ArrayList<>();
@@ -242,7 +245,7 @@ public final class BehaviorSetStatements {
             state(each, answers.get(each.term()), statements, blocked);
         }
         return new Read(statements, blocked, saying,
-                ofTheirOwn(behavior, read, symbols, forks));
+                ofTheirOwn(behavior, read, symbols, forks, reaches));
     }
 
     /**
@@ -420,8 +423,9 @@ public final class BehaviorSetStatements {
      */
     private static List<ForkOfItsOwn> ofTheirOwn(String behavior, PredicateReadings read,
                                                  Symbols symbols,
-                                                 List<ComparisonReadings.ForkMet> forks) {
-        List<Standing> standing = standingRules(behavior, read, symbols, forks);
+                                                 List<ComparisonReadings.ForkMet> forks,
+                                                 RuleReachNumbering reaches) {
+        List<Standing> standing = standingRules(behavior, read, symbols, forks, reaches);
         List<ForkOfItsOwn> out = new ArrayList<>();
         for (Standing each : standing) {
             List<Unread> left = new ArrayList<>();
@@ -437,7 +441,7 @@ public final class BehaviorSetStatements {
             if (left.isEmpty()) {
                 continue;
             }
-            ForkOfItsOwn asked = asked(behavior, each.fork(), left, symbols);
+            ForkOfItsOwn asked = asked(behavior, each.fork(), left, symbols, reaches);
             if (asked != null) {
                 out.add(asked);
             }
@@ -480,7 +484,8 @@ public final class BehaviorSetStatements {
 
     private static List<Standing> standingRules(String behavior, PredicateReadings read,
                                                 Symbols symbols,
-                                                List<ComparisonReadings.ForkMet> forks) {
+                                                List<ComparisonReadings.ForkMet> forks,
+                                                RuleReachNumbering reaches) {
         List<Standing> out = new ArrayList<>();
         for (ComparisonReadings.ForkMet each : forks) {
             // The parts of what it tests that no reader answers for. Asked part by part and not of
@@ -499,7 +504,7 @@ public final class BehaviorSetStatements {
             if (unread.isEmpty()) {
                 continue;
             }
-            ForkOfItsOwn asked = asked(behavior, each, unread, symbols);
+            ForkOfItsOwn asked = asked(behavior, each, unread, symbols, reaches);
             if (asked != null) {
                 out.add(new Standing(each, unread, asked));
             }
@@ -533,7 +538,8 @@ public final class BehaviorSetStatements {
      * part that does name a position is filed there, however little else was worked out about it.
      */
     private static ForkOfItsOwn asked(String behavior, ComparisonReadings.ForkMet fork,
-                                      List<Unread> unread, Symbols symbols) {
+                                      List<Unread> unread, Symbols symbols,
+                                      RuleReachNumbering reaches) {
         SequencedMap<FilingCoordinate, BlockReason.RuleReadingStopped> filed =
                 new LinkedHashMap<>();
         for (Unread each : unread) {
@@ -567,8 +573,9 @@ public final class BehaviorSetStatements {
             names.met().keySet().forEach(at -> filed.putIfAbsent(FilingCoordinate.at(at), why));
             }
         }
-        return filed.isEmpty() ? null : new ForkOfItsOwn(new RuleCitation.WrittenAt(
-                new RuleRef.Fork(behavior, fork.occurrence().origin()), fork.at()), filed);
+        return filed.isEmpty() ? null : new ForkOfItsOwn(new RuleCitation.Written(
+                new RuleRef.Fork(behavior, fork.occurrence().origin()),
+                reaches.anchorOf(fork.occurrence().origin(), fork.at())), filed);
     }
 
     /** Whether {@code part} names a position of the input, however the reading gets there. */

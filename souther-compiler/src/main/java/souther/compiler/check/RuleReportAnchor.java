@@ -50,26 +50,34 @@ public sealed interface RuleReportAnchor {
      * and a reading that reads a rule again is answered with what the first reading came to rather
      * than with the next number.
      *
-     * <p><b>Counted within the reading of the behavior the rule beside it names, not over the
-     * module.</b> A count over the module makes the number a function of everything read before it
-     * there, so an edit to one behavior renames the reaches of every one after it — and a value
-     * that moves for an edit nothing about it can see is what this change exists to stop. Which
-     * behavior that is is on the rule and is not repeated here.
+     * <p><b>Counted within the reading of one body, not over the module.</b> A count over the
+     * module makes the number a function of everything read before it there, so an edit to one
+     * behavior renames the reaches of every one after it — and a value that moves for an edit
+     * nothing about it can see is what this change exists to stop.
      *
-     * @param module whose reading met it. The reading module and not the writing one, which is the
-     *               whole of what this arm is for — a number counted in one module's reading
-     *               addresses nothing on its own
+     * <p>Which is why the body is here and not taken from the rule beside it. A number counted
+     * within one reading addresses nothing until something says which reading was counting, so an
+     * address that named only the module would be the same address in two bodies — and a reader
+     * holding one would have to go to whatever stands next to it to find out which. What the arm
+     * one over leaves out is a question with no components of its own; this one is an address, and
+     * an address says where it is.
+     *
+     * @param module   whose reading met it. The reading module and not the writing one, which is
+     *                 the whole of what this arm is for
+     * @param behavior which body of that module was being read
+     * @param reach    which of that reading's ways in, in the order it met them
      */
-    record ByTheReadingThatMetIt(String module, int address) implements RuleReportAnchor {
+    record ByTheReadingThatMetIt(String module, String behavior, int reach)
+            implements RuleReportAnchor {
 
         public ByTheReadingThatMetIt {
-            if (module == null) {
-                throw new IllegalArgumentException(
-                        "a rule placed by the reading that met it is some module's: " + address);
+            if (module == null || behavior == null) {
+                throw new IllegalArgumentException("a rule placed by the reading that met it is"
+                        + " one of some module's readings: " + module + ", " + behavior);
             }
-            if (address < 0) {
+            if (reach < 0) {
                 throw new IllegalArgumentException(
-                        "a place a reading met a rule at is one it wrote down: " + address);
+                        "a place a reading met a rule at is one it wrote down: " + reach);
             }
         }
     }

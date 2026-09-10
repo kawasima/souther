@@ -266,8 +266,8 @@ public record BorderObligationPointAssessment(BorderObligationPoint point,
      * author named is found by that name wherever it is read, and a comparison by the place it is
      * written.
      */
-    public PublishedSentence describe() {
-        return PublishedSentence.AroundAHandle.alone(handle());
+    public PublishedSentence describe(PublishedRuleHandle.WhereARuleIs places) {
+        return PublishedSentence.AroundAHandle.alone(handle(places));
     }
 
     /**
@@ -276,8 +276,8 @@ public record BorderObligationPointAssessment(BorderObligationPoint point,
      * <p>The handle rather than what it reads as, for the field that is the handle and nothing
      * else. What that field says is the surface's to write.
      */
-    public PublishedRuleHandle handle() {
-        return PublishedRuleHandle.of(cited);
+    public PublishedRuleHandle handle(PublishedRuleHandle.WhereARuleIs places) {
+        return PublishedRuleHandle.of(cited, places);
     }
 
     /**
@@ -610,7 +610,7 @@ public record BorderObligationPointAssessment(BorderObligationPoint point,
      * be at two places, and two runs beside one line can stop in two places, and this says the
      * same of both — a consumer joins on {@code obligationId} and shows this.
      */
-    public PublishedSentence said() {
-        return new PublishedSentence.AroundAHandle(role() + " point of ", handle(), "");
+    public PublishedSentence said(PublishedRuleHandle.WhereARuleIs places) {
+        return new PublishedSentence.AroundAHandle(role() + " point of ", handle(places), "");
     }
 }

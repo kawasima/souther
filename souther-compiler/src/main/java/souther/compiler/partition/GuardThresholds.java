@@ -6,7 +6,9 @@ import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.Comparison;
 import souther.compiler.check.ComparisonClaim;
 import souther.compiler.check.RuleAt;
+import souther.compiler.check.RuleCitation;
 import souther.compiler.check.RuleRef;
+import souther.compiler.check.RuleReportAnchor;
 import souther.compiler.check.UnreadComparison;
 import souther.compiler.check.ValueOrigin;
 import souther.compiler.inputs.BlockReason;
@@ -150,23 +152,33 @@ public final class GuardThresholds {
         // The elements of this tree, read here rather than handed in as nothing. A caller with no
         // reading of its own still asks about a body that walks something, and answered with none
         // it would be told a rule over a run is a rule about nothing.
+        // And a numbering of its own, whose addresses nothing here goes on to read: such a caller
+        // is asking what the rules of a body come to and is writing no document, so there is
+        // nothing for the places it hands out addresses for to be shown in.
         return states == null ? Guards.NONE
                 : of(behavior, states, emitted, plan, inputs.reading(source),
                         ElementBindings.of(states.core(),
                                 states.elements(), source.symbols()),
-                        PathReachability.Answers.NONE);
+                        PathReachability.Answers.NONE,
+                        new RuleReachNumbering(source.symbols().module(), behavior));
     }
 
     /** The thresholds one behavior's body compares its parameters against. {@code plan} supplies
      * the site each comparison's own value is recorded at, so a boundary can later ask whether the
      * comparison ran — which is not something the arms of anything standing round it record.
      * {@code arrives} says what the paths leave arriving at each of those sites, which is what a
-     * line is dropped by ({@link ComparisonAssessment.NothingArrivesAtItsLine}). */
+     * line is dropped by ({@link ComparisonAssessment.NothingArrivesAtItsLine}).
+     *
+     * <p>{@code reaches} is where this reading of the module writes down the places it met rules
+     * nothing this compilation holds wrote. One of them per body read and shared with every other
+     * reader of that body, because an address means a place only under something that says which
+     * addresses were being handed out. */
     public static Guards of(String behavior, AnalysisBody states, Core emitted,
                             CoverageSites.Plan plan,
                             InputReading read,
                             ElementBindings elements,
-                            PathReachability.Answers arrives) {
+                            PathReachability.Answers arrives,
+                            RuleReachNumbering reaches) {
         // A behavior with no representation for the analysis to read leaves nothing to read. This
         // reading is of that tree — where the language's operations stand — so where there is none
         // there are no rules to be had from it, and the answer is the same one a behavior with no
@@ -260,6 +272,7 @@ public final class GuardThresholds {
                                 // goes only where all of them prove nothing reaches it, since a run
                                 // through any one of them is a run through the rule.
                                 lineAt(behavior, stated, at, each.occurrence().origin(), each.at(),
+                                        reaches,
                                         ComparisonAssessment.narrowedByWhatArrives(admitted.read(),
                                                 at.observations().stream()
                                                         .map(one -> one.arrival()).toList(), false),
@@ -541,15 +554,19 @@ public final class GuardThresholds {
     private static void lineAt(String behavior, ModelOccurrence stated,
                                EmittedComparisonState.Instrumented at,
                                SourceConstructOrigin wrote, Citation where,
+                               RuleReachNumbering reaches,
                                ComparisonAssessment read,
                                List<RuleEvidence> out,
                                List<LineDrawn> between,
                                RulesWithNoLine.Gathered withoutALine) {
-        publish(behavior, wrote, where, read, withoutALine);
+        // Which question places this comparison, asked once here. The two readers below say the
+        // same thing about one rule, and asking apiece would let them come to say two.
+        RuleReportAnchor anchor = reaches.anchorOf(wrote, where);
+        publish(behavior, wrote, anchor, read, withoutALine);
         switch (read) {
             case ComparisonAssessment.AtAPosition placed -> {
                 LineOrigin.ComparisonOrigin drawn =
-                        originOf(behavior, stated, at, wrote, where, placed.cutting());
+                        originOf(behavior, stated, at, wrote, anchor,placed.cutting());
                 // The value a row is owed against this line, which the reading of the comparison
                 // already answered. Taken off the level the rule was written with, a rule that wrote
                 // a multiple of the position named a class at a number the position never holds.
@@ -595,7 +612,7 @@ public final class GuardThresholds {
                 // the two meet, and that arm is a row the branch measure already asks for.
                 if (over.drawsABorder()) {
                     between.add(new LineDrawn(over.cutting(),
-                            originOf(behavior, stated, at, wrote, where, over.cutting())));
+                            originOf(behavior, stated, at, wrote, anchor,over.cutting())));
                 }
             }
             case ComparisonAssessment.AnswerDependent _, ComparisonAssessment.NoInput _,
@@ -626,11 +643,10 @@ public final class GuardThresholds {
      * missing a border.
      */
     private static void publish(String behavior, SourceConstructOrigin wrote,
-                                Citation where,
+                                RuleReportAnchor anchor,
                                 ComparisonAssessment read, RulesWithNoLine.Gathered out) {
-        souther.compiler.check.RuleCitation cited =
-                new souther.compiler.check.RuleCitation.WrittenAt(
-                        new RuleRef.Comparison(behavior, wrote), where);
+        RuleCitation cited =
+                new RuleCitation.Written(new RuleRef.Comparison(behavior, wrote), anchor);
         // What each place is left with, and which places there are, are the assessment's one
         // answer. A rule that was read is filed at its quantity's coordinates and says one thing
         // there, because the quantity is one subject; a reading that stopped has none, and each
@@ -652,7 +668,7 @@ public final class GuardThresholds {
      *  is getting the comparison to answer, because what it is about is a place in a body. */
     private static LineOrigin.ComparisonOrigin originOf(
             String behavior, ModelOccurrence stated, EmittedComparisonState.Instrumented at,
-            SourceConstructOrigin wrote, Citation where, Cutting cutting) {
+            SourceConstructOrigin wrote, RuleReportAnchor anchor, Cutting cutting) {
         // Every place a run through the rule is written down, off the join rather than looked up
         // again: the join already asked the plan which of the rule's materialisations it numbered,
         // and asking a second time is a second answer to how many places there are. Whose rule it
@@ -661,7 +677,7 @@ public final class GuardThresholds {
         // runs.
         return new LineOrigin.ComparisonOrigin(
                 new LineOrigin.ComparisonOrigin.Read(
-                        new RuleRef.Comparison(behavior, wrote), stated, where,
+                        new RuleRef.Comparison(behavior, wrote), stated, anchor,
                         at.observations().stream().map(EmittedComparisonState.Observation::site)
                                 .toList()),
                 new LineFacts(cutting.claim()));

@@ -3,7 +3,7 @@ package souther.compiler.inputs;
 import souther.compiler.check.CoverageObligation;
 import souther.compiler.check.RuleCitation;
 import souther.compiler.check.RuleRef;
-import souther.compiler.diag.Citation;
+import souther.compiler.check.RuleReportAnchor;
 
 import java.util.HashSet;
 import java.util.Optional;
@@ -137,7 +137,7 @@ public sealed interface StandingQuestion {
      *
      * @param fact    which rule raised it and what it asks, which is what tells one question from
      *                another ({@link Fact})
-     * @param reachedAt every place a reader was offered for that rule, empty exactly where the
+     * @param reachedBy every question a reader was offered for that rule, empty exactly where the
      *                author named it and it is found by that name from anywhere
      * @param stopped every reason it stands. A question is answered when every part that asked it
      *                has been read, so a part standing behind another is a second thing to lift.
@@ -146,7 +146,7 @@ public sealed interface StandingQuestion {
      *                position's answer was short of stands beside them under no order at all
      *                ({@link WhatAQuestionStandsOn})
      */
-    record Exact(Fact fact, Set<Citation> reachedAt,
+    record Exact(Fact fact, Set<RuleReportAnchor> reachedBy,
                  WhatAQuestionStandsOn stopped) implements StandingQuestion {
 
         public Exact {
@@ -154,8 +154,8 @@ public sealed interface StandingQuestion {
                 throw new IllegalArgumentException("a standing question names a rule and what it"
                         + " asks");
             }
-            reachedAt = reachedAt == null ? Set.of() : Set.copyOf(reachedAt);
-            RuleCitation.requireReached(fact.rule(), reachedAt);
+            reachedBy = reachedBy == null ? Set.of() : Set.copyOf(reachedBy);
+            RuleCitation.requireReached(fact.rule(), reachedBy);
             if (stopped == null) {
                 throw new IllegalArgumentException(
                         "a question stands because something was short of it");
@@ -165,7 +165,7 @@ public sealed interface StandingQuestion {
         /** One reader's account of it, as that reader produced it. */
         public static Exact of(RuleCitation cited, InputQuestion asks,
                                WhatAQuestionStandsOn stopped) {
-            return new Exact(new Fact(cited.rule(), asks), RuleCitation.placeOf(cited), stopped);
+            return new Exact(new Fact(cited.rule(), asks), RuleCitation.anchorOf(cited), stopped);
         }
 
         @Override
@@ -175,7 +175,7 @@ public sealed interface StandingQuestion {
 
         @Override
         public Set<RuleCitation> cited() {
-            return RuleCitation.handlesFor(fact.rule(), reachedAt);
+            return RuleCitation.handlesFor(fact.rule(), reachedBy);
         }
 
         /** What it asks and what it asks it about. */
@@ -227,8 +227,8 @@ public sealed interface StandingQuestion {
             }
             Optional<BlockReason.AnswerRealizationStopped> answer =
                     mine.isPresent() ? mine : theirs;
-            Set<Citation> both = new HashSet<>(reachedAt);
-            both.addAll(it.reachedAt);
+            Set<RuleReportAnchor> both = new HashSet<>(reachedBy);
+            both.addAll(it.reachedBy);
             return new Exact(fact, both,
                     new WhatAQuestionStandsOn(stopped.itsRuleLeft(), answer));
         }
@@ -303,15 +303,15 @@ public sealed interface StandingQuestion {
      * only the measure answering it.
      */
     record NothingClassifiesIt(NothingClassifiesIt.Filed filed,
-                                  Set<Citation> reachedAt) implements Unclassified {
+                                  Set<RuleReportAnchor> reachedBy) implements Unclassified {
 
         public NothingClassifiesIt {
             if (filed == null) {
                 throw new IllegalArgumentException(
                         "a rule nothing classified is one rule, filed somewhere, for a reason");
             }
-            reachedAt = reachedAt == null ? Set.of() : Set.copyOf(reachedAt);
-            RuleCitation.requireReached(filed.rule(), reachedAt);
+            reachedBy = reachedBy == null ? Set.of() : Set.copyOf(reachedBy);
+            RuleCitation.requireReached(filed.rule(), reachedBy);
         }
 
         /** One reader's account of it, as that reader produced it. */
@@ -319,7 +319,7 @@ public sealed interface StandingQuestion {
                                              BlockReason.RuleReadingStopped why) {
             return new NothingClassifiesIt(
                     new NothingClassifiesIt.Filed(cited.rule(), at, why),
-                    RuleCitation.placeOf(cited));
+                    RuleCitation.anchorOf(cited));
         }
 
         @Override
@@ -329,7 +329,7 @@ public sealed interface StandingQuestion {
 
         @Override
         public Set<RuleCitation> cited() {
-            return RuleCitation.handlesFor(filed.rule(), reachedAt);
+            return RuleCitation.handlesFor(filed.rule(), reachedBy);
         }
 
         /** Where a reader is sent to look, which is not what the rule is about. */
@@ -365,8 +365,8 @@ public sealed interface StandingQuestion {
                 throw new IllegalArgumentException("two accounts put together are of one rule: "
                         + filed + " and " + it.filed);
             }
-            Set<Citation> both = new HashSet<>(reachedAt);
-            both.addAll(it.reachedAt);
+            Set<RuleReportAnchor> both = new HashSet<>(reachedBy);
+            both.addAll(it.reachedBy);
             return new NothingClassifiesIt(filed, both);
         }
 
@@ -410,19 +410,19 @@ public sealed interface StandingQuestion {
      * and everything that reads one of these has to say what it does about it.
      *
      * @param filed which rule, where it was filed and what stopped the reading
-     * @param reachedAt every place a reader was offered for that rule, empty exactly where the
+     * @param reachedBy every question a reader was offered for that rule, empty exactly where the
      *                  author named it
      */
     record BoundaryUndetermined(BoundaryUndetermined.Filed filed,
-                                Set<Citation> reachedAt) implements Unclassified {
+                                Set<RuleReportAnchor> reachedBy) implements Unclassified {
 
         public BoundaryUndetermined {
             if (filed == null) {
                 throw new IllegalArgumentException("a question nothing worked out is one question,"
                         + " of one rule, filed somewhere");
             }
-            reachedAt = reachedAt == null ? Set.of() : Set.copyOf(reachedAt);
-            RuleCitation.requireReached(filed.rule(), reachedAt);
+            reachedBy = reachedBy == null ? Set.of() : Set.copyOf(reachedBy);
+            RuleCitation.requireReached(filed.rule(), reachedBy);
         }
 
         /** One reader's account of it, as that reader produced it. */
@@ -430,7 +430,7 @@ public sealed interface StandingQuestion {
                                               BlockReason.RuleReadingStopped why) {
             return new BoundaryUndetermined(
                     new BoundaryUndetermined.Filed(cited.rule(), at, why),
-                    RuleCitation.placeOf(cited));
+                    RuleCitation.anchorOf(cited));
         }
 
         @Override
@@ -440,7 +440,7 @@ public sealed interface StandingQuestion {
 
         @Override
         public Set<RuleCitation> cited() {
-            return RuleCitation.handlesFor(filed.rule(), reachedAt);
+            return RuleCitation.handlesFor(filed.rule(), reachedBy);
         }
 
         @Override
@@ -473,8 +473,8 @@ public sealed interface StandingQuestion {
                 throw new IllegalArgumentException("two accounts put together are of one question: "
                         + filed + " and " + it.filed);
             }
-            Set<Citation> both = new HashSet<>(reachedAt);
-            both.addAll(it.reachedAt);
+            Set<RuleReportAnchor> both = new HashSet<>(reachedBy);
+            both.addAll(it.reachedBy);
             return new BoundaryUndetermined(filed, both);
         }
 

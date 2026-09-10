@@ -152,16 +152,23 @@ public final class PublicationOrders {
     /**
      * How a document sends a reader to a rule that two readers each offered a handle for.
      *
-     * <p>A name where the author gave one, before a place where they did not. A reader given a name
-     * has the word the model uses; a place is what there is instead, and a rule that has both is a
-     * rule a reader can be asked about in the author's own words.
+     * <p>A name where the author gave one, before a way in where they did not. A reader given a
+     * name has the word the model uses; a way in is what there is instead, and a rule that has both
+     * is a rule a reader can be asked about in the author's own words.
      *
-     * <p>Two names, or two places, are told apart by what a document writes of them — which is the
-     * text it prints, and comparing that is the same serialization order the identities of two
-     * sources are compared in.
+     * <p><b>Over what the handles are and not over what a place turns out to be.</b> A citation
+     * holds no place, so choosing between two of them here is choosing between two questions —
+     * which is a comparison this can make on its own, before anything is asked. Made over the
+     * places instead, the choice would have to resolve every handle offered to pick one, and a
+     * document would ask the module that wrote a rule where it is once per reader that found it.
+     *
+     * <p>Two rules the author named are told apart by the name; a rule offered by two readings is
+     * told apart by which reading and which of its ways in, in the order those were met. There is
+     * one of each pair, since two of a kind that agreed on all of it would be one value.
      */
-    private static final Comparator<RuleCitation> HANDLES =
-            Comparator.comparing(PublishedRuleHandle::of);
+    private static Comparator<RuleCitation> handles(PublishedRuleHandle.WhereARuleIs places) {
+        return Comparator.comparing(cited -> PublishedRuleHandle.of(cited, places));
+    }
 
     /**
      * The one handle a document writes for a rule met with several, or nothing where none was
@@ -169,9 +176,21 @@ public final class PublicationOrders {
      *
      * <p>The schema has room for one and a rule is one rule however many readers found it, so a
      * choice is made and it is made here rather than by whichever reader a walk reached first.
+     *
+     * <p><b>Chosen over what a document writes and never over what a citation is.</b> The order is
+     * taken over the handles the offered citations come to, which is what the whole of
+     * {@link PublishedRuleHandle} exists to be taken over: two that a document writes alike are one
+     * value there, and two it writes apart are ordered by what it writes. Compared as citations —
+     * by which reading offered one and in what order that reading met it — the choice would be the
+     * one the walk registered first, which is the defect said in other words.
+     *
+     * <p>So {@code places} is asked, once per handle offered. A rule met at one call by two readers
+     * is one citation and is asked about once; one met at two calls is two, and a document choosing
+     * between them is choosing between two places it could send a reader to.
      */
-    public static Optional<RuleCitation> handleFor(Collection<RuleCitation> offered) {
-        return offered.stream().min(HANDLES);
+    public static Optional<RuleCitation> handleFor(Collection<RuleCitation> offered,
+                                                   PublishedRuleHandle.WhereARuleIs places) {
+        return offered.stream().min(handles(places));
     }
 
     /**
