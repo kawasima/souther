@@ -37,7 +37,15 @@ class AComparisonThisDoesNotReadIsStillNoticedTest {
         return read("n: Count", condition);
     }
 
+    /** What one reading came to, with the compile it was made from beside it — which is who
+     *  answers where the rules it names are written. */
+    private record Read(Compilation compilation, GuardThresholds.Guards guards) {}
+
     private static GuardThresholds.Guards read(String parameter, String condition) {
+        return readWith(parameter, condition).guards();
+    }
+
+    private static Read readWith(String parameter, String condition) {
         String source = """
                 module example.guarded
 
@@ -67,8 +75,10 @@ class AComparisonThisDoesNotReadIsStillNoticedTest {
         Core body = checked.behaviorBodies().get("pick");
         assertNotNull(body);
         CoverageSites.Plan plan = checked.plan();
-        return GuardThresholds.of("pick", checked.analysisBodies().get("pick"), body, plan,
-                compilation.db().ask(new souther.compiler.query.Adequacy.Inputs(module)).value().get("pick"), rules);
+        return new Read(compilation,
+                GuardThresholds.of("pick", checked.analysisBodies().get("pick"), body, plan,
+                        compilation.db().ask(new souther.compiler.query.Adequacy.Inputs(module))
+                                .value().get("pick"), rules));
     }
 
     /** A comparison this reads is not also reported as one it did not. */
@@ -195,17 +205,24 @@ class AComparisonThisDoesNotReadIsStillNoticedTest {
      */
     @Test
     void aFindingNamesTheComparisonThatWentUnread() {
+        Read read = readWith("p: Pair", "Int.multiply(p.x, p.x) < 10");
         souther.compiler.inputs.StandingQuestion.Unclassified said =
-                read("p: Pair", "Int.multiply(p.x, p.x) < 10").noLine().unclassified().getFirst();
+                read.guards().noLine().unclassified().getFirst();
 
         assertInstanceOf(RuleRef.Comparison.class, said.rule());
-        RuleCitation.WrittenAt cited = said.cited().stream()
-                .filter(RuleCitation.WrittenAt.class::isInstance)
-                .map(each -> (RuleCitation.WrittenAt) each).findFirst()
+        RuleCitation.Written cited = said.cited().stream()
+                .filter(RuleCitation.Written.class::isInstance)
+                .map(each -> (RuleCitation.Written) each).findFirst()
                 .orElseThrow(() -> new AssertionError(
                         "a rule with no name is found by where it is: " + said.cited()));
+        // Which construct the rule names is what decides the place, so it is read here as well as
+        // the place it comes to: the fork and the comparison are two constructs, and asking the
+        // module that wrote this rule where it is asks it about the comparison.
+        assertEquals(souther.compiler.types.SourceConstruct.BINARY, cited.rule().origin().kind(),
+                () -> "the comparison and not the fork that tests it: " + cited.rule());
         souther.compiler.diag.Citation.Written where = assertInstanceOf(
-                souther.compiler.diag.Citation.Written.class, cited.at(),
+                souther.compiler.diag.Citation.Written.class,
+                souther.compiler.query.Sites.placeOf(read.compilation().db(), cited),
                 "a rule with no name is found where it is written");
         // Line 14 column 31 is the `<`, and column 8 is the `if` that tests it. The two are
         // on one line, so a citation taken from the fork would be a plausible place on the right

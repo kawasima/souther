@@ -8,6 +8,7 @@ import souther.compiler.check.RuleCitation;
 import souther.compiler.check.RuleReportAnchor;
 import souther.compiler.types.WrittenOwner;
 import souther.compiler.check.RuleRef;
+import souther.compiler.diag.SourcePos;
 import souther.compiler.source.SourceId;
 import souther.compiler.types.SourceConstruct;
 import souther.compiler.types.SourceConstructOrigin;

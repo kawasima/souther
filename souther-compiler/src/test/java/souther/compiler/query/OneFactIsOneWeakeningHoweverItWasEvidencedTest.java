@@ -3,6 +3,7 @@ package souther.compiler.query;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.check.RuleCitation;
+import souther.compiler.check.RuleReportAnchor;
 import souther.compiler.types.WrittenOwner;
 import souther.compiler.check.RuleRef;
 import souther.compiler.diag.Citation;
@@ -250,11 +251,12 @@ class OneFactIsOneWeakeningHoweverItWasEvidencedTest {
     /**
      * One handle for that rule, reached at {@code line}.
      *
-     * <p>Two handles of one rule are two places. Which of the two ways a rule is found is the
+     * <p>Two handles of one rule are two ways in. Which of the two ways a rule is found is the
      * rule's own answer, so a comparison is reached where it was read and never by a name.
      */
-    private static RuleCitation reachedAt(int line) {
-        return new RuleCitation.WrittenAt(comparison(),Citation.of(new SourcePos(line, 1)));
+    private static RuleCitation reachedAt(int reach) {
+        return new RuleCitation.Written(comparison(),
+                new RuleReportAnchor.ByTheReadingThatMetIt("m", "b", reach));
     }
 
     private static WeakeningSet of(Weakening one) {

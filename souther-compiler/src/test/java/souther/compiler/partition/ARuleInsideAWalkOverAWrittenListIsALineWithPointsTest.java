@@ -212,7 +212,7 @@ class ARuleInsideAWalkOverAWrittenListIsALineWithPointsTest {
                 .map(each -> each.at() + " " + each.reason())
                 .collect(Collectors.joining(", "))
                 + "] points [" + read.account().stream()
-                .map(point -> RuleHandleProse.said(point.said(),
+                .map(point -> RuleHandleProse.said(point.said(read.rulePlace()),
                         souther.compiler.source.SourceId::value, null))
                 .collect(Collectors.joining(", ")) + "]";
     }

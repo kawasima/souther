@@ -224,7 +224,9 @@ class AdequacyNeverAssertsFromPartOfTheRowsTest {
                             .made().orElseGet(List::of)) {
                 if (point.item().coverage().settled() && !point.owed().hasRowWitness()) {
                     wrong.add("boundary "
-                            + RuleHandleProse.said(point.said(),
+                            + RuleHandleProse.said(
+                                    point.said(cited -> souther.compiler.query.Sites.placeOf(
+                                            compilation.db(), cited)),
                                     souther.compiler.source.SourceId::value, null));
                 }
             }
