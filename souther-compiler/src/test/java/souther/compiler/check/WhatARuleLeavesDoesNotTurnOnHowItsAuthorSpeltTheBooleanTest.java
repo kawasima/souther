@@ -8,11 +8,14 @@ import souther.compiler.types.TypeKey;
 import souther.compiler.types.TypeSymbol;
 import souther.compiler.types.TypeSymbols;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * What a declaration's rules leave a position is the same however the boolean was spelt.
@@ -69,6 +72,23 @@ class WhatARuleLeavesDoesNotTurnOnHowItsAuthorSpeltTheBooleanTest {
     private static final String HELPER = """
             let aboveThree (n: Int): Bool = n > 3
             """;
+
+    /**
+     * And the fixtures are held to being programs somebody could write.
+     *
+     * <p>The control on how these models are built. A property over spellings is worth what its
+     * fixtures are worth, and a spelling this compiler refuses reads as a declaration with no rule
+     * at all — which agrees with every other spelling about a great deal. What each fixture is
+     * driven far enough to answer is the structure alone, so what is asserted here is that far
+     * enough is far enough.
+     */
+    @Test
+    void aModelThatCannotBeWrittenIsRefused() {
+        for (String clause : List.of("n > \"three\"", "nope > 3", "Bool.not(n)")) {
+            assertThrows(AssertionError.class, () -> domainsOf(clause),
+                    () -> "a fixture this compiler refuses is no fixture: " + clause);
+        }
+    }
 
     /** The pair the tier above would pass without: a rule and its denial are different rules. */
     @Test
@@ -152,6 +172,19 @@ class WhatARuleLeavesDoesNotTurnOnHowItsAuthorSpeltTheBooleanTest {
         return domainsOf(clause, "");
     }
 
+    /**
+     * The reading of each model this test names, built once.
+     *
+     * <p>A property held over spellings names the same spelling from several of its rows — one
+     * spelling is the thing another is being held against, and the row that says two of them differ
+     * names both again. Built per naming, a model is built as many times as it is mentioned, and
+     * which reading of it a row was about is decided by the order the rows ran in.
+     *
+     * <p>The model and not the reading, because building it is what costs: what a reading projects
+     * out of one is a walk over what is already in hand.
+     */
+    private static final Map<String, FieldDomains> READ = new HashMap<>();
+
     private static FieldDomains domainsOf(String clause, String helpers) {
         String source = """
                 module example.spelling
@@ -162,8 +195,17 @@ class WhatARuleLeavesDoesNotTurnOnHowItsAuthorSpeltTheBooleanTest {
                     }
                     invariant capped = %s
                 """.formatted(helpers, clause);
+        return READ.computeIfAbsent(source, each -> read(each, clause));
+    }
+
+    private static FieldDomains read(String source, String clause) {
         Compilation compilation = Compilation.ofSource(source, "Main");
-        compilation.answerEverything();
+        // What a fixture has to clear, and no more. Answering everything there is to answer runs
+        // the code this compiler writes, the constant constructions, the examples and every warning
+        // — none of which a rule about what a declaration's clauses leave is read from, and all of
+        // which a fixture pays for once per model it names. What a model that cannot be written is
+        // refused by is held below.
+        compilation.structuralReports();
         assertEquals(List.of(), compilation.diagnostics().values().stream()
                         .flatMap(List::stream).map(each -> each.diagnostic().code()).toList(),
                 "the model under test is a program that can be written: " + clause);

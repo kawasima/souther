@@ -8,7 +8,9 @@ import souther.compiler.inputs.InputDomain;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.Compilation;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -96,8 +98,22 @@ class ADeniedComparisonDrawsTheLineItStatesTest {
                 .collect(java.util.stream.Collectors.toSet());
     }
 
+    /**
+     * The lines each model this test names draws, worked out once.
+     *
+     * <p>A property held over spellings names the same spelling from several of its rows — one
+     * spelling is the thing another is being held against, and the row that says two of them differ
+     * names both again. Built per naming, a model is built as many times as it is mentioned, and
+     * which reading of it a row was about is decided by the order the rows ran in.
+     */
+    private static final Map<String, List<LineDrawn>> DRAWN = new HashMap<>();
+
     /** What the reading that draws lines makes of a declaration whose rule is {@code clause}. */
     private static List<LineDrawn> linesOf(String clause) {
+        return DRAWN.computeIfAbsent(clause, ADeniedComparisonDrawsTheLineItStatesTest::drawnFor);
+    }
+
+    private static List<LineDrawn> drawnFor(String clause) {
         String source = """
                 module example.denied
 
@@ -110,7 +126,10 @@ class ADeniedComparisonDrawsTheLineItStatesTest {
                 let take (r) = Taken
                 """.formatted(clause);
         Compilation compilation = Compilation.ofSource(source, "Main");
-        compilation.answerEverything();
+        // The structure alone, which is what a fixture has to clear. What this test reads is asked
+        // for below and pulls what answering it needs; answering everything there is to answer
+        // besides is work no row here is read from.
+        compilation.structuralReports();
         assertEquals(List.of(), compilation.diagnostics().values().stream()
                         .flatMap(List::stream).map(each -> each.diagnostic().code()).toList(),
                 "the model under test is a program that can be written");
