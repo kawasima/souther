@@ -312,57 +312,112 @@ public record DeclaredTypeReading(DeclarationFacts facts,
             // here the copy in hand already names variables minted for it. Two questions with two
             // owners, and each is asked of the one that owns it.
             Substitution decided = new Substitution(ex.application(), null);
+            List<Type> declared = new ArrayList<>();
+            List<Type> arrived = new ArrayList<>();
+            // Every value argument first, and every one of them read once. What one decides stands
+            // at every position the declaration wrote it at, so a parameter read before the
+            // argument that decides its variable would be read at a variable and not at a type —
+            // which is why the deciding is finished before anything is held or bound. It is the
+            // order a written call is read in, and the two are one reading of one declaration.
+            for (Hir.Bound bound : ex.bound()) {
+                declared.add(bound.declaredType() == null
+                        ? null : TypeOps.resolveParamType(bound.declaredType()));
+                arrived.add(of(bound.value()));
+            }
+            if (!settles(decided, declared, arrived) || !admitted(ex, decided, declared, arrived)) {
+                return null;
+            }
             Map<BindingId, BindingEvidence> outer = new LinkedHashMap<>();
             try {
-                boolean admits = true;
-                for (Hir.Bound bound : ex.bound()) {
-                    Type declared = bound.declaredType() == null
-                            ? null : TypeOps.resolveParamType(bound.declaredType());
-                    Type arrived = of(bound.value());
-                    // Asked for what it decides. Two readings of one variable that do not go
-                    // together leave an application nothing can be built from — which is what the
-                    // deciding says of itself — so this one states nothing rather than reading a
-                    // result out of decisions that disagreed.
-                    if (declared != null && arrived != null
-                            && decided.decide(declared, arrived, symbols())
-                                    instanceof Fit.Disagrees) {
-                        admits = false;
-                    }
-                    outer.put(bound.binder().id(),
-                            inForce.put(bound.binder().id(), boundBy(bound, arrived)));
-                }
-                if (!admits) {
-                    return null;   // what the callee takes is not what arrived, as above
+                for (int i = 0; i < ex.bound().size(); i++) {
+                    Hir.Bound bound = ex.bound().get(i);
+                    // The parameter type as this application settled it, which is what the body was
+                    // written against. Read as it was written, a variable another argument decided
+                    // would still be standing here.
+                    Type required = declared.get(i) == null
+                            ? null : decided.zonk(declared.get(i));
+                    outer.put(bound.binder().id(), inForce.put(bound.binder().id(),
+                            boundBy(bound, required, arrived.get(i))));
                 }
                 Type answers = ex.declaredReturn() == null
                         ? null : TypeOps.resolveParamType(ex.declaredReturn());
-                // What the callee declared it answers, where this application has decided it — the
-                // same order a written call is read in, so one declaration states one thing however
-                // the call reached here. Where the arguments left it open it is the function
-                // arguments that would decide it, which this reading does not type, and what the
-                // body states is what is left.
-                return answers != null && !decided.open(answers)
-                        ? closed(decided.zonk(answers)) : of(ex.body());
+                if (answers == null) {
+                    return of(ex.body());
+                }
+                // What the callee declared it answers, where this application has decided it. Where
+                // the arguments left it open it is a function argument that would decide it, and
+                // this reading does not type one — so it states nothing, which is what it states
+                // for the same call written rather than expanded. Falling to the body here would
+                // make one declaration answer by how the call reached this reading.
+                return decided.open(answers) ? null : closed(decided.zonk(answers));
             } finally {
                 outer.forEach(this::restore);
             }
         }
 
-        /** What a binding an expansion wrote says about itself, given what arrived at it. */
-        private BindingEvidence boundBy(Hir.Bound bound, Type arrived) {
-            if (bound.declaredType() == null) {
+        /** What each argument says about the variables the declaration carries. Nothing where two
+         *  readings of one variable do not go together, which leaves an application nothing can be
+         *  built from — what the deciding says of itself. */
+        private boolean settles(Substitution decided, List<Type> declared, List<Type> arrived) {
+            for (int i = 0; i < declared.size(); i++) {
+                if (declared.get(i) != null && arrived.get(i) != null
+                        && decided.decide(declared.get(i), arrived.get(i), symbols())
+                                instanceof Fit.Disagrees) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        /**
+         * Whether the declaration admits what this application was given, once its variables are
+         * settled.
+         *
+         * <p>Deciding is not admitting: what a variable is read at is one question, and whether a
+         * value of some other shape may stand at a position is another, which the deciding says it
+         * does not answer. Held apart here for the same reason they are held apart there — an
+         * argument of a type the declaration never wrote carries no variable to disagree about.
+         *
+         * <p>The functions it was given as well, where the expansion carries what arrives — a
+         * function passed under a name whose declaration says what it takes and answers. Both sides
+         * are a statement each and the boundary is the one place holding them together, since a
+         * function argument leaves no binding to read it at. A lambda written at the call carries
+         * no such statement, and one the callee applies is read where it applies it, which this
+         * walk reaches as an expansion of its own; what either decides of this application's
+         * variables is not read here, which is the same silence a written call keeps about a block.
+         */
+        private boolean admitted(Hir.Expansion ex, Substitution decided, List<Type> declared,
+                                 List<Type> arrived) {
+            for (int i = 0; i < declared.size(); i++) {
+                if (declared.get(i) != null && arrived.get(i) != null
+                        && decided.hold(declared.get(i), arrived.get(i), symbols())
+                                instanceof Fit.Disagrees) {
+                    return false;
+                }
+            }
+            for (Hir.Given given : ex.given()) {
+                Type takes = given.declaredType() == null
+                        ? null : TypeOps.resolveParamType(given.declaredType());
+                Type arrives = given.arrivesAs() == null
+                        ? null : TypeOps.resolveParamType(given.arrivesAs());
+                if (takes != null && arrives != null
+                        && decided.hold(takes, arrives, symbols()) instanceof Fit.Disagrees) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        /** What a binding an expansion wrote says about itself: the parameter type as this
+         *  application settled it, and what arrived there. */
+        private BindingEvidence boundBy(Hir.Bound bound, Type required, Type arrived) {
+            if (required == null || closed(required) == null) {
+                // Nothing the declaration wrote there, or a variable this application was to decide
+                // and nothing did. Either way what is left is the argument.
                 return new BindingEvidence.BoundTo(bound.value());
             }
-            if (arrived == null) {
-                // With nothing said about what arrived there is no pair to choose between, and what
-                // is left is the callee's own parameter type — which answers where it is a type at
-                // all rather than a variable this application was to decide.
-                Type parameter = closed(TypeOps.resolveParamType(bound.declaredType()));
-                return parameter == null ? new BindingEvidence.BoundTo(bound.value())
-                        : new BindingEvidence.DeclaredAs(parameter);
-            }
-            return new BindingEvidence.DeclaredAs(
-                    Elaborator.carriedType(bound.declaredType(), arrived, symbols()));
+            return new BindingEvidence.DeclaredAs(arrived == null ? required
+                    : Elaborator.carriedType(required, arrived, symbols()));
         }
 
         /** What a {@code let} puts in force while its body is read. */

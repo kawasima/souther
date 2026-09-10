@@ -93,6 +93,29 @@ class WhatAnApplicationStatesComesFromTheDeclarationItAppliesTest {
             let wrong = costOf(basket).amount
             """;
 
+    /** A module whose published definition applies one of its own to what it does not take. Its
+     *  bodies are closed for a reader before anything types them, so this is what an expansion
+     *  holding an argument the declaration does not admit is reached through. */
+    private static final List<String> ACROSS_ONE_THAT_DOES_NOT_CHECK = List.of("""
+            module lib exposing ( Draft, Basket, wrong )
+
+            data Cost   = { amount: Int }
+            data Draft  = { plannedCost: Cost }
+            data Basket = { items: List<Int> }
+
+            let itself (d: Draft) = d
+
+            let wrong (b: Basket) = itself(b)
+            """, """
+            module app
+
+            import lib as l ( Draft, Basket, wrong )
+
+            let basket = Basket { items = [1, 2] }
+
+            let read = wrong(basket)
+            """);
+
     /** Constructions the declarations do not admit: one given more values than what it builds is
      *  written with, and one given a value of another type than it takes. */
     private static final String CONSTRUCTED_FROM_ANOTHER_NUMBER = """
@@ -117,7 +140,7 @@ class WhatAnApplicationStatesComesFromTheDeclarationItAppliesTest {
      * was written against, so the binding the expansion wrote holds the sum.
      */
     private static final List<String> ACROSS_A_PUBLISHED_DEFINITION = List.of("""
-            module lib exposing ( Deal, Open, Closed, widened, tail )
+            module lib exposing ( Deal, Open, Closed, widened, tail, each )
 
             data Open   = { id: String }
             data Closed = { id: String, closedOn: Date }
@@ -128,10 +151,12 @@ class WhatAnApplicationStatesComesFromTheDeclarationItAppliesTest {
             let widened (c: Closed) = inner(c)
 
             let tail (xs: List<Int>) = List.drop(1, xs)
+
+            let each (xs: List<Int>) = List.map(n -> n + 1, xs)
             """, """
             module app
 
-            import lib as l ( Deal, Open, Closed, widened, tail )
+            import lib as l ( Deal, Open, Closed, widened, tail, each )
 
             data Basket = { items: List<Int> }
 
@@ -140,6 +165,7 @@ class WhatAnApplicationStatesComesFromTheDeclarationItAppliesTest {
 
             let read    = widened(closed)
             let dropped = tail(basket.items)
+            let mapped  = each(basket.items)
             """);
 
     private final Compilation compilation = compiled();
@@ -318,6 +344,44 @@ class WhatAnApplicationStatesComesFromTheDeclarationItAppliesTest {
         assertEquals(Type.list(Type.INT),
                 declaredTypeAcross(ACROSS_A_PUBLISHED_DEFINITION, "app", "dropped"),
                 "`List.drop` answers a list of what it was given, and this one was given `Int`s");
+    }
+
+    /**
+     * An expansion holding an argument the declaration does not admit states nothing.
+     *
+     * <p>Reached because a module's bodies are closed for whoever imports them before anything types
+     * them, so a published definition that will not check is published all the same. What the
+     * deciding does there is settle variables, and it says of itself that it judges no shape: an
+     * argument of a type the declaration never wrote carries no variable to disagree about, so it
+     * passes the deciding untouched. Holding it to what the declaration states is the other half,
+     * and it is the same half a written call has.
+     */
+    @Test
+    void anExpansionHoldingWhatTheDeclarationDoesNotTakeStatesNothing() {
+        assertThrows(CompileException.class,
+                () -> Compiler.compileModules(ACROSS_ONE_THAT_DOES_NOT_CHECK),
+                "the check refuses a `Basket` where a `Draft` is taken, wherever it is written");
+
+        assertNull(declaredTypeAcross(ACROSS_ONE_THAT_DOES_NOT_CHECK, "app", "read"),
+                "and nothing states what an application the declarations do not admit answers");
+    }
+
+
+    /**
+     * And a declaration whose answer the arguments do not settle states nothing, expanded or not.
+     *
+     * <p>What {@code List.map} answers is decided by the function it was given, which this reading
+     * does not type — so a call of it states nothing, and the same call inside a published body
+     * states nothing for the same reason. Read by falling to the callee's body where the
+     * declaration did not settle, the expanded one would answer by whatever shape that body
+     * happened to have, and one declaration would state two things by how the call reached here.
+     */
+    @Test
+    void andADeclarationTheArgumentsDoNotSettleStatesNothingExpandedOrNot() {
+        assertNull(declaredTypeOf("mapped"),
+                "written out, `List.map` states nothing this reading can settle");
+        assertNull(declaredTypeAcross(ACROSS_A_PUBLISHED_DEFINITION, "app", "mapped"),
+                "and expanded into a published body it states the same nothing");
     }
 
     /** The namespace of a temporal applied builds a value of it, which the library says of itself
