@@ -2,7 +2,6 @@ package souther.compiler.check;
 
 import souther.compiler.ast.Hir;
 import souther.compiler.types.Type;
-import souther.compiler.types.TypeKey;
 import souther.compiler.types.TypeSymbol;
 
 import java.util.ArrayList;
@@ -62,70 +61,19 @@ public final class TypeCardinality {
     public static Cardinalities solve(List<Hir.Def> declarations, RuleReadingSource source,
                                       ReadingPolicy policy, DeclarationReadings machines) {
         Symbols symbols = source.symbols();
-        // What this count is short of is worked out from the clauses it actually asked for, which
-        // is why the reading it runs against is wrapped rather than the declarations it walked
-        // being counted afterwards. The two are not the same set: a rule reaches a declaration
-        // through a spread, which the graph below does not follow, so a set taken from the graph
-        // would leave out exactly the rules that arrive from somewhere else.
-        Asked asked = new Asked(source.invariants());
-        source = new RuleReadingSource(symbols, asked, source.states(), source.written());
-        ObservationProbe.Run probe = ObservationProbe.begin();
-        Cardinalities counted;
-        try {
-            Map<TypeSymbol, Hir.Def> declared = reached(declarations, symbols);
-            Map<TypeSymbol, Set<TypeSymbol>> edges = new LinkedHashMap<>();
-            declared.forEach((name, def) -> edges.put(name, read(def, symbols, declared.keySet())));
-            // Fixed before the rising starts. What makes it stop is that there are finitely many
-            // answers to rise through, and a count discovered part way would give it somewhere new
-            // to go.
-            CardinalityCuts cuts =
-                    CardinalityCuts.keeping(asked(declared, source, policy, machines));
-            List<List<TypeSymbol>> components = TypeComponents.of(edges);
-            counted = new Cardinalities(
-                    Map.copyOf(pass(components, declared, edges, cuts, source, policy, Set.of(),
-                            machines)),
-                    components, declared, edges, cuts, source, policy, machines,
-                    asked.everyRuleReached());
-        } finally {
-            ObservationProbe.end(probe);
-        }
-        ObservationProbe.compare(probe, counted.everyRuleReached());
-        return counted;
-    }
-
-    /**
-     * The reading a count runs against, remembering whether every clause it was asked for could be
-     * given.
-     *
-     * <p>What makes a type have no value is what its rules leave, so a count taken where one of
-     * them was never worked out is a count over fewer rules than the model states. It may still be
-     * right; what it may not do is say so.
-     *
-     * <p>It answers as the reading it wraps and adds nothing to the answer. What it holds is about
-     * the run and not about any declaration, so a caller reads it once the run is over.
-     */
-    private static final class Asked implements ExpandedClauseLookup {
-
-        private final ExpandedClauseLookup reading;
-        private boolean everyRuleReached = true;
-
-        Asked(ExpandedClauseLookup reading) {
-            this.reading = reading;
-        }
-
-        @Override
-        public ExpandedClauseResult of(TypeKey declaration) {
-            ExpandedClauseResult result = reading.of(declaration);
-            if (result instanceof ExpandedClauseResult.Unavailable) {
-                everyRuleReached = false;
-                ObservationProbe.sawUnavailable(declaration);
-            }
-            return result;
-        }
-
-        boolean everyRuleReached() {
-            return everyRuleReached;
-        }
+        Map<TypeSymbol, Hir.Def> declared = reached(declarations, symbols);
+        Map<TypeSymbol, Set<TypeSymbol>> edges = new LinkedHashMap<>();
+        declared.forEach((name, def) -> edges.put(name, read(def, symbols, declared.keySet())));
+        OfTheDeclarations read = ofTheDeclarations(declared, source, policy, machines);
+        // Fixed before the rising starts. What makes it stop is that there are finitely many answers
+        // to rise through, and a count discovered part way would give it somewhere new to go.
+        CardinalityCuts cuts = CardinalityCuts.keeping(read.counts());
+        List<List<TypeSymbol>> components = TypeComponents.of(edges);
+        return new Cardinalities(
+                Map.copyOf(pass(components, declared, edges, cuts, source, policy, Set.of(),
+                        machines)),
+                components, declared, edges, cuts, source, policy, machines,
+                read.everyRuleReached());
     }
 
     /**
@@ -441,24 +389,50 @@ public final class TypeCardinality {
     }
 
     /**
-     * The counts the rules ask collections to hold, which is what decides the answers worth telling
-     * apart.
+     * What reading every declaration the count reaches says about the count.
      *
-     * <p>Read off the domain rather than the clauses. A floor arrives in more ways than a number
-     * written at the position, and a count missed here is precision lost and nothing else: the
-     * answers still tell apart everything the questions found.
+     * @param counts           the counts the rules ask collections to hold, which is what decides
+     *                         the answers worth telling apart
+     * @param everyRuleReached whether every rule those readings were to be built on arrived
      */
-    private static Set<Long> asked(Map<TypeSymbol, Hir.Def> declared, RuleReadingSource source,
-                                   ReadingPolicy policy, DeclarationReadings machines) {
+    private record OfTheDeclarations(Set<Long> counts, boolean everyRuleReached) {}
+
+    /**
+     * Both of those, off one reading of each declaration.
+     *
+     * <p>The counts are read off the domain rather than the clauses. A floor arrives in more ways
+     * than a number written at the position, and a count missed here is precision lost and nothing
+     * else: the answers still tell apart everything the questions found.
+     *
+     * <p>Whether a rule went unread is read off the same readings, which is where a declaration
+     * whose clauses nobody could work out is already written down — the ones a declaration reaches
+     * through a spread as well as its own ({@link InvariantChecker.Seeded#clausesNotExpanded}).
+     * Watching the clauses being looked up instead would answer about the run rather than about
+     * what was read, and would have every reading made here under a source no other reader shares.
+     *
+     * <p>One walk for the two because it is one reading each. Split, the second walk would be
+     * handed what the first made wherever a lender is answering and would read the declarations
+     * again wherever none is.
+     */
+    private static OfTheDeclarations ofTheDeclarations(Map<TypeSymbol, Hir.Def> declared,
+                                                      RuleReadingSource source,
+                                                      ReadingPolicy policy,
+                                                      DeclarationReadings machines) {
         Symbols symbols = source.symbols();
         Set<Long> counts = new HashSet<>();
-        declared.forEach((name, def) -> {
+        boolean everyRuleReached = true;
+        for (Map.Entry<TypeSymbol, Hir.Def> each : declared.entrySet()) {
             // A data is a declaration a module wrote, so the second half never decides anything;
-            // it is how the name says so rather than a reader assuming it.
-            if (!(def instanceof Hir.Data data) || !(name instanceof TypeSymbol.AtModule at)) {
-                return;
+            // it is how the name says so rather than a reader assuming it. Nothing else has a
+            // clause to be short of: what the language declares answers with the clauses it has,
+            // and a sum's cases are declarations of their own and are reached as those.
+            if (!(each.getValue() instanceof Hir.Data data)
+                    || !(each.getKey() instanceof TypeSymbol.AtModule at)) {
+                continue;
             }
-            OccurrenceCounts held = OccurrenceCounts.of(at, source, policy, Set.of(), machines);
+            InvariantChecker.Seeded read = InvariantChecker.seedFields(at, source, policy, machines);
+            everyRuleReached &= !read.clausesNotExpanded();
+            OccurrenceCounts held = OccurrenceCounts.of(read);
             for (RuleKey path : data.newtype() ? Set.of(RuleKey.THE_VALUE)
                     : TypeOps.fieldTypes(data, symbols).keySet().stream()
                             .map(RuleKey::of).collect(java.util.stream.Collectors.toSet())) {
@@ -467,7 +441,7 @@ public final class TypeCardinality {
                     counts.add(least);
                 }
             }
-        });
-        return counts;
+        }
+        return new OfTheDeclarations(counts, everyRuleReached);
     }
 }

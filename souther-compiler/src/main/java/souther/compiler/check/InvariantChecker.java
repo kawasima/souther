@@ -527,6 +527,26 @@ public final class InvariantChecker {
             return InvariantChecker.written(atoms, keys);
         }
 
+        /**
+         * Whether a declaration this reading reached wrote clauses nobody could work out.
+         *
+         * <p>One of the ways a rule goes ungathered and not all of them. A reading that stopped
+         * where it could afford to go no further has said nothing about a rule failing to arrive,
+         * and the two decide different things: the first is met again by a wider run, and the
+         * second is a rule the model states that nothing here has read. A reader that turns the
+         * lack into a refusal to publish an answer at all wants this one and not
+         * {@link FieldDomains#everyRuleReachedAt}, which is every stop there is.
+         *
+         * <p>Its own declarations and the ones it reaches through a spread alike. Which of them the
+         * clauses were missing from is not recorded, because a clause of any declaration reached
+         * can be about any name of this one — so what the reading is short of is the reading's and
+         * not one name's.
+         */
+        boolean clausesNotExpanded() {
+            return notGathered.values().stream().flatMap(Set::stream)
+                    .anyMatch(why -> why instanceof RulesMissed.ClausesNotExpanded);
+        }
+
         public Seeded {
             // Insertion order: what is read off this is a list of causes a report prints, and the
             // causes at one position are printed in the order the reading met them.
@@ -733,16 +753,6 @@ public final class InvariantChecker {
     static DeclarationReading readFields(TypeSymbol.AtModule named, RuleReadingSource source,
                                          ReadingPolicy policy, Map<NumberAt<RuleKey>, Count> settled,
                                          Reach reach, DeclarationReadings readings) {
-        DeclarationReading made = readingOf(named, source, policy, settled, reach, readings);
-        ObservationProbe.sawReading(named, made.seeded());
-        return made;
-    }
-
-    /** The same, before the probe sees it. */
-    private static DeclarationReading readingOf(
-            TypeSymbol.AtModule named, RuleReadingSource source,
-            ReadingPolicy policy, Map<NumberAt<RuleKey>, Count> settled,
-            Reach reach, DeclarationReadings readings) {
         // What the declaration's string rules came to, asked for before anything else. Where a store
         // is answering, making that answer is what makes the declaration's canonical reading — so a
         // borrower asks for the machines and then looks for the reading, rather than reading for

@@ -54,6 +54,11 @@ public final class OccurrenceCounts {
         return of(named, source, policy, Set.of(), machines);
     }
 
+    /** The same counts, off a reading somebody has already made of the declaration. */
+    static OccurrenceCounts of(InvariantChecker.Seeded seeded) {
+        return new OccurrenceCounts(seeded);
+    }
+
     /** The same, reading for itself. */
     public static OccurrenceCounts of(TypeSymbol.AtModule named, RuleReadingSource source,
                                        ReadingPolicy policy) {
