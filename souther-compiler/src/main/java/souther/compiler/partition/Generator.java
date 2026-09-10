@@ -3,7 +3,7 @@ package souther.compiler.partition;
 import souther.compiler.coverage.AlignedObservation;
 import souther.compiler.coverage.ArmProbe;
 import souther.compiler.coverage.ControlClaim;
-import souther.compiler.coverage.ControlPointId;
+import souther.compiler.coverage.ControlPlace;
 import souther.compiler.check.ReadingPolicy;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.RuleKey;
@@ -1498,7 +1498,7 @@ public final class Generator {
             List<ControlClaim> claims) {
         List<ArmProbe> out = new ArrayList<>();
         for (ControlClaim claim : claims) {
-            if (claim.at() instanceof ControlPointId.ArmPoint arm
+            if (claim.at() instanceof ControlPlace.Arm arm
                     && arm.probe().isPresent()) {
                 out.add(arm.probe().get());
             }

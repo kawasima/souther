@@ -1,7 +1,7 @@
 package souther.compiler.check;
 
 import org.junit.jupiter.api.Test;
-import souther.compiler.coverage.ControlPointId;
+import souther.compiler.coverage.ControlPlace;
 import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.Compilation;
@@ -102,7 +102,7 @@ class AGuardTheGuardsAboveItRuleOutIsProvenTest {
         assertTrue(byBehavior != null && byBehavior.containsKey(behavior),
                 "the module answers nothing about `" + behavior + "`");
         return byBehavior.get(behavior).found().entrySet().stream()
-                .filter(each -> each.getKey() instanceof ControlPointId.ArmPoint)
+                .filter(each -> each.getKey() instanceof ControlPlace.Arm)
                 .map(Map.Entry::getValue)
                 .toList();
     }
@@ -237,11 +237,11 @@ class AGuardTheGuardsAboveItRuleOutIsProvenTest {
         Compilation c = Compilation.ofSource(A_LIBRARY_FORK, "d");
         Map<String, PathReachability.Answers> byBehavior =
                 c.db().ask(new Adequacy.PathReached("d")).value();
-        List<ControlPointId.ArmPoint> proven = byBehavior.get("mk").found().entrySet().stream()
+        List<ControlPlace.Arm> proven = byBehavior.get("mk").found().entrySet().stream()
                 .filter(each -> each.getValue() instanceof Reachability.Unreachable)
                 .map(each -> each.getKey())
-                .filter(ControlPointId.ArmPoint.class::isInstance)
-                .map(ControlPointId.ArmPoint.class::cast)
+                .filter(ControlPlace.Arm.class::isInstance)
+                .map(ControlPlace.Arm.class::cast)
                 .toList();
         assertTrue(!proven.isEmpty(),
                 "the argument makes one side of the library's fork unreachable, and that is proven");

@@ -3,7 +3,7 @@ package souther.compiler.partition;
 import org.junit.jupiter.api.Test;
 import souther.compiler.check.PathReachability;
 import souther.compiler.core.Core;
-import souther.compiler.coverage.ControlPointId;
+import souther.compiler.coverage.ControlPlace;
 import souther.compiler.coverage.Plans;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.Bodies;
@@ -132,15 +132,15 @@ class AProofAboutAMatchArmSaysNothingAboutWhatIsAnsweredWithTest {
                 .ask(new Adequacy.PathReached(module)).value().get("pick");
         Set<TypeSymbol> answersWith = casesNamedIn(body);
 
-        ControlPointId.ArmPoint refused = arrives.found().entrySet().stream()
+        ControlPlace.Arm refused = arrives.found().entrySet().stream()
                 .filter(each -> each.getValue() instanceof souther.compiler.reach.Reachability.Unreachable)
                 .map(Map.Entry::getKey)
-                .filter(ControlPointId.ArmPoint.class::isInstance)
-                .map(ControlPointId.ArmPoint.class::cast)
+                .filter(ControlPlace.Arm.class::isInstance)
+                .map(ControlPlace.Arm.class::cast)
                 .findFirst().orElseThrow();
         assertTrue(refused.probe().isPresent(), "the compiler numbered the arm it proved dead");
 
-        ControlPointId.ArmPoint silent = new ControlPointId.ArmPoint(
+        ControlPlace.Arm silent = new ControlPlace.Arm(
                 refused.arm(), java.util.Optional.empty(), refused.anchor());
 
         assertEquals(ProducedCases.of(body, checked.plan(), arrives, answersWith),
@@ -156,11 +156,11 @@ class AProofAboutAMatchArmSaysNothingAboutWhatIsAnsweredWithTest {
 
     /** The same answers, filed under {@code now} where they were filed under {@code was}. */
     private static PathReachability.Answers arrivalsWith(PathReachability.Answers answers,
-                                                         ControlPointId.ArmPoint was,
-                                                         ControlPointId.ArmPoint now) {
-        Map<ControlPointId, souther.compiler.reach.Reachability> found = new LinkedHashMap<>();
+                                                         ControlPlace.Arm was,
+                                                         ControlPlace.Arm now) {
+        Map<ControlPlace, souther.compiler.reach.Reachability> found = new LinkedHashMap<>();
         answers.found().forEach((where, said) -> found.put(where.equals(was) ? now : where, said));
-        return new PathReachability.Answers(found, answers.arriving());
+        return new PathReachability.Answers(answers.numbering(), found, answers.arriving());
     }
 
     /**
@@ -196,7 +196,7 @@ class AProofAboutAMatchArmSaysNothingAboutWhatIsAnsweredWithTest {
         Map<String, PathReachability.Answers> answers = compilation.db()
                 .ask(new Adequacy.PathReached(compilation.modules().get(0))).value();
         return answers.get("pick").found().entrySet().stream()
-                .filter(each -> each.getKey() instanceof ControlPointId.ArmPoint arm
+                .filter(each -> each.getKey() instanceof ControlPlace.Arm arm
                         && arm.origin().kind() == kind)
                 .map(Map.Entry::getValue)
                 .filter(souther.compiler.reach.Reachability.Unreachable.class::isInstance)

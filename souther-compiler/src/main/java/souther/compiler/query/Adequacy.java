@@ -8,6 +8,7 @@ import souther.compiler.inputs.TermPath;
 
 
 import souther.compiler.coverage.ArmProbe;
+import souther.compiler.coverage.ControlPlace;
 import souther.compiler.coverage.CoverageSites;
 import souther.compiler.coverage.SiteNumbering;
 import souther.compiler.reach.Reachability;
@@ -1007,7 +1008,7 @@ public final class Adequacy {
                         // one: it is the author saying what this reading proves, and telling them
                         // to take it out is telling them off for being right. The denominator
                         // counts the probed arms, and this reports the probed arms.
-                        if (where instanceof souther.compiler.coverage.ControlPointId.ArmPoint
+                        if (where instanceof ControlPlace.Arm
                                 arm && arm.isMeasured() && arm.writtenBy(name)
                                 && said instanceof souther.compiler.reach.Reachability.Unreachable
                                         unreachable) {
@@ -1035,7 +1036,7 @@ public final class Adequacy {
          * answers and never this.
          */
         private static Report warning(
-                Db db, souther.compiler.coverage.ControlPointId.ArmPoint arm,
+                Db db, ControlPlace.Arm arm,
                 souther.compiler.reach.Proof proof) {
             return Report.of(new DeadBranchProofWords(
                     Warnings.pointedAt(Sites.placeOf(db, arm.anchor()))
@@ -1110,12 +1111,12 @@ public final class Adequacy {
         }
 
         /** One dead branch and how it was shown, before either is turned into words. */
-        private record Dead(souther.compiler.coverage.ControlPointId.ArmPoint arm,
+        private record Dead(ControlPlace.Arm arm,
                             souther.compiler.reach.Proof proof) {}
 
         /** Where a report about an arm points, read the way {@link Warnings#pointedAt} reads it. */
         private static souther.compiler.diag.SourcePos at(
-                Db db, souther.compiler.coverage.ControlPointId.ArmPoint arm) {
+                Db db, ControlPlace.Arm arm) {
             return switch (Sites.placeOf(db, arm.anchor())) {
                 case Citation.Written written -> written.at();
                 case Citation.Unplaced unplaced -> unplaced.at();

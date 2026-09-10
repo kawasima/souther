@@ -446,7 +446,7 @@ class AnArmNothingReachesIsNotOwedARowTest {
         // an arm settles — a lit comparison says it ran, not which way it came out.
         assertTrue(asRun.answers().found().entrySet().stream()
                         .filter(each -> each.getKey()
-                                instanceof souther.compiler.coverage.ControlPointId.ArmPoint)
+                                instanceof souther.compiler.coverage.ControlPlace.Arm)
                         .noneMatch(each -> each.getValue()
                                 instanceof souther.compiler.reach.Reachability.Unreachable),
                 "and what the signature reads is the same answer the arms are counted by");

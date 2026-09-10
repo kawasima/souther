@@ -1,6 +1,6 @@
 package souther.compiler.claims;
 
-import souther.compiler.coverage.ControlPointId;
+import souther.compiler.coverage.ControlPlace;
 import souther.compiler.diag.SourcePos;
 import souther.compiler.inputs.TermPath;
 import souther.compiler.types.TypeSymbol;
@@ -26,7 +26,7 @@ import java.util.List;
  *                and it never had one — which is why a claim is judged at the control point
  */
 public record Claim(TermPath at, TypeSymbol named, List<String> reasons, SourcePos said,
-                    ControlPointId.ArmPoint where) {
+                    ControlPlace.Arm where) {
 
     public Claim {
         reasons = List.copyOf(reasons);

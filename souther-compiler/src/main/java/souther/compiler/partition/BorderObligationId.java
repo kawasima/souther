@@ -41,7 +41,7 @@ package souther.compiler.partition;
  * lit is read where the reading is, before anything is folded.
  *
  * <p>Four identities and not one, the way {@link souther.compiler.coverage.CoverageSites.Obligation}
- * and {@link souther.compiler.coverage.ControlPointId} are on the arm side.
+ * and {@link souther.compiler.coverage.ControlPlace} are on the arm side.
  * {@link LineOrigin#rule()} answers which rule of the model this came from and is provenance; this
  * answers which debt it is; {@link BoundaryLine} answers which readings are one line; {@link Border}
  * answers where one of them was read. A narrowing moves the debt without moving the rule:
