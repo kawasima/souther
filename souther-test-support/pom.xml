@@ -18,6 +18,13 @@
         is, which modules the reactor owns, where each of them keeps its sources, and which files
         git holds. Every module depends on this at test scope. It depends on nothing, so it is the
         first thing the reactor builds and a check in any module can ask it.
+
+        It also carries the models this repository is checked and measured against, and the manifest
+        saying which corpus each file belongs to. They are here for the same reason: held by the
+        module that first needed them, which side of the compiler a module sits on would decide what
+        may be asked of them, and every crossing of that boundary would write the membership out
+        again. The measurement jar carries them without depending on this module — it copies the
+        resources into its own artifact at build time, so a replayed measurement needs nothing here.
     </description>
 
     <dependencies>

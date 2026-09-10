@@ -14,7 +14,9 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * A model written to be compiled here, and what this compiler answers about it.
@@ -26,39 +28,108 @@ import java.util.List;
  * of those it does not reach yet.
  *
  * <p>A corpus is a directory of {@code .sou} files plus a {@code sources.txt} naming them in the
- * order they are handed over, and {@code corpora.txt} names the directories. Both are written out
- * rather than discovered because a jar has no directory to list, and because the order is part of
- * what is compiled: a file of {@code examples for} a module is read after the module it is
- * attached to.
+ * order they are handed over, and {@code corpora.txt} names the directories and what each was
+ * written for. Both are written out rather than discovered because a jar has no directory to list,
+ * and because the order is part of what is compiled: a file of {@code examples for} a module is read
+ * after the module it is attached to.
+ *
+ * <p><b>The models and the answers about them are kept apart.</b> The sources are the repository's,
+ * owned by {@code souther-test-support} so that every module reaches the same ones whichever side of
+ * the compiler it sits on; what this compiler answers about them is this module's and is checked in
+ * here. Which corpora are conformance corpora is read off the manifest below and stated nowhere
+ * else.
  */
 public record ConformanceCorpus(String name, List<String> files, List<String> sources) {
 
+    /** Where the models are, which is every model this repository carries and not only these. */
+    private static final String MODELS = "/souther/corpus/";
+
+    /** What the manifest calls the corpora whose answers are checked in beside this compiler. */
+    static final String CONFORMANCE = "conformance";
+
+    /** Where the answers about them are, which is this module's own resources. */
     static final String ROOT = "/souther/compiler/conformance/";
 
-    /** Where these resources are written, for the one caller that writes rather than reads them. */
+    /** Where those are written, for the one caller that writes rather than reads them. */
     static final Path SOURCE_DIR = Path.of("src", "test", "resources", "souther", "compiler",
             "conformance");
 
     public static List<ConformanceCorpus> all() {
         List<ConformanceCorpus> out = new ArrayList<>();
-        for (String name : read(ROOT + "corpora.txt").lines().toList()) {
-            if (!name.isBlank()) {
-                out.add(load(name.strip()));
+        manifest().forEach((name, writtenFor) -> {
+            if (writtenFor.equals(CONFORMANCE)) {
+                out.add(load(name));
             }
+        });
+        if (out.isEmpty()) {
+            throw new IllegalStateException("the manifest names no conformance corpus");
         }
         return out;
     }
 
     public static ConformanceCorpus load(String name) {
-        List<String> files = new ArrayList<>();
+        if (!manifest().containsKey(name)) {
+            throw new IllegalStateException("the manifest names no corpus `" + name + "`");
+        }
+        List<String> files = filesOf(name);
         List<String> sources = new ArrayList<>();
-        for (String file : read(ROOT + name + "/sources.txt").lines().toList()) {
-            if (!file.isBlank()) {
-                files.add(file.strip());
-                sources.add(read(ROOT + name + "/" + file.strip()));
+        files.forEach(file -> sources.add(read(MODELS + name + "/" + file)));
+        return new ConformanceCorpus(name, files, sources);
+    }
+
+    /**
+     * The files one corpus is made of, in the order they are handed over.
+     *
+     * <p>Any corpus the manifest names and not only a conformance one, because what a reader over
+     * every model this repository carries needs is the same reading. Written a second time for the
+     * others, the two would part over a file added to one corpus and nothing would say so.
+     */
+    public static List<String> filesOf(String name) {
+        List<String> out = new ArrayList<>();
+        for (String line : read(MODELS + name + "/sources.txt").lines().toList()) {
+            String file = line.strip();
+            if (!file.isEmpty()) {
+                out.add(file);
             }
         }
-        return new ConformanceCorpus(name, files, sources);
+        if (out.isEmpty()) {
+            throw new IllegalStateException("the `" + name + "` corpus names no source");
+        }
+        return List.copyOf(out);
+    }
+
+    /** The text of each of them. */
+    public static List<String> sourcesOf(String name) {
+        List<String> out = new ArrayList<>();
+        filesOf(name).forEach(file -> out.add(read(MODELS + name + "/" + file)));
+        return List.copyOf(out);
+    }
+
+    /**
+     * Every corpus this repository carries, by name, with what each was written for.
+     *
+     * <p>Read rather than restated. What a corpus is for is what decides whether an answer about it
+     * is checked in, and a list of names written here would answer that a second time — going on
+     * answering after the manifest had changed, with nothing to say that it had.
+     */
+    public static Map<String, String> manifest() {
+        Map<String, String> out = new LinkedHashMap<>();
+        for (String line : read(MODELS + "corpora.txt").lines().toList()) {
+            String entry = line.strip();
+            if (entry.isEmpty() || entry.startsWith("#")) {
+                continue;
+            }
+            String[] parts = entry.split("\\s+");
+            if (parts.length != 2) {
+                throw new IllegalStateException(
+                        "a corpus is named with what it was written for: " + entry);
+            }
+            out.put(parts[0], parts[1]);
+        }
+        if (out.isEmpty()) {
+            throw new IllegalStateException("the manifest names no corpus at all");
+        }
+        return out;
     }
 
     /**
