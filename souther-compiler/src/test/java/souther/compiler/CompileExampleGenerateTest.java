@@ -69,7 +69,8 @@ class CompileExampleGenerateTest {
         souther.compiler.query.Offering offering = Adequacy.offeredFor(compilation.db(),
                 OfferingRequest.overTheModule(module, boundaries));
         assertNotNull(offering, "the model under test compiles");
-        return GeneratedRows.of(offering, Map.of(), SourceNameResolver.identity()).text();
+        return GeneratedRows.of(offering, Map.of(), SourceNameResolver.identity(),
+                compilation.db()).text();
     }
 
     private static Map<String, Adequacy.Filling> generated(String source) {

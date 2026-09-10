@@ -344,7 +344,7 @@ class CompilePartialAdequacyTest {
         String written = GeneratedRows.of(Adequacy.offeredFor(compilation.db(),
                         souther.compiler.query.OfferingRequest.overTheModule(
                                 "example.budget", true)),
-                Map.of(), SourceNameResolver.identity()).text();
+                Map.of(), SourceNameResolver.identity(), compilation.db()).text();
         assertFalse(written.contains("example take"), "no row is offered: " + written);
         assertTrue(written.contains("no rows offered at"),
                 "the position it could not read is what there is to say: " + written);
@@ -542,7 +542,7 @@ class CompilePartialAdequacyTest {
         String written = GeneratedRows.of(Adequacy.offeredFor(compilation.db(),
                         souther.compiler.query.OfferingRequest.overTheModule(
                                 "example.split", true)),
-                Map.of(), SourceNameResolver.identity()).text();
+                Map.of(), SourceNameResolver.identity(), compilation.db()).text();
         assertFalse(written.contains("example take"),
                 "the row may be sitting in the file that could not be read: " + written);
         assertTrue(written.contains("generation stopped"),

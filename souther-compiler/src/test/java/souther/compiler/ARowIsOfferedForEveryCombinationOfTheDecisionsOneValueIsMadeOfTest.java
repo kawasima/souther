@@ -71,7 +71,7 @@ class ARowIsOfferedForEveryCombinationOfTheDecisionsOneValueIsMadeOfTest {
         return GeneratedRows.of(Adequacy.offeredFor(compilation.db(),
                         souther.compiler.query.OfferingRequest.overTheModule(
                                 compilation.modules().get(0), false)),
-                Map.of(), SourceNameResolver.identity()).text();
+                Map.of(), SourceNameResolver.identity(), compilation.db()).text();
     }
 
     @Test

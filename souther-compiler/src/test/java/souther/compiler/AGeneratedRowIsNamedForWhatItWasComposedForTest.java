@@ -76,7 +76,7 @@ class AGeneratedRowIsNamedForWhatItWasComposedForTest {
         return GeneratedRows.of(Adequacy.offeredFor(compilation.db(),
                         souther.compiler.query.OfferingRequest.overTheModule(
                                 compilation.modules().get(0), boundaries)),
-                Map.of(), SourceNameResolver.identity()).text();
+                Map.of(), SourceNameResolver.identity(), compilation.db()).text();
     }
 
     /** Two minimum edges of one behavior, which compose one row between them. */

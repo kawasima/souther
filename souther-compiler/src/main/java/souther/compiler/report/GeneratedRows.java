@@ -17,6 +17,7 @@ import souther.compiler.partition.Generator;
 import souther.compiler.query.About;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.Compilation;
+import souther.compiler.query.Db;
 import souther.compiler.query.BorderAccount;
 import souther.compiler.query.GenerationScope;
 import souther.compiler.query.OfferItem;
@@ -115,7 +116,7 @@ public final class GeneratedRows {
                 continue;
             }
             Block one = of(offering, WrittenEnsures.of(compilation.db(), name), names,
-                    cited -> Sites.placeOf(compilation.db(), cited));
+                    compilation.db());
             out.append(one.text());
             rows += one.rowCount();
         }
@@ -196,8 +197,8 @@ public final class GeneratedRows {
      * word, and a heading, a note and a comment marker are not things a row carries.
      */
     public static Block of(Offering offering, Map<String, List<String>> ensures,
-                           SourceNameResolver names,
-                           PublishedRuleHandle.WhereARuleIs places) {
+                           SourceNameResolver names, Db db) {
+        PublishedRuleHandle.WhereARuleIs places = cited -> Sites.placeOf(db, cited);
         String module = offering.request().module();
         boolean boundaries = offering.request().boundaries();
         BorderAccount account = offering.account();
