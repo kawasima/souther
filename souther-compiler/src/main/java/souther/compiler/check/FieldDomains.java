@@ -685,13 +685,6 @@ public final class FieldDomains {
             return statements.iterator().next().part();
         }
 
-        /** The same candidate with one more of the part's statements written into it, for the walk
-         *  that meets them one at a time. */
-        public AboutOneCoordinate and(InvariantStatementId statement) {
-            Set<InvariantStatementId> both = new LinkedHashSet<>(statements);
-            both.add(statement);
-            return new AboutOneCoordinate(at, both);
-        }
     }
 
     /**

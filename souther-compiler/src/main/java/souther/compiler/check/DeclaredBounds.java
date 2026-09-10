@@ -166,12 +166,7 @@ public final class DeclaredBounds {
      * The reading that does reach them is the one lines are read from
      * ({@link FieldDomains#placed}).
      */
-    public record Range(Endpoint min, Endpoint max, Carrier carrier) {
-
-        public boolean saysNothing() {
-            return min == null && max == null;
-        }
-    }
+    public record Range(Endpoint min, Endpoint max, Carrier carrier) {}
 
     /** What a numeric newtype's own rules leave its value between, for a caller that is asking about
      * the value and not about anything taken of it. */

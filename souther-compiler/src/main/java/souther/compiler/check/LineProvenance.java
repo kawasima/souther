@@ -1,6 +1,5 @@
 package souther.compiler.check;
 
-import java.util.LinkedHashSet;
 import java.util.Set;
 
 /**
@@ -104,13 +103,5 @@ public sealed interface LineProvenance {
     default InvariantStatementId aboutOneStatement() {
         Set<InvariantStatementId> said = statements();
         return said.size() == 1 ? said.iterator().next() : null;
-    }
-
-    /** Every statement of every one of them, which is what a reader asking whether a set of ends
-     *  covers a candidate's statements wants. */
-    static Set<InvariantStatementId> statementsOf(Iterable<? extends LineProvenance> from) {
-        Set<InvariantStatementId> out = new LinkedHashSet<>();
-        from.forEach(each -> out.addAll(each.statements()));
-        return out;
     }
 }

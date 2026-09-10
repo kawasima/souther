@@ -1421,7 +1421,7 @@ public final class InputDomain {
                 placed.admits(path, souther.compiler.check.TypeOps.base(type, source.symbols()));
         List<PositionBounds> bounds = new ArrayList<>();
         for (NumberAt.OfWhatNumber kind : kinds) {
-            bounds.add(boundsOn(kind, path, type, taken, view, source, carried, placed,
+            bounds.add(boundsOn(kind, path, type, taken, source, carried, placed,
                     movedHere, stated, nothingExists));
         }
         rulesWithoutALineAt(placed, path, type, source, found);
@@ -1572,7 +1572,7 @@ public final class InputDomain {
      * of a different grain, and the model owed two rows for one line.
      */
     private static PositionBounds boundsOn(NumberAt.OfWhatNumber kind, TermPath path, Type type,
-                                           ValueName.Stdlib taken, TypeView view,
+                                           ValueName.Stdlib taken,
                                            RuleReadingSource source, Carrier carried,
                                            PlacedRules placed,
                                            List<FieldDomains.Placed> movedHere,
