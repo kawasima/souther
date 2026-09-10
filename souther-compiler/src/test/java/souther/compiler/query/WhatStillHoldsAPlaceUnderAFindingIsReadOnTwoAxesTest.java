@@ -163,9 +163,6 @@ class WhatStillHoldsAPlaceUnderAFindingIsReadOnTwoAxesTest {
         out.put("souther.compiler.observe.Incompleteness$Met.citations",
                 new Standing(new Because.NothingReachesOne(),
                         new AcrossTheCut.BlocksIt(lookAtIt)));
-        out.put("souther.compiler.partition.PredicateOrigin.writtenAt",
-                new Standing(new Because.NothingReachesOne(),
-                        new AcrossTheCut.BlocksIt(lookAtIt)));
         out.put("souther.compiler.query.About$AnUnansweredRow.at",
                 new Standing(new Because.NothingReachesOne(),
                         new AcrossTheCut.BlocksIt(lookAtIt)));
@@ -176,21 +173,6 @@ class WhatStillHoldsAPlaceUnderAFindingIsReadOnTwoAxesTest {
         out.put("souther.compiler.inputs.WhereInTheRule$APlaceInIt.at",
                 new Standing(new Because.NothingReachesOne(),
                         new AcrossTheCut.BlocksIt(lookAtIt)));
-        // What a document prints for a rule the author gave no name, and the sets folded out of it.
-        // A rule is beside the place in each of them, and no two were seen differing only in the
-        // place — which leaves open whether the place is spare here, and that is the question.
-        String splitTheHandle = "somebody reads what a published handle is, and says whether the"
-                + " place is one to ask for or one nothing else supplies (issue #1485)";
-        for (String carrier : List.of(
-                "souther.compiler.check.RuleCitation$WrittenAt.at",
-                "souther.compiler.partition.LineOrigin$ComparisonOrigin$Read.writtenAt",
-                "souther.compiler.inputs.RuleWithoutALine.reachedAt",
-                "souther.compiler.inputs.StandingQuestion$BoundaryUndetermined.reachedAt",
-                "souther.compiler.inputs.StandingQuestion$Exact.reachedAt",
-                "souther.compiler.inputs.StandingQuestion$NothingClassifiesIt.reachedAt")) {
-            out.put(carrier, new Standing(new Because.ReachedAndNotObservedToDiscriminate(),
-                    new AcrossTheCut.BlocksIt(splitTheHandle)));
-        }
         return out;
     }
 
