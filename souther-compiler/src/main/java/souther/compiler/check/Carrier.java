@@ -813,24 +813,42 @@ public sealed interface Carrier extends ValueOrder {
             tried.addAll(stepped);
             tried.addAll(inside);
         }
-        // What the values' own vocabulary has, after everything the order has to say. A value from
-        // here is one the declarations name rather than one the ends of a range work out, so it is
-        // what answers where the rules about the position are not about this number at all — a
-        // string whose length is bounded, and equally a string nothing bounds, whose least value
-        // this is the only thing that reaches.
-        tried.add(somewhereIn(without(admits, singled, meter)));
         for (Place candidate : tried) {
-            // On the carrier's grid before it is asked anything. Halfway between two adjacent moments
-            // is neither of them as a number and is one of them once written, so a class of
-            // everything else was offered one of the values it exists to exclude.
-            Place each = candidate == null ? null : onTheGrid(candidate);
-            if (each != null && (within == null || within.admits(each))
-                    && admitted(admits, each)
-                    && singled.stream().noneMatch(each::sameAs)) {
+            Place each = taken(candidate, singled, within, admits);
+            if (each != null) {
                 return each;
             }
         }
-        return null;
+        // And what the values' own vocabulary has, once the order has nothing left to offer. A
+        // value from here is one the declarations name rather than one the ends of a range work
+        // out, so it is what answers where the rules about the position are not about this number
+        // at all — a string whose length is bounded, and equally a string nothing bounds, whose
+        // least value this is the only thing that reaches.
+        //
+        // Asked here and not among the candidates above, because taking the singled values out of
+        // a language of them builds a machine. Where an order composed a value the declarations
+        // leave, that machine is one nothing is waiting on: a position whose rules say nothing
+        // about its values is the common case, and it would be paying at every one of them for an
+        // answer the first candidate already gave.
+        return taken(somewhereIn(without(admits, singled, meter)), singled, within, admits);
+    }
+
+    /**
+     * {@code candidate} where the position holds it and the class it is wanted for does, or null.
+     *
+     * <p>One place the answer is decided, and every candidate goes through it. The two vocabularies
+     * and the values singled out are three ways to be refused, and a candidate source that checked
+     * two of them would be a value offered for a class by whichever route composed it.
+     */
+    private Place taken(Place candidate, java.util.List<Place> singled,
+                        NumericDomain.Bounds within, ValueSet admits) {
+        // On the carrier's grid before it is asked anything. Halfway between two adjacent moments
+        // is neither of them as a number and is one of them once written, so a class of everything
+        // else was offered one of the values it exists to exclude.
+        Place at = candidate == null ? null : onTheGrid(candidate);
+        return at != null && (within == null || within.admits(at))
+                && admitted(admits, at)
+                && singled.stream().noneMatch(at::sameAs) ? at : null;
     }
 
     /**
