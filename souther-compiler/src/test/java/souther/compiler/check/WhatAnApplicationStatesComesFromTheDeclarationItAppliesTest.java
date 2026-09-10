@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import souther.compiler.Compiler;
 import souther.compiler.ast.Hir;
+import souther.compiler.diag.CompileException;
 import souther.compiler.observe.FieldTypes;
 import souther.compiler.query.Bodies;
 import souther.compiler.query.Compilation;
@@ -17,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * What an application is declared to answer, and what says so.
@@ -62,6 +64,35 @@ class WhatAnApplicationStatesComesFromTheDeclarationItAppliesTest {
             let built            = Date("2026-09-30")
             let held             = List.get(0, basket.items)
             let mapped           = List.map(n -> n + 1, basket.items)
+            """;
+
+    /** The same declarations, with a call the check refuses: what arrives at {@code costOf} is no
+     *  {@code Draft}. An editor reads text like this — it is what a body looks like while it is
+     *  being written — so what this reading says about it is a question with an answer. */
+    private static final String APPLIED_TO_WHAT_IT_DOES_NOT_TAKE = """
+            module demo
+
+            data Cost   = { amount: Int }
+            data Draft  = { plannedCost: Cost }
+            data Basket = { items: List<Int> }
+
+            let costOf (d: Draft) = d.plannedCost
+
+            let basket = Basket { items = [1, 2] }
+
+            let wrong = costOf(basket).amount
+            """;
+
+    /** Constructions the declarations do not admit: one given more values than what it builds is
+     *  written with, and one given a value of another type than it takes. */
+    private static final String CONSTRUCTED_FROM_ANOTHER_NUMBER = """
+            module demo
+
+            data AmountN = Int
+
+            let overWritten = AmountN(1, 2)
+
+            let ofNoString  = Date(1)
             """;
 
     private final Compilation compilation = compiled();
@@ -135,6 +166,48 @@ class WhatAnApplicationStatesComesFromTheDeclarationItAppliesTest {
                 "what `List.map` answers is decided by the block, which this reading does not type");
     }
 
+    /**
+     * An application the declaration does not admit states nothing.
+     *
+     * <p>What a declaration states about an application is what it states when applied to what it
+     * takes. Read off the parameter types alone, an argument of any other type went unnoticed and
+     * the body was read at the parameters the declaration wrote — so a call the check refuses came
+     * back with a type, and every field taken off it after that was answered too. That is a type
+     * invented for a call that cannot happen, which is the one thing this reading is for not doing.
+     *
+     * <p>Both halves are held. The check refuses the call, and this reading says nothing about it;
+     * either alone would leave the other free to move.
+     */
+    @Test
+    void anApplicationTheDeclarationDoesNotAdmitStatesNothing() {
+        assertThrows(CompileException.class,
+                () -> Compiler.compile(APPLIED_TO_WHAT_IT_DOES_NOT_TAKE),
+                "the check refuses a `Basket` where a `Draft` is taken");
+
+        assertNull(declaredTypeIn(APPLIED_TO_WHAT_IT_DOES_NOT_TAKE, "wrong"),
+                "and nothing states what a call the declarations do not admit answers");
+    }
+
+    /**
+     * And so does a construction the declarations do not admit.
+     *
+     * <p>What a declaration says about being applied is how many values it takes and what each
+     * position takes, and it says both whether what is applied is a signature or a name that builds
+     * something. Held only where a signature was read, a construction answered its own type for any
+     * arguments at all — the same hole as above, at the arms that were not asking.
+     */
+    @Test
+    void andSoDoesAConstructionTheDeclarationsDoNotAdmit() {
+        assertThrows(CompileException.class,
+                () -> Compiler.compile(CONSTRUCTED_FROM_ANOTHER_NUMBER),
+                "the check refuses both of these constructions");
+
+        assertNull(declaredTypeIn(CONSTRUCTED_FROM_ANOTHER_NUMBER, "overWritten"),
+                "a newtype is written with one value, so nothing states what two of them build");
+        assertNull(declaredTypeIn(CONSTRUCTED_FROM_ANOTHER_NUMBER, "ofNoString"),
+                "and a temporal is built from a string, not from whatever stands there");
+    }
+
     /** The namespace of a temporal applied builds a value of it, which the library says of itself
      *  and no other namespace says. */
     @Test
@@ -187,6 +260,23 @@ class WhatAnApplicationStatesComesFromTheDeclarationItAppliesTest {
         return new DeclaredTypeReading(
                 new DeclarationFacts(new FieldRead(symbols, world, FieldRead.Unreadable.REFUSED)),
                 values, compilation.db().ask(new Bodies.Reachable(module)).value());
+    }
+
+    /** What the declarations of {@code source} state about the value it declares as {@code name} —
+     *  for a model this class does not hold, read the same way this one is. */
+    private static Type declaredTypeIn(String source, String name) {
+        Compilation read = Compilation.ofSource(source, "Main");
+        read.answerEverything();
+        String module = read.modules().get(0);
+        Symbols scope = Scopes.derived(read.db(), module).value();
+        Map<String, Hir.FnDef> declared =
+                read.db().ask(new Bodies.ModuleDefinitions(module)).value();
+        return new DeclaredTypeReading(
+                new DeclarationFacts(new FieldRead(scope, new ResolvedFieldTypes(scope),
+                        FieldRead.Unreadable.REFUSED)),
+                declared, read.db().ask(new Bodies.Reachable(module)).value())
+                .declaredTypeOf(assertInstanceOf(Hir.FnBody.Written.class,
+                        declared.get(name).body()).expr());
     }
 
     /** The body of {@code name} as the module settled it. */

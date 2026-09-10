@@ -5,6 +5,7 @@ import souther.compiler.diag.CompileException;
 import souther.compiler.stdlib.Stdlib;
 import souther.compiler.types.BindingId;
 import souther.compiler.types.Type;
+import souther.compiler.types.TypeSymbol;
 import souther.compiler.types.ValueName;
 
 import java.util.ArrayList;
@@ -122,6 +123,44 @@ public record DeclaredTypeReading(DeclarationFacts facts,
      */
     private record Specialization(ValueName callee, List<Type> parameterTypes) {}
 
+    /**
+     * What the declaration a callee names states about applying it.
+     *
+     * <p>Two things a declaration can be, and they differ in where the answer is: one states what it
+     * takes and what it answers, and one states what it takes and leaves its answer to the body it
+     * was written with. Said as a type so that a callee added to {@link ValueName} has to be one of
+     * them or say it is neither — and so that what holds an application to what a declaration takes
+     * is one step both go through rather than a thing each arm remembers.
+     */
+    private sealed interface Applied {
+
+        /** A declaration that says what it takes and what it answers. */
+        record OfASignature(Type.FnOf declared) implements Applied {}
+
+        /** A definition of a module: it says what it takes, and its body says what it answers. */
+        record OfADefinition(ValueName.Helper named, Hir.FnDef definition) implements Applied {}
+
+        /** Nothing states what applying this answers. */
+        record StatesNothing() implements Applied {}
+    }
+
+    /**
+     * What the arguments of one application settle of the declaration's variables.
+     *
+     * <p>Two answers and not a map that stands for both. A monomorphic declaration settles nothing
+     * and is applied perfectly well, so an empty substitution is an answer — read as a refusal, or a
+     * refusal read as one, every such application would have come back with the wrong one of the
+     * two.
+     */
+    private sealed interface Settlement {
+
+        /** What the arguments decided, which may be nothing. */
+        record Settled(Map<String, Type> bindings) implements Settlement {}
+
+        /** The declaration does not admit this application. */
+        record Disagrees() implements Settlement {}
+    }
+
     /** What a reading has already worked out about one specialization. Absence is not one of these:
      *  a specialization nothing has been asked about and one the declarations state nothing for are
      *  two answers, and a table that had only the second could not tell them apart. */
@@ -175,14 +214,20 @@ public record DeclaredTypeReading(DeclarationFacts facts,
                     yield target == null ? null : facts.read().of(target, fa.field());
                 }
                 case Hir.Apply call -> applied(call);
-                // A call a pass already put the callee's body in place of, read as the bindings it
-                // wrote — the node's own reading of itself, so there is no second rule here about
-                // what an expansion means. Nothing hands this walk one today: a reader asks about
-                // the source as it stands or about the definitions a module settled, and neither
-                // has been expanded. Declined instead, a reader that comes to hold one would be
-                // told nothing states what a call is, which is what this reading was made total to
-                // stop.
-                case Hir.Expansion ex -> of(ex.asBindings());
+                // A call a pass already put the callee's body in place of. This reading is over
+                // trees no pass has expanded — a reader asks about the source as it stands or about
+                // the definitions a module settled, and neither has been — so meeting one is that
+                // rule being broken and it says so.
+                //
+                // Refused rather than read. The bindings an expansion writes carry the parameter
+                // types the callee declared, and whether one of those or the argument's own type
+                // answers at a binding is a rule of the elaboration's; read as the bindings alone,
+                // a case argument would come back as the case where the callee declared the sum.
+                // A reader that comes to hold an expanded tree needs that rule decided, which is
+                // that reader's change to make and not a fallback for it to inherit.
+                case Hir.Expansion _ -> throw new IllegalStateException(
+                        "what declarations state is read over a tree no pass has expanded, and this"
+                                + " one holds an expansion of " + e.region());
                 case Hir.LetIn let -> ofLet(let);
                 case Hir.Var v -> ofVar(v);
                 // It answers no value, which is a type and is this one.
@@ -286,96 +331,153 @@ public record DeclaredTypeReading(DeclarationFacts facts,
          *
          * <p>What is applied is a name or it is nothing this reads: an expression in the callee
          * position answers a function at run time, and no declaration says which.
+         *
+         * <p>Every case goes through {@link #admits}, which is where an application is held to what
+         * the declaration takes. Answered by each arm on its own, the holding was the arm's to
+         * remember: the ones reading a signature counted the arguments and the ones reading a
+         * construction did not, and none of them asked whether what arrived is what the position
+         * takes — so a call the check refuses came back with a type.
          */
         private Type applied(Hir.Apply call) {
-            if (call.answered() == null) {
-                return null;
-            }
-            String reachedBy = call.answered().name();
-            return switch (call.answered().denotes()) {
+            return call.answered() == null ? null : answerOf(whatIsApplied(call.answered()), call);
+        }
+
+        /** What the declaration a callee names states about applying it. */
+        private Applied whatIsApplied(Hir.Var.Denoting callee) {
+            return switch (callee.denotes()) {
                 // A function in force — a helper's function parameter, or the behavior an
                 // implementation was injected with, which arrives as what it takes and answers.
-                case ValueName.Local local -> appliedSignature(asFn(ofBinding(local)), call);
-                case ValueName.Helper helper -> appliedDefinition(helper, reachedBy, call);
-                case ValueName.Behavior behavior ->
-                        appliedSignature(fnOf(behaviors.get(behavior)), call);
-                // The namespace itself applied builds a value of the primitive it names —
-                // `Date("2026-09-30")` — and only the temporals build anything.
-                case ValueName.Stdlib.Namespace namespace -> namespace.constructs();
-                case ValueName.Stdlib.Operation operation ->
-                        appliedSignature(fnOf(operation), call);
-                // `AmountN(100)` is the newtype's construction written in call form (ADR-0032). A
-                // name of anything else applied is refused where it is written.
-                case ValueName.OfType named -> facts.isNewtype(named.type())
-                        ? Type.ref(named.type()) : null;
+                case ValueName.Local local -> ofASignature(asFn(ofBinding(local)));
+                case ValueName.Helper helper -> {
+                    Hir.FnDef definition = values.get(callee.name());
+                    yield definition == null ? new Applied.StatesNothing()
+                            : new Applied.OfADefinition(helper, definition);
+                }
+                case ValueName.Behavior behavior -> ofASignature(fnOf(behaviors.get(behavior)));
+                // The namespace itself applied builds a value of the primitive it names, off the one
+                // written string it takes — `Date("2026-09-30")` — and only the temporals build
+                // anything. That the string is written out rather than computed is the
+                // elaboration's to require; what it takes and answers is what is read here.
+                case ValueName.Stdlib.Namespace namespace ->
+                        ofASignature(namespace.constructs() == null ? null
+                                : new Type.FnOf(List.of(Type.STRING), namespace.constructs()));
+                case ValueName.Stdlib.Operation operation -> ofASignature(fnOf(operation));
+                // `AmountN(100)` is the newtype's construction written in call form (ADR-0032): it
+                // takes what the newtype is written with and answers the newtype. A name of anything
+                // else applied is refused where it is written.
+                case ValueName.OfType named -> ofASignature(!facts.isNewtype(named.type()) ? null
+                        : fnOf(wraps(named.type()), Type.ref(named.type())));
                 // A name the language gives is not a function (spec §algebraic-types), so nothing
                 // states what applying one answers.
-                case ValueName.Builtin _ -> null;
+                case ValueName.Builtin _ -> new Applied.StatesNothing();
             };
         }
 
         /**
-         * A declared signature applied to what the arguments state.
+         * What the declaration states, applied to the arguments of {@code call}.
          *
-         * <p>Null where the signature is not in reach, where the call was written with another
-         * number of arguments than it declares, and where what the arguments state leaves a variable
-         * of the result open. The last of those is the one that matters: a variable a function
-         * argument decides is decided by typing that argument, which this reading does not do, so
-         * the answer would be a type nothing here settled.
+         * <p>Null where the declaration does not admit this application, and null where what the
+         * arguments state leaves a variable of the answer open. The last of those is the one that is
+         * easy to miss: a variable a function argument decides is decided by typing that argument,
+         * which this reading does not do, so the answer would be a type nothing here settled.
          */
-        private Type appliedSignature(Type.FnOf signature, Hir.Apply call) {
-            if (signature == null || signature.params().size() != call.args().size()) {
-                return null;
-            }
-            List<Type> declared = new ArrayList<>();
-            List<Type> stated = new ArrayList<>();
-            for (int i = 0; i < call.args().size(); i++) {
-                Type at = of(call.args().get(i));
-                // A position nothing states a type at settles nothing, and is left out rather than
-                // stood in for: a type put here would settle a variable off a value this reading
-                // does not have.
-                if (at != null) {
-                    declared.add(signature.params().get(i));
-                    stated.add(at);
-                }
-            }
-            Type answered = TypeOps.substitute(signature.result(), settled(declared, stated,
-                    signature.result()));
-            return closed(answered);
+        private Type answerOf(Applied applied, Hir.Apply call) {
+            return switch (applied) {
+                case Applied.StatesNothing _ -> null;
+                case Applied.OfASignature(Type.FnOf declared) ->
+                        admits(declared.params(), declared.result(), call)
+                                instanceof Settlement.Settled(var bindings)
+                                ? closed(TypeOps.substitute(declared.result(), bindings)) : null;
+                case Applied.OfADefinition(ValueName.Helper named, Hir.FnDef definition) ->
+                        answerOfDefinition(named, definition, call);
+            };
         }
 
-        /** What a definition of this module answers, applied to the arguments of {@code call}. */
-        private Type appliedDefinition(ValueName.Helper helper, String reachedBy, Hir.Apply call) {
-            Hir.FnDef definition = values.get(reachedBy);
-            if (definition == null || definition.params().size() != call.args().size()) {
-                return null;
-            }
-            List<Type> declared = new ArrayList<>();
-            List<Type> stated = new ArrayList<>();
-            List<Type> at = new ArrayList<>();
-            for (int i = 0; i < call.args().size(); i++) {
-                Hir.RetType written = definition.params().get(i).type();
-                Type parameter = written == null ? null : TypeOps.resolveParamType(written);
-                Type argument = of(call.args().get(i));
-                if (parameter != null && argument != null) {
-                    declared.add(parameter);
-                    stated.add(argument);
-                }
-                at.add(parameter == null ? argument : parameter);
+        /**
+         * What a definition of this module answers, applied to the arguments of {@code call}.
+         *
+         * <p>A definition declares its parameters where it wrote them and nothing about its answer,
+         * so what it answers is what its body states — read with each parameter at what this
+         * application gives it, which is the type the definition wrote or, where it wrote none, what
+         * the argument states.
+         */
+        private Type answerOfDefinition(ValueName.Helper named, Hir.FnDef definition,
+                                        Hir.Apply call) {
+            List<Type> written = new ArrayList<>();
+            for (Hir.FnParam parameter : definition.params()) {
+                written.add(parameter.type() == null ? null
+                        : TypeOps.resolveParamType(parameter.type()));
             }
             Type answers = definition.declaredReturn() == null
                     ? null : TypeOps.resolveParamType(definition.declaredReturn());
-            Map<String, Type> bind = settled(declared, stated, answers);
-            for (int i = 0; i < at.size(); i++) {
-                if (at.get(i) != null) {
-                    at.set(i, TypeOps.substitute(at.get(i), bind));
-                }
+            if (!(admits(written, answers, call) instanceof Settlement.Settled(var bindings))) {
+                return null;
+            }
+            List<Type> at = new ArrayList<>();
+            for (int i = 0; i < written.size(); i++) {
+                at.add(written.get(i) == null ? of(call.args().get(i))
+                        : TypeOps.substitute(written.get(i), bindings));
             }
             // A definition that declares what it answers says it here — a shipped kernel does, and
             // its body names a primitive rather than stating anything.
-            return answers != null
-                    ? closed(TypeOps.substitute(answers, bind))
-                    : ofDefinition(helper, definition, at);
+            return answers == null ? ofDefinition(named, definition, at)
+                    : closed(TypeOps.substitute(answers, bindings));
+        }
+
+        /**
+         * What the arguments settle of {@code declared}, or that the declaration does not admit
+         * them.
+         *
+         * <p>Two things the declaration says about being applied, and both are refusals rather than
+         * answers about a type: it takes as many values as it takes, and each position takes what it
+         * takes. Held here rather than at each caller, because a caller that had to remember was a
+         * caller that could forget — and what it forgets is a type stated for an application that
+         * cannot happen, which is worse than stating nothing.
+         *
+         * <p>Whether an argument fits is asked after the variables are settled and not before: a
+         * position written as a variable takes whatever the arguments decide it to be, and asking of
+         * the unsettled parameter would refuse every polymorphic declaration. It is asked with the
+         * one rule the elaboration holds an argument to, so a call this reading states a type for is
+         * one that reading would accept.
+         *
+         * <p>A position where the declaration states nothing, or where the arguments do, settles
+         * nothing and is held to nothing. Standing a type in for either would settle a variable off
+         * a value this reading does not have.
+         *
+         * @param declared what the declaration takes at each position, aligned with the arguments,
+         *                 null where it states nothing there
+         */
+        private Settlement admits(List<Type> declared, Type answers, Hir.Apply call) {
+            if (declared.size() != call.args().size()) {
+                return new Settlement.Disagrees();
+            }
+            List<Type> settling = new ArrayList<>();
+            List<Type> stated = new ArrayList<>();
+            for (int i = 0; i < declared.size(); i++) {
+                Type at = declared.get(i) == null ? null : of(call.args().get(i));
+                if (at != null) {
+                    settling.add(declared.get(i));
+                    stated.add(at);
+                }
+            }
+            Map<String, Type> bindings;
+            try {
+                // No position is read: what the declaration answers is what this reading is asking
+                // about, and there is nothing above the call requiring anything of it.
+                bindings = SignatureApplication.settledByValues(settling, answers, null,
+                        stated::get, symbols());
+            } catch (CompileException _) {
+                // What a variable cannot be settled to at once is a disagreement between two
+                // arguments, and what is wrong with it is reported where the call is written.
+                return new Settlement.Disagrees();
+            }
+            for (int i = 0; i < settling.size(); i++) {
+                if (!TypeOps.assignable(stated.get(i),
+                        TypeOps.substitute(settling.get(i), bindings), symbols())) {
+                    return new Settlement.Disagrees();
+                }
+            }
+            return new Settlement.Settled(bindings);
         }
 
         /**
@@ -430,21 +532,13 @@ public record DeclaredTypeReading(DeclarationFacts facts,
             }
         }
 
-        /**
-         * What the arguments settle of a declaration's variables, asked of the one step every reader
-         * of a declared signature takes.
-         *
-         * <p>Nothing where they disagree with it. An argument that does not fit the parameter it was
-         * given to is what the check reports where the call is written, and a reading that answered
-         * a type from the disagreement would be stating something no declaration does.
-         */
-        private Map<String, Type> settled(List<Type> declared, List<Type> stated, Type result) {
-            try {
-                return SignatureApplication.settledByValues(declared, result, null, stated::get,
-                        symbols());
-            } catch (CompileException _) {
-                return Map.of();
-            }
+        /** What a newtype is written with (spec §newtype) — the one name a value of it makes
+         *  readable, asked of the reading that says which names those are rather than spelt again
+         *  here. Null where the declaration does not read, which states nothing about what
+         *  constructing one takes. */
+        private Type wraps(TypeSymbol newtype) {
+            Map<String, Type> readable = facts.read().at(Type.ref(newtype));
+            return readable.size() == 1 ? readable.values().iterator().next() : null;
         }
 
         private void restore(BindingId binding, BindingEvidence outer) {
@@ -470,6 +564,18 @@ public record DeclaredTypeReading(DeclarationFacts facts,
      *  — a value applied as though it were one, which is refused where it is written. */
     private static Type.FnOf asFn(Type type) {
         return type instanceof Type.FnOf fn ? fn : null;
+    }
+
+    /** A declaration that states what it takes and what it answers, or that nothing in reach states
+     *  either — a signature this revision has not settled, a name in force that is no function. */
+    private static Applied ofASignature(Type.FnOf declared) {
+        return declared == null ? new Applied.StatesNothing()
+                : new Applied.OfASignature(declared);
+    }
+
+    /** What takes one value and answers another, or null where what it takes is not in reach. */
+    private static Type.FnOf fnOf(Type takes, Type answers) {
+        return takes == null ? null : new Type.FnOf(List.of(takes), answers);
     }
 
     /** What a behavior takes and answers, or null where this revision settles no signature for it —
