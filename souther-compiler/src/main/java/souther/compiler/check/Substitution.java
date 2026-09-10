@@ -4,7 +4,6 @@ import souther.compiler.types.BindingOwner;
 import souther.compiler.types.Type;
 
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -77,15 +76,6 @@ final class Substitution {
      */
     private boolean fits(Type is, Type declared, Symbols symbols) {
         return TypeOps.admits(zonk(declared), zonk(is), symbols);
-    }
-
-    private boolean allFit(List<Type> actual, List<Type> declared, Symbols symbols) {
-        for (int i = 0; i < declared.size(); i++) {
-            if (!fits(actual.get(i), declared.get(i), symbols)) {
-                return false;
-            }
-        }
-        return true;
     }
 
     /**
