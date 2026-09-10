@@ -306,24 +306,53 @@ public record DeclaredTypeReading(DeclarationFacts facts,
          * elaboration binds it at.
          */
         private Type ofExpansion(Hir.Expansion ex) {
+            // The variables of what an expansion holds are this one application's, and the
+            // application is what decides them. Not the step a written call takes: there a
+            // declaration's own variables are settled for one call and left where they were, and
+            // here the copy in hand already names variables minted for it. Two questions with two
+            // owners, and each is asked of the one that owns it.
+            Substitution decided = new Substitution(ex.application(), null);
             Map<BindingId, BindingEvidence> outer = new LinkedHashMap<>();
-            for (Hir.Bound bound : ex.bound()) {
-                outer.put(bound.binder().id(),
-                        inForce.put(bound.binder().id(), boundBy(bound)));
-            }
             try {
-                return of(ex.body());
+                boolean admits = true;
+                for (Hir.Bound bound : ex.bound()) {
+                    Type declared = bound.declaredType() == null
+                            ? null : TypeOps.resolveParamType(bound.declaredType());
+                    Type arrived = of(bound.value());
+                    // Asked for what it decides. Two readings of one variable that do not go
+                    // together leave an application nothing can be built from — which is what the
+                    // deciding says of itself — so this one states nothing rather than reading a
+                    // result out of decisions that disagreed.
+                    if (declared != null && arrived != null
+                            && decided.decide(declared, arrived, symbols())
+                                    instanceof Fit.Disagrees) {
+                        admits = false;
+                    }
+                    outer.put(bound.binder().id(),
+                            inForce.put(bound.binder().id(), boundBy(bound, arrived)));
+                }
+                if (!admits) {
+                    return null;   // what the callee takes is not what arrived, as above
+                }
+                Type answers = ex.declaredReturn() == null
+                        ? null : TypeOps.resolveParamType(ex.declaredReturn());
+                // What the callee declared it answers, where this application has decided it — the
+                // same order a written call is read in, so one declaration states one thing however
+                // the call reached here. Where the arguments left it open it is the function
+                // arguments that would decide it, which this reading does not type, and what the
+                // body states is what is left.
+                return answers != null && !decided.open(answers)
+                        ? closed(decided.zonk(answers)) : of(ex.body());
             } finally {
                 outer.forEach(this::restore);
             }
         }
 
-        /** What a binding an expansion wrote says about itself. */
-        private BindingEvidence boundBy(Hir.Bound bound) {
+        /** What a binding an expansion wrote says about itself, given what arrived at it. */
+        private BindingEvidence boundBy(Hir.Bound bound, Type arrived) {
             if (bound.declaredType() == null) {
                 return new BindingEvidence.BoundTo(bound.value());
             }
-            Type arrived = of(bound.value());
             if (arrived == null) {
                 // With nothing said about what arrived there is no pair to choose between, and what
                 // is left is the callee's own parameter type — which answers where it is a type at

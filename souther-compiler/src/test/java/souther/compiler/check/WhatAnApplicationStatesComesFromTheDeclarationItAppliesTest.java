@@ -117,7 +117,7 @@ class WhatAnApplicationStatesComesFromTheDeclarationItAppliesTest {
      * was written against, so the binding the expansion wrote holds the sum.
      */
     private static final List<String> ACROSS_A_PUBLISHED_DEFINITION = List.of("""
-            module lib exposing ( Deal, Open, Closed, widened )
+            module lib exposing ( Deal, Open, Closed, widened, tail )
 
             data Open   = { id: String }
             data Closed = { id: String, closedOn: Date }
@@ -126,14 +126,20 @@ class WhatAnApplicationStatesComesFromTheDeclarationItAppliesTest {
             let inner (d: Deal) = d
 
             let widened (c: Closed) = inner(c)
+
+            let tail (xs: List<Int>) = List.drop(1, xs)
             """, """
             module app
 
-            import lib as l ( Deal, Open, Closed, widened )
+            import lib as l ( Deal, Open, Closed, widened, tail )
+
+            data Basket = { items: List<Int> }
 
             let closed = Closed { id = "d-1", closedOn = Date("2026-07-30") }
+            let basket = Basket { items = [1, 2] }
 
-            let read = widened(closed)
+            let read    = widened(closed)
+            let dropped = tail(basket.items)
             """);
 
     private final Compilation compilation = compiled();
@@ -153,6 +159,13 @@ class WhatAnApplicationStatesComesFromTheDeclarationItAppliesTest {
     @Test
     void theModelUnderTestIsAccepted() {
         assertDoesNotThrow(() -> Compiler.compile(MODULE));
+    }
+
+    /** And so is the pair, which is the other model these answers are read off. A name one of them
+     *  does not publish would leave the reading nothing to reach rather than nothing to say. */
+    @Test
+    void andSoIsTheModelReadAcrossTwoOfThem() {
+        assertDoesNotThrow(() -> Compiler.compileModules(ACROSS_A_PUBLISHED_DEFINITION));
     }
 
     /** What a helper answers is what its body states, read with its parameters standing for what
@@ -288,6 +301,23 @@ class WhatAnApplicationStatesComesFromTheDeclarationItAppliesTest {
                         declaredTypeAcross(ACROSS_A_PUBLISHED_DEFINITION, "app", "read"))
                         .name().name(),
                 "`inner` takes a `Deal`, so the binding the expansion wrote holds a `Deal`");
+    }
+
+    /**
+     * And what an expansion answers is what the callee declared, where this application settled it.
+     *
+     * <p>An expansion is one application of a declaration, and it holds all three of what that
+     * declaration takes, what it answers, and what was given to it — in variables minted for this
+     * one copy. Read as the bindings alone, the declared result went unread and what the call
+     * answered fell to whatever its body happened to state: {@code List.drop} answers what it was
+     * given a list of, and its body is a fold, so a call still written as one answered while the
+     * same call expanded answered nothing.
+     */
+    @Test
+    void andWhatItAnswersIsWhatTheCalleeDeclaredWhereThisApplicationSettledIt() {
+        assertEquals(Type.list(Type.INT),
+                declaredTypeAcross(ACROSS_A_PUBLISHED_DEFINITION, "app", "dropped"),
+                "`List.drop` answers a list of what it was given, and this one was given `Int`s");
     }
 
     /** The namespace of a temporal applied builds a value of it, which the library says of itself
