@@ -2,7 +2,9 @@ package souther.compiler.query;
 
 import souther.compiler.Compiler;
 import souther.compiler.conformance.ConformanceCorpus;
+import souther.compiler.jvm.ClassFileImage;
 import souther.compiler.meta.ModulePath;
+import souther.compiler.report.AdequacyReport;
 import souther.compiler.report.GeneratedRows;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -178,7 +180,58 @@ class EveryQuestionThisCompilerDeclaresIsReachedOrOutsideABatchRunTest {
             into(Compiler.analyzedModules(corpus.sources(), ModulePath.EMPTY, new ArrayList<>(),
                     Adequacy.Asked.warningsAt(Adequacy.Level.WITNESS)), out);
         }
+        // And the same operation over a model that reads a module this compile holds no source for,
+        // which is the other world this compiler works in.
+        into(readingWhatIsPublished(), out);
         return out;
+    }
+
+    /**
+     * Analysing a model whose rules are partly in a module that was published rather than written
+     * here, and writing the report.
+     *
+     * <p>An operation and not a question, like every other above: what is run is what this project
+     * does over a source that imports a compiled module, and which questions that reaches is the
+     * consequence. Asked question by question instead, this would be a stimulus invented to reach a
+     * list, and the questions a published module brings in later would arrive uncovered while the
+     * arithmetic still added up.
+     *
+     * <p><b>Its own operation and not another corpus.</b> A corpus is a set of sources handed over
+     * together, so no {@code .sou} written beside the others makes one of them a module whose text
+     * this compile cannot open — that is a fact about how the compile was started rather than about
+     * what anybody wrote. So the model is built here, published, and read back.
+     *
+     * <p>The rule inside the published module is read at two calls, because that is what a reader
+     * out here has to be able to be sent to: one rule, out of sight, met twice, and where a report
+     * points for each is what the reading that met it says rather than what the rule does.
+     */
+    private static Compilation readingWhatIsPublished() {
+        Map<String, ClassFileImage> published = Compiler.compile("""
+                module lib exposing ( wide )
+
+                let wide (n: Int): Bool = n > 10
+                """, "lib.sou");
+        Compilation compilation = Compilation.ofSources(List.of("""
+                module reader
+
+                import lib ( wide )
+
+                data Low
+                data High = { at: Int }
+
+                behavior classify : (n: Int, m: Int) -> High | Low
+                    constructs High
+
+                let classify (n, m) = {
+                    guard wide(n) else Low
+                    guard wide(m) else Low
+                    High { at = n }
+                }
+                """), ModulePath.of(published));
+        compilation.measure(Adequacy.Asked.fullReport());
+        compilation.answerEverything();
+        AdequacyReport.of(compilation);
+        return compilation;
     }
 
     private static void into(Compilation compilation, Set<String> reached) {
