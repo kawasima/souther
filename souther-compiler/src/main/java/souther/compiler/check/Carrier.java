@@ -925,40 +925,93 @@ public sealed interface Carrier extends ValueOrder {
      * The first value this order holds inside {@code range} that is neither excluded nor held
      * apart, or null where this composed none.
      *
-     * <p>Walked from {@code from}, and a run one longer than the two lists together reaches a value
-     * neither of them names wherever the walk holds one — at most as many values are ruled out as
-     * they name between them.
-     *
-     * <p>What the walk holds is not always the whole run. A string is walked by length through a
-     * letter anybody can paste, because what is wanted is a value somebody reads and the order's
-     * own next string is a control character; a run of the order bounded away from those lengths
-     * holds none of them. And a carrier whose values do not step is walked by whole counts, which
-     * reaches values and does not exhaust the run. What both leave is the ends of the run and the
-     * value between them, which are among the candidates before this is reached.
+     * <p>Where the values are looked for is what the order says about its own spacing, and never
+     * how a place happens to be written. An order that steps runs out of values to rule out: the
+     * two lists name finitely many between them, so a walk one longer than that reaches a value
+     * neither of them names wherever the run holds one. An order with no step never runs out that
+     * way — a run holding every number between two of them is not walked through by counting — so
+     * what is looked at there is the stretches the named values leave, each of which the order can
+     * already give up a value from.
      */
     private Place firstHeldIn(OrderedInterval range, Place from, Set<Value> excluded,
                               List<Place> apart) {
-        int past = excluded.size() + apart.size() + 1;
-        for (int step = 0; step <= past; step++) {
-            for (Place candidate : awayBy(from, step)) {
-                Place at = candidate == null ? null : onTheGrid(candidate);
-                Value wrote = at == null ? null : valueAt(at);
-                if (wrote != null && range.admits(at) && !excluded.contains(wrote)
-                        && away(apart, at)) {
-                    return at;
-                }
+        for (Place candidate : lookedAt(range, from, excluded, apart)) {
+            Place at = candidate == null ? null : onTheGrid(candidate);
+            Value wrote = at == null ? null : valueAt(at);
+            if (wrote != null && range.admits(at) && !excluded.contains(wrote)
+                    && away(apart, at)) {
+                return at;
             }
         }
         return null;
     }
 
-    /** The places a walk of this order reaches {@code step} from {@code from}, nearest side
-     *  first. */
-    private List<Place> awayBy(Place from, int step) {
+    /** The places a search of this order over {@code range} looks at. */
+    private List<Place> lookedAt(OrderedInterval range, Place from, Set<Value> excluded,
+                                 List<Place> apart) {
+        int named = excluded.size() + apart.size();
+        // A string has no step and nothing between two others that this language names — the string
+        // above one is a character nobody wrote. What it has is a least value with every longer one
+        // after it, and the ones a source can carry are what a row wants, so the run is walked by
+        // length through a letter anybody can paste. A run of the order bounded away from those
+        // holds none of them, and what covers that is the ends of the run — among the candidates
+        // before this is reached.
         if (this instanceof Text) {
-            return List.of(souther.compiler.numeric.Text.of("a".repeat(step)));
+            List<Place> out = new ArrayList<>();
+            for (int step = 0; step <= named; step++) {
+                out.add(souther.compiler.numeric.Text.of("a".repeat(step)));
+            }
+            return out;
         }
-        return from instanceof Count at ? List.of(at.plus(step), at.minus(step)) : List.of();
+        if (spacing() == Granularity.DENSE) {
+            return betweenTheNamed(range, ruledOutIn(range, excluded, apart));
+        }
+        List<Place> out = new ArrayList<>();
+        if (from instanceof Count at) {
+            for (int step = 0; step <= named; step++) {
+                out.add(at.plus(step));
+                out.add(at.minus(step));
+            }
+        }
+        return out;
+    }
+
+    /** The places inside {@code range} that {@code excluded} or {@code apart} names, in the order
+     *  they lie in. */
+    private List<Place> ruledOutIn(OrderedInterval range, Set<Value> excluded, List<Place> apart) {
+        List<Place> out = new ArrayList<>();
+        for (Value each : excluded) {
+            Place at = placeOf(each);
+            if (at != null && range.admits(at)) {
+                out.add(at);
+            }
+        }
+        for (Place each : apart) {
+            if (range.admits(each)) {
+                out.add(each);
+            }
+        }
+        out.sort(null);
+        return out;
+    }
+
+    /**
+     * A value out of each stretch {@code named} leaves inside {@code range}.
+     *
+     * <p>What a run with no step has instead of a walk. The values named are finitely many and the
+     * run between two of them holds values without end, so a run holding anything the two lists do
+     * not name holds it in one of these stretches — and which value a stretch gives up is the
+     * order's own answer ({@link #somethingInside}) rather than a second way of writing a number.
+     */
+    private List<Place> betweenTheNamed(OrderedInterval range, List<Place> named) {
+        List<Place> out = new ArrayList<>();
+        Endpoint from = range.low();
+        for (Place at : named) {
+            out.add(somethingInside(from, Endpoint.exclusive(at)));
+            from = Endpoint.exclusive(at);
+        }
+        out.add(somethingInside(from, range.high()));
+        return out;
     }
 
     /**

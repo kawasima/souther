@@ -15,11 +15,13 @@ import souther.compiler.regex.PatternSyntax;
 import souther.compiler.values.Value;
 import souther.compiler.values.ValueSet;
 
+import java.math.BigDecimal;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -185,6 +187,35 @@ class AValueStandingForEverythingElseIsOneThePositionAdmitsTest {
         assertNotNull(at, "the position holds a value away from the one singled out");
         assertEquals("14", Carrier.WHOLE.written(at),
                 "the one value of the set inside the run that the body did not single out");
+    }
+
+    /**
+     * An order with no step is not walked through by counting.
+     *
+     * <p>Where the values step, the two lists name finitely many and a walk one longer than that
+     * reaches a value neither names. A decimal never runs out that way: the run between two numbers
+     * holds numbers without end, and counting from an end of it by ones leaves it after the first
+     * step. So the stretches the named values leave are what is looked at — {@code (0, 0.25)} here,
+     * and three more — and each of them is a run the order can give a value up from.
+     *
+     * <p>Every value the candidates before it compose is named: the middle of the run is the one
+     * singled out, the middles either side of it are the two the declarations refuse, and a step of
+     * one from any of them is outside the run.
+     */
+    @Test
+    void anOrderWithNoStepIsLookedThroughByTheStretchesTheNamedValuesLeave() {
+        Place at = otherThan(Carrier.DENSE, List.of(Count.of(new BigDecimal("0.5"))),
+                new NumericDomain.Bounds(Endpoint.exclusive(Count.of(0)),
+                        Endpoint.exclusive(Count.of(1))),
+                new ValueSet.Cofinite(Set.of(Value.number(new BigDecimal("0.25")),
+                        Value.number(new BigDecimal("0.75")))));
+
+        assertNotNull(at, "the numbers between nought and one that the rules leave are without end");
+        assertTrue(at.compareTo(Count.of(0)) > 0 && at.compareTo(Count.of(1)) < 0,
+                () -> "inside the run: " + Carrier.DENSE.written(at));
+        assertFalse(List.of("0.25", "0.5", "0.75").contains(Carrier.DENSE.written(at)),
+                () -> "and none of the three the rules and the body name: "
+                        + Carrier.DENSE.written(at));
     }
 
     /** And both vocabularies together, so neither is answering for the other. */
