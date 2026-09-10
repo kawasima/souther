@@ -47,6 +47,7 @@ import souther.compiler.observe.RowIdentity;
 import souther.compiler.observe.RowOutcome;
 import souther.compiler.observe.Stage;
 import souther.compiler.partition.Axis;
+import souther.compiler.partition.ClassOfAPosition;
 import souther.compiler.partition.DomainPoint;
 import souther.compiler.partition.PointRole;
 import souther.compiler.inputs.InputDomain;
@@ -3460,7 +3461,7 @@ public final class Adequacy {
                 case About.AnArmNoRowGoesThrough(var arm) -> java.util.Optional.of(
                         new OfferItem.AnArm(new Generator.ArmOwed(arm.index())));
                 case About.AClassNoRowIsIn(var missing) -> java.util.Optional.of(
-                        new OfferItem.AClass(new Generator.ClassOwed(missing.axis().at(),
+                        new OfferItem.AClass(new ClassOfAPosition(missing.axis().at(),
                                 missing.name())));
                 case About.ACaseNoRowAppliesItTo(var input, var missing) ->
                         classOfTheCase(input, missing, composed, spec)
@@ -3476,14 +3477,14 @@ public final class Adequacy {
          * classes for — the same question {@link #atCase} puts, so that what is offered for the
          * case and what it is called are one thing.
          */
-        private static java.util.Optional<Generator.ClassOwed> classOfTheCase(
+        private static java.util.Optional<ClassOfAPosition> classOfTheCase(
                 InputCaseEvidence input, TypeSymbol case_,
                 souther.compiler.partition.FillResult composed, Hir.SpecBehavior spec) {
             int at = input.at();
             if (at < 0 || at >= spec.params().size()) {
                 return java.util.Optional.empty();
             }
-            Generator.ClassOwed owed = new Generator.ClassOwed(
+            ClassOfAPosition owed = new ClassOfAPosition(
                     new souther.compiler.partition.AxisId(spec.name(), spec.params().get(at).name()),
                     case_.name());
             return composed.plan().subject().divides(owed)
@@ -3607,7 +3608,7 @@ public final class Adequacy {
                                                  String classId,
                                                  souther.compiler.partition.FillResult composed) {
             souther.compiler.partition.ClassDisposition answer =
-                    composed.discharge().at(new Generator.ClassOwed(at, classId));
+                    composed.discharge().at(new ClassOfAPosition(at, classId));
             if (answer == null) {
                 throw new IllegalStateException(
                         "a finding names a class this run was not asked about: " + at + "=" + classId);
@@ -3641,7 +3642,7 @@ public final class Adequacy {
             // reading of the search's own universe, and a case whose position the search divides
             // could be told there was no axis there.
             if (!(classOfTheCase(input, case_, composed, spec)
-                    .orElse(null) instanceof Generator.ClassOwed owed)) {
+                    .orElse(null) instanceof ClassOfAPosition owed)) {
                 return new GenerationOutcome.NotSupported(
                         GenerationOutcome.NotSupported.Reason.NO_AXIS_AT_THIS_POSITION);
             }
@@ -3946,18 +3947,18 @@ public final class Adequacy {
          * this replaces — and it would be one no test covers, the query answering every behavior
          * the generator reaches.
          */
-        private static List<Generator.ClassOwed> classesOwed(PartitionEvidence evidence) {
+        private static List<ClassOfAPosition> classesOwed(PartitionEvidence evidence) {
             // Gathered once apiece and handed over in the order the measure holds the positions
             // and their classes in, which is the order this walk reached them. The set keeps the
             // once-apiece; the list is what says what the order is.
-            Set<Generator.ClassOwed> out = new LinkedHashSet<>();
+            Set<ClassOfAPosition> out = new LinkedHashSet<>();
             for (PartitionEvidence.AxisCoverage axis : evidence.axes()) {
                 Set<String> covered = axis.reached().made()
                         .map(PartitionEvidence.AxisCoverage.Reached::covered)
                         .orElseGet(Set::of);
                 for (String cls : axis.classes()) {
                     if (!covered.contains(cls)) {
-                        out.add(new Generator.ClassOwed(axis.at(), cls));
+                        out.add(new ClassOfAPosition(axis.at(), cls));
                     }
                 }
             }

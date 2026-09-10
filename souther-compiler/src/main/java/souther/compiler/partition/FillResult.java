@@ -99,8 +99,8 @@ public record FillResult(GenerationPlan plan, SequencedMap<RowId, ComposedRow> c
     public static FillResult nothingWasLookedFor(GenerationPlan plan,
                                                  Generator.UnresolvedCombination.Reason why,
                                                  List<GenerationReason> reasons) {
-        Map<Generator.ClassOwed, ClassDisposition> classes = new LinkedHashMap<>();
-        for (Generator.ClassOwed owed : plan.classesOwed()) {
+        Map<ClassOfAPosition, ClassDisposition> classes = new LinkedHashMap<>();
+        for (ClassOfAPosition owed : plan.classesOwed()) {
             classes.put(owed, new ClassDisposition.Unresolved(new Generator.UnresolvedCombination(
                     List.of(Generator.labelOf(plan.subject(), owed)), why)));
         }
@@ -139,7 +139,7 @@ public record FillResult(GenerationPlan plan, SequencedMap<RowId, ComposedRow> c
             throw new IllegalArgumentException("no row of this run is " + id);
         }
         List<Generator.Purpose> purposes = new ArrayList<>();
-        for (Generator.ClassOwed owed : plan.classesOwed()) {
+        for (ClassOfAPosition owed : plan.classesOwed()) {
             if (discharge.at(owed) instanceof ClassDisposition.Built built
                     && built.rowId().equals(id)) {
                 purposes.add(new Generator.Purpose.ForAClass(owed.at(), owed.classId(),

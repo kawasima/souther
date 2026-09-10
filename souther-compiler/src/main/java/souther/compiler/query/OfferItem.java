@@ -1,6 +1,7 @@
 package souther.compiler.query;
 
 import souther.compiler.partition.BorderObligationPoint;
+import souther.compiler.partition.ClassOfAPosition;
 import souther.compiler.partition.Generator;
 
 /**
@@ -21,7 +22,7 @@ public sealed interface OfferItem {
 
     /** One class of one position. The axis names the behavior, so two behaviors dividing their own
      *  positions the same way are two of these. */
-    record AClass(Generator.ClassOwed owed) implements OfferItem {}
+    record AClass(ClassOfAPosition owed) implements OfferItem {}
 
     /** One arm of one body. The sites of a module are numbered across it, so the probe is the whole
      *  of what tells two arms apart. */

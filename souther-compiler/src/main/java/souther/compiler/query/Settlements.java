@@ -3,6 +3,7 @@ package souther.compiler.query;
 import souther.compiler.check.Sig;
 import souther.compiler.execute.BoundaryValues;
 import souther.compiler.partition.BorderObligationPoint;
+import souther.compiler.partition.ClassOfAPosition;
 import souther.compiler.partition.FixtureTemplate;
 import souther.compiler.partition.Generator;
 import souther.compiler.partition.InputClassifications;
@@ -300,7 +301,7 @@ public record Settlements(List<OfferItem> requested,
     private record OneBehavior(String behavior,
                                souther.compiler.partition.MeasuredInput subject, Sig sig,
                                BoundaryValues building, Generator.Trial trial,
-                               List<Generator.ClassOwed> classes, List<Generator.ArmOwed> arms,
+                               List<ClassOfAPosition> classes, List<Generator.ArmOwed> arms,
                                Map<OfferItem.APointOfALine, List<AtAPoint>> reads) {
 
         /**
@@ -384,7 +385,7 @@ public record Settlements(List<OfferItem> requested,
          */
         Map<OfferItem, RowKey> composed(Adequacy.Filling filling) {
             Map<OfferItem, RowKey> out = new LinkedHashMap<>();
-            for (Generator.ClassOwed each : classes) {
+            for (ClassOfAPosition each : classes) {
                 if (filling.composed().discharge().at(each)
                         instanceof souther.compiler.partition.ClassDisposition.Built built) {
                     out.put(new OfferItem.AClass(each),
@@ -436,7 +437,7 @@ public record Settlements(List<OfferItem> requested,
          * another one is not something a row written here has a value at — which is a row that does
          * not settle it rather than one nothing could tell about.
          */
-        private Settlement inClass(RowAsRead asRead, Generator.ClassOwed owed) {
+        private Settlement inClass(RowAsRead asRead, ClassOfAPosition owed) {
             if (!behavior.equals(owed.at().behavior())) {
                 return new Settlement.DoesNotSettle();
             }

@@ -95,7 +95,7 @@ class TheCompositionIsNotBehindTheBaselinesBudgetTest {
 
     /** What the search made of the class {@code hi} takes below the line the body draws. */
     private static ClassDisposition attemptAtTheLowerHi(Adequacy.Filling filling) {
-        for (Map.Entry<Generator.ClassOwed, ClassDisposition> each
+        for (Map.Entry<ClassOfAPosition, ClassDisposition> each
                 : filling.composed().discharge().classes().entrySet()) {
             if (each.getKey().at().term().endsWith("hi")
                     && each.getKey().classId().contains("0")) {

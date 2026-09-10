@@ -842,7 +842,7 @@ public final class Generator {
      * handed over here would leave that to whatever collection the caller happened to hold — so
      * this takes the answer rather than the collection it was kept in.
      */
-    public static GenerationPlan planOver(MeasuredInput subject, List<ClassOwed> classes,
+    public static GenerationPlan planOver(MeasuredInput subject, List<ClassOfAPosition> classes,
                                           List<ArmProbe> arms) {
         return new GenerationPlan(subject, classes, arms.stream().map(ArmOwed::new).toList());
     }
@@ -858,7 +858,7 @@ public final class Generator {
                                         CandidateCheck check,
                                         souther.compiler.reading.CoverageRead.Read read,
                                         Trial trial, List<Baseline> baselines,
-                                        List<ClassOwed> classesOwed,
+                                        List<ClassOfAPosition> classesOwed,
                                         List<ArmProbe> armsOwed,
                                         AdequacyPolicy.OfTheGeneration budget) {
         return fill(planOver(subject, classesOwed, armsOwed), existing, check, read, trial,
@@ -909,16 +909,18 @@ public final class Generator {
         return out;
     }
 
-    /** One class of one position, which is what a row can be owed for. */
-    public record ClassOwed(AxisId at, String classId) {}
-
     /**
-     * One arm of the body, which is the other thing a row can be owed for.
+     * Which arm of the body a search steers a row towards.
      *
-     * <p>Named the way {@link ClassOwed} is rather than carried as the number the plan gave it. The
-     * two are the halves of what one run is asked for and are answered side by side; one of them
-     * spelled as a bare {@code int} put the obligations into two vocabularies, and anything holding
-     * both had to say which kind of thing a number was every time it read one.
+     * <p>A handle and not an identity. What a row is owed for is one arm the author wrote, however
+     * many times a helper carrying it is spliced in; the probe is one of those occurrences, and it
+     * is what a search has to name because a run is recorded at an occurrence. So a proposal says
+     * which obligation it targets and carries one of these to reach it, and the two are not the
+     * same value.
+     *
+     * <p>Named rather than carried as the number the plan gave it. Spelled as a bare {@code int} it
+     * put the things a run is asked about into two vocabularies, and anything holding both had to
+     * say which kind of thing a number was every time it read one.
      */
     public record ArmOwed(ArmProbe probe) {}
 
@@ -938,12 +940,12 @@ public final class Generator {
      * one element under a line and one over it — and each of them is covered. Read as one class,
      * the rest would be asked for again, which is work the author has already done.
      */
-    public static List<ClassOwed> everyClassNoRowSitsIn(MeasuredInput subject,
+    public static List<ClassOfAPosition> everyClassNoRowSitsIn(MeasuredInput subject,
                                                        List<ObservedRow> existing) {
         // Gathered once apiece and handed over in the order the walk reached them, which is the
         // order the search fixes the positions in. The set is how "once apiece" is kept; what a
         // caller is given is the order, because that is what the plan is asking for.
-        Set<ClassOwed> out = new LinkedHashSet<>();
+        Set<ClassOfAPosition> out = new LinkedHashSet<>();
         for (Axis axis : ordered(subject).axes()) {
             Set<String> covered = new LinkedHashSet<>();
             for (ObservedRow row : existing) {
@@ -954,7 +956,7 @@ public final class Generator {
             }
             for (PartitionClass cls : axis.classes()) {
                 if (!covered.contains(cls.id())) {
-                    out.add(new ClassOwed(axis.id(), cls.id()));
+                    out.add(new ClassOfAPosition(axis.id(), cls.id()));
                 }
             }
         }
@@ -976,7 +978,7 @@ public final class Generator {
                                         Trial trial, List<Baseline> baselines,
                                         AdequacyPolicy.OfTheGeneration budget) {
         MeasuredInput subject = plan.subject();
-        List<ClassOwed> classesOwed = plan.classesOwed();
+        List<ClassOfAPosition> classesOwed = plan.classesOwed();
         List<ArmProbe> armsOwed = plan.armsOwed().stream().map(ArmOwed::probe).toList();
         MeasuredInput.MeasuredAxes ordered = ordered(subject);
         // A position where some row's value could not be read is a position nothing is known about.
@@ -1031,7 +1033,7 @@ public final class Generator {
         for (int i = 0; i < axes.size(); i++) {
             for (int c = 0; c < axes.get(i).classes().size(); c++) {
                 if (classesOwed.contains(
-                        new ClassOwed(axes.get(i).id(), axes.get(i).classes().get(c).id()))) {
+                        new ClassOfAPosition(axes.get(i).id(), axes.get(i).classes().get(c).id()))) {
                     owed.add(new int[] {i, c});
                 }
             }
@@ -1056,7 +1058,7 @@ public final class Generator {
         // Which row answered which class. A row is a line in the file and the same line can answer
         // several things, so what says a class was answered is the entry naming the row rather than
         // anything written on the row itself.
-        Map<ClassOwed, RowId> answeredAt = new LinkedHashMap<>();
+        Map<ClassOfAPosition, RowId> answeredAt = new LinkedHashMap<>();
         List<UnresolvedCombination> unresolved = new ArrayList<>();
         List<GenerationReason> reasons = new ArrayList<>(undecided);
         // The classes first. What each is owed is one row, and the arms below are looked for among
@@ -1092,7 +1094,7 @@ public final class Generator {
                     // answered by rows written the same way and are still two rows the search
                     // composed one apiece — each is offered for its own class, and merging them
                     // would take one of the two classes its answer.
-                    answeredAt.put(new ClassOwed(attempt.at(), attempt.classId()),
+                    answeredAt.put(new ClassOfAPosition(attempt.at(), attempt.classId()),
                             compose(composed, made.row().inputs()));
                 }
                 case ClassAttempt.Unresolved none -> unresolved.add(none.why());
@@ -1281,15 +1283,15 @@ public final class Generator {
         // position for. A class of a position that was held back was never a thing to look for, and
         // it says that here rather than being left out — a class the plan named and nothing
         // answered for is what a reader downstream had to invent a sentence about.
-        Map<ClassOwed, ClassDisposition> classAnswers = new LinkedHashMap<>();
+        Map<ClassOfAPosition, ClassDisposition> classAnswers = new LinkedHashMap<>();
         for (ClassAttempt attempt : attempts) {
-            ClassOwed key = new ClassOwed(attempt.at(), attempt.classId());
+            ClassOfAPosition key = new ClassOfAPosition(attempt.at(), attempt.classId());
             classAnswers.put(key, switch (attempt) {
                 case ClassAttempt.Built _ -> new ClassDisposition.Built(answeredAt.get(key));
                 case ClassAttempt.Unresolved none -> new ClassDisposition.Unresolved(none.why());
             });
         }
-        for (ClassOwed asked : classesOwed) {
+        for (ClassOfAPosition asked : classesOwed) {
             if (classAnswers.containsKey(asked)) {
                 continue;
             }
@@ -3096,7 +3098,7 @@ public final class Generator {
      * beside the obligation. A label copied into the obligation would be a second spelling of the
      * class, free to disagree with the axis the day either moved.
      */
-    static String labelOf(MeasuredInput subject, ClassOwed owed) {
+    static String labelOf(MeasuredInput subject, ClassOfAPosition owed) {
         for (Axis axis : subject.axes().axes()) {
             if (!axis.id().equals(owed.at())) {
                 continue;

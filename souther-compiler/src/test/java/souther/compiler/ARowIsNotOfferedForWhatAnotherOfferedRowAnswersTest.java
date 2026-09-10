@@ -139,7 +139,7 @@ class ARowIsNotOfferedForWhatAnotherOfferedRowAnswersTest {
                         new OfferItem.AnArm(
                                 new souther.compiler.partition.Generator.ArmOwed(arm.index()));
                 case souther.compiler.query.About.AClassNoRowIsIn(var missing) ->
-                        new OfferItem.AClass(new souther.compiler.partition.Generator.ClassOwed(
+                        new OfferItem.AClass(new souther.compiler.partition.ClassOfAPosition(
                                 missing.axis().at(), missing.name()));
                 default -> null;
             };

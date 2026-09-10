@@ -17,7 +17,7 @@ import java.util.Map;
  * everything else asks by key — so the order the entries were written in is kept for the sake of a
  * message about one run reading the same way twice, and is not something to build an answer from.
  */
-public record Discharge(Map<Generator.ClassOwed, ClassDisposition> classes,
+public record Discharge(Map<ClassOfAPosition, ClassDisposition> classes,
                         Map<Generator.ArmOwed, ArmDisposition> arms) {
 
     /** Nothing asked for and nothing answered, which is the only run this is right for. */
@@ -32,7 +32,7 @@ public record Discharge(Map<Generator.ClassOwed, ClassDisposition> classes,
     }
 
     /** What became of one class, or null where this run was not asked about it. */
-    public ClassDisposition at(Generator.ClassOwed owed) {
+    public ClassDisposition at(ClassOfAPosition owed) {
         return classes.get(owed);
     }
 
