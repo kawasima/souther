@@ -51,6 +51,7 @@ import souther.compiler.partition.DomainPoint;
 import souther.compiler.partition.PointRole;
 import souther.compiler.inputs.InputDomain;
 import souther.compiler.inputs.InputReads;
+import souther.compiler.partition.DecisionRule;
 import souther.compiler.partition.GenerationOutcome;
 import souther.compiler.partition.Generator;
 import souther.compiler.partition.InputClassifications;
@@ -1710,6 +1711,113 @@ public final class Adequacy {
     }
 
     /**
+     * What a search finds standing in each rule of one behavior's decision that no row took.
+     *
+     * <p><b>Work somebody asked for, and its own key for that reason</b>, exactly as the search of a
+     * border's points is. It composes a value for every position of the behavior and runs it, once
+     * per rule, which is work a measurement everybody pays for may not carry.
+     *
+     * <p>Over the rules no row took, because a rule a row took already has something standing in it
+     * and the row is the proof. What comes back about the rest is what ADR-0091 calls the evidence:
+     * a composed row seen taking the rule shows something can stand there, and every other answer is
+     * this compiler having looked without finding.
+     *
+     * <p>Nothing here says a rule is unreachable. A search that composed nothing tried the values it
+     * chose, and how many of them it tried was its own; a row that went elsewhere was steered by a
+     * reading that may be wrong anywhere along it. Both leave the rule where it was.
+     */
+    public record DecisionSearch(String name, String behavior)
+            implements Key<Map<DecisionRule, RuleWitness>> {
+
+        @Override
+        public String module() {
+            return name;
+        }
+
+        @Override
+        public Answer<Map<DecisionRule, RuleWitness>> compute(Db db) {
+            Map<String, DecisionEvidence> decisions = db.ask(new Decides(name)).value();
+            DecisionEvidence evidence = decisions == null ? null : decisions.get(behavior);
+            Answer<CheckSurface> prepared = db.ask(new Shapes.CheckSurface(name));
+            Answer<Map<String, Sig>> sigs = db.ask(new Bodies.Signatures(name));
+            Answer<Bodies.Elaborated> checked = db.ask(new Bodies.Checked(name));
+            if (evidence == null || !prepared.present() || !sigs.present() || !checked.present()) {
+                return Answer.absent();
+            }
+            Hir.SpecBehavior spec = specOf(prepared.value(), behavior);
+            Sig sig = sigs.value().get(behavior);
+            souther.compiler.core.Core emitted =
+                    checked.value().behaviorBodies().get(behavior);
+            if (spec == null || sig == null || emitted == null) {
+                return Answer.absent();
+            }
+            souther.compiler.partition.MeasuredInput subject = subjectOf(db, name, spec);
+            Coverages.Probe probe = subject == null ? null
+                    : probing(sig, subject, constructing(db, name),
+                            runningRowsOf(trialling(db, name), behavior, sig,
+                                    numberingOf(db, name)));
+            if (probe == null) {
+                // Nothing builds the values, so no candidate goes through anything. Absent rather
+                // than an answer saying nothing stands anywhere, which is what a search that ran
+                // and found nothing says and is not this.
+                return Answer.absent();
+            }
+            souther.compiler.partition.RulesTaken taken = souther.compiler.partition.RulesTaken.of(
+                    evidence.read(), emitted, checked.value().plan());
+            souther.compiler.inputs.SearchRegion declared = subject.quantities().region();
+            Map<DecisionRule, RuleWitness> out = new LinkedHashMap<>();
+            for (souther.compiler.partition.DecisionReading.Ruled ruled
+                    : evidence.read().found()) {
+                if (!evidence.nothingStandsIn().contains(ruled.rule())) {
+                    continue;
+                }
+                out.put(ruled.rule(), whatStandsIn(ruled, probe, taken, declared));
+            }
+            return Answer.of(Ordered.map(out));
+        }
+
+        /**
+         * What a search for a row standing in one rule came to.
+         *
+         * <p>Nothing is fixed at a place. A border's search is handed the positions the point names
+         * and fills the rest under what stands on the way; a rule names no point, so the way is the
+         * whole of what the row has to be.
+         */
+        private static RuleWitness whatStandsIn(
+                souther.compiler.partition.DecisionReading.Ruled ruled, Coverages.Probe probe,
+                souther.compiler.partition.RulesTaken taken,
+                souther.compiler.inputs.SearchRegion declared) {
+            if (!(souther.compiler.partition.Reachability.of(ruled.states(), declared)
+                    instanceof souther.compiler.partition.Reachability.Reaching reaching)) {
+                // The way asks one position to be two things at once, which the readings that
+                // already exist show no row takes. Said as nothing having been composed, because
+                // that is what happened here; whether the model refuses it is the account's to say
+                // and is not read off a search.
+                return new RuleWitness.NothingComposed(
+                        new Generator.UnresolvedCombination(List.of(),
+                                Generator.UnresolvedCombination.Reason.THE_RULES_LEAVE_NOTHING_THERE));
+            }
+            if (!(probe.attempt("a rule of the decision", Map.of(), reaching)
+                    instanceof Generator.BoundaryAttempt.Built built)) {
+                return new RuleWitness.NothingComposed(
+                        new Generator.UnresolvedCombination(List.of(),
+                                Generator.UnresolvedCombination.Reason.NOTHING_COMPOSES_ONE));
+            }
+            List<souther.compiler.partition.FixtureTemplate> inputs = built.row().inputs();
+            if (!(probe.read(inputs).watched() instanceof Generator.Watched.Ran(var seen))) {
+                return new RuleWitness.NothingWatched();
+            }
+            // What the row did, and not what it was composed against. A row steered here by a
+            // reading that is wrong anywhere along the way arrives somewhere else, and it looks
+            // like a witness until something asks the run.
+            return taken.takenBy(seen)
+                    instanceof souther.compiler.partition.RulesTaken.WhichRule.TookThis took
+                    && took.rule().equals(ruled.rule())
+                    ? new RuleWitness.Stands(inputs) : new RuleWitness.WentElsewhere();
+        }
+    }
+
+    /**
      * The same lines, with a value composed at each point that is worth one.
      *
      * <p><b>Work somebody asked for, and its own key for that reason.</b> Composing a value puts it
@@ -1775,58 +1883,78 @@ public final class Adequacy {
                     divided.reaching())));
         }
 
-        /**
-         * A way to try to build a row at a boundary, or nothing where there is nothing to try
-         * against.
-         *
-         * <p>Nothing rather than a check that refuses nothing. A row built without the decoder is a
-         * row nobody has put through anything, and counting one as a witness would turn "the classes
-         * are missing" into "the edge can be written".
-         */
-        private static Coverages.Probe probing(
-                Sig sig, souther.compiler.partition.MeasuredInput subject,
-                BoundaryValues building, Generator.Trial trial) {
-            if (building == null) {
-                return null;
-            }
+    }
+
+    /**
+     * A way to try to build a row of one behavior and see what it did, or nothing where there is
+     * nothing to try against.
+     *
+     * <p>Nothing rather than a check that refuses nothing. A row built without the decoder is a row
+     * nobody has put through anything, and counting one as a witness would turn "the classes are
+     * missing" into "the edge can be written".
+     *
+     * <p>Beside the searches rather than inside one of them. What it takes to build a row of a
+     * behavior and run it is the same whatever the row is being looked for — a point of a line, a
+     * rule of the decision — and a second maker of one would be a second answer to which decoder a
+     * candidate goes through.
+     */
+    static Coverages.Probe probing(Sig sig, souther.compiler.partition.MeasuredInput subject,
+                                   BoundaryValues building, Generator.Trial trial) {
+        return building == null ? null : new ARowBuiltAndRun(sig, subject, building, trial);
+    }
+
+    /**
+     * Building a row of one behavior through this module's own decoders, and running it.
+     *
+     * <p>Named rather than written where it is made. Every place a broad failure is caught is
+     * licensed one at a time and by name, and a class named by where it stands among the file's
+     * anonymous ones moves when anything above it does — so what the licence is about would go on
+     * reading as a licence for something else.
+     */
+    private static final class ARowBuiltAndRun implements Coverages.Probe {
+
+        private final Sig sig;
+
+        private final souther.compiler.partition.MeasuredInput subject;
+
+        private final BoundaryValues building;
+
+        private final Generator.Trial trial;
+
+        private ARowBuiltAndRun(Sig sig, souther.compiler.partition.MeasuredInput subject,
+                                BoundaryValues building, Generator.Trial trial) {
+            this.sig = sig;
+            this.subject = subject;
+            this.building = building;
+            this.trial = trial;
+        }
+
+        @Override
+        public Generator.BoundaryAttempt attempt(String label,
+                java.util.Map<souther.compiler.partition.RealizationTarget,
+                        souther.compiler.numeric.Place> fixing,
+                souther.compiler.partition.Reachability.Reaching reaching) {
             Generator.CandidateCheck check =
                     (at, candidate) -> built(building.build(sig.ins().get(at), candidate.value()));
-            return new Coverages.Probe() {
+            try {
+                return Generator.probeFixing(subject, label, fixing, reaching, check);
+            } catch (LinkageError _) {
+                // The generated classes would not link, so nothing can be built to find out what a
+                // model admits. Nothing was tried, which is not the same as everything tried being
+                // refused, and neither of them says the row cannot be written.
+                return null;
+            }
+        }
 
-                @Override
-                public Generator.BoundaryAttempt attempt(String label,
-                        java.util.Map<souther.compiler.partition.RealizationTarget,
-                                souther.compiler.numeric.Place> fixing,
-                        souther.compiler.partition.Reachability.Reaching reaching) {
-                    return built(() ->
-                            Generator.probeFixing(subject, label, fixing, reaching, check));
-                }
-
-                @Override
-                public RowAsRead read(
-                        List<souther.compiler.partition.FixtureTemplate> inputs) {
-                    try {
-                        return RowAsRead.of(sig, building, trial, inputs);
-                    } catch (LinkageError _) {
-                        // The generated classes would not link, so nothing here can say where the
-                        // row went. Which is what a row nothing built reads as, and is not a row
-                        // seen to stand somewhere else.
-                        return RowAsRead.nothingRead();
-                    }
-                }
-
-                private Generator.BoundaryAttempt built(
-                        java.util.function.Supplier<Generator.BoundaryAttempt> attempt) {
-                    try {
-                        return attempt.get();
-                    } catch (LinkageError _) {
-                        // The generated classes would not link, so nothing can be built to find out
-                        // what a model admits. Nothing was tried, which is not the same as everything
-                        // tried being refused, and neither of them says the edge cannot be written.
-                        return null;
-                    }
-                }
-            };
+        @Override
+        public RowAsRead read(List<souther.compiler.partition.FixtureTemplate> inputs) {
+            try {
+                return RowAsRead.of(sig, building, trial, inputs);
+            } catch (LinkageError _) {
+                // The same, asked by reading a row through them — answered as a row nothing built,
+                // which is not a row seen to stand somewhere else.
+                return RowAsRead.nothingRead();
+            }
         }
     }
 

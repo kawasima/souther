@@ -29,26 +29,59 @@ record DecisionPath(List<Consulted> consulted) {
     }
 
     /**
-     * One condition this path consulted: what it came out as, and where a run through it is seen.
+     * One condition this path consulted: what it came out as, where a run through it is seen, and
+     * what it states about the input.
      *
-     * <p>The second is not part of what the path is. Which distinctions a rule turns on is what
-     * tells it from another rule; where each of them is written is what joins it to a run, and one
-     * body stating one rule in two places states one rule.
+     * <p>Only the first is part of what the path is. Which distinctions a rule turns on is what
+     * tells it from another rule; where each of them is written is what joins it to a run, and what
+     * it states is what a search composes a row against.
+     *
+     * @param states the condition in the words a composer of a row already works from, so that a
+     *               column of a decision table and the region a row for it is looked for in cannot
+     *               be read off two accounts of one comparison
      */
-    record Consulted(DecidedCondition answer, ShownBy shown) {
+    record Consulted(DecidedCondition answer, ShownBy shown, OnTheWay states) {
 
         Consulted {
-            if (answer == null || shown == null) {
-                throw new IllegalArgumentException(
-                        "a condition a path consulted is an answer and where it is seen");
+            if (answer == null || shown == null || states == null) {
+                throw new IllegalArgumentException("a condition a path consulted is an answer,"
+                        + " where it is seen, and what it states");
             }
         }
     }
 
     /** This path with {@code answer} on it, or null where the path already answers that column the
      *  other way. */
-    DecisionPath and(DecidedCondition answer, ShownBy shown) {
-        return and(new DecisionPath(List.of(new Consulted(answer, shown))));
+    DecisionPath and(DecidedCondition answer, ShownBy shown, OnTheWay states) {
+        return and(new DecisionPath(List.of(new Consulted(answer, shown, states))));
+    }
+
+    /**
+     * Two paths are one where they consulted the same distinctions and got the same answers.
+     *
+     * <p>Which is what the reading of the ways asks of a path: two that stand for the same way are
+     * equal, so a way found twice is one way. What a rule is is its columns, and where each of them
+     * is written is not one of them — two ways this reading cannot tell apart by what they turn on
+     * are one rule, and holding them apart by an anchor would count what the reading did rather
+     * than what the body does.
+     */
+    @Override
+    public boolean equals(Object other) {
+        return other instanceof DecisionPath that && answers().equals(that.answers());
+    }
+
+    @Override
+    public int hashCode() {
+        return answers().hashCode();
+    }
+
+    private List<DecidedCondition> answers() {
+        return consulted.stream().map(Consulted::answer).toList();
+    }
+
+    /** What this path states about the input, which is what a search composes a row against. */
+    WayToTheBorder states() {
+        return new WayToTheBorder(consulted.stream().map(Consulted::states).toList());
     }
 
     /** Both paths' conditions, or null where between them they answer one column two ways. */

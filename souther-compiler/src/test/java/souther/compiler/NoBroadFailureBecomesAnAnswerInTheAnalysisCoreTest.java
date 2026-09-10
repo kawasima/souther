@@ -279,14 +279,15 @@ class NoBroadFailureBecomesAnAnswerInTheAnalysisCoreTest {
                             + " budget is what makes this a question: a matcher given one answers"
                             + " by not finishing, and the fold declines the same way it declines a"
                             + " pattern the engine refused"),
-            new Permission("souther.compiler.query.Adequacy$BoundarySearch$1", "built",
-                    "(Ljava/util/function/Supplier;)"
+            new Permission("souther.compiler.query.Adequacy$ARowBuiltAndRun", "attempt",
+                    "(Ljava/lang/String;Ljava/util/Map;"
+                            + "Lsouther/compiler/partition/Reachability$Reaching;)"
                             + "Lsouther/compiler/partition/Generator$BoundaryAttempt;",
                     "java.lang.LinkageError",
-                    "whether the classes generated for this model link, asked by building a"
-                            + " boundary attempt out of them — answered as nothing tried, which is"
-                            + " not everything tried being refused"),
-            new Permission("souther.compiler.query.Adequacy$BoundarySearch$1", "read",
+                    "whether the classes generated for this model link, asked by building a row"
+                            + " out of them — answered as nothing tried, which is not everything"
+                            + " tried being refused"),
+            new Permission("souther.compiler.query.Adequacy$ARowBuiltAndRun", "read",
                     "(Ljava/util/List;)Lsouther/compiler/query/RowAsRead;",
                     "java.lang.LinkageError",
                     "the same, asked by reading a row through them — answered as a row nothing"

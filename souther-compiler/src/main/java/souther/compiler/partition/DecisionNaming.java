@@ -100,7 +100,7 @@ final class DecisionNaming implements Naming<DecisionPath> {
         DecisionPath path = DecisionPath.NOWHERE;
         for (OnTheWay each : meanings.stating(condition, held)) {
             DecidedCondition answer = answerOf(each, held);
-            path = path.and(answer, shownBy(answer, condition, held));
+            path = path.and(answer, shownBy(answer, condition, held), each);
             if (path == null) {
                 return null;
             }
@@ -110,13 +110,13 @@ final class DecisionNaming implements Naming<DecisionPath> {
 
     @Override
     public DecisionPath matchCase(Core.Match match, int part) {
-        DecidedCondition answer =
-                answerOf(meanings.entering(match, part, reads, numbering), true);
+        OnTheWay states = meanings.entering(match, part, reads, numbering);
+        DecidedCondition answer = answerOf(states, true);
         ModelOccurrence fork =
                 ModelOccurrence.statedAt(match.place().occurrence()).orElse(null);
         return DecisionPath.NOWHERE.and(answer, fork == null
                 ? new ShownBy.NothingIsRecorded(answer.condition())
-                : new ShownBy.AtAnArm(fork, part));
+                : new ShownBy.AtAnArm(fork, part), states);
     }
 
     /**
