@@ -13,9 +13,12 @@ import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Sources a measurement is taken against, carried in this module's jar rather than read off disk, so
@@ -45,7 +48,17 @@ public record Corpus(String name, List<String> sources, int lines) {
 
     private static final String ROOT = "/souther/corpus/";
 
-    /** What the manifest calls the corpora a number is compared against. */
+    /** What a line of the manifest begins with where it declares a purpose rather than uses one. */
+    private static final String DECLARES = "purpose";
+
+    /**
+     * The purpose this module consumes, which is this module's own business.
+     *
+     * <p>Not a copy of what the manifest declares. What the words are is the manifest's to say, and
+     * a word added there is nothing this has to be taught; what is said here is which of them a
+     * measurement is taken over. It is held to the manifest all the same — a manifest that stopped
+     * declaring it would leave this asking for something no corpus can be written for.
+     */
     private static final String MEASUREMENT = "measurement";
 
     /**
@@ -57,14 +70,16 @@ public record Corpus(String name, List<String> sources, int lines) {
      * enough that timing its compile would say nothing.
      */
     public static List<Corpus> all() {
+        Manifest manifest = manifest();
         List<Corpus> out = new ArrayList<>();
-        for (Map.Entry<String, String> each : manifest().entrySet()) {
+        for (Map.Entry<String, String> each : manifest.byCorpus().entrySet()) {
             if (each.getValue().equals(MEASUREMENT)) {
                 out.add(load(each.getKey()));
             }
         }
         if (out.isEmpty()) {
-            throw new IllegalStateException("the manifest names no corpus written for measurement");
+            throw new IllegalStateException("the manifest names no corpus written for `"
+                    + MEASUREMENT + "`");
         }
         return List.copyOf(out);
     }
@@ -77,7 +92,7 @@ public record Corpus(String name, List<String> sources, int lines) {
      * measured while being in no listing, and a check over every model would pass without it.
      */
     public static Corpus load(String name) {
-        if (!manifest().containsKey(name)) {
+        if (!manifest().byCorpus().containsKey(name)) {
             throw new IllegalStateException("the manifest names no corpus `" + name + "`");
         }
         List<String> sources = new ArrayList<>();
@@ -97,9 +112,23 @@ public record Corpus(String name, List<String> sources, int lines) {
         return new Corpus(name, List.copyOf(sources), lines);
     }
 
-    /** Every corpus the repository carries, by name, with what each was written for. */
-    private static Map<String, String> manifest() {
-        Map<String, String> out = new LinkedHashMap<>();
+    /** The purposes the manifest declares, and every corpus it names with the one it was written
+     *  for. */
+    private record Manifest(Set<String> purposes, Map<String, String> byCorpus) {}
+
+    /**
+     * The manifest, refused where it does not say one thing.
+     *
+     * <p>A purpose is only what the manifest declares. Taken as whatever word a line happens to
+     * carry, a corpus written for a word misspelt is one this passes over while another reader takes
+     * it for something else, and neither says anything — the corpus leaves the measurements without
+     * leaving anything behind. A name is only ever one corpus for the same reason: keyed without
+     * looking, a repeated name is a corpus the last line silently replaces.
+     */
+    private static Manifest manifest() {
+        Set<String> purposes = new LinkedHashSet<>();
+        Map<String, String> byCorpus = new LinkedHashMap<>();
+        List<String[]> entries = new ArrayList<>();
         for (String line : read(ROOT + "corpora.txt").lines().toList()) {
             String entry = line.strip();
             if (entry.isEmpty() || entry.startsWith("#")) {
@@ -108,14 +137,36 @@ public record Corpus(String name, List<String> sources, int lines) {
             String[] parts = entry.split("\\s+");
             if (parts.length != 2) {
                 throw new IllegalStateException(
-                        "a corpus is named with what it was written for: " + entry);
+                        "a line declares a purpose or names a corpus and its purpose: " + entry);
             }
-            out.put(parts[0], parts[1]);
+            if (parts[0].equals(DECLARES) && !purposes.add(parts[1])) {
+                throw new IllegalStateException("the manifest declares `" + parts[1] + "` twice");
+            }
+            if (!parts[0].equals(DECLARES)) {
+                entries.add(parts);
+            }
         }
-        if (out.isEmpty()) {
+        for (String[] entry : entries) {
+            if (!purposes.contains(entry[1])) {
+                throw new IllegalStateException("the `" + entry[0] + "` corpus is written for `"
+                        + entry[1] + "`, which the manifest does not declare. It declares "
+                        + purposes);
+            }
+            if (byCorpus.put(entry[0], entry[1]) != null) {
+                throw new IllegalStateException("the manifest names `" + entry[0] + "` twice");
+            }
+        }
+        if (byCorpus.isEmpty()) {
             throw new IllegalStateException("the manifest names no corpus at all");
         }
-        return out;
+        if (!purposes.contains(MEASUREMENT)) {
+            throw new IllegalStateException("the manifest declares no `" + MEASUREMENT
+                    + "`, which is what a measurement is taken over. It declares " + purposes);
+        }
+        // Kept in the order the manifest writes them. What is handed out is what a measurement
+        // reports, and the manifest is where that order is said.
+        return new Manifest(Collections.unmodifiableSet(purposes),
+                Collections.unmodifiableMap(byCorpus));
     }
 
     private static String read(String resource) {
