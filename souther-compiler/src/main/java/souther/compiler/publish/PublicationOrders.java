@@ -14,6 +14,7 @@ import souther.compiler.query.ObligationDisposition;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.Map;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -150,27 +151,6 @@ public final class PublicationOrders {
     }
 
     /**
-     * How a document sends a reader to a rule that two readers each offered a handle for.
-     *
-     * <p>A name where the author gave one, before a way in where they did not. A reader given a
-     * name has the word the model uses; a way in is what there is instead, and a rule that has both
-     * is a rule a reader can be asked about in the author's own words.
-     *
-     * <p><b>Over what the handles are and not over what a place turns out to be.</b> A citation
-     * holds no place, so choosing between two of them here is choosing between two questions —
-     * which is a comparison this can make on its own, before anything is asked. Made over the
-     * places instead, the choice would have to resolve every handle offered to pick one, and a
-     * document would ask the module that wrote a rule where it is once per reader that found it.
-     *
-     * <p>Two rules the author named are told apart by the name; a rule offered by two readings is
-     * told apart by which reading and which of its ways in, in the order those were met. There is
-     * one of each pair, since two of a kind that agreed on all of it would be one value.
-     */
-    private static Comparator<RuleCitation> handles(PublishedRuleHandle.WhereARuleIs places) {
-        return Comparator.comparing(cited -> PublishedRuleHandle.of(cited, places));
-    }
-
-    /**
      * The one handle a document writes for a rule met with several, or nothing where none was
      * offered.
      *
@@ -187,10 +167,20 @@ public final class PublicationOrders {
      * <p>So {@code places} is asked, once per handle offered. A rule met at one call by two readers
      * is one citation and is asked about once; one met at two calls is two, and a document choosing
      * between them is choosing between two places it could send a reader to.
+     *
+     * <p><b>Which is why each is projected before any of them are compared.</b> A comparison built
+     * out of a projection reads it afresh on both sides of every comparison it makes, so the
+     * handle that survives a fold is resolved once per step of the fold rather than once at all —
+     * and a caller whose answer to where a rule is takes a question of its own would ask it that
+     * many times. What is folded here is the pairs, so what is asked is what the sentence above
+     * says is asked.
      */
     public static Optional<RuleCitation> handleFor(Collection<RuleCitation> offered,
                                                    PublishedRuleHandle.WhereARuleIs places) {
-        return offered.stream().min(handles(places));
+        return offered.stream()
+                .map(cited -> Map.entry(cited, PublishedRuleHandle.of(cited, places)))
+                .min(Map.Entry.comparingByValue())
+                .map(Map.Entry::getKey);
     }
 
     /**
