@@ -4,7 +4,11 @@ import org.junit.jupiter.api.Test;
 import souther.compiler.core.Core;
 import souther.compiler.coverage.ArmProbe;
 import souther.compiler.coverage.ControlPlace;
+import souther.compiler.claims.Claims;
+import souther.compiler.claims.UnreachableClaims;
 import souther.compiler.coverage.CoverageSites;
+import souther.compiler.inputs.InputDomain;
+import souther.compiler.partition.GuardThresholds;
 import souther.compiler.partition.ProducedCases;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.Bodies;
@@ -18,6 +22,7 @@ import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -78,6 +83,57 @@ class AReadingAnswersAboutThePlacesOfOnePlanTest {
                 | On      -> Yes
                 | Pending -> Yes
                 | Off     -> No
+
+            example pick
+                | "on" : (Active(On)) -> Yes
+            """;
+
+    /**
+     * A guard under a guard that rules it out: both lines are ones the declarations allow, and
+     * nothing arrives at the inner one. What drops it is the reading of what arrives and nothing
+     * else, which is the lookup under test.
+     */
+    private static final String SHADOWED = """
+            module example.shadowed
+
+            data Count = Int
+                invariant lower = value >= 0
+                invariant cap = value <= 100
+            data Small
+            data Large
+            data Under
+
+            behavior pick : (c: Count) -> Small | Large | Under
+
+            let pick (c) =
+                if c.value >= 50
+                    then if c.value <= 10
+                        then Small
+                        else Large
+                    else Under
+
+            example pick
+                | "big" : (Count(60)) -> Large
+                | "under" : (Count(1)) -> Under
+            """;
+
+    /** A body that declares a case cannot arrive, which is what a claim is made of. */
+    private static final String DECLARED = """
+            module example.declared
+
+            data On
+            data Off
+            data Pending
+            data Flag = On | Off | Pending
+            data Active = Flag invariant value /= Off
+            data Yes
+
+            behavior pick : (f: Active) -> Yes
+
+            let pick (f) = match f.value with
+                | On      -> Yes
+                | Pending -> Yes
+                | Off     -> unreachable "an Active never carries Off"
 
             example pick
                 | "on" : (Active(On)) -> Yes
@@ -155,6 +211,57 @@ class AReadingAnswersAboutThePlacesOfOnePlanTest {
                 () -> "the refusal names the two numberings: " + refusal.getMessage());
     }
 
+    /**
+     * The rules read off a behavior's guards refuse the pair rather than reading it.
+     *
+     * <p>The other lookup a reading holds, and the one an absence is widest at. What a comparison
+     * this reading has nothing filed under comes back as is that nothing is known about it, which
+     * restricts nothing — so a reading of another module would leave every line of this body drawn
+     * exactly as the declarations leave it, and say nothing about having been the wrong reading.
+     *
+     * <p>What that costs here, measured with the pair let through: the inner line comes back
+     * alongside the outer one, and a row is asked for at a boundary nothing can arrive at.
+     */
+    @Test
+    void theRulesReadOffTheGuardsRefuseAReadingOfAnotherPlan() {
+        Read shadowed = read(SHADOWED);
+        Read refused = read(REFUSED);
+
+        assertEquals(1, shadowed.guardsWith(shadowed.arrives).thresholds().size(),
+                "read against its own plan, the inner line is dropped: nothing arrives at it");
+
+        IllegalArgumentException refusal = assertThrows(IllegalArgumentException.class,
+                () -> shadowed.guardsWith(refused.arrives));
+
+        assertTrue(refusal.getMessage().contains("was made under"),
+                () -> "the refusal names the two numberings: " + refusal.getMessage());
+    }
+
+    /**
+     * Judging what a body declares cannot arrive refuses the pair rather than reading it.
+     *
+     * <p>The seam the whole question was found at. A claim is judged by looking its arm up in a
+     * reading, and a reading of another plan has nothing filed under any of them — so every claim
+     * an author wrote comes back unproven, which is what a claim about a place this compiler did
+     * not walk to comes back as.
+     */
+    @Test
+    void judgingWhatABodyDeclaresCannotArriveRefusesAReadingOfAnotherPlan() {
+        Read declared = read(DECLARED);
+        Read refused = read(REFUSED);
+
+        UnreachableClaims claims = declared.claims();
+        assertFalse(claims.isEmpty(), "the body declares that a case cannot arrive");
+        assertEquals(claims.all().size(), Claims.of(claims, declared.arrives).all().size(),
+                "read against its own plan, every claim it makes is judged");
+
+        IllegalArgumentException refusal = assertThrows(IllegalArgumentException.class,
+                () -> Claims.of(claims, refused.arrives));
+
+        assertTrue(refusal.getMessage().contains("was made under"),
+                () -> "the refusal names the two numberings: " + refusal.getMessage());
+    }
+
     /** A reading that was never made goes with any plan, because it says nothing about one. */
     @Test
     void noReadingAtAllIsReadAgainstWhicheverPlanTheReaderHolds() {
@@ -166,8 +273,28 @@ class AReadingAnswersAboutThePlacesOfOnePlanTest {
                 "nothing was proven, so nothing is taken away — and the pair is not refused");
     }
 
-    /** One module compiled, with the three things a reader of it puts together. */
-    private record Read(Core body, CoverageSites.Plan plan, PathReachability.Answers arrives) {
+    /** One module compiled, with what the readers under test put together. */
+    private record Read(Compilation compilation, String module, Bodies.Elaborated checked,
+                        Core body, CoverageSites.Plan plan, PathReachability.Answers arrives) {
+
+        /** What this behavior's guards state, read against {@code against}. */
+        GuardThresholds.Guards guardsWith(PathReachability.Answers against) {
+            RuleReadingSource rules = RuleReadings.of(compilation, module);
+            InputDomain inputs = compilation.db()
+                    .ask(new Adequacy.Inputs(module)).value().get("pick");
+            AnalysisBody analysis = checked.analysisBodies().get("pick");
+            return GuardThresholds.of("pick", analysis, body, plan, inputs.reading(rules),
+                    ElementBindings.of(analysis.core(), analysis.elements(), rules.symbols()),
+                    against);
+        }
+
+        /** What this behavior's body declares cannot arrive. */
+        UnreachableClaims claims() {
+            RuleReadingSource rules = RuleReadings.of(compilation, module);
+            InputDomain inputs = compilation.db()
+                    .ask(new Adequacy.Inputs(module)).value().get("pick");
+            return UnreachableClaims.of(body, inputs, rules.symbols(), plan);
+        }
 
         /** The arm this module's own reading proves nothing arrives at. */
         ControlPlace.Arm armProvenDead() {
@@ -196,7 +323,8 @@ class AReadingAnswersAboutThePlacesOfOnePlanTest {
         Bodies.Elaborated checked = compilation.db().ask(new Bodies.Checked(module)).value();
         Map<String, PathReachability.Answers> answers =
                 compilation.db().ask(new Adequacy.PathReached(module)).value();
-        return new Read(checked.behaviorBodies().get("pick"), checked.plan(), answers.get("pick"));
+        return new Read(compilation, module, checked, checked.behaviorBodies().get("pick"),
+                checked.plan(), answers.get("pick"));
     }
 
     private static void gather(Core e, Set<TypeSymbol> out) {
