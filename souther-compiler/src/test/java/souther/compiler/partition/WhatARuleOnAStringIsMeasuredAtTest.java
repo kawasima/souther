@@ -131,12 +131,19 @@ class WhatARuleOnAStringIsMeasuredAtTest {
                 measured("guard x /= QfooQ else Newer"));
     }
 
-    /** And where the least string is the one singled out, nothing else stands for the rest. */
+    /**
+     * And where the least string is the one singled out, the rest is still stood for.
+     *
+     * <p>The value is looked for in what the class holds, which is the strings the position admits
+     * less the one singled out. Looked for in what the position admits and refused afterwards
+     * where it turns out to be the singled one, the class would come back with nothing to stand
+     * for it — and every string but the empty one is in it.
+     */
     @Test
-    void singlingOutTheLeastStringLeavesTheRestWithoutOne() {
+    void singlingOutTheLeastStringStillLeavesTheRestOne() {
         assertEquals(new Measured(
                         List.of("= ", "/= "),
-                        List.of("[]", "none"),
+                        List.of("[]", "[a]"),
                         List.of("ON ")),
                 measured("guard x == QQ else Newer"));
     }

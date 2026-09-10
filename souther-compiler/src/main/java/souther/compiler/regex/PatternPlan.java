@@ -83,12 +83,18 @@ public final class PatternPlan {
         public static final Budget OF_WHAT_A_RULE_LEAVES = new Budget(50_000, 200_000);
 
         /**
-         * What writing one value out of a pattern is allowed to cost.
+         * What composing one value somebody can write into a row is allowed to cost.
          *
-         * <p>Its own and not the one above, because it bounds a different thing: one pattern,
-         * built to take a string out of, and nothing met with it. A caller here is offering a
-         * value for a row and has no answer to compose — where the allowance runs out it offers
-         * nothing, which is what it does for a pattern it cannot read either.
+         * <p>Its own and not the one above, because it bounds a different thing: what a caller here
+         * is after is a string for a row and never an answer about a position. Where the allowance
+         * runs out no row is offered, which is what it does for a pattern it cannot read either —
+         * so nothing about how a model is read turns on this number.
+         *
+         * <p><b>The whole of what arriving at that string costs, and not one pattern.</b> Which
+         * strings a class is left is what the position admits met with the run of the order it is
+         * bounded to, less the values a body singled out, and each of those is a machine. Read as
+         * one pattern taken a string out of, the figure would be tuned for the cheapest of the
+         * questions it actually pays for.
          *
          * <p>The same numbers today, and that is a coincidence rather than a fact. Written as one
          * constant, the day either question wants a different size the other would move with it.

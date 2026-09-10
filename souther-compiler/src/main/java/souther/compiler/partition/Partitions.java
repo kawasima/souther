@@ -21,6 +21,7 @@ import souther.compiler.inputs.StructuralInspection;
 import souther.compiler.inputs.TypeBounds;
 import souther.compiler.inputs.BlockReason;
 import souther.compiler.values.Allowance;
+import souther.compiler.values.ValueSet;
 import souther.compiler.inputs.NumericTerm;
 import souther.compiler.inputs.FilingCoordinate;
 import souther.compiler.inputs.RuleWithoutALine;
@@ -34,6 +35,7 @@ import souther.compiler.numeric.Granularity;
 import souther.compiler.numeric.LinearForm;
 import souther.compiler.numeric.NumericDomain;
 import souther.compiler.numeric.Place;
+import souther.compiler.regex.PatternPlan;
 import souther.compiler.types.Type;
 import souther.compiler.types.TypeSymbol;
 import souther.compiler.types.TypeReachName;
@@ -618,8 +620,12 @@ public final class Partitions {
         // the account is owed are observations of their own, so everything below runs whichever way
         // this came out. A second route past them would be a second answer about all of them.
         TypeView view = TypeView.of(type, ruleSource.symbols());
+        // What writing one value out is allowed to cost, one allowance to each value written. Named
+        // here because this is where a witness for a row is paid for: a string offered for a row is
+        // no answer about the position, and paying for it out of what the position may build would
+        // let a representative decide how exactly the model was read.
         Classing.Result answered = Classing.of(term, mine, blocked, carrier,
-                at.position().admits(), allowance,
+                at.position().admits(), allowance, PatternPlan.Budget.OF_A_WITNESS::meter,
                 place -> standing(view, carrier, place, ruleSource));
         Classing.Classed classed = answered.classed();
         // What became of each rule, applied and not decided again. The answer is total over what
@@ -716,7 +722,7 @@ public final class Partitions {
                     .forEach(each -> account.measured(each, id));
             return made(out, at, behavior, term,
                     made.classesFor(axis, () -> singledClasses(points, term, type, reading,
-                            domain, ruleSource)),
+                            domain, at.position().admits(), ruleSource)),
                     made.divides(),
                     // A cut is a place on the order the values are counted on, and a class that is
                     // a set has no answer to where it lies — so where the classes are sets there
@@ -1150,11 +1156,19 @@ public final class Partitions {
      * <p>The last of those is not an interval and is not asked to be. What a class needs is a way to
      * say whether a value is in it and a value that stands for it, and a complement has both — the
      * shape a class has been limited to is what this is here to stop being the limit.
+     *
+     * @param within  where the rules leave the number the values are singled out of
+     * @param admits  which values the declarations leave standing at the position. Beside
+     *                {@code within} and not instead of it: a rule about how many a value holds is
+     *                about another number of the same place, and what it leaves is said of the
+     *                values rather than of this number — so a representative worked out from the
+     *                range alone is one the declarations may refuse
      */
     private static List<PartitionClass> singledClasses(List<GuardThresholds.Guards.Singled> points,
                                                        NumericTerm.FromOnePosition term, Type type,
                                                        Quantities reading,
-                                                       NumericDomain.Bounds within, RuleReadingSource ruleSource) {
+                                                       NumericDomain.Bounds within, ValueSet admits,
+                                                       RuleReadingSource ruleSource) {
         // Asked here rather than handed in beside the term. A term and a pair of orders are two
         // arguments, and two arguments can be about two terms; the reading is one argument that
         // answers about whichever term it is asked.
@@ -1175,7 +1189,9 @@ public final class Partitions {
                     holding(orders, new Recognition.CountIs.At(value)),
                     standing(view, carrier, value, ruleSource)));
         }
-        Place other = carrier.somethingOtherThan(values, within);
+        // Out of what writing one value costs, as every witness for a row is.
+        Place other = carrier.somethingOtherThan(values, within, admits,
+                PatternPlan.Budget.OF_A_WITNESS.meter());
         String label = "/= " + String.join(", ",
                 values.stream().map(carrier::written).toList());
         Recognition away = holding(orders,

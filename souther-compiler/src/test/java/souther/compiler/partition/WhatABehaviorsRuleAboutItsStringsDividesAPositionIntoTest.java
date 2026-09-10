@@ -292,7 +292,7 @@ class WhatABehaviorsRuleAboutItsStringsDividesAPositionIntoTest {
                 // `invariant String.matches(...)` leaves. Meeting a rule with it is machine work,
                 // and that is the work this allowance cannot afford.
                 ((RuleEvidence.BySet) read.statements().get(0)).states().whenTrue(),
-                spent, place -> null);
+                spent, PatternPlan.Budget.OF_A_WITNESS::meter, place -> null);
 
         assertInstanceOf(Classing.Classed.NotComposed.class, answered.classed(),
                 "the position has no classes");
