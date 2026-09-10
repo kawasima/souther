@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.check.Comparison;
-import souther.compiler.conformance.ConformanceCorpus;
+import souther.compiler.conformance.RepositoryModels;
 import souther.compiler.core.Core;
 import souther.compiler.meta.ModulePath;
 import souther.compiler.query.Bodies;
@@ -406,14 +406,26 @@ class WhatAReadingReadsCanBeKeyedByWhatTheModelStatesTest {
         return out;
     }
 
+    /**
+     * Every module of every model this repository carries, plus the ones written above.
+     *
+     * <p>All of the models and not the corpus written against what the language declares. That one
+     * reaches a construct about as often as it takes to declare it; what the join does where a model
+     * was written for its own reasons is what the models written to be worked with have. The written
+     * ones hold shapes no corpus has, and no corpus is asked to grow one.
+     */
     private static List<Module> everyModule() {
-        List<List<String>> sources = new ArrayList<>();
-        ConformanceCorpus.all().forEach(corpus -> sources.add(corpus.sources()));
-        sources.add(List.of(SPLICED));
-        sources.add(List.of(ASKED_TWICE));
-        sources.add(List.of(STATES_NOTHING));
         List<Module> out = new ArrayList<>();
-        sources.forEach(each -> out.addAll(modulesOf(each)));
+        for (Compilation compilation : RepositoryModels.all()) {
+            int before = out.size();
+            modulesOf(compilation, out);
+            assertTrue(out.size() > before,
+                    () -> "a model this repository carries compiled to no module at all: "
+                            + compilation.errors());
+        }
+        for (String written : List.of(SPLICED, ASKED_TWICE, STATES_NOTHING)) {
+            out.addAll(modulesOf(List.of(written)));
+        }
         return out;
     }
 
@@ -427,6 +439,13 @@ class WhatAReadingReadsCanBeKeyedByWhatTheModelStatesTest {
         Compilation compilation = Compilation.ofSources(sources, ModulePath.EMPTY);
         compilation.answerEverything();
         List<Module> out = new ArrayList<>();
+        modulesOf(compilation, out);
+        assertTrue(!out.isEmpty(),
+                () -> "a source set compiled to no module at all: " + compilation.errors());
+        return out;
+    }
+
+    private static void modulesOf(Compilation compilation, List<Module> out) {
         for (String module : compilation.modules()) {
             Bodies.Elaborated checked =
                     compilation.db().ask(new Bodies.Checked(module)).value();
@@ -445,8 +464,5 @@ class WhatAReadingReadsCanBeKeyedByWhatTheModelStatesTest {
             });
             out.add(new Module(bodies));
         }
-        assertTrue(!out.isEmpty(),
-                () -> "a source set compiled to no module at all: " + compilation.errors());
-        return out;
     }
 }

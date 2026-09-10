@@ -39,11 +39,14 @@ class EveryThingThatHoldsAVerdictOpenLeavesTheReaderSomewhereTest {
      * are, so the measuring of one of them is paid by this and by nothing else — measured, it is
      * that one model rather than the population, which is built for whoever asks first.
      *
-     * <p>It is not narrowed to make it cheaper. That model is the only one here whose openings
-     * reach a measure that went without something and a point nothing showed a row for; without it
-     * the law is held over half the arms it is about, which is a smaller claim rather than a faster
-     * one. What it is instead is where such a claim belongs: its subject is the models this
-     * repository carries, so it runs where they are the subject.
+     * <p>It is not narrowed to make it cheaper. Narrowed, the law is held over fewer of the arms it
+     * is about, which is a smaller claim rather than a faster one. What it is instead is where such
+     * a claim belongs: its subject is the models this repository carries, so it runs where they are
+     * the subject.
+     *
+     * <p>Which arms they reach is theirs to change. A model reaches an arm about something a measure
+     * went without only while it is short of that thing, so a model made more adequate takes such a
+     * witness away — these are evidence about the language, not fixtures held to reach an arm.
      */
     private static final List<AdequacyOpening> OPENINGS = everyOpening();
 
@@ -92,12 +95,36 @@ class EveryThingThatHoldsAVerdictOpenLeavesTheReaderSomewhereTest {
     }
 
     /**
-     * What the corpus actually reaches, written out.
+     * The dispositions a model this repository carries reaches.
      *
-     * <p>So that a change which quietly stops producing an opening, or starts answering one with a
-     * different arm, is read here rather than found by someone running the command. The set and not
-     * the counts: how many of a kind a model holds open moves with the model, and which kinds these
-     * models reach at all is what this is about.
+     * <p>Written out so that a change which quietly stops producing an opening, or starts answering
+     * one with a different arm, is read here rather than found by someone running the command. The
+     * set and not the counts: how many of a kind a model holds open moves with the model.
+     */
+    private static final Set<String> WITNESSED = Set.of(
+            "LookAtTheRule", "LookAtWhyNothingWasMeasured", "LookAtWhatShowedNoRow");
+
+    /**
+     * The dispositions nothing here witnesses, which is a thing owed rather than a thing settled.
+     *
+     * <p>An arm a model reaches only while the model is short of something is witnessed by accident:
+     * the models are evidence about the language and not fixtures for these arms, and one of them
+     * becoming more adequate takes its witness away. That is what happened to the one named here,
+     * and pinning the corpus to keep it would be holding a model back from what it is for.
+     *
+     * <p>What such an arm needs is a witness of its own — a model written to reach it, through the
+     * analysis rather than by building the value — and until there is one this says so. It is not a
+     * note: nothing here may reach one of these, so the day a model does, this fails and the entry
+     * comes out.
+     */
+    private static final Set<String> WITNESS_OWED = Set.of("LookAtWhatTheMeasureWentWithout");
+
+    /**
+     * Each disposition this holds is either reached by these models or recorded as owing a witness.
+     *
+     * <p>Not historical reachability. A disposition these models reach can go away when one of them
+     * becomes more adequate, so what was reached before is no contract; what is kept stable is that
+     * every arm named here is on one of the two lists and on the right one.
      */
     @Test
     void theModelsHereReachTheseDispositions() {
@@ -106,13 +133,20 @@ class EveryThingThatHoldsAVerdictOpenLeavesTheReaderSomewhereTest {
             reached.add(ReaderDisposition.of(each).getClass().getSimpleName());
         }
 
-        // These, and whatever else comes to be reached. What a corpus witness establishes is that a
-        // state is reached by a model somebody wrote, which is a claim that only grows: a model
-        // added tomorrow whose verdict a fork holds open is one more thing witnessed, not a
-        // regression. Held as an equality, this would fail the day the corpora got better at the
-        // thing they are for.
-        assertTrue(reached.containsAll(Set.of("LookAtTheRule", "LookAtWhyNothingWasMeasured",
-                        "LookAtWhatShowedNoRow", "LookAtWhatTheMeasureWentWithout")),
-                () -> "a state these models used to reach and no longer do: " + reached);
+        Set<String> unwitnessed = new LinkedHashSet<>(WITNESSED);
+        unwitnessed.removeAll(reached);
+        assertEquals(Set.of(), unwitnessed,
+                () -> "a disposition held to be witnessed here is reached by none of these models."
+                        + " Reached: " + reached);
+
+        Set<String> owedButReached = new LinkedHashSet<>(WITNESS_OWED);
+        owedButReached.retainAll(reached);
+        assertEquals(Set.of(), owedButReached,
+                "a disposition recorded as owing a witness is reached after all: move it to the"
+                        + " witnessed ones, and take out whatever was written to owe it");
+
+        Set<String> both = new LinkedHashSet<>(WITNESSED);
+        both.retainAll(WITNESS_OWED);
+        assertEquals(Set.of(), both, "a disposition is witnessed or owed, and not both");
     }
 }

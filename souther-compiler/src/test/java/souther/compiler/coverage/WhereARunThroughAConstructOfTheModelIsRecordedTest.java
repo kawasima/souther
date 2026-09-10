@@ -3,7 +3,7 @@ package souther.compiler.coverage;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
-import souther.compiler.conformance.ConformanceCorpus;
+import souther.compiler.conformance.RepositoryModels;
 import souther.compiler.core.Core;
 import souther.compiler.meta.ModulePath;
 import souther.compiler.query.Bodies;
@@ -122,12 +122,24 @@ class WhereARunThroughAConstructOfTheModelIsRecordedTest {
         Core.forEachChild(e, child -> walk(child, out));
     }
 
+    /**
+     * Every module of every model this repository carries, plus the one written above.
+     *
+     * <p>All of the models and not the corpus written against what the language declares. A rule is
+     * read where the operations stand and a run is recorded where they are expanded, and what that
+     * crossing does under conditions nobody wrote it for is what the models written to be worked
+     * with have. The written one holds a shape no corpus is asked to grow.
+     */
     private static List<Compiled> everyModule() {
-        List<List<String>> sources = new ArrayList<>();
-        ConformanceCorpus.all().forEach(corpus -> sources.add(corpus.sources()));
-        sources.add(List.of(SPLICED));
         List<Compiled> out = new ArrayList<>();
-        sources.forEach(each -> out.addAll(compiled(each)));
+        for (Compilation compilation : RepositoryModels.all()) {
+            int before = out.size();
+            modulesOf(compilation, out);
+            assertTrue(out.size() > before,
+                    () -> "a model this repository carries compiled to no module at all: "
+                            + compilation.errors());
+        }
+        out.addAll(compiled(List.of(SPLICED)));
         return out;
     }
 
@@ -135,6 +147,13 @@ class WhereARunThroughAConstructOfTheModelIsRecordedTest {
         Compilation compilation = Compilation.ofSources(sources, ModulePath.EMPTY);
         compilation.answerEverything();
         List<Compiled> out = new ArrayList<>();
+        modulesOf(compilation, out);
+        assertTrue(!out.isEmpty(),
+                () -> "a source set compiled to no module at all: " + compilation.errors());
+        return out;
+    }
+
+    private static void modulesOf(Compilation compilation, List<Compiled> out) {
         for (String module : compilation.modules()) {
             Bodies.Elaborated checked =
                     compilation.db().ask(new Bodies.Checked(module)).value();
@@ -145,8 +164,5 @@ class WhereARunThroughAConstructOfTheModelIsRecordedTest {
                     new ModuleBodies(module, new LinkedHashMap<>(checked.behaviorBodies())),
                     checked.plan()));
         }
-        assertTrue(!out.isEmpty(),
-                () -> "a source set compiled to no module at all: " + compilation.errors());
-        return out;
     }
 }
