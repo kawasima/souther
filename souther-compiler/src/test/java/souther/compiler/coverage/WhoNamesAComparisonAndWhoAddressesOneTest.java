@@ -4,8 +4,12 @@ import org.junit.jupiter.api.Test;
 import souther.compiler.WhatWasCompiled;
 
 import java.lang.classfile.ClassModel;
+import java.lang.classfile.CodeElement;
 import java.lang.classfile.MethodModel;
+import java.lang.classfile.instruction.InvokeDynamicInstruction;
 import java.lang.classfile.instruction.InvokeInstruction;
+import java.lang.constant.ConstantDesc;
+import java.lang.constant.DirectMethodHandleDesc;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,7 +33,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  *
  * <p>Read off the compiled classes, so what is counted is what a method does rather than what a
  * reading of the sources makes of it — a call written inside a lambda belongs to the lambda, and
- * this says so.
+ * this says so. A constructor handed over rather than called belongs to the method that hands it
+ * over, which is where the {@code invokedynamic} carrying it stands.
  *
  * <p><b>What it does not see, said rather than left to be found.</b> The tests are not in
  * {@code target/classes}: a fixture that writes a report about a comparison nothing compiled makes
@@ -53,7 +58,7 @@ class WhoNamesAComparisonAndWhoAddressesOneTest {
     private static final String READ = "souther/compiler/partition/LineOrigin$ComparisonOrigin$Read";
 
     /** A method that may make one, how many times it does, and why it is the one that does. */
-    private record Licence(String who, int calls, String why) { }
+    private record Licence(String who, int makes, String why) { }
 
     private static final List<Licence> MAY_ADDRESS = List.of(
             new Licence("souther.compiler.coverage.SiteNumbering.comparison", 1,
@@ -102,7 +107,7 @@ class WhoNamesAComparisonAndWhoAddressesOneTest {
 
     @Test
     void onlyACheckPairsAModuleWithItsBodies() {
-        assertEquals(declared(MAY_PAIR), callsToConstructor(BODIES),
+        assertEquals(declared(MAY_PAIR), makersOf(BODIES),
                 "a module's name beside another module's trees has the catalog issue names true of"
                         + " nothing, and no later check can refuse them. What may pair them, and"
                         + " why: " + why(MAY_PAIR));
@@ -110,21 +115,21 @@ class WhoNamesAComparisonAndWhoAddressesOneTest {
 
     @Test
     void onlyTheWalkPutsACataloguedComparisonTogether() {
-        assertEquals(declared(MAY_CATALOGUE), callsToConstructor(CATALOGUED),
+        assertEquals(declared(MAY_CATALOGUE), makersOf(CATALOGUED),
                 "a name, a recognition and a place are true together or not at all. What may put"
                         + " them together, and why: " + why(MAY_CATALOGUE));
     }
 
     @Test
     void onlyOnePlaceSaysWhichComparisonARuleIsReadOff() {
-        assertEquals(declared(MAY_READ), callsToConstructor(READ),
+        assertEquals(declared(MAY_READ), makersOf(READ),
                 "an occurrence of one plan beside the emission site of another is a rule pointing"
                         + " at two places. What may pair them, and why: " + why(MAY_READ));
     }
 
     @Test
     void onlyTheNumberingAddressesAComparisonOfARun() {
-        assertEquals(declared(MAY_ADDRESS), callsToConstructor(SITE),
+        assertEquals(declared(MAY_ADDRESS), makersOf(SITE),
                 "an address made anywhere else is a place no run was recorded at. What may make"
                         + " one, and why: " + why(MAY_ADDRESS));
     }
@@ -138,14 +143,14 @@ class WhoNamesAComparisonAndWhoAddressesOneTest {
      */
     @Test
     void onlyTheNumberingAddressesAnArmOfARun() {
-        assertEquals(declared(MAY_ADDRESS_AN_ARM), callsToConstructor(ARM),
+        assertEquals(declared(MAY_ADDRESS_AN_ARM), makersOf(ARM),
                 "an address made anywhere else is a place no run was recorded at. What may make"
                         + " one, and why: " + why(MAY_ADDRESS_AN_ARM));
     }
 
     private static Map<String, Integer> declared(List<Licence> licences) {
         Map<String, Integer> out = new TreeMap<>();
-        licences.forEach(each -> out.put(each.who(), each.calls()));
+        licences.forEach(each -> out.put(each.who(), each.makes()));
         return out;
     }
 
@@ -156,20 +161,50 @@ class WhoNamesAComparisonAndWhoAddressesOneTest {
     }
 
     /** How many times each method of the compiler makes one of {@code owner}. */
-    private static Map<String, Integer> callsToConstructor(String owner) {
-        Map<String, Integer> calls = new TreeMap<>();
+    private static Map<String, Integer> makersOf(String owner) {
+        Map<String, Integer> makers = new TreeMap<>();
         for (ClassModel model : WhatWasCompiled.compiled().all()) {
             String from = model.thisClass().asInternalName().replace('/', '.').replace('$', '.');
             for (MethodModel method : model.methods()) {
+                String in = from + "." + method.methodName().stringValue();
                 method.code().ifPresent(code -> code.forEach(element -> {
-                    if (element instanceof InvokeInstruction call
-                            && call.owner().asInternalName().equals(owner)
-                            && call.name().stringValue().equals("<init>")) {
-                        calls.merge(from + "." + method.methodName().stringValue(), 1, Integer::sum);
+                    if (makesOne(element, owner)) {
+                        makers.merge(in, 1, Integer::sum);
                     }
                 }));
             }
         }
-        return calls;
+        return makers;
+    }
+
+    /**
+     * Whether {@code element} makes one of {@code owner}, by calling the constructor or by handing
+     * it to something that will.
+     *
+     * <p>A constructor reference calls nothing. What is written where the reference stands is an
+     * {@code invokedynamic} carrying the constructor as a handle among its bootstrap arguments, and
+     * what that hands out makes one as surely as making it here would — so a walk over the call
+     * instructions alone leaves a class the rows above do not name free to hold a maker of the
+     * places a run is recorded at.
+     *
+     * <p>Only the handle that makes one. What a reference to anything else says is that a method is
+     * named, and the rows above are about who may make one of these, which is what a constructor
+     * answers with and nothing else does.
+     */
+    private static boolean makesOne(CodeElement element, String owner) {
+        if (element instanceof InvokeInstruction call) {
+            return call.owner().asInternalName().equals(owner)
+                    && call.name().stringValue().equals("<init>");
+        }
+        if (element instanceof InvokeDynamicInstruction reference) {
+            for (ConstantDesc argument : reference.bootstrapArgs()) {
+                if (argument instanceof DirectMethodHandleDesc handle
+                        && handle.kind() == DirectMethodHandleDesc.Kind.CONSTRUCTOR
+                        && handle.owner().descriptorString().equals("L" + owner + ";")) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 }
