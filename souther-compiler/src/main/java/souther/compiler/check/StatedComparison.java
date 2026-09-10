@@ -26,7 +26,7 @@ import java.util.function.Function;
  * instead of. Whoever reports about a clause holds the expression the source wrote and reports about
  * that.
  */
-record StatedComparison(ComparisonClaim claim, Core left, Core right) {
+public record StatedComparison(ComparisonClaim claim, Core left, Core right) {
 
     /**
      * The relation this states, asserted with polarity {@code positive}.

@@ -65,6 +65,21 @@ public final class Comparison {
         return right;
     }
 
+    /**
+     * The statement this comparison makes, which is what it placed and the two values it placed it
+     * on.
+     *
+     * <p>What a reader wants where the recognition itself decides nothing it asks. A reading that
+     * works out what a rule does to a quantity is the same reading whether the comparison was
+     * spelled by an author or arrived at from what the rules proved, so it is written against the
+     * statement; this is the way over from the one that was spelled. Nothing is dropped that such a
+     * reader had a use for — the node it was recognised from is what a report about the clause
+     * holds, and a report holds it already.
+     */
+    public StatedComparison stated() {
+        return new StatedComparison(claim, left, right);
+    }
+
     /** Everything this holds, which is what an identity is of. The claim is read off the operator
      *  the sides were written with, so two of these over one binary carry one claim — and it is
      *  read here all the same, because a field left out of an identity is a field a reader of the

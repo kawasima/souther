@@ -230,7 +230,7 @@ record ComparisonReadings(List<Reading> comparisons, List<ForkMet> forks,
             BoundaryPolicy.Standing standing = BoundaryPolicy.refuses(live)
                     .<BoundaryPolicy.Standing>map(BoundaryPolicy.Standing.Refused::new)
                     .orElseGet(() -> new BoundaryPolicy.Standing.Admitted(
-                            ComparisonAssessment.of(in.behavior(), comparison, where,
+                            ComparisonAssessment.of(in.behavior(), comparison.stated(), where,
                                     in.read(), reads, null, false)));
             out.add(new Reading(stands, comparison, where, reads, assumed, standing));
         }

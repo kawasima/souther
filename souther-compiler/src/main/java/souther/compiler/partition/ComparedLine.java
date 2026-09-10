@@ -1,6 +1,6 @@
 package souther.compiler.partition;
 
-import souther.compiler.check.Comparison;
+import souther.compiler.check.StatedComparison;
 import souther.compiler.check.ComparisonClaim;
 import souther.compiler.inputs.ComparedNumber;
 import souther.compiler.inputs.InputReading;
@@ -64,7 +64,7 @@ record ComparedLine(NumericTerm.FromOnePosition term, Place value,
      * nothing, and there is nothing else for a spelling to try: which quantity a rule cuts is the
      * arithmetic's answer, and this reading is reached only where the arithmetic had none.
      */
-    static ComparedLine asWritten(Comparison comparison,
+    static ComparedLine asWritten(StatedComparison comparison,
                                   InputReading read, InputReads reads) {
         // What the rule placed comes from the comparison and is carried as what it placed, so
         // nothing on the way here has a side to fill in for a rule that has none — and nothing on

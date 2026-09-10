@@ -1,7 +1,7 @@
 package souther.compiler.partition;
 
 import souther.compiler.check.Carrier;
-import souther.compiler.check.Comparison;
+import souther.compiler.check.StatedComparison;
 import souther.compiler.check.ComparisonClaim;
 import souther.compiler.inputs.InputReading;
 import souther.compiler.inputs.InputReads;
@@ -84,7 +84,7 @@ record ComparedTerms(TermOrders on, TermOrders against, Count stepsApart) {
      * nothing here has taken apart at all — the canonical form is what says a pair is a pair, and
      * it had no answer.
      */
-    static ComparedTerms asWritten(Comparison comparison,
+    static ComparedTerms asWritten(StatedComparison comparison,
                                    InputReading read, InputReads reads) {
         // A distance is what an order between the two sides states. A rule that names a value
         // orders nothing, and what tells the two apart is the claim the comparison carries — an

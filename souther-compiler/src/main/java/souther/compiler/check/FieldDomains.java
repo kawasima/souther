@@ -3,6 +3,7 @@ package souther.compiler.check;
 import souther.compiler.semantics.ConditionJoin;
 import souther.compiler.ast.Hir;
 import souther.compiler.core.Core;
+import souther.compiler.diag.SourcePos;
 import souther.compiler.numeric.Endpoint;
 import souther.compiler.numeric.LinearForm;
 import souther.compiler.numeric.NumericDomain;
@@ -577,18 +578,27 @@ public final class FieldDomains {
      * happened to have a sentence for, and a rule this reading owes nothing about could not be
      * passed along at all.
      *
-     * <p>The conjunct as it was written. Which number it is about, and what it does to that
-     * number, are the next reading's to establish in its own vocabulary — said here, this would be
-     * the reading that placed no end answering the question it just failed to answer.
+     * <p>What the conjunct states, and not the node it was written as. Which number it is about,
+     * and what it does to that number, are the next reading's to establish in its own vocabulary —
+     * said here, this would be the reading that placed no end answering the question it just failed
+     * to answer. What it compares, though, is not that question: it is what this reading was handed
+     * and had to establish to get this far, and a reader given the node instead reads the operator
+     * again — which, for a rule written under a denial, is the comparison that holds exactly where
+     * the rule does not.
      *
-     * @param part which part of which rule it is, as the split that wrote the parts down named it
-     * @param read the part itself
+     * @param part   which part of which rule it is, as the split that wrote the parts down named it
+     * @param states what the conjunct compares and what it claims of the two sides
+     * @param wrote  where the author wrote it, for whoever reports about the clause. A position and
+     *               not the expression, so there is nothing here to read a meaning off a second
+     *               time
      */
-    public record WithoutAnEnd(PartId<RuleRef.Invariant> part, Core read) {
+    public record WithoutAnEnd(PartId<RuleRef.Invariant> part, StatedComparison states,
+                               SourcePos wrote) {
 
         public WithoutAnEnd {
-            if (part == null || read == null) {
-                throw new IllegalArgumentException("a conjunct handed on is some clause's text");
+            if (part == null || states == null || wrote == null) {
+                throw new IllegalArgumentException(
+                        "a conjunct handed on is some clause's comparison, written somewhere");
             }
         }
     }

@@ -2111,7 +2111,8 @@ public final class InvariantChecker {
             // out places no end and is no failure of this reading, so there is nothing here for an
             // author to lift and there is a conjunct for the reading that draws lines to make what
             // it can of.
-            withoutAnEnd.add(new FieldDomains.WithoutAnEnd(part, bin));
+            withoutAnEnd.add(new FieldDomains.WithoutAnEnd(part, comparison,
+                    said.written().pos()));
             return;
         }
         // An end where the other side is a constant, and a relation everywhere else. Which it is
@@ -2189,7 +2190,8 @@ public final class InvariantChecker {
             // The hand-over beside the finding, and not read off it. Both come of this conjunct
             // having no end, and they answer different questions: what an author is owed a word
             // about, and what the next reading is given to read.
-            withoutAnEnd.add(new FieldDomains.WithoutAnEnd(part, bin));
+            withoutAnEnd.add(new FieldDomains.WithoutAnEnd(part, comparison,
+                    said.written().pos()));
             // The declaration and not the clause. Which declaration took an edge in is what ADR-0090
             // names beside a line, and what a reader is sent to look at is the declaration holding
             // the relation.

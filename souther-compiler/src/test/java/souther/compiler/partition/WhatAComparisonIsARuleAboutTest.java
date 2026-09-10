@@ -79,7 +79,7 @@ class WhatAComparisonIsARuleAboutTest {
         for (Contract.Param param : stated.params()) {
             roots.putIfAbsent(param.binding(), param.name());
         }
-        return ComparisonAssessment.of("f", comparison, Citation.of(binary.pos()),
+        return ComparisonAssessment.of("f", comparison.stated(), Citation.of(binary.pos()),
                 inputs.reading(rules),
                 InputReads.ofWhatIsDeclared(roots), rule.value(), false);
     }
