@@ -6,6 +6,7 @@ import souther.compiler.check.BehaviorContract;
 import souther.compiler.check.Clause;
 import souther.compiler.check.ClauseName;
 import souther.compiler.check.RuleCitation;
+import souther.compiler.check.RuleReportAnchor;
 import souther.compiler.check.RuleRef;
 import souther.compiler.diag.Citation;
 import souther.compiler.diag.SourceNameResolver;
@@ -14,8 +15,6 @@ import souther.compiler.diag.SourcePos;
 import souther.compiler.jvm.ClassFileImage;
 import souther.compiler.meta.ModulePath;
 import souther.compiler.query.Adequacy;
-import souther.compiler.query.BehaviorEvidence;
-import souther.compiler.query.BorderAssessment;
 import souther.compiler.query.Compilation;
 import souther.compiler.report.AdequacyReport;
 import souther.compiler.source.SourceId;
@@ -60,6 +59,39 @@ class TwoHandlesADocumentWritesApartAreTwoValuesTest {
     private static final Citation AT = Citation.of(new SourcePos(9, 1, WHERE));
 
     /**
+     * Where each way in this population uses leads, which is what a citation no longer carries.
+     *
+     * <p>The places are addressed rather than held, as the readings that make one address them: a
+     * rule a reader can open is placed by whoever wrote it and has one way in, and a rule out of
+     * sight has one per call. So the population varies the place by varying which way in it is,
+     * which is the only way a document can be given two places for one rule.
+     */
+    private static final List<Citation> WAYS_IN = waysIn();
+
+    private static final PublishedRuleHandle.WhereARuleIs PLACES = cited -> switch (cited.anchor()) {
+        case RuleReportAnchor.ByTheModuleThatWroteIt _ -> AT;
+        case RuleReportAnchor.ByTheReadingThatMetIt(String _, String _, int reach) ->
+                WAYS_IN.get(reach);
+    };
+
+    /** A place in the file this holds, another line of it, a position in a text nothing names, and
+     *  the ones a compilation reached — every shape of place a sentence is written from. */
+    private static List<Citation> waysIn() {
+        List<Citation> out = new ArrayList<>(List.of(
+                AT,
+                Citation.of(new SourcePos(10, 1, WHERE)),
+                Citation.of(new SourcePos(9, 1))));
+        out.addAll(reachedFromHere());
+        return List.copyOf(out);
+    }
+
+    /** The way in {@code reach} names, as a citation of {@code rule}. */
+    private static RuleCitation metAt(RuleRef.Written rule, int reach) {
+        return new RuleCitation.Written(rule,
+                new RuleReportAnchor.ByTheReadingThatMetIt("m", "b", reach));
+    }
+
+    /**
      * Two rules with no name, written at one place, of the two kinds there are.
      *
      * <p>One place, because what is being asked is whether the kind survives the projection. Told
@@ -76,9 +108,9 @@ class TwoHandlesADocumentWritesApartAreTwoValuesTest {
     @Test
     void aComparisonAndAPredicateAtOnePlaceAreTwoHandles() {
         PublishedRuleHandle comparison =
-                PublishedRuleHandle.of(new RuleCitation.WrittenAt(COMPARISON, AT));
+                PublishedRuleHandle.of(metAt(COMPARISON, 0), PLACES);
         PublishedRuleHandle predicate =
-                PublishedRuleHandle.of(new RuleCitation.WrittenAt(PREDICATE, AT));
+                PublishedRuleHandle.of(metAt(PREDICATE, 0), PLACES);
 
         assertNotEquals(comparison, predicate,
                 "a reader sent to a line and a reader sent to a set are told two things");
@@ -94,11 +126,11 @@ class TwoHandlesADocumentWritesApartAreTwoValuesTest {
      */
     @Test
     void whichOfThemACallerHadFirstDecidesNothing() {
-        RuleCitation comparison = new RuleCitation.WrittenAt(COMPARISON, AT);
-        RuleCitation predicate = new RuleCitation.WrittenAt(PREDICATE, AT);
+        RuleCitation comparison = metAt(COMPARISON, 0);
+        RuleCitation predicate = metAt(PREDICATE, 0);
 
-        assertEquals(PublicationOrders.handleFor(List.of(comparison, predicate)),
-                PublicationOrders.handleFor(List.of(predicate, comparison)),
+        assertEquals(PublicationOrders.handleFor(List.of(comparison, predicate), PLACES),
+                PublicationOrders.handleFor(List.of(predicate, comparison), PLACES),
                 "the handle a document writes is not the one a set of them iterated first");
     }
 
@@ -136,8 +168,8 @@ class TwoHandlesADocumentWritesApartAreTwoValuesTest {
      * sentence of its own and the checks below were satisfied by the placed one beside it.
      */
     private static List<PublishedRuleHandle> everyHandle() {
-        List<PublishedRuleHandle> out = new ArrayList<>(
-                everyShapeOfSentence().stream().map(PublishedRuleHandle::of).toList());
+        List<PublishedRuleHandle> out = new ArrayList<>(everyShapeOfSentence().stream()
+                .map(cited -> PublishedRuleHandle.of(cited, PLACES)).toList());
         for (PublishedRuleKind kind : PublishedRuleKind.values()) {
             out.add(new PublishedRuleHandle.ReachedOutOfSight(kind, "Int.clamp"));
             out.add(new PublishedRuleHandle.ReachedOutOfSight(kind, "Int.abs"));
@@ -181,15 +213,17 @@ class TwoHandlesADocumentWritesApartAreTwoValuesTest {
                 new RuleCitation.Named(counted),
                 new RuleCitation.Named(clauseOfAnEnsures),
                 new RuleCitation.Named(everyAnswer),
-                new RuleCitation.WrittenAt(COMPARISON, AT),
-                new RuleCitation.WrittenAt(PREDICATE, AT),
-                new RuleCitation.WrittenAt(COMPARISON,
-                        Citation.of(new SourcePos(10, 1, WHERE))),
-                new RuleCitation.WrittenAt(COMPARISON,
-                        Citation.of(new SourcePos(9, 1)))));
-        for (Citation each : reachedFromHere()) {
-            out.add(new RuleCitation.WrittenAt(COMPARISON, each));
-            out.add(new RuleCitation.WrittenAt(PREDICATE, each));
+                new RuleCitation.Written(COMPARISON,
+                        new RuleReportAnchor.ByTheModuleThatWroteIt()),
+                metAt(COMPARISON, 0),
+                metAt(PREDICATE, 0),
+                metAt(COMPARISON, 1),
+                metAt(COMPARISON, 2)));
+        // And every way in a compilation offered, of each kind of rule — which is where a sentence
+        // about code out of sight comes from.
+        for (int reach = 3; reach < WAYS_IN.size(); reach++) {
+            out.add(metAt(COMPARISON, reach));
+            out.add(metAt(PREDICATE, reach));
         }
         return List.copyOf(out);
     }
@@ -206,7 +240,7 @@ class TwoHandlesADocumentWritesApartAreTwoValuesTest {
     @Test
     void thePopulationVariesEachPartOfASentenceAboutCodeReachedFromHere() {
         List<PublishedRuleHandle.Reached> reached = everyShapeOfSentence().stream()
-                .map(PublishedRuleHandle::of)
+                .map(cited -> PublishedRuleHandle.of(cited, PLACES))
                 .filter(PublishedRuleHandle.Reached.class::isInstance)
                 .map(PublishedRuleHandle.Reached.class::cast).toList();
 
@@ -348,16 +382,16 @@ class TwoHandlesADocumentWritesApartAreTwoValuesTest {
                 Compilation.ofSources(List.of(model), ModulePath.of(published));
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
-        BehaviorEvidence behavior =
-                AdequacyReport.of(compilation).modules().get(0).behaviors().get(0).evidence();
+        // Read off the page rather than off a reading, because a reading holds no place: what a
+        // sentence about one of these is written from is what the page was assembled with, and
+        // this is asking that.
         List<Citation> out = new ArrayList<>();
-        for (BorderAssessment each
-                : behavior.boundaryReadings().made().orElse(List.of())) {
-            Citation where = each.border().origin().citation().orElse(null);
-            if (where instanceof Citation.Elsewhere && !out.contains(where)) {
-                out.add(where);
-            }
-        }
+        AdequacyReport.of(compilation).modules().get(0).behaviors().get(0).rulePlaces()
+                .forEach((_, where) -> {
+                    if (where instanceof Citation.Elsewhere && !out.contains(where)) {
+                        out.add(where);
+                    }
+                });
         return out;
     }
 
