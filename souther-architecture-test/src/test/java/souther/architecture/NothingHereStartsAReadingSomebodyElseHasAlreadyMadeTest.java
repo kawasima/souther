@@ -132,10 +132,15 @@ class NothingHereStartsAReadingSomebodyElseHasAlreadyMadeTest {
             "souther/compiler/query/Shapes$InvariantCapabilities#compute("
                     + "Lsouther/compiler/query/Db;)Lsouther/compiler/query/Answer; -> "
                     + CHECK + "InvariantChecker#capabilityOf",
-            // The clauses a contract's rules are read from, and the overload that reaches them.
+            // The clauses a contract's rules are read from, and the overload that reaches them. It
+            // does both things a reader here can do: it makes the terms a rule is read in, and it
+            // asks what each conjunct may take.
             CHECK + "ContractDischarge#of(L" + CHECK + "StatedContract;L" + CHECK
                     + "StatedContract$StatedRule;" + SOURCE_AND_POLICY + ")Ljava/util/List; -> "
                     + NOTHING_TO_BORROW_FROM,
+            CHECK + "ContractDischarge#of(L" + CHECK + "StatedContract;L" + CHECK
+                    + "StatedContract$StatedRule;" + SOURCE_AND_POLICY + ")Ljava/util/List; -> "
+                    + CHECK + "InvariantChecker#capabilityOf",
             CHECK + "ContractDischarge#of(L" + CHECK + "StatedContract;" + SOURCE_AND_POLICY
                     + ")L" + CHECK + "ContractDischarge; -> " + CHECK + "ContractDischarge#of",
             // The engine a body is run on, and the overload that reaches it.
@@ -252,11 +257,6 @@ class NothingHereStartsAReadingSomebodyElseHasAlreadyMadeTest {
                 // A way in reading for itself is how one of them is written rather than a place
                 // this compiler starts such a reading, and what it names inside is its own.
                 if (readsForItself(pairs, owner, method)) {
-                    continue;
-                }
-                if (waysIn.contains(new Named(owner + "#" + method.methodName().stringValue(),
-                        method.methodTypeSymbol()))) {
-                    reaching.add(from + " -> " + NOTHING_TO_BORROW_FROM);
                     continue;
                 }
                 for (Instruction instruction : instructionsOf(method)) {
