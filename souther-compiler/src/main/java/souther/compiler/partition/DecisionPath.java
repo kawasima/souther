@@ -57,26 +57,27 @@ record DecisionPath(List<Consulted> consulted) {
     }
 
     /**
-     * Two paths are one where they consulted the same distinctions and got the same answers.
+     * Two paths are one where they are the same rule.
      *
      * <p>Which is what the reading of the ways asks of a path: two that stand for the same way are
-     * equal, so a way found twice is one way. What a rule is is its columns, and where each of them
-     * is written is not one of them — two ways this reading cannot tell apart by what they turn on
-     * are one rule, and holding them apart by an anchor would count what the reading did rather
-     * than what the body does.
+     * equal, so a way found twice is one way. What a rule is is its columns and what each came out
+     * as — {@link DecisionRule}'s answer, and asked of it rather than worked out again here, so
+     * that a path and the rule it is cannot be told apart by different rules.
+     *
+     * <p>Which makes it the order-independent answer the rule is. The order the walk met the
+     * conditions in is kept for a reader and is no part of what a rule is: two ways that consulted
+     * the same distinctions and got the same answers are one rule whatever order they met them in,
+     * and holding them apart by that order would count what the reading did rather than what the
+     * body does.
      */
     @Override
     public boolean equals(Object other) {
-        return other instanceof DecisionPath that && answers().equals(that.answers());
+        return other instanceof DecisionPath that && rule().equals(that.rule());
     }
 
     @Override
     public int hashCode() {
-        return answers().hashCode();
-    }
-
-    private List<DecidedCondition> answers() {
-        return consulted.stream().map(Consulted::answer).toList();
+        return rule().hashCode();
     }
 
     /** What this path states about the input, which is what a search composes a row against. */

@@ -3,6 +3,7 @@ package souther.compiler.query;
 import souther.compiler.inputs.Requirements;
 import souther.compiler.partition.FixtureTemplate;
 import souther.compiler.partition.Generator;
+import souther.compiler.partition.RulesTaken;
 
 import java.util.List;
 
@@ -69,6 +70,27 @@ public sealed interface RuleRequirement {
 
         /** A row was composed against the rule and its run took another. */
         record AComposedRowWentElsewhere() implements Unsettled {}
+
+        /**
+         * A row was composed and run, and this reading could not say which rule it took.
+         *
+         * <p>Beside {@link AComposedRowWentElsewhere} and not among it. That one is a row seen
+         * going somewhere else, which is something about where the row went; this is this compiler
+         * being unable to place it, which is something about the reading — a rule of the body that
+         * no run through it is recorded at leaves every run unplaceable, and so does a run that
+         * matched more than one.
+         *
+         * @param why what stopped the reading placing it, in its own words
+         */
+        record CouldNotTellWhereTheRowWent(RulesTaken.WhichRule.Why why) implements Unsettled {
+
+            public CouldNotTellWhereTheRowWent {
+                if (why == null) {
+                    throw new IllegalArgumentException(
+                            "a reading that could not place a run says what stopped it");
+                }
+            }
+        }
 
         /** Nothing composed a row against the rule, in the words a search comes back with. */
         record NothingComposedARow(Generator.UnresolvedCombination why) implements Unsettled {

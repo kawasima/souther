@@ -1829,11 +1829,20 @@ public final class Adequacy {
             // What the row did, and not what it was composed against. A row steered here by a
             // reading that is wrong anywhere along the way arrives somewhere else, and it looks
             // like a witness until something asks the run.
-            return taken.takenBy(seen)
-                    instanceof souther.compiler.partition.RulesTaken.WhichRule.TookThis took
-                    && took.rule().equals(ruled.rule())
-                    ? new RuleRequirement.Required(inputs)
-                    : new RuleRequirement.Unsettled.AComposedRowWentElsewhere();
+            //
+            // Asked as the three answers there are rather than as whether it is this rule. A run
+            // this reading could not place is this compiler falling short and says nothing about
+            // where the row went, so a reason added to that reading is a case to decide about here
+            // rather than a run quietly reported as having gone elsewhere.
+            return switch (taken.takenBy(seen)) {
+                case souther.compiler.partition.RulesTaken.WhichRule.TookThis took
+                        when took.rule().equals(ruled.rule()) ->
+                        new RuleRequirement.Required(inputs);
+                case souther.compiler.partition.RulesTaken.WhichRule.TookThis _ ->
+                        new RuleRequirement.Unsettled.AComposedRowWentElsewhere();
+                case souther.compiler.partition.RulesTaken.WhichRule.CouldNotTell couldNot ->
+                        new RuleRequirement.Unsettled.CouldNotTellWhereTheRowWent(couldNot.why());
+            };
         }
     }
 

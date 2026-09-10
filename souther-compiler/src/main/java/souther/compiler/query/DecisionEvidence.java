@@ -5,6 +5,7 @@ import souther.compiler.partition.Generator;
 import souther.compiler.partition.DecisionRule;
 import souther.compiler.partition.RulesTaken;
 
+import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
@@ -82,7 +83,10 @@ public record DecisionEvidence(DecisionReading read, Taken taken) {
                     int rowsNotWatched) implements Taken {
 
             public Read {
-                rules = new LinkedHashSet<>(rules);
+                // Sealed and not only copied. What the account answers about a behavior is read
+                // off this — which rules were covered, which were not — and a set a caller can add
+                // to is a value whose answers change after it was made.
+                rules = Collections.unmodifiableSet(new LinkedHashSet<>(rules));
                 if (rowsPlaced < 0 || rowsNotPlaced < 0 || rowsNotWatched < 0) {
                     throw new IllegalArgumentException("rows are counted from none: " + rowsPlaced
                             + "/" + rowsNotPlaced + "/" + rowsNotWatched);
