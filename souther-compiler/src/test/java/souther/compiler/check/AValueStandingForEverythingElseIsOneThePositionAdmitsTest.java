@@ -116,12 +116,26 @@ class AValueStandingForEverythingElseIsOneThePositionAdmitsTest {
      */
     @Test
     void aStringNothingBoundsIsOfferedTheLeastOne() {
-        assertEquals("", Carrier.TEXT.written(
-                        otherThan(Carrier.TEXT, List.of(Text.of("spring")), null, ValueSet.ANY)),
+        assertEquals("", written(otherThan(Carrier.TEXT, List.of(Text.of("spring")), null,
+                        ValueSet.ANY)),
                 "the least string there is, and not one this made up");
-        assertNotEquals("", Carrier.TEXT.written(
-                        otherThan(Carrier.TEXT, List.of(Text.of("")), null, ValueSet.ANY)),
-                "and where that one is singled out, the strings above it are still the class");
+
+        Place above = otherThan(Carrier.TEXT, List.of(Text.of("")), null, ValueSet.ANY);
+
+        assertNotNull(above,
+                "where the least string is the one singled out, the strings above it are the class");
+        assertNotEquals("", written(above));
+    }
+
+    /**
+     * What a place is written as, and null where there is no place.
+     *
+     * <p>Never the whole of what a case asks. A class with nothing standing for it is the answer
+     * under test here, so a comparison against a null would be a case that goes green by the value
+     * having gone missing — every use of this is beside something that says a value was composed.
+     */
+    private static String written(Place at) {
+        return at == null ? null : Carrier.TEXT.written(at);
     }
 
     /**
