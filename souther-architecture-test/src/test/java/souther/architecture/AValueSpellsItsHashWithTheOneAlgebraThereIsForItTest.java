@@ -9,6 +9,7 @@ import java.lang.classfile.FieldModel;
 import java.lang.classfile.Instruction;
 import java.lang.classfile.MethodModel;
 import java.lang.classfile.Opcode;
+import java.lang.classfile.constantpool.ClassEntry;
 import java.lang.classfile.instruction.FieldInstruction;
 import java.lang.classfile.instruction.InvokeDynamicInstruction;
 import java.lang.classfile.instruction.InvokeInstruction;
@@ -69,6 +70,9 @@ class AValueSpellsItsHashWithTheOneAlgebraThereIsForItTest {
 
     /** What a value implements where it names the value standing for it. */
     private static final String NAMES_ONE = "souther/compiler/hash/SaysWhatStandsForIt";
+
+    /** And where the number it is asked for is one it worked out once and kept. */
+    private static final String KEEPS_ONE = "souther/compiler/hash/KeepsTheNumberItIsAskedFor";
 
     /** What a record's own equality and hash are left to, which is nobody here deciding anything. */
     private static final String DERIVED = "java/lang/runtime/ObjectMethods";
@@ -163,32 +167,31 @@ class AValueSpellsItsHashWithTheOneAlgebraThereIsForItTest {
      */
     @Test
     void andANumberAValueKeepsIsOverWhatItSaysStandsForIt() {
-        List<String> read = new ArrayList<>();
-        List<String> gatheringElsewhere = new ArrayList<>();
-        for (ClassModel value : theValues()) {
-            if (!namesWhatStandsForIt(value)) {
-                continue;
-            }
-            Optional<MethodModel> hash = spelledOut(value, "hashCode", "()I");
-            Optional<String> kept = hash.flatMap(spelled -> handedBack(value, spelled));
+        List<String> failing = new ArrayList<>();
+        List<ClassModel> keeping = implementers(KEEPS_ONE);
+        for (ClassModel value : keeping) {
+            String what = value.thisClass().name().stringValue();
+            Optional<String> kept = spelledOut(value, "hashCode", "()I")
+                    .flatMap(spelled -> handedBack(value, spelled));
+            Optional<String> named = fieldNamed(value);
             if (kept.isEmpty()) {
+                failing.add(what + " says it keeps a number and hands one back it worked out");
                 continue;
             }
-            read.add(value.thisClass().name().stringValue());
-            String named = fieldNamed(value).orElseThrow(() -> new AssertionError(
-                    value.thisClass().name().stringValue() + " says something stands for it and"
-                            + " does not hand back a value it holds, which is a shape this cannot"
-                            + " follow"));
-            if (!keptOverWhatStandsForIt(value, named, kept.get())) {
-                gatheringElsewhere.add(value.thisClass().name().stringValue());
+            if (named.isEmpty()) {
+                failing.add(what + " hands back what stands for it without holding it");
+                continue;
+            }
+            if (!keptOverWhatStandsForIt(value, named.get(), kept.get())) {
+                failing.add(what + " keeps a number over something else it read");
             }
         }
 
-        assertEquals(List.of(), gatheringElsewhere,
+        assertEquals(List.of(), failing,
                 "a number kept over anything but what stands for the value is one two values equal"
                         + " by what stands for them can differ in");
-        assertFalse(read.isEmpty(), "no value here keeps a number it works out once, which is not"
-                + " what these hold");
+        assertFalse(keeping.isEmpty(), "no value says it keeps the number it is asked for, which is"
+                + " not what this compiler holds");
     }
 
     /**
@@ -204,18 +207,15 @@ class AValueSpellsItsHashWithTheOneAlgebraThereIsForItTest {
     @Test
     void andItHoldsWhatStandsForItAndTheNumberAndNothingElse() {
         List<String> holdingMore = new ArrayList<>();
-        List<String> read = new ArrayList<>();
-        for (ClassModel value : theValues()) {
-            if (!namesWhatStandsForIt(value)) {
-                continue;
-            }
-            Optional<MethodModel> hash = spelledOut(value, "hashCode", "()I");
-            Optional<String> kept = hash.flatMap(spelled -> handedBack(value, spelled));
+        List<ClassModel> keeping = implementers(KEEPS_ONE);
+        for (ClassModel value : keeping) {
+            Optional<String> kept = spelledOut(value, "hashCode", "()I")
+                    .flatMap(spelled -> handedBack(value, spelled));
             Optional<String> named = fieldNamed(value);
             if (kept.isEmpty() || named.isEmpty()) {
+                // What each of those is is the rule above, which reports it.
                 continue;
             }
-            read.add(value.thisClass().name().stringValue());
             for (FieldModel field : value.fields()) {
                 String held = field.fieldName().stringValue();
                 if (!field.flags().has(AccessFlag.STATIC) && !held.equals(kept.get())
@@ -228,14 +228,69 @@ class AValueSpellsItsHashWithTheOneAlgebraThereIsForItTest {
         assertEquals(List.of(), holdingMore,
                 "a part held beside what stands for the value is one the equality does not read,"
                         + " which is what putting the parts in a value of their own is against");
-        assertFalse(read.isEmpty(), "no value here holds its parts in a value of their own, which"
-                + " is not what these hold");
+        assertFalse(keeping.isEmpty(), "no value says it keeps the number it is asked for, which is"
+                + " not what this compiler holds");
     }
 
-    /** Whether the value names what stands for it. */
-    private static boolean namesWhatStandsForIt(ClassModel value) {
-        return value.interfaces().stream()
-                .anyMatch(each -> NAMES_ONE.equals(each.name().stringValue()));
+    /**
+     * And what a value says stands for it is a value it holds, whether or not it keeps a number.
+     *
+     * <p>Asked of every value that names one, and not only of the ones a number is kept by. A value
+     * is asked this once for every number a term takes of it — far more often than one is made — so
+     * one worked out at the ask puts back the walk that naming it is for. And it hands a different
+     * object out each time, to a reader with no way to know that the two are one answer.
+     */
+    @Test
+    void andWhatStandsForAValueIsSomethingItHolds() {
+        List<String> built = new ArrayList<>();
+        List<ClassModel> naming = implementers(NAMES_ONE);
+        for (ClassModel value : naming) {
+            if (fieldNamed(value).isEmpty()) {
+                built.add(value.thisClass().name().stringValue());
+            }
+        }
+
+        assertEquals(List.of(), built,
+                "what stands for a value is worked out there rather than held, so a reader asking"
+                        + " twice is answered twice and pays the walk that naming it is against");
+        assertFalse(naming.isEmpty(), "no value names what stands for it, which is not what this"
+                + " compiler holds");
+    }
+
+    /**
+     * Every class this repository publishes that reaches {@code named}, through its own interfaces
+     * or through one of theirs.
+     *
+     * <p>The population of a rule about these values comes from what they declare and not from the
+     * shape the rule is about: a value found by looking for a number handed back out of a field is
+     * a value that leaves the rule by no longer handing one back, which is the defect the rule is
+     * against.
+     *
+     * <p>Classes, since what is asked of them is what their code does. An interface that carries
+     * one of these on to another says which values are held to it and does nothing itself.
+     */
+    private static List<ClassModel> implementers(String named) {
+        List<ClassModel> found = new ArrayList<>();
+        for (ClassModel each : COMPILED.all()) {
+            if (!each.flags().has(AccessFlag.INTERFACE) && reaches(each, named)) {
+                found.add(each);
+            }
+        }
+        return found;
+    }
+
+    /** Whether {@code read} declares {@code named} or declares something that reaches it. */
+    private static boolean reaches(ClassModel read, String named) {
+        for (ClassEntry each : read.interfaces()) {
+            String spelled = each.name().stringValue();
+            if (spelled.equals(named)) {
+                return true;
+            }
+            if (COMPILED.find(spelled).filter(above -> reaches(above, named)).isPresent()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** The value it hands back as standing for it, where that is something it holds. */

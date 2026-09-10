@@ -1,6 +1,6 @@
 package souther.compiler.types;
 
-import souther.compiler.hash.SaysWhatStandsForIt;
+import souther.compiler.hash.KeepsTheNumberItIsAskedFor;
 import souther.compiler.hash.ValueHash;
 
 /**
@@ -120,7 +120,7 @@ public sealed interface BindingOwner {
      * That walk answers the same thing every time, and an owner is asked its number once for every
      * name filed under a binding it owns.
      */
-    final class Expansion implements BindingOwner, SaysWhatStandsForIt {
+    final class Expansion implements BindingOwner, KeepsTheNumberItIsAskedFor {
 
         /** The whole of what one expansion is, read by its equality, by its number and by the walk
          *  that proves the number is taken from values. */
@@ -182,7 +182,7 @@ public sealed interface BindingOwner {
      * <p>Its number is kept for the reason an expansion's is: what it stands inside is an owner,
      * and asking it for a number walks whatever is above it.
      */
-    final class Synthesized implements BindingOwner, SaysWhatStandsForIt {
+    final class Synthesized implements BindingOwner, KeepsTheNumberItIsAskedFor {
 
         /** The whole of what one pass's bindings inside one owner are. */
         record Parts(BindingOwner within, Pass pass, int ordinal) {

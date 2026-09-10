@@ -1,6 +1,6 @@
 package souther.compiler.types;
 
-import souther.compiler.hash.SaysWhatStandsForIt;
+import souther.compiler.hash.KeepsTheNumberItIsAskedFor;
 import souther.compiler.hash.ValueHash;
 
 /**
@@ -27,7 +27,7 @@ import souther.compiler.hash.ValueHash;
  * one out walks the whole chain the copy is under, the call it was expanded at, and the construct
  * beneath that. What is walked is the same every time, because none of it can change.
  */
-public final class BindingId implements SaysWhatStandsForIt {
+public final class BindingId implements KeepsTheNumberItIsAskedFor {
 
     /**
      * The whole of what a binding identity is, in one value.
