@@ -151,6 +151,35 @@ public final class TextExtents {
      * machine this needed.
      */
     public static Emptiness inside(Language language, OrderedInterval held, Meter meter) {
+        Language inside = within(language, held, meter);
+        if (inside == null) {
+            return Emptiness.UNDECIDED;
+        }
+        return inside.isEmpty() ? Emptiness.EMPTY : Emptiness.NONEMPTY;
+    }
+
+    /**
+     * The strings {@code set} holds that lie inside {@code held}, or null past what {@code meter}
+     * allows.
+     *
+     * <p>{@link #inside} answering with the strings rather than with whether there are any, for a
+     * caller that has to write one down. The same two machines either way — a set is a language and
+     * a range is the strings between its ends — and the question of which strings a position holds
+     * inside a run of the order is one thing, so it is put together here. Answered a second time by
+     * whoever wanted a string out of it, a value would be offered at a position that the reading
+     * beside it had already said holds nothing there.
+     *
+     * <p>{@code held} is where the strings are on the order already met with what the order holds,
+     * so its ends are strings.
+     */
+    public static Language stringsIn(ValueSet set, OrderedInterval held, Meter meter) {
+        Language admitted = languageOf(set, meter);
+        return admitted == null ? null : within(admitted, held, meter);
+    }
+
+    /** {@code language} less the strings outside {@code held}, or null past what {@code meter}
+     *  allows. */
+    private static Language within(Language language, OrderedInterval held, Meter meter) {
         Language inside = language;
         if (held.high() != null) {
             Text at = (Text) held.high().at();
@@ -170,10 +199,7 @@ public final class TextExtents {
             Language above = under == null ? null : under.not(meter);
             inside = above == null ? null : inside.and(above, meter);
         }
-        if (inside == null) {
-            return Emptiness.UNDECIDED;
-        }
-        return inside.isEmpty() ? Emptiness.EMPTY : Emptiness.NONEMPTY;
+        return inside;
     }
 
     /** Every string from {@code from} upwards, or null past what {@code meter} allows. */

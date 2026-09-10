@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import souther.compiler.numeric.Count;
 import souther.compiler.numeric.Endpoint;
 import souther.compiler.numeric.NumericDomain;
+import souther.compiler.numeric.OrderedInterval;
 import souther.compiler.numeric.Place;
 import souther.compiler.numeric.Text;
 import souther.compiler.regex.CodePoints;
@@ -14,6 +15,7 @@ import souther.compiler.regex.PatternSyntax;
 import souther.compiler.values.Value;
 import souther.compiler.values.ValueSet;
 
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -97,7 +99,8 @@ class AValueStandingForEverythingElseIsOneThePositionAdmitsTest {
     @Test
     void theValueTheSetOffersFirstBeingSingledOutIsNotTheEndOfTheChoice() {
         ValueSet admits = lengths(1, PatternSyntax.Repeated.NO_CEILING);
-        Place first = Carrier.TEXT.somewhereIn(admits);
+        Place first = Carrier.TEXT.somewhereIn(admits, new OrderedInterval(null, null),
+                List.of(), meter());
         assertNotNull(first, "the set has a value to offer, which is what this case is about");
 
         Place at = otherThan(Carrier.TEXT, List.of(first), null, admits);
@@ -153,6 +156,35 @@ class AValueStandingForEverythingElseIsOneThePositionAdmitsTest {
         assertNotNull(at, "the numbers away from zero that the rule leaves are without end");
         assertTrue(Carrier.WHOLE.written(at).equals("2") || Carrier.WHOLE.written(at).equals("-2"),
                 () -> "one step past what the rule holds out: " + Carrier.WHOLE.written(at));
+    }
+
+    /**
+     * The run is what the values are looked through, and not what the value found is put to.
+     *
+     * <p>The set names a value outside the run and a value inside it, and the one outside comes
+     * first. Looked through, the run reaches the second; put to the first afterwards, the search
+     * stops at a value the range refuses and the class is left with nothing standing for it —
+     * while the position holds one the whole time.
+     *
+     * <p>The order composes no candidate here: every step from the value singled out and every end
+     * of the run is a value the declarations refuse, so what answers is the question asked of the
+     * values themselves.
+     */
+    @Test
+    void theRunIsWhatTheValuesAreLookedThroughAndNotWhatIsPutToTheOneFound() {
+        Set<Value> named = new LinkedHashSet<>();
+        named.add(Value.number(100));   // the first the set names, and outside the run
+        named.add(Value.number(14));    // the one the position holds
+        named.add(Value.number(12));    // singled out by the body
+
+        Place at = otherThan(Carrier.WHOLE, List.of(Count.of(12)),
+                new NumericDomain.Bounds(Endpoint.inclusive(Count.of(10)),
+                        Endpoint.inclusive(Count.of(20))),
+                new ValueSet.Finite(named));
+
+        assertNotNull(at, "the position holds a value away from the one singled out");
+        assertEquals("14", Carrier.WHOLE.written(at),
+                "the one value of the set inside the run that the body did not single out");
     }
 
     /** And both vocabularies together, so neither is answering for the other. */

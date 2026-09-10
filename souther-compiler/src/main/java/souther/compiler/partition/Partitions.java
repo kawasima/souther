@@ -620,8 +620,12 @@ public final class Partitions {
         // the account is owed are observations of their own, so everything below runs whichever way
         // this came out. A second route past them would be a second answer about all of them.
         TypeView view = TypeView.of(type, ruleSource.symbols());
+        // What writing one value out is allowed to cost, one allowance to each value written. Named
+        // here because this is where a witness for a row is paid for: a string offered for a row is
+        // no answer about the position, and paying for it out of what the position may build would
+        // let a representative decide how exactly the model was read.
         Classing.Result answered = Classing.of(term, mine, blocked, carrier,
-                at.position().admits(), allowance,
+                at.position().admits(), allowance, PatternPlan.Budget.OF_A_WITNESS::meter,
                 place -> standing(view, carrier, place, ruleSource));
         Classing.Classed classed = answered.classed();
         // What became of each rule, applied and not decided again. The answer is total over what
@@ -1185,9 +1189,7 @@ public final class Partitions {
                     holding(orders, new Recognition.CountIs.At(value)),
                     standing(view, carrier, value, ruleSource)));
         }
-        // Out of what writing one value costs, which is what this is doing: a string offered for a
-        // row is no answer about the position, and paying for it out of what the position may build
-        // would let a representative decide how exactly the model was read.
+        // Out of what writing one value costs, as every witness for a row is.
         Place other = carrier.somethingOtherThan(values, within, admits,
                 PatternPlan.Budget.OF_A_WITNESS.meter());
         String label = "/= " + String.join(", ",

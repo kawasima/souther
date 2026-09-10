@@ -4,8 +4,10 @@ import souther.compiler.check.Carrier;
 import souther.compiler.check.PredicateStatement;
 import souther.compiler.inputs.BlockReason;
 import souther.compiler.inputs.NumericTerm;
+import souther.compiler.numeric.OrderedInterval;
 import souther.compiler.numeric.Place;
 import souther.compiler.numeric.Text;
+import souther.compiler.regex.Meter;
 import souther.compiler.values.Allowance;
 import souther.compiler.values.Sameness;
 import souther.compiler.values.Value;
@@ -15,6 +17,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 /**
  * What the rules about one position divide it into, in the one vocabulary they can all be said in.
@@ -266,6 +269,7 @@ final class Classing {
     static Result of(NumericTerm.FromOnePosition term, List<RuleEvidence> mine,
                      List<ClassingBlocker> blocked, Carrier carrier, ValueSet admits,
                      Allowance<NumericTerm.FromOnePosition> allowance,
+                     Supplier<Meter> perWitness,
                      Function<Place, FixtureTemplate> writing) {
         // Which of the rules actually tell two of this position's values apart, asked before
         // anything else is decided. An invariant restricts and a behavior divides what is left, so
@@ -332,7 +336,7 @@ final class Classing {
         }
         List<PartitionClass> out = new ArrayList<>();
         for (Cell cell : cells) {
-            out.add(classOf(term, cell, carrier, writing).ofTheNumber(term));
+            out.add(classOf(term, cell, carrier, perWitness, writing).ofTheNumber(term));
         }
         // The classes are sets, so everything that went into them went into them — a value singled
         // out of a string is one of these classes rather than a cut beside them.
@@ -486,7 +490,7 @@ final class Classing {
 
     /** One cell as a class: what it holds, what it is called, and what a row would carry for it. */
     private static PartitionClass classOf(NumericTerm.FromOnePosition term, Cell cell,
-                                          Carrier carrier,
+                                          Carrier carrier, Supplier<Meter> perWitness,
                                           Function<Place, FixtureTemplate> writing) {
         String label = said(cell);
         // The words, and not a name of this method's own. What a document shows a reader is the
@@ -499,7 +503,12 @@ final class Classing {
         // and one kind of class keeping its own would be a document that reads two ways.
         String id = term + "/" + label;
         Recognition is = new Recognition.OfASet(cell.values());
-        Place stands = carrier.somewhereIn(cell.values());
+        // Over the whole of the order and away from nothing: what the cell holds is already what
+        // the rules leave, met together where the cells were refined. An allowance of this class's
+        // own, because what one of them costs to write is nothing the class beside it should be
+        // short of.
+        Place stands = carrier.somewhereIn(cell.values(), new OrderedInterval(null, null),
+                List.of(), perWitness.get());
         FixtureTemplate written =
                 stands == null ? null : writing.apply(stands);
         return written == null
