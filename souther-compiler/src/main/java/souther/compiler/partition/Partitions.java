@@ -35,6 +35,7 @@ import souther.compiler.numeric.Granularity;
 import souther.compiler.numeric.LinearForm;
 import souther.compiler.numeric.NumericDomain;
 import souther.compiler.numeric.Place;
+import souther.compiler.regex.PatternPlan;
 import souther.compiler.types.Type;
 import souther.compiler.types.TypeSymbol;
 import souther.compiler.types.TypeReachName;
@@ -1184,7 +1185,11 @@ public final class Partitions {
                     holding(orders, new Recognition.CountIs.At(value)),
                     standing(view, carrier, value, ruleSource)));
         }
-        Place other = carrier.somethingOtherThan(values, within, admits);
+        // Out of what writing one value costs, which is what this is doing: a string offered for a
+        // row is no answer about the position, and paying for it out of what the position may build
+        // would let a representative decide how exactly the model was read.
+        Place other = carrier.somethingOtherThan(values, within, admits,
+                PatternPlan.Budget.OF_A_WITNESS.meter());
         String label = "/= " + String.join(", ",
                 values.stream().map(carrier::written).toList());
         Recognition away = holding(orders,

@@ -29,6 +29,7 @@ import souther.compiler.values.ValueSet;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -760,14 +761,24 @@ public sealed interface Carrier extends ValueOrder {
      * <p><b>Both vocabularies a position is read in.</b> {@code within} is where the rules leave the
      * number this order counts, and {@code admits} is which values the declarations leave standing
      * — a rule about how many a value holds lands in the second and says nothing in the first. So
-     * every candidate is put to both, and what the set offers is a candidate of its own: asked of
-     * the range alone, a string bounded below by its length is offered the empty string, which the
-     * declarations refuse.
+     * every candidate is put to both: asked of the range alone, a string bounded below by its
+     * length is offered the empty string, which the declarations refuse.
+     *
+     * <p><b>What the set offers is asked of the set the class holds, and not of the position's.</b>
+     * The values singled out are taken away first, and the value is looked for in what is left.
+     * Asked the other way round — a value out of what the position admits, refused afterwards
+     * where it is one of the singled ones — the answer would be no value at all whenever the set's
+     * own first answer happened to be a value the class exists to exclude, and a class the
+     * declarations leave inhabited would say nothing stands for it.
      *
      * @param admits which values the position holds, through whatever names they are written under
+     * @param meter  what taking the singled values out of a language of them may cost. Handed in
+     *               rather than made here: whose allowance a machine is built out of is the
+     *               caller's to say, and an order that named one would be spending at every
+     *               position without anything having granted it
      */
     default Place somethingOtherThan(java.util.List<Place> singled, NumericDomain.Bounds within,
-                                     ValueSet admits) {
+                                     ValueSet admits, Meter meter) {
         java.util.List<Place> stepped = new ArrayList<>();
         for (Place from : singled) {
             if (from instanceof Count count) {
@@ -802,19 +813,12 @@ public sealed interface Carrier extends ValueOrder {
             tried.addAll(stepped);
             tried.addAll(inside);
         }
-        // A string has a least value and nothing beside one, so what stands for "none of these" is
-        // the empty string wherever that is not one of them. Last, so a domain that names its own
-        // ends is asked first — and refused by the filter below where it is itself singled out.
-        if (this instanceof Text) {
-            tried.add(souther.compiler.numeric.Text.of(""));
-        }
-        // What the values' own vocabulary offers, after everything the order has to say. A value
-        // from here is one the declarations name rather than one the ends of a range work out, so
-        // it is what is left where the rules about the position are not about this number at all.
-        Value offered = admits.some();
-        if (offered != null) {
-            tried.add(placeOf(offered));
-        }
+        // What the values' own vocabulary has, after everything the order has to say. A value from
+        // here is one the declarations name rather than one the ends of a range work out, so it is
+        // what answers where the rules about the position are not about this number at all — a
+        // string whose length is bounded, and equally a string nothing bounds, whose least value
+        // this is the only thing that reaches.
+        tried.add(somewhereIn(without(admits, singled, meter)));
         for (Place candidate : tried) {
             // On the carrier's grid before it is asked anything. Halfway between two adjacent moments
             // is neither of them as a number and is one of them once written, so a class of
@@ -839,6 +843,113 @@ public sealed interface Carrier extends ValueOrder {
     private boolean admitted(ValueSet admits, Place at) {
         Value wrote = valueAt(at);
         return wrote == null || admits.has(wrote);
+    }
+
+    /**
+     * {@code set} less the values standing at {@code places}, or {@code set} itself where taking
+     * them out cost more than {@code meter} allows.
+     *
+     * <p>Wider on the way out, and never narrower. What a caller does with this is look for a value
+     * in it, and every candidate is put to the set the position admits and to the places themselves
+     * afterwards — so a subtraction this could not afford loses a candidate and never admits one
+     * the class excludes.
+     */
+    private ValueSet without(ValueSet set, List<Place> places, Meter meter) {
+        Set<Value> away = new LinkedHashSet<>();
+        for (Place at : places) {
+            Value value = valueAt(at);
+            if (value != null) {
+                away.add(value);
+            }
+        }
+        if (away.isEmpty()) {
+            return set;
+        }
+        return switch (set) {
+            case ValueSet.Finite it -> {
+                Set<Value> left = new LinkedHashSet<>(it.values());
+                left.removeAll(away);
+                yield new ValueSet.Finite(left);
+            }
+            case ValueSet.Cofinite it -> {
+                Set<Value> more = new LinkedHashSet<>(it.excluded());
+                more.addAll(away);
+                yield new ValueSet.Cofinite(more);
+            }
+            // The words out of the language, which is the one shape that needs a machine to say
+            // what is left. A value of another kind is in no language, so nothing is owed for it.
+            case ValueSet.Matching it -> {
+                List<String> words = new ArrayList<>();
+                away.forEach(each -> {
+                    if (each instanceof Value.Text text) {
+                        words.add(text.value());
+                    }
+                });
+                Language left = it.language().without(words, meter);
+                yield left == null ? set : ValueSet.matching(left);
+            }
+        };
+    }
+
+    /**
+     * A place on this order holding one of {@code set}'s values, or null where this composed none.
+     *
+     * <p>Here because it is a crossing and this is where both directions of one are made. A set
+     * knows which values it holds and nothing about what counts them: {@link ValueSet.Cofinite} is
+     * every value of the carrier but a few, and which values those are is a question only an order
+     * has an answer to — asked of the set, the answer would be a string wherever the position
+     * counts numbers, and a set over one carrier would be answering about another.
+     *
+     * <p>What a source can carry, which is not the same as what the set holds: a set of control
+     * characters has a value to offer and none to write, and a row nobody can paste is not a row.
+     */
+    default Place somewhereIn(ValueSet set) {
+        return switch (set) {
+            // Named outright, so the first of them this order places.
+            case ValueSet.Finite it -> it.values().stream().map(this::placeOf)
+                    .filter(Objects::nonNull).findFirst().orElse(null);
+            case ValueSet.Matching it -> {
+                String some = it.language().someWritten();
+                yield some == null ? null : placeOf(Value.text(some));
+            }
+            // Every value this order counts but a few, so the first of them that is not among
+            // those. Counted out rather than named, because which values are held out is the set's
+            // answer and where they sit is this one's.
+            case ValueSet.Cofinite it -> firstOutside(it.excluded());
+        };
+    }
+
+    /**
+     * The first value of this order that is none of {@code excluded}.
+     *
+     * <p>Counted from where the order starts having somewhere to start. A string has a least value
+     * and every carrier with a step has zero, so a run one longer than what is held out reaches a
+     * value none of them is. The temporal carriers write no value back at all, so nothing here is
+     * held out of them and nothing here composes one either.
+     */
+    private Place firstOutside(Set<Value> excluded) {
+        int past = excluded.size() + 1;
+        for (int away = 0; away <= past; away++) {
+            for (Place candidate : steps(away)) {
+                Place at = candidate == null ? null : onTheGrid(candidate);
+                Value wrote = at == null ? null : valueAt(at);
+                if (wrote != null && !excluded.contains(wrote)) {
+                    return at;
+                }
+            }
+        }
+        return null;
+    }
+
+    /** The places {@code away} from where this order starts, nearest side first. */
+    private List<Place> steps(int away) {
+        return switch (this) {
+            // A string has no step, and it has a least value with every longer one after it.
+            case Text _ -> List.of(souther.compiler.numeric.Text.of("a".repeat(away)));
+            case Whole _, Dense _, Ordinal _ ->
+                    List.of(Count.of(away), Count.of(-away));
+            case Days _, Seconds _, SecondsOfDay _, Nanos _ -> List.of();
+        };
     }
 
     /**

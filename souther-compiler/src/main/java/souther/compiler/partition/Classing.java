@@ -332,7 +332,7 @@ final class Classing {
         }
         List<PartitionClass> out = new ArrayList<>();
         for (Cell cell : cells) {
-            out.add(classOf(term, cell, writing).ofTheNumber(term));
+            out.add(classOf(term, cell, carrier, writing).ofTheNumber(term));
         }
         // The classes are sets, so everything that went into them went into them — a value singled
         // out of a string is one of these classes rather than a cut beside them.
@@ -486,6 +486,7 @@ final class Classing {
 
     /** One cell as a class: what it holds, what it is called, and what a row would carry for it. */
     private static PartitionClass classOf(NumericTerm.FromOnePosition term, Cell cell,
+                                          Carrier carrier,
                                           Function<Place, FixtureTemplate> writing) {
         String label = said(cell);
         // The words, and not a name of this method's own. What a document shows a reader is the
@@ -498,7 +499,7 @@ final class Classing {
         // and one kind of class keeping its own would be a document that reads two ways.
         String id = term + "/" + label;
         Recognition is = new Recognition.OfASet(cell.values());
-        Place stands = someValueIn(cell.values());
+        Place stands = carrier.somewhereIn(cell.values());
         FixtureTemplate written =
                 stands == null ? null : writing.apply(stands);
         return written == null
@@ -523,19 +524,4 @@ final class Classing {
                 .reduce((one, other) -> one + " and " + other).orElseThrow();
     }
 
-    /**
-     * One string the rules leave in this class, or null where nothing here composes one.
-     *
-     * <p>A representative and never a condition on the class existing. The model divides the
-     * position whether or not this compiler can write a value into a row, and a class dropped for
-     * want of one would make the denominator a build is measured against follow what the generator
-     * can do.
-     *
-     * <p>Asked of the set, which is the one place the shapes are read for a value. A class here is
-     * over strings — the vocabulary is only reached where every rule tells a set of them from the
-     * rest — so a value of any other kind is one no class of this position holds.
-     */
-    private static Place someValueIn(ValueSet values) {
-        return values.some() instanceof Value.Text it ? Text.of(it.value()) : null;
-    }
 }

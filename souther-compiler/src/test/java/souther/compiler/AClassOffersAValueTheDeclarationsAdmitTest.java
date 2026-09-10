@@ -54,6 +54,18 @@ class AClassOffersAValueTheDeclarationsAdmitTest {
             "invariant String.length(value) >= 1",
             "invariant String.length(value) >= 2 && String.length(value) <= 3");
 
+    /**
+     * And the value singled out being the first one the set has to offer.
+     *
+     * <p>The one string of a length the rule allows that this compiler reaches for first is the
+     * tab, which is what the rows above are written with. Singled out, it is the value the class
+     * exists to exclude — so a reader that takes a value out of the set and refuses it afterwards
+     * has nothing left to offer, while the strings the declarations leave in the class are without
+     * end.
+     */
+    private static final String THE_FIRST_ONE_OFFERED =
+            AT_LEAST_ONE.replace("== \"spring\"", "== \"\\t\"");
+
     /** The block a person is handed for the one module in {@code source}. */
     private static String rowsFor(String source) {
         Compilation compilation = Compilation.ofSource(source, "Main");
@@ -90,6 +102,25 @@ class AClassOffersAValueTheDeclarationsAdmitTest {
         assertTrue(rows.contains("\"voucher=/= spring\""),
                 () -> "the class away from the singled value is offered a row:\n" + rows);
         assertFalse(rows.contains("no row for `voucher=/= spring`"), () -> rows);
+        assertFalse(rows.contains("Voucher(\"\")"), () -> rows);
+    }
+
+    /**
+     * The value looked for is one of what the class holds, and not one of what the position admits
+     * that the class is then asked about.
+     *
+     * <p>Here the two come apart: the value the set has first to offer is the one the body singled
+     * out. Taken out of the set before the value is looked for, the strings left are without end
+     * and one of them stands for the class; taken out afterwards, there is nothing left to offer
+     * and a class the declarations leave inhabited says nothing stands for it.
+     */
+    @Test
+    void theValueSingledOutIsTakenOutBeforeOneIsLookedFor() {
+        String rows = rowsFor(THE_FIRST_ONE_OFFERED);
+
+        assertTrue(rows.contains("\"voucher=/= \\t\""),
+                () -> "the class away from the singled value is offered a row:\n" + rows);
+        assertFalse(rows.contains("no row for `voucher=/= \\t`"), () -> rows);
         assertFalse(rows.contains("Voucher(\"\")"), () -> rows);
     }
 }
