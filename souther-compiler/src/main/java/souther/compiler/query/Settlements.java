@@ -414,7 +414,7 @@ public record Settlements(List<ObligationIdentity> requested,
                 }
             }
             for (Generator.ArmOwed each : arms) {
-                CoverageSites.Obligation arm = armsOf.get(each.probe());
+                CoverageSites.Obligation arm = armsOf.get(each.occurrences().getFirst());
                 if (arm != null && filling.composed().discharge().at(each)
                         instanceof souther.compiler.partition.ArmDisposition.Built built) {
                     out.put(new ObligationIdentity.OfAnArm(arm),
@@ -440,7 +440,7 @@ public record Settlements(List<ObligationIdentity> requested,
             // the one a run through this arm would be recorded at, chosen where the finding was
             // made. What a row is offered for is the arm.
             for (Generator.ArmOwed each : arms) {
-                CoverageSites.Obligation arm = armsOf.get(each.probe());
+                CoverageSites.Obligation arm = armsOf.get(each.occurrences().getFirst());
                 if (arm == null) {
                     continue;
                 }

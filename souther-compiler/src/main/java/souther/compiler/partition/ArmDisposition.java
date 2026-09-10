@@ -16,12 +16,21 @@ import java.util.List;
  */
 public sealed interface ArmDisposition {
 
-    /** A row was composed for a combination that takes it, or along the way into it. */
-    record Built(RowId rowId) implements ArmDisposition {
+    /**
+     * A row was composed for a combination that takes it, or along the way into it.
+     *
+     * @param rowId which row
+     * @param at    which place a run through the arm it was steered to is recorded at. An arm the
+     *              author wrote stands in the running tree once per call site of the helper
+     *              carrying it, and the row went down one of them — so a reader naming another
+     *              would say the row does what it does not
+     */
+    record Built(RowId rowId, souther.compiler.coverage.ArmProbe at) implements ArmDisposition {
 
         public Built {
-            if (rowId == null) {
-                throw new IllegalArgumentException("an arm a row was composed for names the row");
+            if (rowId == null || at == null) {
+                throw new IllegalArgumentException(
+                        "an arm a row was composed for names the row and where it went");
             }
         }
     }

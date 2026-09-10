@@ -910,19 +910,83 @@ public final class Generator {
     }
 
     /**
-     * Which arm of the body a search steers a row towards.
+     * What became of one arm, over every place a run through it is recorded at.
+     *
+     * <p>Built wins over everything, because a row through any splice goes through the arm the
+     * author wrote. Where none built, the reasons of every place are kept together: they are not
+     * one fact and they do not order against each other — one splice the model refuses says the arm
+     * may be unreachable there, one nothing can steer a row to says this compiler fell short, and a
+     * reader handed whichever came first was handed the order the walk took.
+     *
+     * <p>And where nothing was tried anywhere, the reading of the first place, which is what an arm
+     * with nowhere to be looked for has. Where the places differ, one of them will have been tried
+     * and this is not reached.
+     */
+    private static ArmDisposition armAnswer(ArmOwed asked, Map<ArmProbe, RowId> built,
+                                            Map<ArmProbe, List<UnresolvedCombination>> failed,
+                                            Set<ArmProbe> cutOff,
+                                            souther.compiler.reading.CoverageRead.Read read) {
+        List<UnresolvedCombination> why = new ArrayList<>();
+        boolean anyCutOff = false;
+        for (ArmProbe probe : asked.occurrences()) {
+            RowId row = built.get(probe);
+            if (row != null) {
+                return new ArmDisposition.Built(row, probe);
+            }
+            why.addAll(failed.getOrDefault(probe, List.of()));
+            anyCutOff |= cutOff.contains(probe);
+        }
+        if (anyCutOff) {
+            why.add(new UnresolvedCombination(List.of(),
+                    UnresolvedCombination.Reason.THE_SEARCH_LEFT_SOMETHING_UNTRIED));
+        }
+        if (!why.isEmpty()) {
+            return new ArmDisposition.Unresolved(why);
+        }
+        return new ArmDisposition.NoWayIn(read.armAt(asked.occurrences().getFirst()));
+    }
+
+    /**
+     * Which arm of the body a search steers a row towards, and every place it may steer to.
      *
      * <p>A handle and not an identity. What a row is owed for is one arm the author wrote, however
-     * many times a helper carrying it is spliced in; the probe is one of those occurrences, and it
-     * is what a search has to name because a run is recorded at an occurrence. So a proposal says
+     * many times a helper carrying it is spliced in; a probe is one of those occurrences, and it is
+     * what a search has to name because a run is recorded at an occurrence. So a proposal says
      * which obligation it targets and carries one of these to reach it, and the two are not the
      * same value.
+     *
+     * <p><b>All of the occurrences, and not one chosen for the arm.</b> What steers a row into a
+     * splice is what stands on the way to <em>that</em> splice, and two splices of one arm are
+     * reached by different ways: a helper called under a decision this compiler can state and again
+     * under one it cannot has one arm nothing can steer a row to and one it can. Asked at a single
+     * occurrence, the answer was whichever the walk wrote first — the same body with its two call
+     * sites swapped offered a row for the arm in one order and said nothing could steer one in the
+     * other, and no measure was in a position to notice.
      *
      * <p>Named rather than carried as the number the plan gave it. Spelled as a bare {@code int} it
      * put the things a run is asked about into two vocabularies, and anything holding both had to
      * say which kind of thing a number was every time it read one.
      */
-    public record ArmOwed(ArmProbe probe) {}
+    public record ArmOwed(List<ArmProbe> occurrences) {
+
+        public ArmOwed {
+            occurrences = List.copyOf(occurrences);
+            if (occurrences.isEmpty()) {
+                throw new IllegalArgumentException(
+                        "an arm a row can be steered to is recorded somewhere");
+            }
+        }
+
+        /** An arm the caller has one place for, which is what a search stood up on its own has. */
+        public ArmOwed(ArmProbe probe) {
+            this(List.of(probe));
+        }
+
+        /** Whether {@code probe} is one of the places a run through this arm is recorded at. */
+        public boolean recordedAt(ArmProbe probe) {
+            return occurrences.contains(probe);
+        }
+    }
 
     /**
      * Every class of every position no row the author wrote sits in.
@@ -979,7 +1043,12 @@ public final class Generator {
                                         AdequacyPolicy.OfTheGeneration budget) {
         MeasuredInput subject = plan.subject();
         List<ClassOfAPosition> classesOwed = plan.classesOwed();
-        List<ArmProbe> armsOwed = plan.armsOwed().stream().map(ArmOwed::probe).toList();
+        // Every place a run through an owed arm is recorded at, which is where a row may be
+        // steered. Flattened here because the search looks in one place at a time; what each of
+        // them came to is folded back onto the arm below, so a row through any occurrence fills
+        // the arm the author wrote.
+        List<ArmProbe> armsOwed = plan.armsOwed().stream()
+                .flatMap(each -> each.occurrences().stream()).distinct().toList();
         MeasuredInput.MeasuredAxes ordered = ordered(subject);
         // A position where some row's value could not be read is a position nothing is known about.
         // A row generated for a class there may be a row that is already written, and telling an
@@ -1107,6 +1176,15 @@ public final class Generator {
         // in first — which is a preference between two answers and not one of them standing in for
         // the other. An arm no combination is over is answered from its way in all the same.
         Set<ArmProbe> left = new LinkedHashSet<>(armsOwed);
+        // The other places each owed arm stands in, so that one row down one splice ends the
+        // search for that arm rather than starting it again at the next.
+        Map<ArmProbe, List<ArmProbe>> siblings = new LinkedHashMap<>();
+        for (ArmOwed asked : plan.armsOwed()) {
+            for (ArmProbe probe : asked.occurrences()) {
+                siblings.put(probe, asked.occurrences().stream()
+                        .filter(each -> !each.equals(probe)).toList());
+            }
+        }
         Map<ArmProbe, RowId> built = new LinkedHashMap<>();
         Map<ArmProbe, List<UnresolvedCombination>> failed = new LinkedHashMap<>();
         // Arms the row budget ran out before, which is what the search stopping looks like from an
@@ -1199,6 +1277,11 @@ public final class Generator {
                     built.put(each, kept);
                     left.remove(each);
                 });
+                // And the other places this same arm stands in. What is owed is the arm the author
+                // wrote, and a row down one splice of it goes through the arm — so looking in the
+                // rest composes a second row for work that has one, and the run would hold rows
+                // nothing points at.
+                siblings.getOrDefault(probe, List.of()).forEach(left::remove);
                 break;
             }
             if (built.containsKey(probe) || cutOff.contains(probe) || failed.containsKey(probe)
@@ -1225,26 +1308,14 @@ public final class Generator {
         // cut off carries that beside whatever was tried before it: a place the model refuses says
         // nothing about the ones nobody got to, and an arm answered by the first alone was reported
         // as settled by the model on the strength of a search that stopped.
+        // One entry per arm the plan named, folded over every place a run through it is recorded
+        // at. A row through any of them goes through the arm the author wrote, so one built answer
+        // settles it however many splices came to nothing; where none built, what a reader is owed
+        // is what every place came to, since a splice nothing can steer a row to says nothing
+        // about the one beside it.
         Map<ArmOwed, ArmDisposition> armAnswers = new LinkedHashMap<>();
-        for (ArmProbe probe : armsOwed) {
-            RowId row = built.get(probe);
-            List<UnresolvedCombination> why = new ArrayList<>(
-                    failed.getOrDefault(probe, List.of()));
-            ArmOwed asked = new ArmOwed(probe);
-            if (row != null) {
-                armAnswers.put(asked, new ArmDisposition.Built(row));
-            } else if (cutOff.contains(probe)) {
-                why.add(new UnresolvedCombination(List.of(),
-                        UnresolvedCombination.Reason.THE_SEARCH_LEFT_SOMETHING_UNTRIED));
-                armAnswers.put(asked, new ArmDisposition.Unresolved(why));
-            } else if (!why.isEmpty()) {
-                armAnswers.put(asked, new ArmDisposition.Unresolved(why));
-            } else {
-                // Nothing was tried, and the reading says why: no run reaches the arm, or this
-                // compiler cannot state what steers a row there. Either way it is an answer about
-                // the arm and not an absence for a reader to make one of.
-                armAnswers.put(asked, new ArmDisposition.NoWayIn(read.armAt(probe)));
-            }
+        for (ArmOwed asked : plan.armsOwed()) {
+            armAnswers.put(asked, armAnswer(asked, built, failed, cutOff, read));
         }
         // Said once, at the end, and about both searches. One that ran out on the classes stopped
         // whether or not the arms had anything left to do, and two limits reported apart would be

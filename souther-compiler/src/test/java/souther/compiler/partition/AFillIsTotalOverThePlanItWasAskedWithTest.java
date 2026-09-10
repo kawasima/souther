@@ -166,7 +166,7 @@ class AFillIsTotalOverThePlanItWasAskedWithTest {
         FillResult filled = new FillResult(planOver(List.of(A_CLASS), List.of(AN_ARM)), composed,
                 List.of(), List.of(), new Discharge(
                         Map.of(A_CLASS, new ClassDisposition.Built(new RowId(0))),
-                        Map.of(AN_ARM, new ArmDisposition.Built(new RowId(0)))));
+                        Map.of(AN_ARM, new ArmDisposition.Built(new RowId(0), ARM))));
 
         assertEquals(1, filled.rows().size(), "one line, offered for both");
     }

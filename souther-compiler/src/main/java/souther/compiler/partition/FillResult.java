@@ -149,7 +149,10 @@ public record FillResult(GenerationPlan plan, SequencedMap<RowId, ComposedRow> c
         for (Generator.ArmOwed owed : plan.armsOwed()) {
             if (discharge.at(owed) instanceof ArmDisposition.Built built
                     && built.rowId().equals(id)) {
-                purposes.add(new Generator.Purpose.ForAnArm(owed.probe()));
+                // The place the row was steered to, which is the one it was built at. Where an arm
+                // stands in the body more than once, the row went through one of the splices and a
+                // purpose naming another would say the row does what it does not.
+                purposes.add(new Generator.Purpose.ForAnArm(built.at()));
             }
         }
         return new Generator.GeneratedRow(purposes, row.inputs());

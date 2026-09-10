@@ -40,4 +40,21 @@ public record Discharge(Map<ClassOfAPosition, ClassDisposition> classes,
     public ArmDisposition at(Generator.ArmOwed owed) {
         return arms.get(owed);
     }
+
+    /**
+     * The same, asked at one of the places a run through the arm is recorded.
+     *
+     * <p>For a reader holding an occurrence rather than the arm — a finding names one site of the
+     * arm it is about, and what the search was asked for is the arm and every splice of it. Asked
+     * with the site's own probe as though it were the whole key, such a reader found nothing
+     * whenever the arm stood in the body more than once.
+     */
+    public ArmDisposition at(souther.compiler.coverage.ArmProbe probe) {
+        for (Map.Entry<Generator.ArmOwed, ArmDisposition> each : arms.entrySet()) {
+            if (each.getKey().recordedAt(probe)) {
+                return each.getValue();
+            }
+        }
+        return null;
+    }
 }

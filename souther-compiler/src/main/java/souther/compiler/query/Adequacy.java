@@ -3361,7 +3361,8 @@ public final class Adequacy {
             // What this run is asked for, settled before the search and before anything that can
             // stop it. Every way out of the generation below holds this same list.
             souther.compiler.partition.GenerationPlan asked =
-                    planFor(subject, owed, partitions.get(behavior));
+                    planFor(subject, owed, partitions.get(behavior),
+                            checked == null ? CoverageSites.Plan.NONE : checked.plan());
             souther.compiler.partition.FillResult composed;
             try {
                 composed = rowsFor(spec, sig, Shapes.ruleReading(db, name).value(), asked,
@@ -3537,8 +3538,12 @@ public final class Adequacy {
         private static GenerationOutcome atArm(
                 CoverageSites.ArmSite arm,
                 souther.compiler.partition.FillResult composed) {
-            Generator.ArmOwed owed = new Generator.ArmOwed(arm.index());
-            souther.compiler.partition.ArmDisposition answer = composed.discharge().at(owed);
+            // Asked at the place this finding names, of the arm the run was asked about. A finding
+            // names one site of the arm it is about and the plan is asked for every splice of it,
+            // so a key built from the one site alone found nothing wherever the arm stood in the
+            // body more than once.
+            souther.compiler.partition.ArmDisposition answer =
+                    composed.discharge().at(arm.index());
             if (answer == null) {
                 throw new IllegalStateException(
                         "a finding names an arm this run was not asked about: " + arm.index());
@@ -3935,7 +3940,7 @@ public final class Adequacy {
          */
         private static souther.compiler.partition.GenerationPlan planFor(
                 souther.compiler.partition.MeasuredInput subject, List<Finding> owed,
-                PartitionEvidence evidence) {
+                PartitionEvidence evidence, CoverageSites.Plan plan) {
             // The arms this build is owed a row at, which the measure established and this reads.
             // A combination the body settles together is where one is looked for and is not itself
             // owed a row — nothing reports one — so what is searched follows from the findings
@@ -3944,14 +3949,40 @@ public final class Adequacy {
             // them in. Handed over as a list rather than as the set that kept them once apiece:
             // what the plan is asking for is the order, and this is where what the order means is
             // known.
-            Set<ArmProbe> arms = new LinkedHashSet<>();
+            //
+            // Every place a run through the arm is recorded at, and not the one the finding named.
+            // A helper carrying a fork is spliced into each call site, so what steers a row into
+            // one splice is not what steers it into another — and asked at a single occurrence the
+            // answer was whichever the walk wrote first: one body with its two call sites swapped
+            // offered a row for the arm in one order and said nothing could steer one in the other.
+            java.util.LinkedHashMap<CoverageSites.Obligation, List<ArmProbe>> arms =
+                    new java.util.LinkedHashMap<>();
             for (Finding finding : owed) {
                 if (finding.about()
                         instanceof About.AnArmNoRowGoesThrough(CoverageSites.ArmSite arm)) {
-                    arms.add(arm.index());
+                    arms.computeIfAbsent(arm.obligation(), of -> everyPlaceOf(plan, of));
                 }
             }
-            return Generator.planOver(subject, classesOwed(evidence), List.copyOf(arms));
+            return new souther.compiler.partition.GenerationPlan(subject, classesOwed(evidence),
+                    arms.values().stream().map(Generator.ArmOwed::new).toList());
+        }
+
+        /**
+         * Every place a run through one arm of the model is recorded at.
+         *
+         * <p>Asked of the plan that numbered them, which is where a construct of the model and the
+         * places it stands in the running tree are already related. The arm the finding named is
+         * one of these, so the list is never empty for an arm anything was measured about.
+         */
+        private static List<ArmProbe> everyPlaceOf(CoverageSites.Plan plan,
+                                                   CoverageSites.Obligation arm) {
+            List<ArmProbe> out = new ArrayList<>();
+            for (CoverageSites.ArmSite site : plan.arms(arm.behavior())) {
+                if (site.obligation().equals(arm)) {
+                    out.add(site.index());
+                }
+            }
+            return out;
         }
 
         /**
