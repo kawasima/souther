@@ -2034,6 +2034,44 @@ public final class FieldDomains {
         }
     }
 
+    /**
+     * The count the declarations write of the value at {@code path}, with where they leave it, or
+     * null where they write none.
+     *
+     * <p>Asked the other way round from {@link #leftAt}, and that is the whole of why it is its own
+     * question. There a caller names the number it is on and is answered about that one; here a
+     * caller has no number in mind and wants the one the declarations wrote — which is what a
+     * reader crossing the two vocabularies of a position has, since what it is looking for is
+     * whether there is a rule about a number at all.
+     *
+     * <p>Which operation, and not just the range. A range says where the number stops and says
+     * nothing about what the number is of, and a caller working out which values it leaves has to
+     * know the second — read off the position's shape instead, that would be this reading's answer
+     * about which operations a shape has, worked out a second time somewhere else.
+     */
+    public CountLeft countLeftAt(RuleKey path) {
+        Counted counted = countAt.get(path);
+        if (counted == null) {
+            return null;
+        }
+        return new CountLeft(counted.by(), leftAt(path,
+                new NumberAt.OfWhatNumber.OfWhatAnOperationAnswers(counted.by())));
+    }
+
+    /**
+     * A count the declarations write of a value, and where they leave it.
+     *
+     * <p>The two together because neither answers a reader on its own: a range with no operation is
+     * a run of numbers nothing says what of, and an operation with no range is a number nothing
+     * bounded.
+     */
+    public record CountLeft(ValueName by, NumericDomain.Bounds left) {
+
+        public CountLeft {
+            java.util.Objects.requireNonNull(by, "a count is of some operation");
+        }
+    }
+
     /** The atom of a count this reading may not have, which is what every lookup of one wants. */
     private static FactSubject atomOf(Counted counted) {
         return counted == null ? null : counted.atom();

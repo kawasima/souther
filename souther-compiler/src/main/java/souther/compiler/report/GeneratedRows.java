@@ -11,6 +11,7 @@ import souther.compiler.publish.PublishedRuleHandle;
 import souther.compiler.publish.RuleHandleProse;
 import souther.compiler.query.Sites;
 import souther.compiler.partition.BorderObligationPoint;
+import souther.compiler.partition.FixtureTemplate;
 import souther.compiler.partition.GenerationReason;
 import souther.compiler.partition.GenerationOutcome;
 import souther.compiler.partition.Generator;
@@ -337,8 +338,12 @@ public final class GeneratedRows {
          *  row with several is for is said over it ({@link #blocks}) rather than in it — the
          *  formatter parses what it is handed, and prose is not a row. */
         String written() {
+            // The name as the language writes a string, because that is what it is. Written out as
+            // it stands, a name holding a quote — which a class named after a rule about strings
+            // does — closes the literal early and the rest of it becomes source.
             return purposes.size() == 1
-                    ? "    | \"" + purposes.get(0) + "\" : (" + inputs + ") -> " + UNANSWERED
+                    ? "    | " + FixtureTemplate.quoted(purposes.get(0))
+                            + " : (" + inputs + ") -> " + UNANSWERED
                     : "    | (" + inputs + ") -> " + UNANSWERED;
         }
 
