@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import souther.compiler.Compiler;
 import souther.compiler.ast.Hir;
 import souther.compiler.diag.CompileException;
+import souther.compiler.meta.ModulePath;
 import souther.compiler.observe.FieldTypes;
 import souther.compiler.query.Bodies;
 import souther.compiler.query.Compilation;
@@ -12,6 +13,7 @@ import souther.compiler.query.Scopes;
 import souther.compiler.types.Type;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -42,6 +44,7 @@ class WhatAnApplicationStatesComesFromTheDeclarationItAppliesTest {
             data Cost   = { amount: Int }
             data Draft  = { plannedCost: Cost }
             data Basket = { items: List<Int> }
+            data Words  = { items: List<String> }
             data Open   = { id: String }
             data Closed = { id: String, closedOn: Date }
             data Deal   = Open | Closed
@@ -57,6 +60,13 @@ class WhatAnApplicationStatesComesFromTheDeclarationItAppliesTest {
             let takenFromAHelper = costOf(draft).amount
             let readTwice        = pick(costOf(draft), costOf(draft))
             let heldAsTheSum     = itself(closed)
+
+            let ints    = Basket { items = [1, 2] }
+            let strings = Words  { items = ["a"] }
+
+            let after (a, b) = List.drop(List.length(a), b)
+
+            let atTwoElements = after(after(strings.items, ints.items), strings.items)
             let widened          = {
                 let d: Deal = closed
                 d
@@ -94,6 +104,37 @@ class WhatAnApplicationStatesComesFromTheDeclarationItAppliesTest {
 
             let ofNoString  = Date(1)
             """;
+
+    /**
+     * A module publishing a definition that calls one of its own, and a module reading it.
+     *
+     * <p>What arrives at the reader is the published body with the call already put in place of —
+     * which is how a definition of another module is expanded here — so an expansion is what this
+     * reading meets when it walks the imported definition. It is reached from inside and handed in
+     * by nobody, which is why it took an import to find.
+     *
+     * <p>{@code inner} takes the sum and is given a case. What the callee declared is what its body
+     * was written against, so the binding the expansion wrote holds the sum.
+     */
+    private static final List<String> ACROSS_A_PUBLISHED_DEFINITION = List.of("""
+            module lib exposing ( Deal, Open, Closed, widened )
+
+            data Open   = { id: String }
+            data Closed = { id: String, closedOn: Date }
+            data Deal   = Open | Closed
+
+            let inner (d: Deal) = d
+
+            let widened (c: Closed) = inner(c)
+            """, """
+            module app
+
+            import lib as l ( Deal, Open, Closed, widened )
+
+            let closed = Closed { id = "d-1", closedOn = Date("2026-07-30") }
+
+            let read = widened(closed)
+            """);
 
     private final Compilation compilation = compiled();
     private final String module = compilation.modules().get(0);
@@ -142,6 +183,26 @@ class WhatAnApplicationStatesComesFromTheDeclarationItAppliesTest {
                 "the answer is what the helper's body states");
         assertEquals(1, asked.getOrDefault("Draft", 0),
                 "and `costOf` was read once, though two arguments applied it to a `Draft`");
+    }
+
+    /**
+     * One definition read at two sets of parameter types in one walk is two answers.
+     *
+     * <p>A module writes no generics, but its definitions are not monomorphic for that: what a
+     * parameter is is worked out from the body, and a use that says only that two positions hold the
+     * same thing leaves a variable, which the compiler writes back onto the declaration. Each call
+     * decides it, so one definition really is read at two things — and a reading holding one answer
+     * per callee would hand the second reading the first one's.
+     *
+     * <p>Both readings are in one walk, which is where the answers could come apart: the inner
+     * application is read to settle the outer one's, so what the outer answers is what it states at
+     * its own parameters and not what the inner one left behind.
+     */
+    @Test
+    void oneDefinitionAtTwoSetsOfParameterTypesIsTwoAnswers() {
+        assertEquals(Type.list(Type.STRING), declaredTypeOf("atTwoElements"),
+                "the outer `after` answers what its second argument holds, whatever the inner one"
+                        + " was applied to");
     }
 
     /** A library operation is its declared signature applied to what the arguments state — the same
@@ -208,6 +269,27 @@ class WhatAnApplicationStatesComesFromTheDeclarationItAppliesTest {
                 "and a temporal is built from a string, not from whatever stands there");
     }
 
+    /**
+     * A definition another module published is read through the expansion it arrives with.
+     *
+     * <p>A published body has the definitions it calls already put in place of the calls, and this
+     * reading walks published bodies like any other — so what it meets there is an expansion, and
+     * meeting one is ordinary rather than a tree somebody handed over by mistake. Which is what
+     * makes an input domain read off the callers wrong: this one is reached from inside.
+     *
+     * <p>And the binding that expansion wrote holds what the callee declared. The case that arrived
+     * is not what the body was written against, so a reading that took the argument's own type
+     * answered {@code Closed} where the declaration says the sum.
+     */
+    @Test
+    void aDefinitionAnotherModulePublishedIsReadThroughItsExpansion() {
+        assertEquals("Deal",
+                assertInstanceOf(Type.Ref.class,
+                        declaredTypeAcross(ACROSS_A_PUBLISHED_DEFINITION, "app", "read"))
+                        .name().name(),
+                "`inner` takes a `Deal`, so the binding the expansion wrote holds a `Deal`");
+    }
+
     /** The namespace of a temporal applied builds a value of it, which the library says of itself
      *  and no other namespace says. */
     @Test
@@ -267,7 +349,17 @@ class WhatAnApplicationStatesComesFromTheDeclarationItAppliesTest {
     private static Type declaredTypeIn(String source, String name) {
         Compilation read = Compilation.ofSource(source, "Main");
         read.answerEverything();
-        String module = read.modules().get(0);
+        return declaredTypeOf(read, read.modules().get(0), name);
+    }
+
+    /** The same, for a value one module of a compile of several declares. */
+    private static Type declaredTypeAcross(List<String> sources, String module, String name) {
+        Compilation read = Compilation.ofSources(sources, ModulePath.EMPTY);
+        read.answerEverything();
+        return declaredTypeOf(read, module, name);
+    }
+
+    private static Type declaredTypeOf(Compilation read, String module, String name) {
         Symbols scope = Scopes.derived(read.db(), module).value();
         Map<String, Hir.FnDef> declared =
                 read.db().ask(new Bodies.ModuleDefinitions(module)).value();

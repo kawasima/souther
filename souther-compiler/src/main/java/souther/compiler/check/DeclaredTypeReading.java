@@ -11,6 +11,7 @@ import souther.compiler.types.ValueName;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -120,6 +121,13 @@ public record DeclaredTypeReading(DeclarationFacts facts,
      * applications whose parameters read the same have one answer however they were written — and an
      * argument that states nothing leaves the position it stands at stating nothing, which two
      * applications may also share.
+     *
+     * <p>Two of them really are two. A module writes no generics, but a definition of one is not
+     * monomorphic for that: what a parameter is is worked out from the body, and a use saying only
+     * that two positions hold the same thing leaves a variable, which is written back onto the
+     * declaration for each call to decide. So a definition is read at as many parameter types as it
+     * is applied to, and a table keyed by the callee alone would answer the second reading with the
+     * first one's.
      */
     private record Specialization(ValueName callee, List<Type> parameterTypes) {}
 
@@ -214,20 +222,7 @@ public record DeclaredTypeReading(DeclarationFacts facts,
                     yield target == null ? null : facts.read().of(target, fa.field());
                 }
                 case Hir.Apply call -> applied(call);
-                // A call a pass already put the callee's body in place of. This reading is over
-                // trees no pass has expanded — a reader asks about the source as it stands or about
-                // the definitions a module settled, and neither has been — so meeting one is that
-                // rule being broken and it says so.
-                //
-                // Refused rather than read. The bindings an expansion writes carry the parameter
-                // types the callee declared, and whether one of those or the argument's own type
-                // answers at a binding is a rule of the elaboration's; read as the bindings alone,
-                // a case argument would come back as the case where the callee declared the sum.
-                // A reader that comes to hold an expanded tree needs that rule decided, which is
-                // that reader's change to make and not a fallback for it to inherit.
-                case Hir.Expansion _ -> throw new IllegalStateException(
-                        "what declarations state is read over a tree no pass has expanded, and this"
-                                + " one holds an expansion of " + e.region());
+                case Hir.Expansion ex -> ofExpansion(ex);
                 case Hir.LetIn let -> ofLet(let);
                 case Hir.Var v -> ofVar(v);
                 // It answers no value, which is a type and is this one.
@@ -294,6 +289,53 @@ public record DeclaredTypeReading(DeclarationFacts facts,
                     ? null : ofDefinition(named, value, List.of());
         }
 
+        /**
+         * What one expansion answers: what its body states, read with each binding it wrote.
+         *
+         * <p>Reached from inside rather than handed in. A definition another module publishes
+         * arrives with the helpers it calls already expanded into it, and this reading walks those
+         * bodies — so an expansion is an ordinary thing to meet, not a tree somebody passed by
+         * mistake.
+         *
+         * <p>A binding an expansion wrote names two things, and both are read: the argument it
+         * stands for, and the type the callee declared for the parameter it fills. Which of them
+         * the binding takes is the elaboration's rule — a declared sum is what the body was written
+         * against and is wider than the case that arrived, while a declared type that stands for
+         * whatever this application decides says less than the argument does. Asked there rather
+         * than decided again here, so a name in an expanded body reads as the same type the
+         * elaboration binds it at.
+         */
+        private Type ofExpansion(Hir.Expansion ex) {
+            Map<BindingId, BindingEvidence> outer = new LinkedHashMap<>();
+            for (Hir.Bound bound : ex.bound()) {
+                outer.put(bound.binder().id(),
+                        inForce.put(bound.binder().id(), boundBy(bound)));
+            }
+            try {
+                return of(ex.body());
+            } finally {
+                outer.forEach(this::restore);
+            }
+        }
+
+        /** What a binding an expansion wrote says about itself. */
+        private BindingEvidence boundBy(Hir.Bound bound) {
+            if (bound.declaredType() == null) {
+                return new BindingEvidence.BoundTo(bound.value());
+            }
+            Type arrived = of(bound.value());
+            if (arrived == null) {
+                // With nothing said about what arrived there is no pair to choose between, and what
+                // is left is the callee's own parameter type — which answers where it is a type at
+                // all rather than a variable this application was to decide.
+                Type parameter = closed(TypeOps.resolveParamType(bound.declaredType()));
+                return parameter == null ? new BindingEvidence.BoundTo(bound.value())
+                        : new BindingEvidence.DeclaredAs(parameter);
+            }
+            return new BindingEvidence.DeclaredAs(
+                    Elaborator.carriedType(bound.declaredType(), arrived, symbols()));
+        }
+
         /** What a {@code let} puts in force while its body is read. */
         private Type ofLet(Hir.LetIn let) {
             BindingId binding = let.binder().id();
@@ -312,11 +354,10 @@ public record DeclaredTypeReading(DeclarationFacts facts,
          * of the name is looking at, and the value only says what it happens to be — a case where
          * the annotation says the sum.
          *
-         * <p>A type on the binding that no author wrote is a parameter type an inlining carried
-         * here, and it is not read: whether the callee's declared type or the argument's own answers
-         * there is a rule of the elaboration's, needing both halves, and nothing hands this reading
-         * an expanded body to ask it about. {@link Hir.LetIn#annotation()} is what tells the two
-         * apart, which is why it is asked rather than the field beside it.
+         * <p>Only what an author wrote, which {@link Hir.LetIn#annotation()} is and the field beside
+         * it is not. A type on a binding that no author wrote is a parameter type an inlining
+         * carried there, and a binding an inlining wrote is read where the expansion that wrote it
+         * is — with the argument beside it, which is what deciding between the two needs.
          */
         private BindingEvidence evidenceOf(Hir.LetIn let) {
             return let.annotation() == null
