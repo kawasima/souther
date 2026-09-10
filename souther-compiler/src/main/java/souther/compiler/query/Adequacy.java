@@ -982,12 +982,16 @@ public final class Adequacy {
      * A rule an author wrote through one of them is a rule of the model, and the emitted tree has
      * it expanded into what it does.
      *
+     * <p><b>And which of the rules the rows took.</b> The account is a function of the body and the
+     * rows together — what rules there are is read off the body alone, and what stands in one is a
+     * row that took it — so the two are answered here rather than left to be put together by
+     * whoever holds both.
+     *
      * <p>Absent where the bodies were not elaborated, for the reason {@link PathReached} is: a
      * module the compile stopped in has no rules to be read, and an empty answer would say the
      * bodies state no decision.
      */
-    public record Decides(String name)
-            implements Key<Map<String, souther.compiler.partition.DecisionReading>> {
+    public record Decides(String name) implements Key<Map<String, DecisionEvidence>> {
 
         @Override
         public String module() {
@@ -995,7 +999,7 @@ public final class Adequacy {
         }
 
         @Override
-        public Answer<Map<String, souther.compiler.partition.DecisionReading>> compute(Db db) {
+        public Answer<Map<String, DecisionEvidence>> compute(Db db) {
             Answer<CheckSurface> prepared = db.ask(new Shapes.CheckSurface(name));
             Answer<RuleReadingSource> reading = Shapes.ruleReading(db, name);
             Answer<Map<String, Sig>> sigs = db.ask(new Bodies.Signatures(name));
@@ -1006,8 +1010,13 @@ public final class Adequacy {
             if (!checked.present()) {
                 return Answer.absent();
             }
+            boolean instrumented = levelOf(db).runsInstrumentedRows();
+            CoverageSites.Plan plan = checked.value().plan();
+            Optional<SiteNumbering> numbering =
+                    Optional.of(SiteNumbering.of(checked.value().numberingIdentity()));
+            Map<String, RowReading> byTarget = db.ask(new RowReadings(name)).value();
             Map<String, InputDomain> readInputs = db.ask(new Inputs(name)).value();
-            Map<String, souther.compiler.partition.DecisionReading> out = new LinkedHashMap<>();
+            Map<String, DecisionEvidence> out = new LinkedHashMap<>();
             for (Hir.BehaviorDef behavior : prepared.value().behaviors()) {
                 // A composition has no body of its own, and a behavior whose input this compilation
                 // could not read is one whose conditions name no position. Both are read off the one
@@ -1022,13 +1031,49 @@ public final class Adequacy {
                 if (analysis == null) {
                     continue;
                 }
-                out.put(spec.name(), souther.compiler.partition.DecisionReading.of(spec.name(),
-                        analysis.core(), read.reading(reading.value()),
-                        InputReads.ofParametersWhereCallsStand(read.parameterReads(),
-                                ElementBindings.of(analysis.core(), analysis.elements(),
-                                        reading.value().symbols()))));
+                souther.compiler.partition.DecisionReading rules =
+                        souther.compiler.partition.DecisionReading.of(spec.name(),
+                                analysis.core(), read.reading(reading.value()),
+                                InputReads.ofParametersWhereCallsStand(read.parameterReads(),
+                                        ElementBindings.of(analysis.core(), analysis.elements(),
+                                                reading.value().symbols())));
+                out.put(spec.name(), new DecisionEvidence(rules,
+                        whatTheRowsTook(rules, checked.value().behaviorBodies().get(spec.name()),
+                                plan, instrumented,
+                                RowReadings.readingFor(byTarget, spec.name()), numbering)));
             }
             return Answer.of(Ordered.map(out));
+        }
+
+        /**
+         * Which rules the rows of one behavior took, or why nothing was read.
+         *
+         * <p>The gates in the order the work happens in, so what comes back is what stopped it
+         * rather than whichever condition an expression happened to test first: a build that does
+         * not instrument its rows records no place, and rows nobody wrote run nowhere.
+         */
+        private static DecisionEvidence.Taken whatTheRowsTook(
+                souther.compiler.partition.DecisionReading rules, souther.compiler.core.Core emitted,
+                CoverageSites.Plan plan, boolean instrumented, RowReading observed,
+                Optional<SiteNumbering> numbering) {
+            if (!instrumented) {
+                return new DecisionEvidence.Taken.NothingWasRead(
+                        DecisionEvidence.Taken.Why.THE_ROWS_ARE_NOT_INSTRUMENTED);
+            }
+            List<RowOutcome> rows = observed.rowsSeen();
+            if (emitted == null || rows.isEmpty()) {
+                return new DecisionEvidence.Taken.NothingWasRead(
+                        DecisionEvidence.Taken.Why.NO_ROWS);
+            }
+            List<souther.compiler.coverage.AlignedObservation> runs = new ArrayList<>();
+            for (RowOutcome row : rows) {
+                if (ObservedInputs.of(row, numbering).watched()
+                        instanceof Generator.Watched.Ran(var account)) {
+                    runs.add(account);
+                }
+            }
+            return DecisionEvidence.of(
+                    souther.compiler.partition.RulesTaken.of(rules, emitted, plan), runs);
         }
     }
 

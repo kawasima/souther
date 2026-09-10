@@ -8,6 +8,7 @@ import souther.compiler.inputs.InputReading;
 import souther.compiler.inputs.InputReads;
 import souther.compiler.inputs.TermPath;
 import souther.compiler.semantics.ConditionJoin;
+import souther.compiler.types.ModelOccurrence;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -40,19 +41,48 @@ import java.util.Map;
  * reading the body.
  *
  * @param behavior     whose decision this is
- * @param rules        the rules, in the order the walk took the paths
+ * @param found        the rules, in the order the walk took the paths, each with what a run down
+ *                     its path would be seen doing
  * @param shownImpossible paths whose conditions contradict each other, which are not rules and are
  *                        not owed anything
  * @param enumeration  whether every path was taken
  */
-public record DecisionReading(String behavior, List<DecisionRule> rules, int shownImpossible,
+public record DecisionReading(String behavior, List<Ruled> found, int shownImpossible,
                               Enumeration enumeration) {
 
     /** The figure this walk stops at, read here rather than written here. */
     private static final CompositionBudget PATHS_READ = CompositionBudget.PATHS_OF_A_DECISION_READ;
 
     public DecisionReading {
-        rules = List.copyOf(rules);
+        found = List.copyOf(found);
+    }
+
+    /**
+     * One rule, and where a run that took its path would be recorded.
+     *
+     * <p>The two apart because a rule is told apart by the distinctions it consulted and not by
+     * where they are written. Held inside the rule, one body stating one rule in two places would
+     * state two.
+     *
+     * @param shownBy every condition the path consulted, in the order it met them, said as what a
+     *                run through it would be seen doing. A condition met twice is one column and
+     *                two things to be seen, since a run down the path passes both
+     */
+    public record Ruled(DecisionRule rule, List<ShownBy> shownBy) {
+
+        public Ruled {
+            shownBy = List.copyOf(shownBy);
+        }
+
+        /** Whether every condition on the path is one a run through can be recognised. */
+        public boolean everyConditionIsRecorded() {
+            return shownBy.stream().noneMatch(ShownBy.NothingIsRecorded.class::isInstance);
+        }
+    }
+
+    /** The rules themselves, for a reader that asks what the body decides and not where. */
+    public List<DecisionRule> rules() {
+        return found.stream().map(Ruled::rule).toList();
     }
 
     /** Whether the walk took every path of the body, or stopped short of some. */
@@ -84,15 +114,16 @@ public record DecisionReading(String behavior, List<DecisionRule> rules, int sho
         // the same conditions under an order this walk does not take.
         ConditionNumbering numbering = new ConditionNumbering(read.symbols().module(), behavior);
         Walk walk = new Walk(read, LiveFlow.of(body), numbering);
-        List<List<DecidedCondition>> ways = walk.through(body, reads);
-        List<DecisionRule> rules = new ArrayList<>();
+        List<List<Consulted>> ways = walk.through(body, reads);
+        List<Ruled> rules = new ArrayList<>();
         int contradictory = 0;
-        for (List<DecidedCondition> way : ways) {
+        for (List<Consulted> way : ways) {
             Map<DecisionCondition, DecidedCondition> vector = vectorOf(way);
             if (vector == null) {
                 contradictory++;
             } else {
-                rules.add(new DecisionRule(vector));
+                rules.add(new Ruled(new DecisionRule(vector),
+                        way.stream().map(Consulted::shown).toList()));
             }
         }
         return new DecisionReading(behavior, rules, contradictory,
@@ -108,16 +139,25 @@ public record DecisionReading(String behavior, List<DecisionRule> rules, int sho
      * body asking the same thing twice states one distinction, and a column apiece would admit an
      * assignment where it holds and does not.
      */
-    private static Map<DecisionCondition, DecidedCondition> vectorOf(List<DecidedCondition> way) {
+    private static Map<DecisionCondition, DecidedCondition> vectorOf(List<Consulted> way) {
         Map<DecisionCondition, DecidedCondition> vector = new LinkedHashMap<>();
-        for (DecidedCondition each : way) {
-            DecidedCondition already = vector.putIfAbsent(each.condition(), each);
-            if (already != null && !already.equals(each)) {
+        for (Consulted each : way) {
+            DecidedCondition already = vector.putIfAbsent(each.answer().condition(), each.answer());
+            if (already != null && !already.equals(each.answer())) {
                 return null;
             }
         }
         return vector;
     }
+
+    /**
+     * One condition a path consulted: what it came out as, and where a run through it is seen.
+     *
+     * <p>The walk's own value and no reader's. What a rule is made of is the first half and what
+     * joins it to a run is the second, and they are collected together because they are one act —
+     * recognising a condition is where both are known.
+     */
+    private record Consulted(DecidedCondition answer, ShownBy shown) {}
 
     /**
      * The walk, and what is the same at every step of it.
@@ -132,7 +172,7 @@ public record DecisionReading(String behavior, List<DecisionRule> rules, int sho
         private final InputReading read;
         private final LiveFlow flow;
         private final ConditionNumbering numbering;
-        private final Map<Site, List<List<DecidedCondition>>> walked = new HashMap<>();
+        private final Map<Site, List<List<Consulted>>> walked = new HashMap<>();
         private int taken;
         private boolean stopped;
 
@@ -168,13 +208,13 @@ public record DecisionReading(String behavior, List<DecisionRule> rules, int sho
          * times. The ways through a subtree do not depend on how it was arrived at, so they are
          * asked for and filed.
          */
-        private List<List<DecidedCondition>> through(Core e, InputReads reads) {
+        private List<List<Consulted>> through(Core e, InputReads reads) {
             Site site = new Site(e, reads);
-            List<List<DecidedCondition>> already = walked.get(site);
+            List<List<Consulted>> already = walked.get(site);
             if (already != null) {
                 return already;
             }
-            List<List<DecidedCondition>> made = waysOut(e, reads);
+            List<List<Consulted>> made = waysOut(e, reads);
             walked.put(site, made);
             return made;
         }
@@ -193,20 +233,20 @@ public record DecisionReading(String behavior, List<DecisionRule> rules, int sho
             }
         }
 
-        private List<List<DecidedCondition>> waysOut(Core e, InputReads reads) {
+        private List<List<Consulted>> waysOut(Core e, InputReads reads) {
             return switch (e) {
                 case Core.If iff -> {
-                    List<List<DecidedCondition>> out = new ArrayList<>();
+                    List<List<Consulted>> out = new ArrayList<>();
                     Condition condition = Condition.of(iff.cond(), reads, symbols(), numbering);
                     for (boolean holding : new boolean[] {true, false}) {
                         // The arm walked once, whatever the condition's ways of coming out this
                         // way. A subtree walked once per way is a subtree whose own conditions are
                         // met once per way, and a condition is met once however many paths reach
                         // it.
-                        List<List<DecidedCondition>> after =
+                        List<List<Consulted>> after =
                                 through(holding ? iff.then() : iff.els(), reads);
-                        for (List<DecidedCondition> way : waysThrough(condition, holding)) {
-                            for (List<DecidedCondition> rest : after) {
+                        for (List<Consulted> way : waysThrough(condition, holding)) {
+                            for (List<Consulted> rest : after) {
                                 add(out, and(way, rest));
                             }
                         }
@@ -214,18 +254,18 @@ public record DecisionReading(String behavior, List<DecisionRule> rules, int sho
                     yield out;
                 }
                 case Core.Match match -> {
-                    List<List<DecidedCondition>> out = new ArrayList<>();
-                    List<List<DecidedCondition>> before = through(match.scrutinee(), reads);
+                    List<List<Consulted>> out = new ArrayList<>();
+                    List<List<Consulted>> before = through(match.scrutinee(), reads);
                     for (int part = 0; part < match.cases().size(); part++) {
                         Core.Case arm = match.cases().get(part);
                         // Asked once per arm, however many ways lead to the fork. Reaching this arm
                         // is one thing the fork says, and asking again for each way in would be the
                         // reading naming one condition once per path that meets it.
-                        DecidedCondition selected = selecting(match, arm, part, reads);
+                        Consulted selected = selecting(match, arm, part, reads);
                         InputReads inside = reads.insideArm(match, arm, symbols());
-                        List<List<DecidedCondition>> after = through(arm.body(), inside);
-                        for (List<DecidedCondition> way : before) {
-                            for (List<DecidedCondition> rest : after) {
+                        List<List<Consulted>> after = through(arm.body(), inside);
+                        for (List<Consulted> way : before) {
+                            for (List<Consulted> rest : after) {
                                 add(out, and(and(way, selected), rest));
                             }
                         }
@@ -235,11 +275,11 @@ public record DecisionReading(String behavior, List<DecisionRule> rules, int sho
                 // A value nothing reads decides nothing about the answer, so a fork inside it
                 // divides no row — the rule a comparison there draws no line under.
                 case Core.LetIn let -> {
-                    List<List<DecidedCondition>> out = new ArrayList<>();
-                    List<List<DecidedCondition>> value = flow.reads(let)
+                    List<List<Consulted>> out = new ArrayList<>();
+                    List<List<Consulted>> value = flow.reads(let)
                             ? through(let.value(), reads) : List.of(List.of());
-                    for (List<DecidedCondition> first : value) {
-                        for (List<DecidedCondition> body
+                    for (List<Consulted> first : value) {
+                        for (List<Consulted> body
                                 : through(let.body(), reads.and(let.binder(), let.value()))) {
                             add(out, and(first, body));
                         }
@@ -249,12 +289,12 @@ public record DecisionReading(String behavior, List<DecisionRule> rules, int sho
                 default -> {
                     List<Core> children = new ArrayList<>();
                     Core.forEachChild(e, children::add);
-                    List<List<DecidedCondition>> out = new ArrayList<>();
+                    List<List<Consulted>> out = new ArrayList<>();
                     out.add(List.of());
                     for (Core child : children) {
-                        List<List<DecidedCondition>> longer = new ArrayList<>();
-                        for (List<DecidedCondition> so : out) {
-                            for (List<DecidedCondition> more : through(child, reads)) {
+                        List<List<Consulted>> longer = new ArrayList<>();
+                        for (List<Consulted> so : out) {
+                            for (List<Consulted> more : through(child, reads)) {
                                 add(longer, and(so, more));
                             }
                         }
@@ -274,25 +314,25 @@ public record DecisionReading(String behavior, List<DecisionRule> rules, int sho
          * by the right settling it is another — which is what makes {@code A} failing and
          * {@code B} failing two rules rather than one answer naming neither.
          */
-        private List<List<DecidedCondition>> waysThrough(Condition node, boolean holding) {
+        private List<List<Consulted>> waysThrough(Condition node, boolean holding) {
             if (!(node instanceof Condition.Joined joined)) {
                 return List.of(List.of(decided(node, holding)));
             }
-            List<List<DecidedCondition>> out = new ArrayList<>();
+            List<List<Consulted>> out = new ArrayList<>();
             if (joined.how().under(holding) == ConditionJoin.BOTH) {
-                for (List<DecidedCondition> left : waysThrough(joined.left(), holding)) {
-                    for (List<DecidedCondition> right : waysThrough(joined.right(), holding)) {
+                for (List<Consulted> left : waysThrough(joined.left(), holding)) {
+                    for (List<Consulted> right : waysThrough(joined.right(), holding)) {
                         add(out, and(left, right));
                     }
                 }
                 return out;
             }
             // The left settling it, which is the left coming out the way the whole node did.
-            for (List<DecidedCondition> left : waysThrough(joined.left(), holding)) {
+            for (List<Consulted> left : waysThrough(joined.left(), holding)) {
                 add(out, left);
             }
-            for (List<DecidedCondition> left : waysThrough(joined.left(), !holding)) {
-                for (List<DecidedCondition> right : waysThrough(joined.right(), holding)) {
+            for (List<Consulted> left : waysThrough(joined.left(), !holding)) {
+                for (List<Consulted> right : waysThrough(joined.right(), holding)) {
                     add(out, and(left, right));
                 }
             }
@@ -306,15 +346,28 @@ public record DecisionReading(String behavior, List<DecisionRule> rules, int sho
          * it states and is the reading every other reader of one takes. A shape below the joins is
          * one condition, so what comes back is one answer.
          */
-        private DecidedCondition decided(Condition node, boolean holding) {
-            return read(ReachingCuts.stating(node, inputs(), holding, rules()).get(0), holding);
+        private Consulted decided(Condition node, boolean holding) {
+            DecidedCondition answer =
+                    read(ReachingCuts.stating(node, inputs(), holding, rules()).get(0), holding);
+            // Where a run through it is recorded is the comparison's own construct of the model,
+            // which is what the tree the rules are read off and the tree that runs agree about. A
+            // condition of any other shape has none to be seen at, and says so.
+            ModelOccurrence states = node instanceof Condition.Compares one
+                    ? one.states().orElse(null) : null;
+            return new Consulted(answer, states == null
+                    ? new ShownBy.NothingIsRecorded(answer.condition())
+                    : new ShownBy.AtAComparison(states, holding));
         }
 
         /** What entering {@code arm} of {@code match} says the scrutinee turned out to be. */
-        private DecidedCondition selecting(Core.Match match, Core.Case arm, int part,
-                                           InputReads reads) {
-            return read(ReachingCuts.entering(match, arm, part, inputs(), reads, rules(),
-                    numbering), true);
+        private Consulted selecting(Core.Match match, Core.Case arm, int part, InputReads reads) {
+            DecidedCondition answer = read(ReachingCuts.entering(match, arm, part, inputs(), reads,
+                    rules(), numbering), true);
+            ModelOccurrence fork =
+                    ModelOccurrence.statedAt(match.place().occurrence()).orElse(null);
+            return new Consulted(answer, fork == null
+                    ? new ShownBy.NothingIsRecorded(answer.condition())
+                    : new ShownBy.AtAnArm(fork, part));
         }
 
         /**
@@ -350,7 +403,7 @@ public record DecisionReading(String behavior, List<DecisionRule> rules, int sho
          * than one, and a figure spent per list would let the product of two lists each just under
          * it run to the square of the figure.
          */
-        private void add(List<List<DecidedCondition>> out, List<DecidedCondition> way) {
+        private void add(List<List<Consulted>> out, List<Consulted> way) {
             if (taken >= PATHS_READ.maximum()) {
                 stopped = true;
                 return;
@@ -359,16 +412,15 @@ public record DecisionReading(String behavior, List<DecisionRule> rules, int sho
             out.add(way);
         }
 
-        private static List<DecidedCondition> and(List<DecidedCondition> way,
-                                                  List<DecidedCondition> more) {
-            List<DecidedCondition> out = new ArrayList<>(way);
+        private static List<Consulted> and(List<Consulted> way,
+                                                  List<Consulted> more) {
+            List<Consulted> out = new ArrayList<>(way);
             out.addAll(more);
             return List.copyOf(out);
         }
 
-        private static List<DecidedCondition> and(List<DecidedCondition> way,
-                                                  DecidedCondition more) {
-            return more == null ? way : and(way, List.of(more));
+        private static List<Consulted> and(List<Consulted> way, Consulted more) {
+            return and(way, List.of(more));
         }
     }
 }
