@@ -35,14 +35,15 @@ public sealed interface WhichLine {
      * {@code Bool.not(String.length(name) < 1 || String.length(code) < 1)} are one line: they are on
      * two numbers, and {@link LineFacts} says the same of both.
      *
-     * <p>A part of a {@code data}'s clause, which is where this parts from {@link OfAComparisonOfAPart}.
+     * <p>A line of a {@code data}'s clause, which is where this parts from
+     * {@link OfAComparisonOfAPart}.
      * The lines a declaration draws are looked up by the words that declaration wrote
      * ({@link souther.compiler.check.DeclaredBorders}), and a behavior's clause has no such reading —
      * so which kind of clause the part is of is in the type rather than asked of one that arrives.
      */
-    record OfAPart(DeclaredLine drawnBy) implements WhichLine {
+    record OfADeclarationsLine(DeclaredLine drawnBy) implements WhichLine {
 
-        public OfAPart {
+        public OfADeclarationsLine {
             if (drawnBy == null) {
                 throw new IllegalArgumentException("a line of a declaration is some part's");
             }

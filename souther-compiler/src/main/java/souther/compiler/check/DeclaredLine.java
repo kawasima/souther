@@ -51,45 +51,47 @@ public sealed interface DeclaredLine {
     }
 
     /**
-     * The line several statements of one conjunct leave together, which is no one of them.
+     * The line an authored conjunct draws, which is no statement of it.
      *
-     * <p>What the reading established, and no more. {@code n /= 0 && n /= 1} written into one
-     * conjunct places no end at all — each side names a value and orders nothing — and what the
-     * values are left running from is the two of them together, found by taking the conjunct away.
-     * So the line is the conjunct's, and which of its statements are about this number is what
-     * tells it from the line the same conjunct leaves on another.
+     * <p>What taking a conjunct away establishes. {@code n /= 0 && n /= 1} written into one conjunct
+     * places no end at all — each side names a value and orders nothing — and what the values are
+     * left running from is found by taking the conjunct away. So the line is the conjunct's.
      *
-     * <p><b>Together, and not what the author wrote between them.</b> These reach this reading from
-     * a conjunction as readily as from a choice: what is known is that the conjunct was taken away
-     * and the end moved, which says nothing about the connective. Named for one of the two, the type
-     * would be stating something the reading never established, and every reader of a line would be
-     * told a connective by a value that never saw one.
+     * <p><b>However few of its statements are on this number.</b> The intervention is the same one
+     * whether the conjunct states one thing here or several: it removes everything the conjunct
+     * stated, so what moved the end is the conjunct. A conjunct stating {@code a /= 100} about one
+     * number and {@code b >= 1} about another pairs one statement with the first number, and a line
+     * read from that as the statement's would be saying that {@code a /= 100} placed an end which
+     * {@code b >= 1} is why.
+     *
+     * <p><b>The statements pair the line, and did not draw it.</b> Which of the conjunct's
+     * statements are about this number is what tells this line from the line the same conjunct draws
+     * on another number, and it is nothing more than that: they reach this reading from a
+     * conjunction as readily as from a choice, and what is known is that the conjunct was taken away
+     * and the end moved.
      *
      * <p>Which conjunct it is is read off them. Held beside them, the pair would be a second way to
      * the rule this line is about, and a line with two of those can be built about two rules.
      *
-     * @param among the conjunct's statements which are about this number. Not the one that drew the
-     *              line — none of them did — and not left out either, since two lines of one
-     *              conjunct on two numbers are told apart by nothing else
+     * @param pairedWith the conjunct's statements which are about this number
      */
-    record OfStatementsTogether(Set<InvariantStatementId> among) implements DeclaredLine {
+    record OfAConjunct(Set<InvariantStatementId> pairedWith) implements DeclaredLine {
 
-        public OfStatementsTogether {
-            among = Set.copyOf(among);
-            if (among.size() < 2) {
+        public OfAConjunct {
+            pairedWith = Set.copyOf(pairedWith);
+            if (pairedWith.isEmpty()) {
                 throw new IllegalArgumentException(
-                        "a line between a conjunct's statements is drawn by more than one of them: "
-                                + among);
+                        "a conjunct's line is paired by something the conjunct states");
             }
-            if (among.stream().map(InvariantStatementId::part).distinct().count() != 1) {
+            if (pairedWith.stream().map(InvariantStatementId::part).distinct().count() != 1) {
                 throw new IllegalArgumentException(
-                        "a conjunct draws its line between statements of its own: " + among);
+                        "a conjunct draws its line paired with statements of its own: " + pairedWith);
             }
         }
 
         @Override
         public PartId<RuleRef.Invariant> part() {
-            return among.iterator().next().part();
+            return pairedWith.iterator().next().part();
         }
     }
 }

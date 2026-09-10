@@ -93,7 +93,7 @@ class EveryArmOfAPublishedLineIsPairedWithTheRuleThatHasThatKindTest {
             arms.put(each.getSimpleName(), "");
         }
 
-        assertEquals(new TreeMap<>(Map.of("OfAPart", "", "OfAComparisonOfAPart", "",
+        assertEquals(new TreeMap<>(Map.of("OfADeclarationsLine", "", "OfAComparisonOfAPart", "",
                         "OfAComparison", "")),
                 new TreeMap<>(arms),
                 "the arms a line of the model has, which is what the words above are the document's"

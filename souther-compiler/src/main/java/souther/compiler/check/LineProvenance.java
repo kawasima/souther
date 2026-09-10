@@ -25,6 +25,20 @@ public sealed interface LineProvenance {
     Set<InvariantStatementId> statements();
 
     /**
+     * The statement this establishes placed the end, or null where nothing here establishes that.
+     *
+     * <p>A question only the reading of comparisons can answer. What the other reading intervenes
+     * on is an authored conjunct, and it takes away everything that conjunct stated — so an end it
+     * moves was moved by the conjunct, whatever the conjunct states about this number. Answered
+     * from how many of the conjunct's statements are on this number, a conjunct stating one thing
+     * here and another about the number beside it says the first placed an end that the second is
+     * why: {@code a /= 100 && b >= 1} written into one conjunct pairs only {@code a /= 100} with
+     * {@code a}, and where {@code a}'s floor comes from {@code b >= 1} through a rule relating the
+     * two, taking the conjunct away moves it.
+     */
+    InvariantStatementId placedBy();
+
+    /**
      * The end a statement of the clause placed, read off that statement.
      *
      * @param statement which statement of which conjunct placed it
@@ -45,6 +59,12 @@ public sealed interface LineProvenance {
         @Override
         public Set<InvariantStatementId> statements() {
             return Set.of(statement);
+        }
+
+        /** This one, which is what reading the comparison established. */
+        @Override
+        public InvariantStatementId placedBy() {
+            return statement;
         }
     }
 
@@ -85,23 +105,18 @@ public sealed interface LineProvenance {
         public Set<InvariantStatementId> statements() {
             return pairedWith;
         }
-    }
 
-    /**
-     * The one statement this is about, or null where it is about several.
-     *
-     * <p>What a piece of evidence can say on its own, which is not which lines there are. A comparison
-     * that placed an end is about the statement it read; a counterfactual is about the statements of
-     * the conjunct it took away which are on this number, and where the conjunct stated one of them
-     * the intervention was of that statement and nothing else.
-     *
-     * <p>Null rather than a statement chosen from several, because taking a part away takes away
-     * everything it stated: an answer picking one of them would be a claim the intervention never
-     * tested. What the several come to is read where every piece of evidence about one end is in
-     * hand ({@link DeclaredBounds.End#drawn}).
-     */
-    default InvariantStatementId aboutOneStatement() {
-        Set<InvariantStatementId> said = statements();
-        return said.size() == 1 ? said.iterator().next() : null;
+        /**
+         * None, however few of the conjunct's statements are on this number.
+         *
+         * <p>What was taken away is the conjunct, so what moved the end is the conjunct. How many of
+         * its statements happen to be about this number is a fact about the pairing and not about
+         * the intervention: read as one where there is one, a statement is said to have placed an
+         * end that another statement of the same conjunct is why.
+         */
+        @Override
+        public InvariantStatementId placedBy() {
+            return null;
+        }
     }
 }

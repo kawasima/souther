@@ -145,7 +145,7 @@ class TwoSpellingsOfOneLevelAreOneDemandTest {
     /** One clause of one declaration, which is only an identity here. */
     private static AuthoredLine aLine() {
         return new AuthoredLine(
-                new WhichLine.OfAPart(new DeclaredLine.OfAStatement(new InvariantStatementId(
+                new WhichLine.OfADeclarationsLine(new DeclaredLine.OfAStatement(new InvariantStatementId(
                         new PartId<>(new RuleRef.Invariant(new Clause.Ref(
                                 new Clause.Id(
                                         TypeSymbols.declared(

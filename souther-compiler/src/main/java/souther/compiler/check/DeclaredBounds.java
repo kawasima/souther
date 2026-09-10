@@ -56,39 +56,41 @@ public final class DeclaredBounds {
         /**
          * The lines this end is owed to, read off everything established about it.
          *
-         * <p>A statement's line wherever the evidence is about one statement, whichever reading
-         * established it: a comparison that placed the end, and a conjunct whose one statement on
-         * this number accounts for it, are the same line found two ways and one row to write.
+         * <p>A statement's line where a comparison placed the end, which is the one reading that
+         * establishes a statement placed anything. What the other reading takes away is a whole
+         * conjunct, so the line it establishes is the conjunct's however few of its statements are
+         * on this number.
          *
-         * <p>And a line of several statements together only where none of them is a line here
-         * already. Taking a conjunct away takes away every statement it made, so where one of them
-         * placed this end on its own the intervention was bound to move it — what the coarser
+         * <p>And the conjunct's line only where none of the statements it is paired with is a line
+         * here already. Taking a conjunct away takes away every statement it made, so where one of
+         * them placed this end on its own the intervention was bound to move it — what the coarser
          * reading established is the line that is already here, and nothing beside it. Read as a
          * line of its own, {@code n >= 0 && n /= 100} written into one conjunct owes two rows at the
          * bottom of its range, where the author drew one.
          *
          * <p>Not a rule about which reading wins. Where the ends are apart there is no such
          * subsumption to make and both are lines: {@code n >= 0 && n /= 0} places one at nought and
-         * leaves the values starting at one, and the second is a line neither statement drew.
+         * leaves the values starting at one, and the second is a line no statement of the conjunct
+         * drew.
          */
         public List<DeclaredLine> drawn() {
             Set<InvariantStatementId> here = new LinkedHashSet<>();
             for (LineProvenance each : found) {
-                InvariantStatementId one = each.aboutOneStatement();
-                if (one != null) {
-                    here.add(one);
+                InvariantStatementId placed = each.placedBy();
+                if (placed != null) {
+                    here.add(placed);
                 }
             }
             List<DeclaredLine> out = new ArrayList<>();
             here.forEach(each -> out.add(new DeclaredLine.OfAStatement(each)));
             for (LineProvenance each : found) {
-                if (each.aboutOneStatement() != null
+                if (each.placedBy() != null
                         || each.statements().stream().anyMatch(here::contains)) {
                     continue;
                 }
-                DeclaredLine together = new DeclaredLine.OfStatementsTogether(each.statements());
-                if (!out.contains(together)) {
-                    out.add(together);
+                DeclaredLine conjunct = new DeclaredLine.OfAConjunct(each.statements());
+                if (!out.contains(conjunct)) {
+                    out.add(conjunct);
                 }
             }
             return List.copyOf(out);

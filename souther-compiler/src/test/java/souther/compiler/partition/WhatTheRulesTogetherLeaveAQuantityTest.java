@@ -139,7 +139,7 @@ class WhatTheRulesTogetherLeaveAQuantityTest {
 
     /** One clause of one declaration, told from the next by which clause of it this is. */
     static AuthoredLine aLine(int clause) {
-        return new AuthoredLine(new WhichLine.OfAPart(
+        return new AuthoredLine(new WhichLine.OfADeclarationsLine(
                 new DeclaredLine.OfAStatement(new InvariantStatementId(new PartId<>(
                         new souther.compiler.check.RuleRef.Invariant(
                                 new souther.compiler.check.Clause.Ref(

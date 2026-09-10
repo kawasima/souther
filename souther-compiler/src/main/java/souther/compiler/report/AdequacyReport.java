@@ -3009,7 +3009,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                                        AuthoredLine line) {
         ObjectNode which = into.putObject("which");
         switch (line.which()) {
-            case souther.compiler.partition.WhichLine.OfAPart it -> {
+            case souther.compiler.partition.WhichLine.OfADeclarationsLine it -> {
                 which.put("kind", "part");
                 ruleId(which.putObject("rule"), it.rule());
                 which.put("part", it.part().ordinal());

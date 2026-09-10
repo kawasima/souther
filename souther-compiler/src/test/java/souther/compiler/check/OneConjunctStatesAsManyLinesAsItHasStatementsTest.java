@@ -134,13 +134,14 @@ class OneConjunctStatesAsManyLinesAsItHasStatementsTest {
         PartId<RuleRef.Invariant> floor = new PartId<>(holes, 1);
 
         assertEquals(java.util.Set.of(
-                        new DeclaredLine.OfStatementsTogether(java.util.Set.of(
+                        new DeclaredLine.OfAConjunct(java.util.Set.of(
                                 new InvariantStatementId(apart, 0),
                                 new InvariantStatementId(apart, 1))),
-                        new DeclaredLine.OfAStatement(new InvariantStatementId(floor, 0))),
+                        new DeclaredLine.OfAConjunct(
+                                java.util.Set.of(new InvariantStatementId(floor, 0)))),
                 java.util.Set.copyOf(drawn),
-                "what `apart` accounts for is the conjunct's line, drawn between the statements"
-                        + " about the number, and neither of them alone drew it");
+                "each is the line of the conjunct taking it away moved, and neither is a statement's"
+                        + " — including the conjunct that states one thing about this number");
     }
 
     /**
@@ -176,11 +177,51 @@ class OneConjunctStatesAsManyLinesAsItHasStatementsTest {
         List<DeclaredLine> drawn = drawnAt(MOVED, "m.v = 1");
         PartId<RuleRef.Invariant> part = new PartId<>(drawn.get(0).part().rule(), 0);
 
-        assertEquals(List.of(new DeclaredLine.OfStatementsTogether(java.util.Set.of(
+        assertEquals(List.of(new DeclaredLine.OfAConjunct(java.util.Set.of(
                         new InvariantStatementId(part, 0), new InvariantStatementId(part, 1)))),
                 drawn,
                 "where the values start is the conjunct's, which no statement of it placed");
     }
+
+    /**
+     * A conjunct paired with one statement on a number still draws the conjunct's line there.
+     *
+     * <p>What the pairing counts and what the intervention removes are different things. {@code
+     * coupled} states {@code a /= 100} about one number and {@code b >= 1} about another, so only
+     * the first is paired with {@code a} — and where {@code a}'s floor comes from {@code b >= 1}
+     * through the rule relating the two, taking the conjunct away moves it. Read from the pairing,
+     * {@code a /= 100} is said to have placed an end that {@code b >= 1} is why, which no
+     * counterfactual here tested.
+     */
+    @Test
+    void andWherePairedWithOneStatementItIsStillTheConjunctsLine() {
+        List<DeclaredLine> drawn = drawnAt(COUPLED, "p.a = 1");
+
+        assertEquals(List.of(new DeclaredLine.OfAConjunct(java.util.Set.of(
+                        new InvariantStatementId(
+                                new PartId<>(drawn.get(0).part().rule(), 0), 0)))),
+                drawn,
+                "the conjunct moved the end, and which of its statements is on this number is what"
+                        + " pairs the line rather than what drew it");
+    }
+
+    private static final String COUPLED = """
+            module example.forms
+
+            let coupled (a: Int, b: Int) = a /= 100 && b >= 1
+
+            data Pair = { a: Int, b: Int }
+                invariant coupled = coupled(a, b)
+                invariant ordered = a >= b
+
+            data Ok
+
+            behavior p : (p: Pair) -> Ok
+            let p (p) = Ok
+
+            example p
+                | "a" : (Pair { a = 5, b = 3 }) -> Ok
+            """;
 
     private static final String TOGETHER = """
             module example.forms

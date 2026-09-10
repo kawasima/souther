@@ -33,8 +33,8 @@ import java.util.Map;
  * comes back for a name nothing declares is then one answer and not two, because there was one
  * lookup.
  *
- * <p>Nothing here is an identity. What tells one authored line from another is the clause and which
- * of its conjuncts drew the end ({@link souther.compiler.partition.AuthoredLine}), and that is what
+ * <p>Nothing here is an identity. What tells one authored line from another is which line of the
+ * clause it is ({@link souther.compiler.partition.AuthoredLine}), and that is what
  * this is keyed by; what it hands back is what to call the line. Held as part of the identity,
  * the frames above would make one line two.
  */

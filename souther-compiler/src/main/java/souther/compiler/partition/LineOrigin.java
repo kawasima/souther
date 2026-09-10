@@ -481,7 +481,8 @@ public sealed interface LineOrigin extends RuleEvidenceOrigin {
         return switch (this) {
             // The part that drew it, which is what named the line where a declaration wrote it.
             case InvariantOrigin i ->
-                    new AuthoredLine(new WhichLine.OfAPart(i.drawnBy()), lineFacts(), List.of());
+                    new AuthoredLine(new WhichLine.OfADeclarationsLine(i.drawnBy()),
+                            lineFacts(), List.of());
             // The rule and nothing under it. A comparison is a rule apiece — a condition holding
             // three comparisons is three rules — so there is no second line of it to tell this one
             // from, and a number here would be one this reading made up to fill a field.

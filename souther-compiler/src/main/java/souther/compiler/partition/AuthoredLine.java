@@ -23,11 +23,16 @@ import java.util.Set;
  * is one. Said again here as "no behavior", this would be a second answer to a question the rule
  * already answers, and the two would differ for whichever kind of rule was added next.
  *
- * <p><b>Not the rule alone.</b> One clause places as many lines as it has conjuncts with an end in
- * them: {@code invariant within = value >= 1 && value <= 10} is one {@link RuleRef.Invariant} and
- * two lines, and a row at the bottom of the range is no evidence about the top. So which conjunct
- * drew it is part of this, and it is the clause's own text rather than the number it was written
- * about ({@link souther.compiler.check.DeclaredBounds.Drawn}).
+ * <p><b>Not the rule alone.</b> One clause places as many lines as the readings of it draw:
+ * {@code invariant within = value >= 1 && value <= 10} is one {@link RuleRef.Invariant} and two
+ * lines, and a row at the bottom of the range is no evidence about the top. So which line of the
+ * clause it is is part of this, and it is the clause's own text rather than the number it was
+ * written about ({@link souther.compiler.check.DeclaredLine}).
+ *
+ * <p><b>And which line of a clause is not which conjunct of it.</b> A conjunct states as many
+ * comparisons as a reading arrives at inside it, and it can leave the values somewhere none of them
+ * states: {@code Bool.not(String.length(name) < 1 || String.length(code) < 1)} is one conjunct
+ * placing an end on each of two numbers. Read as the conjunct, those two are one line.
  *
  * <p><b>And what the line is.</b> Two lines of one rule at one value are told apart by what each
  * says about its own value ({@link LineFacts}) — {@code value >= 5 && value <= 5} places a minimum
@@ -167,7 +172,7 @@ public record AuthoredLine(WhichLine which, LineFacts facts,
      * would be naming a part nobody issued.
      */
     public Optional<souther.compiler.check.DeclaredBorders.Key> declaredLine() {
-        return which instanceof WhichLine.OfAPart it
+        return which instanceof WhichLine.OfADeclarationsLine it
                 ? Optional.of(new souther.compiler.check.DeclaredBorders.Key(it.drawnBy()))
                 : Optional.empty();
     }
