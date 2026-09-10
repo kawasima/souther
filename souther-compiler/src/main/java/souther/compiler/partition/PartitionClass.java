@@ -1,8 +1,11 @@
 package souther.compiler.partition;
 
 import souther.compiler.inputs.Refinement;
+import souther.compiler.types.TypeSymbol;
 import souther.compiler.values.Value;
 import souther.compiler.values.ValueSet;
+
+import java.util.List;
 
 /**
  * One equivalence class of an input position: a set of values expected to behave the same way.
@@ -91,6 +94,22 @@ public record PartitionClass(String id, String label, Recognition recognises,
                     + " and cannot be made a class of " + number);
         }
         return new PartitionClass(id, label, recognises, representatives, denotes, selects, number);
+    }
+
+    /**
+     * The same class, asked of the value inside the names the position writes it under.
+     *
+     * <p>What the class means is about the values the position holds, and a row writes one of them
+     * under whatever names the position wears — so the two are one class and the names are how a
+     * row spells it. Said by whoever assembles the measure, which is where the position's type is
+     * read; a class made from the rules alone has no way of knowing what wears it.
+     *
+     * <p>Nothing said where the position wears nothing ({@link Recognition.Under#of}), so a class
+     * of a bare position stays the class it was rather than becoming a second spelling of it.
+     */
+    public PartitionClass under(List<TypeSymbol> worn) {
+        return new PartitionClass(id, label, Recognition.Under.of(worn, recognises),
+                representatives, denotes, selects, of);
     }
 
     /**
