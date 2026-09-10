@@ -1,7 +1,7 @@
 package souther.compiler.query;
 
-import souther.compiler.coverage.AlignedObservation;
 import souther.compiler.partition.DecisionReading;
+import souther.compiler.partition.Generator;
 import souther.compiler.partition.DecisionRule;
 import souther.compiler.partition.RulesTaken;
 
@@ -30,14 +30,14 @@ public record DecisionEvidence(DecisionReading read, Taken taken) {
     }
 
     /**
-     * The rules nothing has been shown to stand in.
+     * The rules no row was seen taking.
      *
-     * <p>Neither covered nor a gap. A row standing in a rule is what shows something can, and
-     * nothing has looked anywhere else — so a row is not owed here and the rule has not gone away.
-     * What would move one of these is a search that composes a value and sees it take the rule,
-     * which is evidence about the model rather than about the rows.
+     * <p>Named for what this knows, which is the body and the rows written for it. Whether anything
+     * can stand in one of these is a further question and a further answer — a search settles it —
+     * and a name that said nothing stands in them would be this answering about a world it has not
+     * looked at.
      */
-    public List<DecisionRule> nothingStandsIn() {
+    public List<DecisionRule> notTakenByRows() {
         Set<DecisionRule> covered = taken instanceof Taken.Read seen ? seen.rules() : Set.of();
         return read.rules().stream().filter(rule -> !covered.contains(rule)).toList();
     }
@@ -55,16 +55,52 @@ public record DecisionEvidence(DecisionReading read, Taken taken) {
         record NothingWasRead(Why why) implements Taken {}
 
         /**
-         * The rules the runs took, and the runs whose rule could not be told.
+         * What every row of the behavior came to.
          *
-         * <p>The second is beside the first rather than folded into it. A run this compiler cannot
-         * place is not a run that took no rule — it took one — and counting it as neither would make
-         * the reading look complete over rows it could say nothing about.
+         * <p><b>Three states and every row is in one.</b> A row whose rule was told is placed; a
+         * row something watched and nothing could place took a rule this reading cannot recognise;
+         * and a row nothing watched says nothing about which rule it took. The three are different
+         * facts and the third is not the second — a run with no account did not go nowhere, it went
+         * somewhere nothing recorded.
+         *
+         * <p>Held to adding up, so that a row cannot go missing between the rows read and what is
+         * counted here. That is what a reading of this is for: the numbers say the measurement was
+         * made in full only where every row was watched, and a row dropped on the way would make an
+         * incomplete reading look complete.
+         *
+         * @param rowsRead    how many rows this reading was given, which the three below are the
+         *                    whole of. Held beside them so that a row cannot go missing between
+         *                    the rows written and what is counted: a reading that dropped one is
+         *                    refused here rather than reported as a reading of the rest
+         * @param rules       the rules some row was seen taking
+         * @param rowsPlaced  how many rows were placed at one of them
+         * @param rowsNotPlaced rows something watched whose rule this reading could not tell
+         * @param rowsNotWatched rows nothing watched, which is this compiler's shortfall and not
+         *                       anything about the model
          */
-        record Read(Set<DecisionRule> rules, int runsNotPlaced) implements Taken {
+        record Read(int rowsRead, Set<DecisionRule> rules, int rowsPlaced, int rowsNotPlaced,
+                    int rowsNotWatched) implements Taken {
 
             public Read {
                 rules = new LinkedHashSet<>(rules);
+                if (rowsPlaced < 0 || rowsNotPlaced < 0 || rowsNotWatched < 0) {
+                    throw new IllegalArgumentException("rows are counted from none: " + rowsPlaced
+                            + "/" + rowsNotPlaced + "/" + rowsNotWatched);
+                }
+                if (rowsPlaced + rowsNotPlaced + rowsNotWatched != rowsRead) {
+                    throw new IllegalArgumentException("a reading of " + rowsRead
+                            + " rows accounted for " + (rowsPlaced + rowsNotPlaced + rowsNotWatched)
+                            + " of them");
+                }
+                if (rowsPlaced < rules.size()) {
+                    throw new IllegalArgumentException("more rules were taken than rows took one: "
+                            + rules.size() + " rules by " + rowsPlaced + " rows");
+                }
+            }
+
+            /** Whether every row of the behavior was one something watched. */
+            public boolean everyRowWasWatched() {
+                return rowsNotWatched == 0;
             }
         }
 
@@ -95,22 +131,42 @@ public record DecisionEvidence(DecisionReading read, Taken taken) {
                 ? OptionalInt.of(read.rules().size()) : OptionalInt.empty();
     }
 
-    /** What the runs of {@code seen} took, in the shape this holds it. */
-    public static Taken of(RulesTaken against,
-                           List<AlignedObservation> runs) {
+    /**
+     * What the rows of one behavior came to, one answer per row.
+     *
+     * <p>Walked over the rows and never over what came back watched. A row nothing watched is a row
+     * all the same, and taking the accounts first and the rows never would leave it out of every
+     * number here — which is a reading that went without something reporting that it did not.
+     *
+     * @param watched what watched each row, which is an account or the fact that there is none
+     */
+    public static Taken of(RulesTaken against, List<Generator.Watched> watched) {
         Set<DecisionRule> took = new LinkedHashSet<>();
+        int placed = 0;
         int notPlaced = 0;
-        for (AlignedObservation each : runs) {
-            switch (against.takenBy(each)) {
-                case RulesTaken.WhichRule.TookThis it -> took.add(it.rule());
-                case RulesTaken.WhichRule.CouldNotTell it -> {
-                    if (it.why() == RulesTaken.WhichRule.Why.NO_RULE_IS_RECOGNISABLE) {
-                        return new Taken.NothingWasRead(Taken.Why.NO_RULE_IS_RECOGNISABLE);
+        int notWatched = 0;
+        for (Generator.Watched each : watched) {
+            // Exhaustive, so a row cannot fall through into none of the counts. What a row that was
+            // watched came to is asked below; that a row was not watched is answered here, because
+            // it is a fact about this build rather than about where the row went.
+            switch (each) {
+                case Generator.Watched.NoAccount _ -> notWatched++;
+                case Generator.Watched.Ran(var seen) -> {
+                    switch (against.takenBy(seen)) {
+                        case RulesTaken.WhichRule.TookThis it -> {
+                            took.add(it.rule());
+                            placed++;
+                        }
+                        case RulesTaken.WhichRule.CouldNotTell it -> {
+                            if (it.why() == RulesTaken.WhichRule.Why.NO_RULE_IS_RECOGNISABLE) {
+                                return new Taken.NothingWasRead(Taken.Why.NO_RULE_IS_RECOGNISABLE);
+                            }
+                            notPlaced++;
+                        }
                     }
-                    notPlaced++;
                 }
             }
         }
-        return new Taken.Read(took, notPlaced);
+        return new Taken.Read(watched.size(), took, placed, notPlaced, notWatched);
     }
 }

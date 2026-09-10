@@ -5,7 +5,7 @@ import souther.compiler.partition.DecisionRule;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.Compilation;
 import souther.compiler.query.DecisionEvidence;
-import souther.compiler.query.RuleWitness;
+import souther.compiler.query.RuleRequirement;
 
 import java.util.List;
 import java.util.Map;
@@ -58,15 +58,15 @@ class ASearchStandsInARuleWithoutCoveringItTest {
                 compilation.db().ask(new Adequacy.Decides(module)).value().get("decides");
         assertEquals(3, evidence.rules().size(), "the body states three rules");
         assertEquals(2, evidence.covered().getAsInt(), "the rows take two of them");
-        List<DecisionRule> open = evidence.nothingStandsIn();
+        List<DecisionRule> open = evidence.notTakenByRows();
         assertEquals(1, open.size(), () -> "and one is left: " + open);
 
-        Map<DecisionRule, RuleWitness> found =
+        Map<DecisionRule, RuleRequirement> found =
                 compilation.db().ask(new Adequacy.DecisionSearch(module, "decides")).value();
         assertNotNull(found, "the search ran");
         assertEquals(open, List.copyOf(found.keySet()),
                 "it looks at the rules no row took and at no others");
-        assertInstanceOf(RuleWitness.Stands.class, found.get(open.get(0)),
+        assertInstanceOf(RuleRequirement.Required.class, found.get(open.get(0)),
                 () -> "and it composes a value that takes the rule: " + found);
     }
 
@@ -81,14 +81,14 @@ class ASearchStandsInARuleWithoutCoveringItTest {
         DecisionEvidence before =
                 compilation.db().ask(new Adequacy.Decides(module)).value().get("decides");
         assertTrue(compilation.db().ask(new Adequacy.DecisionSearch(module, "decides")).value()
-                        .values().stream().anyMatch(RuleWitness.Stands.class::isInstance),
+                        .values().stream().anyMatch(RuleRequirement.Required.class::isInstance),
                 "the search stands somewhere");
         DecisionEvidence after =
                 compilation.db().ask(new Adequacy.Decides(module)).value().get("decides");
 
         assertEquals(before.covered().getAsInt(), after.covered().getAsInt(),
                 "what the rows took is what the rows took");
-        assertEquals(before.nothingStandsIn(), after.nothingStandsIn(),
+        assertEquals(before.notTakenByRows(), after.notTakenByRows(),
                 "and the rule the search stood in is still one no row is in");
     }
 }

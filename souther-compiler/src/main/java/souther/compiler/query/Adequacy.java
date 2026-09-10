@@ -1066,15 +1066,15 @@ public final class Adequacy {
                 return new DecisionEvidence.Taken.NothingWasRead(
                         DecisionEvidence.Taken.Why.NO_ROWS);
             }
-            List<souther.compiler.coverage.AlignedObservation> runs = new ArrayList<>();
+            // One entry per row, whether or not anything watched it. Taking only the accounts would
+            // leave a row nothing watched out of every number the reading answers with, which is a
+            // reading that went without something and does not say so.
+            List<Generator.Watched> watched = new ArrayList<>();
             for (RowOutcome row : rows) {
-                if (ObservedInputs.of(row, numbering).watched()
-                        instanceof Generator.Watched.Ran(var account)) {
-                    runs.add(account);
-                }
+                watched.add(ObservedInputs.of(row, numbering).watched());
             }
             return DecisionEvidence.of(
-                    souther.compiler.partition.RulesTaken.of(rules, emitted, plan), runs);
+                    souther.compiler.partition.RulesTaken.of(rules, emitted, plan), watched);
         }
     }
 
@@ -1727,7 +1727,7 @@ public final class Adequacy {
      * reading that may be wrong anywhere along it. Both leave the rule where it was.
      */
     public record DecisionSearch(String name, String behavior)
-            implements Key<Map<DecisionRule, RuleWitness>> {
+            implements Key<Map<DecisionRule, RuleRequirement>> {
 
         @Override
         public String module() {
@@ -1735,7 +1735,7 @@ public final class Adequacy {
         }
 
         @Override
-        public Answer<Map<DecisionRule, RuleWitness>> compute(Db db) {
+        public Answer<Map<DecisionRule, RuleRequirement>> compute(Db db) {
             Map<String, DecisionEvidence> decisions = db.ask(new Decides(name)).value();
             DecisionEvidence evidence = decisions == null ? null : decisions.get(behavior);
             Answer<CheckSurface> prepared = db.ask(new Shapes.CheckSurface(name));
@@ -1765,47 +1765,66 @@ public final class Adequacy {
             souther.compiler.partition.RulesTaken taken = souther.compiler.partition.RulesTaken.of(
                     evidence.read(), emitted, checked.value().plan());
             souther.compiler.inputs.SearchRegion declared = subject.quantities().region();
-            Map<DecisionRule, RuleWitness> out = new LinkedHashMap<>();
+            // Asked once, because what it answers is one list and asking it per rule would walk the
+            // rules once for every rule.
+            Set<DecisionRule> toSettle = new LinkedHashSet<>(evidence.notTakenByRows());
+            Map<DecisionRule, RuleRequirement> out = new LinkedHashMap<>();
             for (souther.compiler.partition.DecisionReading.Ruled ruled
                     : evidence.read().found()) {
-                if (!evidence.nothingStandsIn().contains(ruled.rule())) {
+                if (!toSettle.contains(ruled.rule())) {
                     continue;
                 }
-                out.put(ruled.rule(), whatStandsIn(ruled, probe, taken, declared));
+                out.put(ruled.rule(), whatSettles(ruled, probe, taken, declared));
             }
             return Answer.of(Ordered.map(out));
         }
 
         /**
-         * What a search for a row standing in one rule came to.
+         * What settles one rule's requirement.
          *
-         * <p>Nothing is fixed at a place. A border's search is handed the positions the point names
-         * and fills the rest under what stands on the way; a rule names no point, so the way is the
-         * whole of what the row has to be.
+         * <p>The model is asked first, and its answer is not a search's. What the way states may
+         * ask one position to be two things at once, which the readings that already exist show no
+         * row takes — a fact about the model, carried out as itself. Nothing is composed against
+         * such a way, and saying so as a search that came to nothing would leave a reader opening a
+         * search's reason to find out whether the model said anything.
+         *
+         * <p>Where the model leaves it open, a row is composed and run. Nothing is fixed at a
+         * place: a border's search is handed the positions its point names and fills the rest under
+         * what stands on the way, and a rule names no point, so the way is the whole of what the
+         * row has to be.
          */
-        private static RuleWitness whatStandsIn(
+        private static RuleRequirement whatSettles(
                 souther.compiler.partition.DecisionReading.Ruled ruled, Coverages.Probe probe,
                 souther.compiler.partition.RulesTaken taken,
                 souther.compiler.inputs.SearchRegion declared) {
-            if (!(souther.compiler.partition.Reachability.of(ruled.states(), declared)
-                    instanceof souther.compiler.partition.Reachability.Reaching reaching)) {
-                // The way asks one position to be two things at once, which the readings that
-                // already exist show no row takes. Said as nothing having been composed, because
-                // that is what happened here; whether the model refuses it is the account's to say
-                // and is not read off a search.
-                return new RuleWitness.NothingComposed(
-                        new Generator.UnresolvedCombination(List.of(),
-                                Generator.UnresolvedCombination.Reason.THE_RULES_LEAVE_NOTHING_THERE));
-            }
+            return switch (souther.compiler.partition.Reachability.of(ruled.states(), declared)) {
+                case souther.compiler.partition.Reachability.NothingReaches nothing ->
+                        new RuleRequirement.Excluded(nothing.why());
+                case souther.compiler.partition.Reachability.Reaching reaching ->
+                        whatASearchFinds(ruled, probe, taken, reaching);
+            };
+        }
+
+        /**
+         * What a search for a row standing in one rule found, where the model leaves it open.
+         *
+         * <p>Every answer here is this compiler having looked. None of them says the rule is out of
+         * reach: which values were tried is this search's choice, and a reading anywhere in the
+         * chain from a condition to a class may have steered them wrong.
+         */
+        private static RuleRequirement whatASearchFinds(
+                souther.compiler.partition.DecisionReading.Ruled ruled, Coverages.Probe probe,
+                souther.compiler.partition.RulesTaken taken,
+                souther.compiler.partition.Reachability.Reaching reaching) {
             if (!(probe.attempt("a rule of the decision", Map.of(), reaching)
                     instanceof Generator.BoundaryAttempt.Built built)) {
-                return new RuleWitness.NothingComposed(
+                return new RuleRequirement.Unsettled.NothingComposedARow(
                         new Generator.UnresolvedCombination(List.of(),
                                 Generator.UnresolvedCombination.Reason.NOTHING_COMPOSES_ONE));
             }
             List<souther.compiler.partition.FixtureTemplate> inputs = built.row().inputs();
             if (!(probe.read(inputs).watched() instanceof Generator.Watched.Ran(var seen))) {
-                return new RuleWitness.NothingWatched();
+                return new RuleRequirement.Unsettled.NothingWatchedTheRow();
             }
             // What the row did, and not what it was composed against. A row steered here by a
             // reading that is wrong anywhere along the way arrives somewhere else, and it looks
@@ -1813,7 +1832,8 @@ public final class Adequacy {
             return taken.takenBy(seen)
                     instanceof souther.compiler.partition.RulesTaken.WhichRule.TookThis took
                     && took.rule().equals(ruled.rule())
-                    ? new RuleWitness.Stands(inputs) : new RuleWitness.WentElsewhere();
+                    ? new RuleRequirement.Required(inputs)
+                    : new RuleRequirement.Unsettled.AComposedRowWentElsewhere();
         }
     }
 

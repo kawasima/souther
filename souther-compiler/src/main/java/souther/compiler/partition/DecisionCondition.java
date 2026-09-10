@@ -45,22 +45,11 @@ public sealed interface DecisionCondition {
                 throw new IllegalArgumentException(
                         "a comparison of a decision is a relation over a form");
             }
-            if (!proposition.equals(canonical(proposition))) {
-                throw new IllegalArgumentException(
-                        "a comparison and its denial are one column, read as " + canonical(proposition)
-                                + " rather than as " + proposition);
+            if (proposition != proposition.orItsDenial()) {
+                throw new IllegalArgumentException("a comparison and its denial are one column,"
+                        + " read as " + proposition.orItsDenial() + " rather than as "
+                        + proposition);
             }
-        }
-
-        /**
-         * The proposition {@code stated} and its denial are read as, which is one of the two.
-         *
-         * <p>Chosen by the order the relations are declared in, which is a rule and not a meaning:
-         * what matters is that the two sides of one distinction pick the same side of it, and no
-         * reader is owed a reason why {@code GE} is the written one rather than {@code LT}.
-         */
-        public static Rel canonical(Rel stated) {
-            return stated.ordinal() <= stated.denied().ordinal() ? stated : stated.denied();
         }
     }
 

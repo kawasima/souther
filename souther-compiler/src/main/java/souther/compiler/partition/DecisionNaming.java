@@ -3,6 +3,7 @@ package souther.compiler.partition;
 import souther.compiler.core.Core;
 import souther.compiler.flow.Naming;
 import souther.compiler.inputs.InputReads;
+import souther.compiler.numeric.Rel;
 import souther.compiler.inputs.TermPath;
 import souther.compiler.types.ModelOccurrence;
 
@@ -146,7 +147,7 @@ final class DecisionNaming implements Naming<DecisionPath> {
     private static DecidedCondition answerOf(OnTheWay one, boolean held) {
         return switch (one) {
             case OnTheWay.TakenIn taken -> {
-                var proposition = DecisionCondition.AComparison.canonical(taken.cut().rel());
+                Rel proposition = taken.cut().rel().orItsDenial();
                 yield new DecidedCondition.Compared(
                         new DecisionCondition.AComparison(taken.cut().form(), proposition),
                         taken.cut().rel() == proposition);
