@@ -1800,7 +1800,7 @@ public final class Partitions {
         java.util.Set<TypeSymbol> inside = new LinkedHashSet<>(expanding);
         inside.add(record);
         Map<RuleKey, Count> settled = new LinkedHashMap<>();
-        FieldDomains left = FieldDomains.of(record, ruleSource, policy, settled);
+        FieldDomains left = FieldDomains.unshared(record, ruleSource, policy, settled);
         Map<String, FixtureTemplate> chosen = new LinkedHashMap<>();
         if (!fields.keySet().containsAll(given.keySet())) {
             return null;
@@ -1823,7 +1823,7 @@ public final class Partitions {
             // which leaves `b` its whole range and takes the bottom of it.
             if (Counts.writtenIn(at.value()) instanceof Count count) {
                 settled.put(RuleKey.of(field.getKey()), count);
-                left = FieldDomains.of(record, ruleSource, policy, settled);
+                left = FieldDomains.unshared(record, ruleSource, policy, settled);
             }
         }
         return chosen;
