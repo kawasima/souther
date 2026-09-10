@@ -500,7 +500,8 @@ public sealed interface LineOrigin extends RuleEvidenceOrigin {
      * <p>What a diagnostic's own sentence says. A diagnostic is built where no reader is — nothing
      * there knows what to call a source — so a place written into its text would be a line and a
      * column with no file, read against whichever file the report happens to be about. Where the rule
-     * has no name, the place is pointed at instead, by {@link #citation}.
+     * has no name, what a reader is pointed at is worked out when a sentence is written, from the
+     * question the handle names ({@link souther.compiler.check.RuleReportAnchor}).
      */
     default String saidWithoutAPlace() {
         return authoredLine().saidWithoutAPlace();
