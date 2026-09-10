@@ -56,10 +56,6 @@ class AGuardsQuestionIsCitedByWhereItIsWrittenTest {
         return AdequacyReport.of(compilation).modules().get(0).behaviors().get(0);
     }
 
-    private static PartitionEvidence partition() {
-        return page().partition();
-    }
-
     /** The findings this reading left that a reader is sent to a place for. */
     private static List<PartitionEvidence.NotRead.AnUnclassifiedRule> writtenComparisons() {
         return writtenComparisons(page());
