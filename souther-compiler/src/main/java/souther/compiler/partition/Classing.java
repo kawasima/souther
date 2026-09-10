@@ -530,31 +530,12 @@ final class Classing {
      * position whether or not this compiler can write a value into a row, and a class dropped for
      * want of one would make the denominator a build is measured against follow what the generator
      * can do.
+     *
+     * <p>Asked of the set, which is the one place the shapes are read for a value. A class here is
+     * over strings — the vocabulary is only reached where every rule tells a set of them from the
+     * rest — so a value of any other kind is one no class of this position holds.
      */
     private static Place someValueIn(ValueSet values) {
-        return switch (values) {
-            case ValueSet.Finite it -> it.values().stream()
-                    .filter(Value.Text.class::isInstance)
-                    .map(each -> (Place) Text.of(((Value.Text) each).value()))
-                    .findFirst().orElse(null);
-            // What the language holds and a source can carry, which is not the same as what it
-            // holds: a class of control characters has a string to offer and none to write, and a
-            // row nobody can paste is not a row.
-            case ValueSet.Matching it -> {
-                String some = it.language().someWritten();
-                yield some == null ? null : Text.of(some);
-            }
-            // Every string but a few, so the shortest one that is not among them. Asked by trying
-            // rather than by naming one, because which strings are excluded is the set's answer.
-            case ValueSet.Cofinite it -> {
-                for (int length = 0; length <= it.excluded().size(); length++) {
-                    String tried = "a".repeat(length);
-                    if (!it.excluded().contains(new Value.Text(tried))) {
-                        yield Text.of(tried);
-                    }
-                }
-                yield null;
-            }
-        };
+        return values.some() instanceof Value.Text it ? Text.of(it.value()) : null;
     }
 }

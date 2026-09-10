@@ -181,6 +181,46 @@ public sealed interface ValueSet {
         return true;
     }
 
+    /**
+     * One value this set holds that a source can carry, or null where there is none to offer.
+     *
+     * <p>Here because every reader wanting a value out of a set wants the same one, and the shapes
+     * are enumerated once. Worked out at each reader, a set would answer one of them with a string
+     * and the next with nothing, and the day a fourth shape arrived only the readers somebody
+     * remembered would learn about it.
+     *
+     * <p>What a source can carry, which is not the same as what the set holds: a set of control
+     * characters has a string to offer and none to write, and a row nobody can paste is not a row.
+     *
+     * <p>Null is this having none to offer and never the set being empty. Nothing here enumerates a
+     * language, so what a caller may say about a null is that nothing composed a value.
+     *
+     * <p>A value of the set and never a value of a position. Whether a position holds what comes
+     * back is its carrier's question — a set over strings is met with a position counting numbers
+     * wherever a rule was read in one vocabulary and the values stand in another.
+     */
+    default Value some() {
+        return switch (this) {
+            case Finite it -> it.values().stream().findFirst().orElse(null);
+            // What the language holds and a source can carry.
+            case Matching it -> {
+                String some = it.language().someWritten();
+                yield some == null ? null : Value.text(some);
+            }
+            // Every value but a few, so the shortest string that is not among them. Asked by trying
+            // rather than by naming one, because which values are excluded is the set's answer.
+            case Cofinite it -> {
+                for (int length = 0; length <= it.excluded().size(); length++) {
+                    Value tried = Value.text("a".repeat(length));
+                    if (!it.excluded().contains(tried)) {
+                        yield tried;
+                    }
+                }
+                yield null;
+            }
+        };
+    }
+
     /** Whether no value is admitted, which is what refuses a declaration. */
     default boolean isEmpty() {
         return this instanceof Finite it && it.values().isEmpty();

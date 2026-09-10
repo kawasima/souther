@@ -756,8 +756,18 @@ public sealed interface Carrier extends ValueOrder {
      *
      * <p>Null is this having found none and never the class being empty. Nothing here enumerates a
      * range, so what a caller may say about an empty answer is that it composed nothing.
+     *
+     * <p><b>Both vocabularies a position is read in.</b> {@code within} is where the rules leave the
+     * number this order counts, and {@code admits} is which values the declarations leave standing
+     * — a rule about how many a value holds lands in the second and says nothing in the first. So
+     * every candidate is put to both, and what the set offers is a candidate of its own: asked of
+     * the range alone, a string bounded below by its length is offered the empty string, which the
+     * declarations refuse.
+     *
+     * @param admits which values the position holds, through whatever names they are written under
      */
-    default Place somethingOtherThan(java.util.List<Place> singled, NumericDomain.Bounds within) {
+    default Place somethingOtherThan(java.util.List<Place> singled, NumericDomain.Bounds within,
+                                     ValueSet admits) {
         java.util.List<Place> stepped = new ArrayList<>();
         for (Place from : singled) {
             if (from instanceof Count count) {
@@ -798,17 +808,37 @@ public sealed interface Carrier extends ValueOrder {
         if (this instanceof Text) {
             tried.add(souther.compiler.numeric.Text.of(""));
         }
+        // What the values' own vocabulary offers, after everything the order has to say. A value
+        // from here is one the declarations name rather than one the ends of a range work out, so
+        // it is what is left where the rules about the position are not about this number at all.
+        Value offered = admits.some();
+        if (offered != null) {
+            tried.add(placeOf(offered));
+        }
         for (Place candidate : tried) {
             // On the carrier's grid before it is asked anything. Halfway between two adjacent moments
             // is neither of them as a number and is one of them once written, so a class of
             // everything else was offered one of the values it exists to exclude.
-            Place each = onTheGrid(candidate);
+            Place each = candidate == null ? null : onTheGrid(candidate);
             if (each != null && (within == null || within.admits(each))
+                    && admitted(admits, each)
                     && singled.stream().noneMatch(each::sameAs)) {
                 return each;
             }
         }
         return null;
+    }
+
+    /**
+     * Whether the position's values take {@code at} in.
+     *
+     * <p>A place this order has no written value for is left in. What the set says is which values
+     * the declarations leave, and a carrier that writes none of them back has nothing to put to it
+     * — refused here, every class of a date would lose the representative the order composed.
+     */
+    private boolean admitted(ValueSet admits, Place at) {
+        Value wrote = valueAt(at);
+        return wrote == null || admits.has(wrote);
     }
 
     /**
