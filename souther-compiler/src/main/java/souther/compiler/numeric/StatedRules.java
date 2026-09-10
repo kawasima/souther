@@ -1,7 +1,9 @@
 package souther.compiler.numeric;
 
 import java.util.ArrayDeque;
+import java.util.Collections;
 import java.util.Deque;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -22,6 +24,12 @@ import java.util.Set;
  * <p>Order is kept because a reader of the rules writes them out. Two compiles of one model reach
  * the same rules in the same order, and a set that did not keep it would leave what is written out
  * of a domain to how the rules happened to hash.
+ *
+ * <p><b>What a composition is is a graph and not a tree.</b> Nothing here is copied, so two paths
+ * that carried on from one are two compositions holding the one they carried on from, and saying
+ * those two together says it once and reaches it twice. A reader walking what it reaches would pay
+ * for how a composition was arrived at rather than for what it holds, and doubling is a shape a
+ * caller can write — which is the cost this exists to be rid of, moved to the other end.
  *
  * @param <A> what a position is called
  */
@@ -67,16 +75,30 @@ sealed interface StatedRules<A> {
     /**
      * The rules said, each of them once, in the order they were first said.
      *
-     * <p>Walked with a stack of what is left rather than by calling down the tree. A path states one
-     * rule at a time, so the tree a long path leaves is as deep as it is long, and a walk that went
-     * down it would be a limit on how many rules a path may state.
+     * <p>Walked with a stack of what is left rather than by calling down the composition. A path
+     * states one rule at a time, so what a long path composes is as deep as it is long, and a walk
+     * that went down it would be a limit on how many rules a path may state.
+     *
+     * <p>Each of them once, and each part of the composition once — the second is what makes this a
+     * walk of what was said rather than of how it was arrived at. A part reached again holds
+     * nothing that has not been read: it was read to its end before anything beside it was reached,
+     * so everything in it was first said there or before it, and passing it leaves the order alone.
+     *
+     * <p>What is passed is the part itself and not one equal to it. A composition compares by what
+     * it holds, all the way down, so asking a set whether it has already seen one is asking the
+     * question this walk is a stack for.
      */
     default List<AffineConstraint<A>> distinct() {
         Set<AffineConstraint<A>> out = new LinkedHashSet<>();
+        Set<StatedRules<A>> read = Collections.newSetFromMap(new IdentityHashMap<>());
         Deque<StatedRules<A>> left = new ArrayDeque<>();
         left.push(this);
         while (!left.isEmpty()) {
-            switch (left.pop()) {
+            StatedRules<A> next = left.pop();
+            if (!read.add(next)) {
+                continue;
+            }
+            switch (next) {
                 case None<A> ignored -> { }
                 case One<A> one -> out.add(one.rule());
                 case Both<A> both -> {

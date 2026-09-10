@@ -1,9 +1,11 @@
 package souther.compiler.numeric;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -17,15 +19,23 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * rather than of how often or in what order a caller happened to say them; and that reading them
  * back is not a limit on how many there may be.
  *
- * <p>The second is why the depth is here. A path says one rule at a time, so the composition a long
- * path leaves is as deep as the path is long — read by calling down it, a path stating enough rules
- * would be one the reader could not answer about at all, and the failure is not one any of these
- * rules is about.
+ * <p>The second is why the depth and the sharing are both here. A path says one rule at a time, so
+ * the composition a long path leaves is as deep as the path is long — read by calling down it, a
+ * path stating enough rules would be one the reader could not answer about at all. And nothing is
+ * copied when two of them are said together, so what a caller says twice is reached twice and not
+ * held twice — read by what it reaches, a caller doubling what it says doubles what reading it
+ * costs. Neither failure is one any of these rules is about.
  */
 class RulesAreReadOutOnceEachHoweverDeeplyTheyWereSaidTest {
 
     /** A path saying enough rules for a reader that called down what they compose to not answer. */
     private static final int LONGER_THAN_A_STACK = 100_000;
+
+    /**
+     * Doublings enough that a reader paying per reach rather than per part takes far longer than
+     * this test is given, and few enough that it still stops and says so.
+     */
+    private static final int MORE_REACHES_THAN_THERE_ARE_PARTS = 27;
 
     private static AffineConstraint<String> rule(String atom, long at) {
         return new AffineConstraint.Disequality<>(
@@ -89,5 +99,27 @@ class RulesAreReadOutOnceEachHoweverDeeplyTheyWereSaidTest {
         }
 
         assertEquals(List.of(first, last), deep.and(StatedRules.of(last)).distinct());
+    }
+
+    /**
+     * What was said once and reached many times is read once.
+     *
+     * <p>Nothing is copied when two of these are said together, so two paths carrying on from one
+     * hold the one they carried on from rather than a copy of it, and saying those two together
+     * reaches it twice. Read by what it reaches, a caller doubling what it says would be read a
+     * number of times that doubles with it — which is the cost the rest of this is about, arrived
+     * at from the other end.
+     */
+    @Test
+    @Timeout(value = 10, unit = TimeUnit.SECONDS)
+    void whatWasSaidOnceIsReadOnceHoweverManyTimesItIsReached() {
+        AffineConstraint<String> a = rule("x", 1);
+
+        StatedRules<String> shared = StatedRules.of(a);
+        for (int doubled = 0; doubled < MORE_REACHES_THAN_THERE_ARE_PARTS; doubled++) {
+            shared = shared.and(shared);
+        }
+
+        assertEquals(List.of(a), shared.distinct());
     }
 }
