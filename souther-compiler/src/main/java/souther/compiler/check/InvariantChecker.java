@@ -2004,11 +2004,12 @@ public final class InvariantChecker {
         // Which rule this is a part of, asked of the part. Carried beside it, a reading could be
         // given a part of one rule and told it was reading another.
         RuleRef.Invariant from = part.rule();
-        // A binding this reading was handed as itself, which is where the environment changes. One
-        // written under a denial is not: what this reader is given there is the denial, and a
-        // denial is a form it has no word for.
-        if (saidAs instanceof ClauseExpr.Scoped scoped
-                && scoped.spelled().get(0) == scoped.binding()) {
+        // A binding, which is where the environment changes and the one shape that is not a part.
+        // Whether a denial stands above it decides nothing here: the denial is carried to the
+        // leaves as the clause is read, so the body under a binding already states what the binding
+        // states, and a helper's rule denied is read as the rule it denies rather than left as a
+        // form this reader has no word for.
+        if (saidAs instanceof ClauseExpr.Scoped scoped) {
             direct(scoped.body(), of, part, terms.inside(scoped.binding(), at), byName, out,
                     noLines, withoutAnEnd, naming, narrowers, raised, took, typeAt, rules,
                     raisedByPart, standing);
@@ -2022,22 +2023,31 @@ public final class InvariantChecker {
         // Asked of the shape and never of the operator, so that what a connective composes is
         // recognised in one place ({@link ClauseExpr}).
         //
-        // Stated, and composing both. What a connective composes and how the whole of it stands are
-        // two answers, and both are wanted here: a choice denied composes both of its parts denied,
-        // so a conjunction is what is left when the shape says both and says it is stated. What is
-        // under a denial states the opposite of what it reads as, and the reading below has no word
-        // for that.
+        // And asked of what the connective composes alone. How the whole of it stands is a separate
+        // answer, and it is already inside this one: the denial a clause was read under is applied
+        // to what the connective composes where the shape is made, so a choice denied arrives here
+        // saying it composes both, and both of the parts it hands over are the denied ones. Asked
+        // together with how the whole stands, the denial is applied a second time and a conjunction
+        // an author wrote as a denied choice is a part this reading never descends into.
         if (saidAs instanceof ClauseExpr.Joined joined
-                && joined.how() == ConditionJoin.BOTH && joined.positive()) {
+                && joined.how() == ConditionJoin.BOTH) {
             direct(joined.left(), of, part, at, byName, out, noLines, withoutAnEnd, naming,
                     narrowers, raised, took, typeAt, rules, raisedByPart, standing);
             direct(joined.right(), of, part, at, byName, out, noLines, withoutAnEnd, naming,
                     narrowers, raised, took, typeAt, rules, raisedByPart, standing);
             return;
         }
-        // The node the author wrote this as, which is the outermost of what the shape is spelled
-        // as: a rule under a denial is read as the denial and not as what it denies.
-        Core clause = saidAs.spelled().get(0);
+        // A binding is crossed above and a conjunction is descended into, so what is left is a part
+        // of the clause: a leaf, or a choice this reading takes whole.
+        ClauseExpr.Part said = (ClauseExpr.Part) saidAs;
+        // The rule this part states, which is what every reading below is of. Under a denial that
+        // is what the denial denies, and the denial itself is spent where the comparison is read
+        // ({@link StatedComparison#of}) rather than carried down as a flag each reader applies.
+        // Taken as the outermost of what the shape was spelled as, this is the {@code not} an
+        // author wrote, which is no comparison — and a rule written under one placed no end, drew
+        // no line and was about no number, while the reading that turns clauses into sets read it
+        // perfectly well.
+        Core clause = said.of();
         // What a rule about the strings at a position says about where they stop, which is a rule
         // of this conjunct as much as an ordering written here is. Beside the reading of
         // comparisons and not inside it: what such a rule states is not a comparison and has no
@@ -2045,62 +2055,56 @@ public final class InvariantChecker {
         //
         // Before the reading below, which needs to know: a conjunct that stated where the values
         // stop has a line, and is not one an author is owed a sentence about for having drawn none.
-        RunsRead runs = runsOf(new ReadingPlace(of.opened(), saidAs.at()), of, part, byName, out);
-        restricting(clause, saidAs.at(), from, of, part, byName, rules, noLines, runs);
-        aChoiceAboutOneCoordinate(clause, part, at, byName, naming);
-        if (!(clause instanceof Core.Binary bin)) {
-            // Nothing but a binary is written as a comparison, so there is no reading of one for
-            // the classification to be handed.
-            settle(clause, from, of, part, saidAs.at(), states(clause, at, byName, null, runs),
-                    new InvariantBound.Read.NoEnd(),
-                    byName, raised, took, raisedByPart);
-            return;
-        }
+        RunsRead runs = runsOf(new ReadingPlace(of.opened(), said.at()), of, part, byName, out);
+        // What an author wrote and where, which is what a sentence about the rule points at. A rule
+        // written under a denial is shown as the denial: that is what is on the line.
+        restricting(said.written(), said.at(), from, of, part, byName, rules, noLines, runs);
+        aChoiceAboutOneCoordinate(said, part, at, byName, naming);
         // Where this clause is recognised as a comparison, and the one place it is. What each
         // reader below wants is what the recognition established — the two sides to walk, and what
         // the rule states of them — so each is handed that rather than the node it was read off.
         // Asked again below, the question is answered a second time and every reader has a case to
         // invent an answer for: the one where the operator compares nothing, which the recognition
         // here already took out.
-        Comparison comparison = Comparison.of(bin).orElse(null);
-        // And the one reading of the arithmetic over it, handed to each of the questions asked of
-        // it: what the clause states, and what a reader is left with where no end came of it.
-        CanonicalForm read =
-                comparison == null ? null : canonicalFormOf(comparison, at, byName);
-        // A rule that orders the values, or one that says which value they take. A rule that only
-        // rules a value out is read no further here, and neither is an operator that compares
-        // nothing: what is below reads a clause for the end it places on a position and for which
-        // declarations narrowed that position, and neither of those is a thing a denial of one
-        // value states.
-        ComparisonClaim asWritten = comparison == null ? null : comparison.claim();
-        if (asWritten == null) {
-            settle(bin, from, of, part, saidAs.at(), states(bin, at, byName, read, runs),
+        //
+        // Of the part and its polarity together, so what comes back is the comparison the clause
+        // states. A reader handed the operator and told separately how the clause stands is a
+        // reader that has to remember to put the two together, which is the one thing this walk
+        // was not doing.
+        StatedComparison comparison = StatedComparison.of(said);
+        if (comparison == null) {
+            // Nothing written as a comparison, so there is no reading of one for the classification
+            // to be handed: what is below reads a clause for the end it places on a position and
+            // for which declarations narrowed that position, and neither is a thing another shape
+            // of rule states.
+            settle(clause, from, of, part, said.at(), states(clause, at, byName, null, runs),
                     new InvariantBound.Read.NoEnd(),
                     byName, raised, took, raisedByPart);
             return;
         }
+        Core.Binary bin = (Core.Binary) clause;
+        // And the one reading of the arithmetic over it, handed to each of the questions asked of
+        // it: what the clause states, and what a reader is left with where no end came of it.
+        CanonicalForm read = canonicalFormOf(comparison, at, byName);
+        // What the rule states, with the denial already in it.
+        ComparisonClaim asWritten = comparison.claim();
         // Which number this conjunct is about, written down before anything is asked about what it
         // did to it. Every shape of rule alike: whether an end is read from it below decides which
         // reader states where the values stop, and decides nothing about which conjuncts account
         // for where they stop.
         aboutOneCoordinate(read, part, naming);
-        // The coordinate-bearing side read as the left one, as `0 <= value` says what `value >= 0`
-        // says.
+        // What the comparison states of the coordinate it names, read from whichever side bears
+        // one, as `0 <= value` says what `value >= 0` says. The turn is spent making this, so no
+        // reader below holds a claim beside a note about which way round it was written.
         //
         // Above what the claim is, because which number the rule is about does not turn on that. A
         // rule that names a value is about the number it names as plainly as one that orders the
         // values around it, and the lookup done under the ordering alone was one every other
         // reading of the clause had to do again for itself.
-        Coordinate found = byName.get(nameOf(bin.left(), at));
-        Core bound = bin.right();
-        ComparisonClaim said = asWritten;
-        if (found == null) {
-            found = byName.get(nameOf(bin.right(), at));
-            bound = bin.left();
-            said = said.turned();
-        }
+        StatedComparison.Numbered<Coordinate> numbered =
+                comparison.at(each -> byName.get(nameOf(each, at)));
         if (asWritten instanceof ComparisonClaim.Singled named && !named.holdsAtTheValue()) {
-            settle(bin, from, of, part, saidAs.at(), states(bin, at, byName, read, runs),
+            settle(bin, from, of, part, said.at(), states(bin, at, byName, read, runs),
                     new InvariantBound.Read.NoEnd(),
                     byName, raised, took, raisedByPart);
             // And handed on, which is not the same as being reported. A rule that rules one value
@@ -2118,10 +2122,12 @@ public final class InvariantChecker {
         // the order places none — there is no value to draw a line at — and it is not a relation
         // either: what it compares the coordinate to is a constant this read perfectly. So it falls
         // out here rather than being filed as a clause that could have moved an edge.
-        InvariantBound.Read end = found != null && said instanceof ComparisonClaim.Cut cut
-                ? InvariantBound.at(cut, Terms.asWrittenValue(bound, at), found.carrier())
+        InvariantBound.Read end = numbered != null
+                && numbered.claim() instanceof ComparisonClaim.Cut cut
+                ? InvariantBound.at(cut, Terms.asWrittenValue(numbered.other(), at),
+                        numbered.number().carrier())
                 : new InvariantBound.Read.NoEnd();
-        Coordinate about = found;
+        Coordinate about = numbered == null ? null : numbered.number();
         // What the clause is about, asked of the comparison and not of what `end` came to. A
         // coordinate compared for order against something naming no other coordinate states where
         // the values stop, whether or not the number on the other side is one this could fold.
@@ -2132,8 +2138,8 @@ public final class InvariantChecker {
         // `width` stops that no reading can ever answer, because a rule relating two positions
         // places no end (ADR-0090). The reader already knows: the reason it records for such a
         // comparison is `ComparisonBetweenPositions`.
-        if (about != null && said instanceof ComparisonClaim.Cut
-                && coordinatesIn(bound, at, byName).isEmpty()
+        if (about != null && numbered.claim() instanceof ComparisonClaim.Cut
+                && coordinatesIn(numbered.other(), at, byName).isEmpty()
                 && shape instanceof ClauseStates.SomethingElse named) {
             Set<RuleKey> names = new LinkedHashSet<>(named.named());
             // The name the bound sits at, which the walk over the comparison writes anyway. Added
@@ -2165,7 +2171,7 @@ public final class InvariantChecker {
                                             List.of(part))
                                     : had.and(part)));
         }
-        settle(bin, from, of, part, saidAs.at(), shape, end, byName, raised, took,
+        settle(bin, from, of, part, said.at(), shape, end, byName, raised, took,
                 raisedByPart);
         if (end instanceof InvariantBound.Read.NoEnd) {
             // A rule saying where the values stop that no end came out of, said as that. Here,
@@ -2191,8 +2197,8 @@ public final class InvariantChecker {
             return;
         }
         if (end instanceof InvariantBound.Read.AnEnd placed) {
-            out.add(new Direct(found.at(), part, placed.bound(),
-                    new ReadingPlace(of.opened(), saidAs.at())));
+            out.add(new Direct(about.at(), part, placed.bound(),
+                    new ReadingPlace(of.opened(), said.at())));
         }
     }
 
@@ -2215,10 +2221,13 @@ public final class InvariantChecker {
      * candidate costs a counterfactual and claims nothing, and a rule saying which of them may be
      * one would be a second place deciding what a choice does.
      */
-    private void aChoiceAboutOneCoordinate(Core clause, PartId<RuleRef.Invariant> part,
+    private void aChoiceAboutOneCoordinate(ClauseExpr.Part said, PartId<RuleRef.Invariant> part,
                                            Denotations at, Map<FactSubject, Coordinate> byName,
                                            List<FieldDomains.AboutOneCoordinate> naming) {
-        if (!(ClauseExpr.of(clause, true) instanceof ClauseExpr.Joined joined)
+        // The shape the walk is already holding. Read again from the node, this would be a second
+        // reading of the clause's structure, and one made under a polarity of its own: a choice an
+        // author wrote as a denied conjunction is a choice, and the shape says so.
+        if (!(said instanceof ClauseExpr.Joined joined)
                 || joined.how() != ConditionJoin.EITHER) {
             return;
         }
@@ -2379,12 +2388,12 @@ public final class InvariantChecker {
         if (!(leaf instanceof Core.Binary bin)) {
             return NO_LINE;
         }
-        Comparison read = Comparison.of(bin).orElse(null);
+        StatedComparison read = StatedComparison.of(bin, positive);
         if (read == null) {
             return NO_LINE;
         }
-        ComparisonClaim said = positive ? read.claim() : read.claim().denied();
-        if (said instanceof ComparisonClaim.Singled singled && !singled.holdsAtTheValue()) {
+        if (read.claim() instanceof ComparisonClaim.Singled singled
+                && !singled.holdsAtTheValue()) {
             return NO_LINE;
         }
         // Whether the rule holds one of this value's positions to another, which is a fact about
@@ -2412,11 +2421,12 @@ public final class InvariantChecker {
                 Coordinate against = heldAgainstAConstant(bin, at, byName);
                 yield against == null ? ELSEWHERE : statedOn(against);
             }
-            // The positions cancelled, and what is left is a number against a number. Read as
-            // written, which is what the residue is a residue of: under a denial the same form
-            // states the opposite of what it reads as, and both answers are here.
+            // The positions cancelled, and what is left is a number against a number. Asked of the
+            // comparison the clause states, which already holds the denial, so a rule admitting
+            // nothing and one restricting nothing are told apart here and not by a reader pairing
+            // this with a polarity of its own.
             case CanonicalForm.CutsNothing form ->
-                    form.holdsOfEveryRow() == positive ? NO_LINE : ADMITS_NOTHING;
+                    form.holdsOfEveryRow() ? NO_LINE : ADMITS_NOTHING;
             // Over one number, which is the line's. Over several, and holding no position to a
             // position, the rule stops the values somewhere on one of them and which is what
             // reading further would say — the same answer as a number with no name at all.
@@ -2619,7 +2629,7 @@ public final class InvariantChecker {
      * the sides are what there is to walk. Read off a node holding both, this would be the same
      * walk reached through a value the readers below have no reason to hold.
      */
-    private List<Coordinate> coordinatesIn(Comparison comparison, Denotations at,
+    private List<Coordinate> coordinatesIn(StatedComparison comparison, Denotations at,
                                            Map<FactSubject, Coordinate> byName) {
         List<Coordinate> out = new ArrayList<>(coordinatesIn(comparison.left(), at, byName));
         out.addAll(coordinatesIn(comparison.right(), at, byName));
@@ -2729,7 +2739,7 @@ public final class InvariantChecker {
         if (!(read.comparison().claim() instanceof ComparisonClaim.Cut)) {
             return;
         }
-        Comparison comparison = read.comparison();
+        StatedComparison comparison = read.comparison();
         Places left = placesIn(comparison.left(), at, byName);
         Places right = placesIn(comparison.right(), at, byName);
         Predicate<RuleKey> ordered = place -> carrierAt(place, left, right) != null;
@@ -3164,8 +3174,9 @@ public final class InvariantChecker {
      */
     private sealed interface CanonicalForm {
 
-        /** The comparison this is the reading of. */
-        Comparison comparison();
+        /** The comparison this is the reading of, as the clause states it — the denial the clause
+         *  was read under is already inside the claim, so nothing below applies one. */
+        StatedComparison comparison();
 
         /**
          * The canonical form has no position left in it, and this is what {@code left - right} came
@@ -3176,7 +3187,8 @@ public final class InvariantChecker {
          * position at all — asked by the one authority for that question, which is the walk over
          * the clause, and not by this.
          */
-        record CutsNothing(Comparison comparison, BigDecimal residue) implements CanonicalForm {
+        record CutsNothing(StatedComparison comparison, BigDecimal residue)
+                implements CanonicalForm {
 
             /**
              * Whether the comparison holds of every row there is.
@@ -3193,6 +3205,11 @@ public final class InvariantChecker {
              * may stand at {@code lo} is a question nothing answered. What the comparison decides
              * is what the residue has to be, and which way the residue has to stand is what the
              * relation it states is answered at.
+             *
+             * <p>Of the comparison the clause states, which is where the denial has already gone.
+             * Asked of the one an author spelled, this answers about {@code 0 >= 0} for a clause
+             * stating {@code 0 < 0}, and a reader has to pair it with a polarity to get back what
+             * the rule says — which is the pairing being remembered once per reader.
              */
             boolean holdsOfEveryRow() {
                 return comparison.claim().statedRelation().holds(residue.signum());
@@ -3206,7 +3223,7 @@ public final class InvariantChecker {
          * what a reader downstream makes of them: which subject that expression is about is an
          * answer, and holding it here would put an answer inside what a classification is asked of.
          */
-        record NotRead(Comparison comparison, Core stoppedAt, Denotations under)
+        record NotRead(StatedComparison comparison, Core stoppedAt, Denotations under)
                 implements CanonicalForm {}
 
         /**
@@ -3228,7 +3245,7 @@ public final class InvariantChecker {
          * ({@code UnreadComparison.over}). Typed as a sequence, this would promise an order that is
          * whatever a hash of the atoms happened to give.
          */
-        record Over(Comparison comparison, java.util.Set<Coordinate> numbers)
+        record Over(StatedComparison comparison, java.util.Set<Coordinate> numbers)
                 implements CanonicalForm {
 
             public Over {
@@ -3298,7 +3315,7 @@ public final class InvariantChecker {
      * of the same shape in a body two declarations away is described in the same words — which is
      * what {@code invariant Int.add(length.value, width.value) <= 150} and the guard beside it are.
      */
-    private CanonicalForm canonicalFormOf(Comparison recognised, Denotations at,
+    private CanonicalForm canonicalFormOf(StatedComparison recognised, Denotations at,
                                           Map<FactSubject, Coordinate> byName) {
         // Named against this reader's own coordinates rather than against every number the
         // discharge procedure can identify. A value that is a number and is no coordinate of the
