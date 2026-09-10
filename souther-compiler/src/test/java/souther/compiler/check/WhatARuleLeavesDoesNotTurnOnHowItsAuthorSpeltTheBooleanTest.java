@@ -76,11 +76,12 @@ class WhatARuleLeavesDoesNotTurnOnHowItsAuthorSpeltTheBooleanTest {
     /**
      * And the fixtures are held to being programs somebody could write.
      *
-     * <p>The control on how these models are built. A property over spellings is worth what its
-     * fixtures are worth, and a spelling this compiler refuses reads as a declaration with no rule
-     * at all — which agrees with every other spelling about a great deal. What each fixture is
-     * driven far enough to answer is the structure alone, so what is asserted here is that far
-     * enough is far enough.
+     * <p>The control on how these models are built, and it is over the driving rather than beside
+     * it. A property over spellings is worth what its fixtures are worth, and a spelling this
+     * compiler refuses reads as a declaration with no rule at all — which agrees with every other
+     * spelling about everything. The reading these rows are of makes a leaf of an ill-typed clause
+     * and says nothing about it, so what refuses one is somewhere else entirely, and how far a
+     * fixture is driven is the whole of whether it is refused at all.
      */
     @Test
     void aModelThatCannotBeWrittenIsRefused() {
@@ -200,14 +201,18 @@ class WhatARuleLeavesDoesNotTurnOnHowItsAuthorSpeltTheBooleanTest {
 
     private static FieldDomains read(String source, String clause) {
         Compilation compilation = Compilation.ofSource(source, "Main");
-        // What a fixture has to clear, and no more. Answering everything there is to answer runs
-        // the code this compiler writes, the constant constructions, the examples and every warning
-        // — none of which a rule about what a declaration's clauses leave is read from, and all of
-        // which a fixture pays for once per model it names. What a model that cannot be written is
-        // refused by is held below.
-        compilation.structuralReports();
-        assertEquals(List.of(), compilation.diagnostics().values().stream()
-                        .flatMap(List::stream).map(each -> each.diagnostic().code()).toList(),
+        // Everything there is to answer, which is what holding a fixture to being writable costs
+        // and not what these rows read.
+        //
+        // Driven as far as the rows read, an ill-typed clause reads perfectly well: what refuses
+        // `Bool.not(n)` is not the reading of ends, which makes a leaf of it, but the typing the
+        // code this compiler writes goes through — so a fixture stopped short of that comes back a
+        // declaration with no rule, and a declaration with no rule agrees with every spelling here
+        // about everything. Which is the one way a property over spellings passes while saying
+        // nothing, so the fixtures are held first and read afterwards.
+        compilation.answerEverything();
+        assertEquals(List.of(), compilation.reports().stream()
+                        .map(each -> each.report().diagnostic().code()).toList(),
                 "the model under test is a program that can be written: " + clause);
         String module = compilation.modules().get(0);
         RuleReadingSource rules = RuleReadings.of(compilation, module);

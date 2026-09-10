@@ -126,10 +126,10 @@ class ADeniedComparisonDrawsTheLineItStatesTest {
                 let take (r) = Taken
                 """.formatted(clause);
         Compilation compilation = Compilation.ofSource(source, "Main");
-        // The structure alone, which is what a fixture has to clear. What this test reads is asked
-        // for below and pulls what answering it needs; answering everything there is to answer
-        // besides is work no row here is read from.
-        compilation.structuralReports();
+        // Everything there is to answer, which is what holding a fixture to being writable costs
+        // and not what these rows read. An ill-typed clause reads perfectly well as far as the rows
+        // go and comes back a rule that draws no line, which every spelling here would agree with.
+        compilation.answerEverything();
         assertEquals(List.of(), compilation.diagnostics().values().stream()
                         .flatMap(List::stream).map(each -> each.diagnostic().code()).toList(),
                 "the model under test is a program that can be written");
