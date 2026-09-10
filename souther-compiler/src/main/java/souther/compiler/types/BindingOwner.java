@@ -127,7 +127,7 @@ public sealed interface BindingOwner {
         record Parts(BindingOwner within, ValueName expanded, ApplicationOrigin.Identified at) {
         }
 
-        private final Parts parts;
+        private final Expansion.Parts parts;
 
         private final int hash;
 
@@ -136,7 +136,7 @@ public sealed interface BindingOwner {
                 throw new IllegalArgumentException(
                         "an expansion is of something, somewhere, at some call");
             }
-            this.parts = new Parts(within, expanded, at);
+            this.parts = new Expansion.Parts(within, expanded, at);
             this.hash = ValueHash.ofOnePart(Expansion.class, parts.hashCode());
         }
 
@@ -156,7 +156,7 @@ public sealed interface BindingOwner {
         }
 
         @Override
-        public Parts standsFor() {
+        public Expansion.Parts standsFor() {
             return parts;
         }
 
@@ -188,12 +188,12 @@ public sealed interface BindingOwner {
         record Parts(BindingOwner within, Pass pass, int ordinal) {
         }
 
-        private final Parts parts;
+        private final Synthesized.Parts parts;
 
         private final int hash;
 
         public Synthesized(BindingOwner within, Pass pass, int ordinal) {
-            this.parts = new Parts(within, pass, ordinal);
+            this.parts = new Synthesized.Parts(within, pass, ordinal);
             this.hash = ValueHash.ofOnePart(Synthesized.class, parts.hashCode());
         }
 
@@ -213,7 +213,7 @@ public sealed interface BindingOwner {
         }
 
         @Override
-        public Parts standsFor() {
+        public Synthesized.Parts standsFor() {
             return parts;
         }
 
