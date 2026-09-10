@@ -175,6 +175,32 @@ public record TermPath(String head, List<Step> steps) {
         return !steps.isEmpty() && steps.get(steps.size() - 1) instanceof Step.Refine;
     }
 
+    /**
+     * The position the last step narrows, which is this path with that step dropped.
+     *
+     * <p>Beside {@link #narrowing}, and the pair is what tells a question from its answer. A fork
+     * asks one thing of the scrutinee's position and its arms are the answers to it, so a reader
+     * that has to say which conditions two arms of one fork are needs the position on its own —
+     * held only as the narrowed path, every arm is a value of its own and the fork is no question
+     * anything asked.
+     */
+    public TermPath narrowedFrom() {
+        return new TermPath(head, requireNarrowing().subList(0, steps.size() - 1));
+    }
+
+    /** Which values the last step leaves, which is what the arm that took it came out as. */
+    public Refinement narrowing() {
+        return ((Step.Refine) requireNarrowing().get(steps.size() - 1)).refinement();
+    }
+
+    private List<Step> requireNarrowing() {
+        if (!narrowsWhatItReaches()) {
+            throw new IllegalStateException(
+                    "a position whose last step narrows nothing was asked what it narrows: " + this);
+        }
+        return steps;
+    }
+
     /** Whether any step of this reaches inside a sequence. */
     public boolean insideASequence() {
         for (Step step : steps) {

@@ -475,9 +475,13 @@ public final class Generator {
                         // Reaching these stops no composing, so no search comes back from one of
                         // them and there is no word to give. Asked for one all the same, this says
                         // so rather than lending a word from a budget that does stop something.
+                        // The last stops a reading of a body rather than a search for a value, and
+                        // what it stopped is carried where that reading is
+                        // ({@link DecisionReading.Enumeration}).
                         case TIMES_THE_RULES_ARE_ASKED_AGAIN,
                              VALUES_A_POSITION_ON_THE_WAY_IS_TRIED_AT,
-                             DEPTH_A_CONSTRUCTION_PLAN_DESCENDS -> throw new IllegalArgumentException(
+                             DEPTH_A_CONSTRUCTION_PLAN_DESCENDS,
+                             PATHS_OF_A_DECISION_READ -> throw new IllegalArgumentException(
                                 "no search comes back from this budget, so it has no word: " + each);
                     };
                     if (word != null && word != here) {

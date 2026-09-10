@@ -22,7 +22,9 @@ import souther.compiler.diag.SourcePos;
 import souther.compiler.coverage.CoverageSites;
 import souther.compiler.examples.FixtureReader;
 import souther.compiler.ast.Hir;
+import souther.compiler.check.AnalysisBody;
 import souther.compiler.check.AtomSpace;
+import souther.compiler.check.ElementBindings;
 import souther.compiler.check.DeclarationCitations;
 import souther.compiler.check.DeclarationReadings;
 import souther.compiler.check.DeclaredSig;
@@ -48,6 +50,7 @@ import souther.compiler.partition.Axis;
 import souther.compiler.partition.DomainPoint;
 import souther.compiler.partition.PointRole;
 import souther.compiler.inputs.InputDomain;
+import souther.compiler.inputs.InputReads;
 import souther.compiler.partition.GenerationOutcome;
 import souther.compiler.partition.Generator;
 import souther.compiler.partition.InputClassifications;
@@ -962,6 +965,68 @@ public final class Adequacy {
                 out.put(spec.name(), souther.compiler.check.PathReachability.of(
                         body, db.ask(new Front.Reading()).value(),
                         SpecImplementation.align(spec, fn), plan, read, reading.value()));
+            }
+            return Answer.of(Ordered.map(out));
+        }
+    }
+
+    /**
+     * The decision each of one module's bodies states, as the rules of it.
+     *
+     * <p>Its own key beside {@link PathReached}. That one asks where a run can get to and answers
+     * per place; this one asks what the body decides and answers per path, which is a different
+     * grain — several paths lead to one place, and what tells them apart is the conditions they
+     * consulted.
+     *
+     * <p>Of the body the analysis reads, which is the tree the language's own operations stand in.
+     * A rule an author wrote through one of them is a rule of the model, and the emitted tree has
+     * it expanded into what it does.
+     *
+     * <p>Absent where the bodies were not elaborated, for the reason {@link PathReached} is: a
+     * module the compile stopped in has no rules to be read, and an empty answer would say the
+     * bodies state no decision.
+     */
+    public record Decides(String name)
+            implements Key<Map<String, souther.compiler.partition.DecisionReading>> {
+
+        @Override
+        public String module() {
+            return name;
+        }
+
+        @Override
+        public Answer<Map<String, souther.compiler.partition.DecisionReading>> compute(Db db) {
+            Answer<CheckSurface> prepared = db.ask(new Shapes.CheckSurface(name));
+            Answer<RuleReadingSource> reading = Shapes.ruleReading(db, name);
+            Answer<Map<String, Sig>> sigs = db.ask(new Bodies.Signatures(name));
+            if (!prepared.present() || !reading.present() || !sigs.present()) {
+                return Answer.absent();
+            }
+            Answer<Bodies.Elaborated> checked = db.ask(new Bodies.Checked(name));
+            if (!checked.present()) {
+                return Answer.absent();
+            }
+            Map<String, InputDomain> readInputs = db.ask(new Inputs(name)).value();
+            Map<String, souther.compiler.partition.DecisionReading> out = new LinkedHashMap<>();
+            for (Hir.BehaviorDef behavior : prepared.value().behaviors()) {
+                // A composition has no body of its own, and a behavior whose input this compilation
+                // could not read is one whose conditions name no position. Both are read off the one
+                // classification the other readers of this walk read.
+                if (!(BoundaryForMeasurement.of(sigs.value(), readInputs, behavior)
+                        instanceof BoundaryForMeasurement.Derived(
+                                Sig _, InputForMeasurement.Local(Hir.SpecBehavior spec,
+                                        InputDomain read)))) {
+                    continue;
+                }
+                AnalysisBody analysis = checked.value().analysisBodies().get(spec.name());
+                if (analysis == null) {
+                    continue;
+                }
+                out.put(spec.name(), souther.compiler.partition.DecisionReading.of(spec.name(),
+                        analysis.core(), read.reading(reading.value()),
+                        InputReads.ofParametersWhereCallsStand(read.parameterReads(),
+                                ElementBindings.of(analysis.core(), analysis.elements(),
+                                        reading.value().symbols()))));
             }
             return Answer.of(Ordered.map(out));
         }

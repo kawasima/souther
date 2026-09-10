@@ -169,6 +169,15 @@ class EveryBudgetOfThisCompilerIsReadWhereItIsDeclaredToBeTest {
                             + " figure — on the position where it stopped, or as the whole plan"
                             + " where the caller asked for something below it"),
 
+            // The reading of what a body decides. It stops taking paths at the figure and carries
+            // it out beside the rules it did read, so the rules it never reached are told apart
+            // from a body that states no more.
+            Map.entry("souther.compiler.partition.DecisionReading#<clinit>()V",
+                    "how many paths through one body a decision is read for"),
+            Map.entry("souther.compiler.partition.DecisionReading$Walk#add("
+                            + "Ljava/util/List;Ljava/util/List;)V",
+                    "stops taking paths at that figure, and says which"),
+
             // The readings. Each takes a figure that was handed over and says what it comes to.
             Map.entry("souther.compiler.partition.Generator$UnresolvedCombination$Reason#wordFor("
                             + "Ljava/util/Collection;)"

@@ -236,8 +236,9 @@ public final class PublicationOrders {
      * <p>Nearest the value a reader wanted first. What one proposed value is worth building comes
      * before what one total is offered as, and both before what the search spends over everything
      * it tries — so the figure they would raise to get the value in front of them is said before
-     * the ones that bound the work around it. The plan's depth is last, as the only one that says
-     * how far this compiler looks before it has anything at all.
+     * the ones that bound the work around it. The two that bound no search come last, as the ones
+     * furthest from the value a reader wanted: how far a body is read for what it decides, and how
+     * far this compiler looks before it has anything at all.
      */
     public static final CanonicalSelection.Order<CompositionBudget> COMPOSITION_BUDGETS =
             CanonicalSelection.Order.overValues(List.of(
@@ -254,6 +255,7 @@ public final class PublicationOrders {
                     CompositionBudget.ASSIGNMENTS_A_SEARCH_COMPOSES,
                     CompositionBudget.TIMES_THE_RULES_ARE_ASKED_AGAIN,
                     CompositionBudget.STEPS_A_SEARCH_MAY_TAKE,
+                    CompositionBudget.PATHS_OF_A_DECISION_READ,
                     CompositionBudget.DEPTH_A_CONSTRUCTION_PLAN_DESCENDS));
 
     /**

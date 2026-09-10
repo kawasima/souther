@@ -2708,6 +2708,8 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                 case VALUES_A_POSITION_ON_THE_WAY_IS_TRIED_AT ->
                         "how many values a position on the way is tried at";
                 case DEPTH_A_CONSTRUCTION_PLAN_DESCENDS -> "how deep a value is built";
+                case PATHS_OF_A_DECISION_READ ->
+                        "how many paths through one body a decision is read for";
             });
         }
         return String.join(", ", out);

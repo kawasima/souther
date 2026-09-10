@@ -110,6 +110,11 @@ public enum CompositionBudget {
      *  condition on the way ({@link ReachabilityGap}). */
     VALUES_A_POSITION_ON_THE_WAY_IS_TRIED_AT(8),
 
+    /** How many paths through one body a reading of its decision takes. What it had read is carried
+     *  out with the figure ({@link DecisionReading.Enumeration.StoppedAtAFigure}), so the rules it
+     *  did not reach are neither covered nor gaps. */
+    PATHS_OF_A_DECISION_READ(4096),
+
     /**
      * How deep a construction plan descends.
      *
