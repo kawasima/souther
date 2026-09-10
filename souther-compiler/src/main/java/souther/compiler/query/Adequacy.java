@@ -8,6 +8,7 @@ import souther.compiler.inputs.TermPath;
 
 
 import souther.compiler.coverage.ArmProbe;
+import souther.compiler.coverage.ControlPlace;
 import souther.compiler.coverage.CoverageSites;
 import souther.compiler.coverage.SiteNumbering;
 import souther.compiler.reach.Reachability;
@@ -1006,7 +1007,7 @@ public final class Adequacy {
                         // one: it is the author saying what this reading proves, and telling them
                         // to take it out is telling them off for being right. The denominator
                         // counts the probed arms, and this reports the probed arms.
-                        if (where instanceof souther.compiler.coverage.ControlPointId.ArmPoint
+                        if (where instanceof ControlPlace.Arm
                                 arm && arm.isMeasured() && arm.writtenBy(name)
                                 && said instanceof souther.compiler.reach.Reachability.Unreachable
                                         unreachable) {
@@ -1034,7 +1035,7 @@ public final class Adequacy {
          * answers and never this.
          */
         private static Report warning(
-                Db db, souther.compiler.coverage.ControlPointId.ArmPoint arm,
+                Db db, ControlPlace.Arm arm,
                 souther.compiler.reach.Proof proof) {
             return Report.of(new DeadBranchProofWords(
                     Warnings.pointedAt(Sites.placeOf(db, arm.anchor()))
@@ -1109,12 +1110,12 @@ public final class Adequacy {
         }
 
         /** One dead branch and how it was shown, before either is turned into words. */
-        private record Dead(souther.compiler.coverage.ControlPointId.ArmPoint arm,
+        private record Dead(ControlPlace.Arm arm,
                             souther.compiler.reach.Proof proof) {}
 
         /** Where a report about an arm points, read the way {@link Warnings#pointedAt} reads it. */
         private static souther.compiler.diag.SourcePos at(
-                Db db, souther.compiler.coverage.ControlPointId.ArmPoint arm) {
+                Db db, ControlPlace.Arm arm) {
             return switch (Sites.placeOf(db, arm.anchor())) {
                 case Citation.Written written -> written.at();
                 case Citation.Unplaced unplaced -> unplaced.at();
@@ -2537,6 +2538,17 @@ public final class Adequacy {
                 souther.compiler.check.PathReachability.Answers.AsRun arrives =
                         reachable == null ? NOTHING_PROVEN
                                 : reachable.getOrDefault(behavior.name(), NOTHING_PROVEN);
+                // The arms are this plan's and the reading is asked about them by place, so the two
+                // are held to being one another's here, where they are put together. A reading of
+                // another module's plan answers "nothing reached it" about every one of these arms,
+                // which is the same shape as a behavior that owes nothing.
+                //
+                // Only where the bodies came back. What stands here otherwise is the plan of
+                // nothing, which is no module's, and what this behavior is owed is answered by the
+                // gate below saying the bodies were not read.
+                if (bodiesRead) {
+                    arrives.answers().requireNumbering(plan.identity());
+                }
                 BranchEvidence absent = whyNoArms(name, prepared.value().writesItsOwnBody(behavior),
                         bodiesRead, arms, arrives, instrumented, observed);
                 if (absent != null) {

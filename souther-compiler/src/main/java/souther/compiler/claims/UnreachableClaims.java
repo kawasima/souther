@@ -3,7 +3,9 @@ package souther.compiler.claims;
 import souther.compiler.check.ElementBindings;
 import souther.compiler.check.Symbols;
 import souther.compiler.core.Core;
+import souther.compiler.coverage.ControlPlace;
 import souther.compiler.coverage.NormalReturn;
+import souther.compiler.coverage.NumberingIdentity;
 import souther.compiler.inputs.InputDomain;
 import souther.compiler.inputs.InputReads;
 import souther.compiler.inputs.PathResolution;
@@ -11,6 +13,7 @@ import souther.compiler.inputs.TermPath;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * What a behavior's body declares cannot arrive.
@@ -38,12 +41,32 @@ import java.util.List;
 public final class UnreachableClaims {
 
     /** Nothing claimed: a behavior with no body, or one whose body says nothing this can read. */
-    public static final UnreachableClaims NONE = new UnreachableClaims(List.of());
+    public static final UnreachableClaims NONE = new UnreachableClaims(List.of(), Optional.empty());
 
     private final List<Claim> claims;
 
-    private UnreachableClaims(List<Claim> claims) {
+    private final Optional<NumberingIdentity> numbering;
+
+    private UnreachableClaims(List<Claim> claims, Optional<NumberingIdentity> numbering) {
         this.claims = List.copyOf(claims);
+        this.numbering = numbering;
+        if (this.claims.isEmpty() != numbering.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "a claim names an arm of some plan, and nothing claimed names no plan: "
+                            + this.claims.size() + " claimed under " + numbering);
+        }
+    }
+
+    /**
+     * Which plan's arms these claims name, or empty where nothing is claimed.
+     *
+     * <p>What a reading of the body has to have been made under for its answers to be about these
+     * arms. A claim is judged by looking the arm up in that reading, and a reading of some other
+     * plan has nothing filed under any of them — which reads as every claim unproven and is not an
+     * answer about either body.
+     */
+    public Optional<NumberingIdentity> numbering() {
+        return numbering;
     }
 
     /**
@@ -60,7 +83,8 @@ public final class UnreachableClaims {
         List<Claim> found = new ArrayList<>();
         claimedUnder(body, InputReads.ofParameters(read.parameterReads(), ElementBindings.NONE),
                 symbols, plan, NormalReturn.ofBody(body), true, found);
-        return found.isEmpty() ? NONE : new UnreachableClaims(found);
+        return found.isEmpty() ? NONE
+                : new UnreachableClaims(found, Optional.of(plan.identity()));
     }
 
     /**
@@ -124,7 +148,7 @@ public final class UnreachableClaims {
         if (path == null) {
             return;
         }
-        souther.compiler.coverage.ControlPointId.ArmPoint[] arms = plan.armsOf(match);
+        ControlPlace.Arm[] arms = plan.armsOf(match);
         for (int i = 0; i < match.cases().size(); i++) {
             Core.Case arm = match.cases().get(i);
             if (answering.at(arm.body())) {
@@ -133,7 +157,7 @@ public final class UnreachableClaims {
             if (arms == null || i >= arms.length) {
                 continue;   // a fork this plan holds no arms for is one nothing can be asked about
             }
-            souther.compiler.coverage.ControlPointId.ArmPoint where = arms[i];
+            ControlPlace.Arm where = arms[i];
             List<UnreachableReasons.Said> said = UnreachableReasons.said(arm.body(), answering);
             List<String> why = said.stream().map(UnreachableReasons.Said::reason).distinct().toList();
             // Cases written together on one arm are one run of code, and it declares the same thing

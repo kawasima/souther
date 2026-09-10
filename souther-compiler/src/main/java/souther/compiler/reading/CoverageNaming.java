@@ -3,7 +3,7 @@ package souther.compiler.reading;
 import souther.compiler.check.Symbols;
 import souther.compiler.core.Core;
 import souther.compiler.coverage.ControlClaim;
-import souther.compiler.coverage.ControlPointId;
+import souther.compiler.coverage.ControlPlace;
 import souther.compiler.coverage.CoverageSites;
 import souther.compiler.flow.Naming;
 import souther.compiler.inputs.ComparedNumber;
@@ -121,7 +121,7 @@ final class CoverageNaming implements Naming<Outcome> {
      *  null where no run through the arm could be recorded. */
     @Override
     public Outcome matchCase(Core.Match match, int part) {
-        ControlPointId.ArmPoint place = armPoint(match, part);
+        ControlPlace.Arm place = armPoint(match, part);
         ControlClaim claim = claimAt(place);
         if (claim == null) {
             return null;
@@ -155,7 +155,7 @@ final class CoverageNaming implements Naming<Outcome> {
      */
     @Override
     public Outcome forkArm(Core fork, int part) {
-        ControlPointId.ArmPoint place = armPoint(fork, part);
+        ControlPlace.Arm place = armPoint(fork, part);
         ControlClaim claim = claimAt(place);
         if (claim == null) {
             return null;
@@ -185,13 +185,13 @@ final class CoverageNaming implements Naming<Outcome> {
      * position names it off the place it has already asked for. Asked again of the fork, the answer
      * would be this plan's arms read a second time to say what the first read already said.
      */
-    private ControlPointId.ArmPoint armPoint(Core fork, int part) {
-        ControlPointId.ArmPoint[] arms = plan.armsOf(fork);
+    private ControlPlace.Arm armPoint(Core fork, int part) {
+        ControlPlace.Arm[] arms = plan.armsOf(fork);
         return arms == null || part >= arms.length ? null : arms[part];
     }
 
     /** What a run through {@code place} would be seen doing, and null where nothing records one. */
-    private static ControlClaim claimAt(ControlPointId.ArmPoint place) {
+    private static ControlClaim claimAt(ControlPlace.Arm place) {
         return place == null ? null : ControlClaim.of(place).orElse(null);
     }
 

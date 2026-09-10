@@ -10,7 +10,7 @@ import souther.compiler.check.Prepared;
 import souther.compiler.check.Sig;
 import souther.compiler.core.Core;
 import souther.compiler.coverage.ControlClaim;
-import souther.compiler.coverage.ControlPointId;
+import souther.compiler.coverage.ControlPlace;
 import souther.compiler.coverage.CoverageSites;
 import souther.compiler.coverage.SiteNumbering;
 import souther.compiler.inputs.InputDomain;
@@ -275,7 +275,7 @@ class ARowNothingRanFillsNoCombinationTest {
     private static Set<ArmProbe> claimedBy(CellSelection selection) {
         Set<ArmProbe> out = new LinkedHashSet<>();
         for (ControlClaim claim : selection.claims()) {
-            if (claim.at() instanceof ControlPointId.ArmPoint arm && arm.probe().isPresent()) {
+            if (claim.at() instanceof ControlPlace.Arm arm && arm.probe().isPresent()) {
                 out.add(arm.probe().get());
             }
         }

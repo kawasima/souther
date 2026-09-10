@@ -204,7 +204,7 @@ public final class CoverageSites {
      * one is wanted.
      */
     public record ArmSite(String behavior, SourceOutcome.Arm outcome,
-                          ControlPointId.ArmPoint place, int ordinal,
+                          ControlPlace.Arm place, int ordinal,
                           Obligation obligation) implements Site {
 
         public ArmSite {
@@ -308,7 +308,7 @@ public final class CoverageSites {
         private final List<GuardRef> guards;
         private final IdentityHashMap<Core, int[]> byNode;
         private final Map<ConstructOccurrence, ComparisonEmissionSite> byComparison;
-        private final IdentityHashMap<Core, ControlPointId.ArmPoint[]> armsByNode;
+        private final IdentityHashMap<Core, ControlPlace.Arm[]> armsByNode;
         private final java.util.Set<Core> mayRepeat;
         private final Map<Integer, Citation> reachedAt;
         private final ComparisonCatalog comparisons;
@@ -330,7 +330,7 @@ public final class CoverageSites {
          */
         Plan(List<Site> sites, List<GuardRef> guards, IdentityHashMap<Core, int[]> byNode,
              Map<ConstructOccurrence, ComparisonEmissionSite> byComparison,
-             IdentityHashMap<Core, ControlPointId.ArmPoint[]> armsByNode,
+             IdentityHashMap<Core, ControlPlace.Arm[]> armsByNode,
              java.util.Set<Core> mayRepeat,
              Map<Integer, Citation> reachedAt,
              ComparisonCatalog comparisons,
@@ -420,7 +420,7 @@ public final class CoverageSites {
             return byComparison;
         }
 
-        IdentityHashMap<Core, ControlPointId.ArmPoint[]> armsByNode() {
+        IdentityHashMap<Core, ControlPlace.Arm[]> armsByNode() {
             return armsByNode;
         }
 
@@ -472,16 +472,22 @@ public final class CoverageSites {
          * owed wants the probed ones and can ask each; a reader judging what an arm declares wants
          * the arm, which is the one this has and the other does not.
          */
-        public ControlPointId.ArmPoint[] armsOf(Core node) {
+        public ControlPlace.Arm[] armsOf(Core node) {
             return armsByNode.get(node);
         }
 
-        /** Which way {@code comparison} coming out {@code result} is, or empty where this plan
-         *  numbered no comparison there. */
-        public java.util.Optional<ControlPointId.ComparisonPoint> outcomeOf(
+        /**
+         * Which way {@code which} coming out {@code result} is, or empty where this plan numbered
+         * no comparison there.
+         *
+         * <p>The only maker of one of these, and what pairs the comparison with the address a run
+         * through it is recorded at. The two are separate questions and one plan answers both, so a
+         * caller never holds an outcome whose site was issued for some other comparison.
+         */
+        public java.util.Optional<ControlPlace.Outcome> outcomeOf(
                 ConstructOccurrence which, boolean result) {
             return emissionSiteOf(which)
-                    .map(site -> new ControlPointId.ComparisonPoint(site, result));
+                    .map(site -> new ControlPlace.Outcome(which, site, result));
         }
 
         /**
@@ -636,7 +642,7 @@ public final class CoverageSites {
         // One occurrence per arm the walk made, whoever asks for it. A site of an arm and the arms
         // of its fork are the same place, and they are the same value: made twice, the two would be
         // two answers about one arm, and every reader below would be free to have either.
-        IdentityHashMap<DraftArm, ControlPointId.ArmPoint> issued = new IdentityHashMap<>();
+        IdentityHashMap<DraftArm, ControlPlace.Arm> issued = new IdentityHashMap<>();
         List<Site> sites = new ArrayList<>();
         for (DraftSite draft : walk.sites) {
             sites.add(switch (draft) {
@@ -658,9 +664,9 @@ public final class CoverageSites {
         Map<ConstructOccurrence, ComparisonEmissionSite> byComparison = new LinkedHashMap<>();
         walk.byComparison.forEach((which, raw) ->
                 byComparison.put(which, numbering.comparison(raw)));
-        IdentityHashMap<Core, ControlPointId.ArmPoint[]> armsByNode = new IdentityHashMap<>();
+        IdentityHashMap<Core, ControlPlace.Arm[]> armsByNode = new IdentityHashMap<>();
         walk.armsByNode.forEach((node, arms) -> {
-            ControlPointId.ArmPoint[] here = new ControlPointId.ArmPoint[arms.length];
+            ControlPlace.Arm[] here = new ControlPlace.Arm[arms.length];
             for (int i = 0; i < arms.length; i++) {
                 here[i] = placeOf(arms[i], numbering, issued);
             }
@@ -683,10 +689,10 @@ public final class CoverageSites {
      * places, and what is wanted here is the occurrence this draft became rather than the one some
      * draft equal to it did.
      */
-    private static ControlPointId.ArmPoint placeOf(
+    private static ControlPlace.Arm placeOf(
             DraftArm draft, SiteNumbering numbering,
-            IdentityHashMap<DraftArm, ControlPointId.ArmPoint> issued) {
-        return issued.computeIfAbsent(draft, each -> new ControlPointId.ArmPoint(
+            IdentityHashMap<DraftArm, ControlPlace.Arm> issued) {
+        return issued.computeIfAbsent(draft, each -> new ControlPlace.Arm(
                 each.arm(), armAt(numbering, each.raw()), each.anchor()));
     }
 

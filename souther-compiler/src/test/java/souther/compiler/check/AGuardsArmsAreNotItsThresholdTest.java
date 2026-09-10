@@ -1,7 +1,7 @@
 package souther.compiler.check;
 
 import org.junit.jupiter.api.Test;
-import souther.compiler.coverage.ControlPointId;
+import souther.compiler.coverage.ControlPlace;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.Compilation;
 import souther.compiler.reach.Reachability;
@@ -55,9 +55,9 @@ class AGuardsArmsAreNotItsThresholdTest {
         // of a guard is one a run can be recorded in, so the probe numbers put all four in that
         // order and there is nothing here for the reading's own answer to decide.
         List<Reachability> arms = byBehavior.get("pick").found().entrySet().stream()
-                .filter(each -> each.getKey() instanceof ControlPointId.ArmPoint)
+                .filter(each -> each.getKey() instanceof ControlPlace.Arm)
                 .sorted(java.util.Comparator.comparingInt(each ->
-                        ((ControlPointId.ArmPoint) each.getKey()).probe().orElseThrow().raw()))
+                        ((ControlPlace.Arm) each.getKey()).probe().orElseThrow().raw()))
                 .map(Map.Entry::getValue)
                 .toList();
         assertEquals(4, arms.size(), "two guards, two arms each");

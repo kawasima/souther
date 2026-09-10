@@ -1,9 +1,10 @@
 package souther.compiler.check;
 
 import souther.compiler.coverage.ArmProbe;
+import souther.compiler.coverage.NumberingIdentity;
 import souther.compiler.core.Core;
 import souther.compiler.diag.SourcePos;
-import souther.compiler.coverage.ControlPointId;
+import souther.compiler.coverage.ControlPlace;
 import souther.compiler.inputs.Admits;
 import souther.compiler.inputs.InputDomain;
 import souther.compiler.inputs.InputReads;
@@ -28,6 +29,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 
 /**
  * What the model's own rules say arrives at each place in a behavior's body.
@@ -39,7 +41,7 @@ import java.util.Objects;
  * guards above had established. Two guards on one position left the second one's departure owed a
  * row that nothing can write.
  *
- * <p>Held by {@link ControlPointId} and not by probe number. An arm answering {@code unreachable}
+ * <p>Held by {@link ControlPlace} and not by probe number. An arm answering {@code unreachable}
  * has no probe, and it is the arm a claim is about.
  *
  * <p><b>Only a proof excludes, and nothing here proves that something arrives.</b> A state the
@@ -53,14 +55,35 @@ import java.util.Objects;
  */
 public final class PathReachability {
 
-    /** What was found, and what a place nothing was found about comes to. */
-    public record Answers(Map<ControlPointId, Reachability> found,
+    /**
+     * What was found, and what a place nothing was found about comes to.
+     *
+     * @param numbering which plan's places these are filed under, or empty where no reading was
+     *                  made at all. Not read off the entries: a reading of a body with nothing to
+     *                  say about it is a reading and answers for that plan, while what a caller
+     *                  holds where a module's reading could not be made is no reading and answers
+     *                  for none. The two are the same map and are not the same fact
+     */
+    public record Answers(Optional<NumberingIdentity> numbering,
+                          Map<ControlPlace, Reachability> found,
                           Map<ConstructOccurrence,
                                   souther.compiler.reach.ComparisonArrival> arriving) {
 
-        public static final Answers NONE = new Answers(Map.of(), Map.of());
+        /** No reading, which every consumer takes the way it takes a place nothing was found
+         *  about, and which goes with any plan because it says nothing about one. */
+        public static final Answers NONE = new Answers(Optional.empty(), Map.of(), Map.of());
 
         public Answers {
+            if (numbering == null) {
+                throw new IllegalArgumentException(
+                        "a reading either was made under some numbering or was not made");
+            }
+            if (numbering.isEmpty() && !(found.isEmpty() && arriving.isEmpty())) {
+                throw new IllegalArgumentException(
+                        "a reading that answered about " + found.size() + " places and "
+                                + arriving.size() + " comparisons was made under some numbering;"
+                                + " its places are of a plan and nothing here would say which");
+            }
             // The order the walk found them in. `Map.copyOf` is unordered and its iteration is
             // salted per run, so the warnings read off this came out in a different order on every
             // JVM — a diagnostic whose place in the output is not a function of the source.
@@ -69,11 +92,40 @@ public final class PathReachability {
         }
 
         /**
+         * That the places {@code of} names are the places this reading answered about.
+         *
+         * <p><b>Said once, where a plan and a reading of it are put together, and not at each
+         * lookup.</b> Absent here reads as unsettled and that is the right answer for a place the
+         * walk did not get to — and the same answer for a place of another module's plan, which is
+         * not an answer about this reading at all. A place cannot be asked which plan it is of: an
+         * arm no run can be recorded in carries no numbering, and giving it one would put the
+         * plan's own address back inside the identity. So the pairing is what is checked, and it is
+         * checked where the two halves meet.
+         *
+         * <p>Beside {@code AlignedObservation}, which refuses a place of another numbering put to a
+         * recording. Both are read back under a numbering, and now both say so.
+         *
+         * <p>{@link #NONE} goes with any plan. What a caller holds where no reading was made says
+         * nothing about any module's places, and every consumer already treats it the way it treats
+         * a place nothing was found about.
+         */
+        public void requireNumbering(NumberingIdentity of) {
+            if (numbering.isPresent() && !numbering.get().equals(of)) {
+                throw new IllegalArgumentException("this reading was made under " + numbering.get()
+                        + " and is being read against " + of
+                        + "; what one plan's reading says about another's places is nothing, and"
+                        + " answering it would report every place of a body as one nothing"
+                        + " reached");
+            }
+        }
+
+        /**
          * What arrives at {@code where}.
          *
          * <p>A place this reading has nothing filed under is one the walk did not get to, which is
          * an answer and not a gap: it is {@link WhyUnsettled.TheWalkDidNotReachIt}, and every
-         * consumer treats it as it treats any other unsettled place.
+         * consumer treats it as it treats any other unsettled place. Which is why the reading and
+         * the plan are held to being one another's first ({@link #requireNumbering}).
          *
          * <p><b>Asked with the place and never with an address of one.</b> A probe says where a run
          * through an arm is recorded, and which arm that is is the numbering's answer, given where
@@ -81,7 +133,7 @@ public final class PathReachability {
          * by search — over the entries of one reading, which knows of no numbering and could not
          * tell two arms answering to one probe apart if a walk ever made them.
          */
-        public Reachability at(ControlPointId where) {
+        public Reachability at(ControlPlace where) {
             Reachability answer = found.get(where);
             return answer != null ? answer
                     : new Reachability.Unsettled(WhyUnsettled.theWalkDidNotReachIt());
@@ -122,11 +174,11 @@ public final class PathReachability {
          * @param lit the probes a row was recorded at
          */
         public AsRun asRunWith(java.util.Set<ArmProbe> lit) {
-            Map<ControlPointId, Reachability> out = new LinkedHashMap<>(found);
+            Map<ControlPlace, Reachability> out = new LinkedHashMap<>(found);
             java.util.Set<ArmProbe> provedWrong =
                     new java.util.LinkedHashSet<>();
             found.forEach((where, said) -> {
-                if (!(where instanceof ControlPointId.ArmPoint arm)
+                if (!(where instanceof ControlPlace.Arm arm)
                         || arm.probe().isEmpty() || !lit.contains(arm.probe().get())) {
                     return;
                 }
@@ -138,7 +190,7 @@ public final class PathReachability {
             });
             // The arrivals as they were: a run corrects what an arm's denominator counts, and the
             // geometry the arrivals decide was settled from the model before any row ran.
-            return new AsRun(new Answers(out, arriving), provedWrong);
+            return new AsRun(new Answers(numbering, out, arriving), provedWrong);
         }
 
         /**
@@ -211,7 +263,7 @@ public final class PathReachability {
                 new PathEngine(source.symbols(), source.invariants(), source.states(),
                         source.written(), DeclarationReadings.NONE,
                         Terms.Of.THE_TREE_THAT_RUNS, policy);
-        Map<ControlPointId, Reachability> out = new LinkedHashMap<>();
+        Map<ControlPlace, Reachability> out = new LinkedHashMap<>();
         Map<ConstructOccurrence,
                 souther.compiler.reach.ComparisonArrival> arriving = new LinkedHashMap<>();
         PathEngine.Entered in = PathEngine.Entered.nothing();
@@ -233,7 +285,7 @@ public final class PathReachability {
         unanswered(body, plan, out, arriving).ifPresent(why ->
                 InvariantChecker.gaveUp("reachability",
                         WhatTheCheckCannotRead.theWalkLeftAnAnswerUnmade(why)));
-        return new Answers(out, arriving);
+        return new Answers(Optional.of(plan.identity()), out, arriving);
     }
 
     /**
@@ -267,7 +319,7 @@ public final class PathReachability {
      * @return what went unanswered, or empty where nothing did
      */
     private static java.util.Optional<String> unanswered(
-            Core body, CoverageSites.Plan plan, Map<ControlPointId, Reachability> out,
+            Core body, CoverageSites.Plan plan, Map<ControlPlace, Reachability> out,
             Map<ConstructOccurrence,
                     souther.compiler.reach.ComparisonArrival> arriving) {
         // Which comparison this is, and only where the plan numbers one there: what is owed is
@@ -294,7 +346,7 @@ public final class PathReachability {
      */
     private static java.util.Optional<String> unansweredAt(
             Core.Binary comparison, CoverageSites.Plan plan,
-            Map<ControlPointId, Reachability> out,
+            Map<ControlPlace, Reachability> out,
             Map<ConstructOccurrence,
                     souther.compiler.reach.ComparisonArrival> arriving) {
         ConstructOccurrence which = numbered(comparison, plan);
@@ -302,7 +354,7 @@ public final class PathReachability {
             return java.util.Optional.empty();
         }
         for (boolean result : new boolean[] {true, false}) {
-            ControlPointId where = plan.outcomeOf(which, result).orElse(null);
+            ControlPlace where = plan.outcomeOf(which, result).orElse(null);
             if (where != null && !out.containsKey(where)) {
                 return java.util.Optional.of(
                         "this reading answered for no run through " + comparison.op()
@@ -330,7 +382,7 @@ public final class PathReachability {
      *  against. A condition narrows a path; a case is refused or left by the rules themselves. */
     private final InputDomain read;
     private final Symbols symbols;
-    private final Map<ControlPointId, Reachability> out;
+    private final Map<ControlPlace, Reachability> out;
     private final Map<ConstructOccurrence,
             souther.compiler.reach.ComparisonArrival> arriving;
     /**
@@ -345,7 +397,7 @@ public final class PathReachability {
     private Denotations entered = Denotations.none();
 
     private PathReachability(PathEngine engine, CoverageSites.Plan plan, InputDomain read,
-                             Symbols symbols, Map<ControlPointId, Reachability> out,
+                             Symbols symbols, Map<ControlPlace, Reachability> out,
                              Map<ConstructOccurrence,
                                      souther.compiler.reach.ComparisonArrival> arriving) {
         this.engine = engine;
@@ -409,7 +461,7 @@ public final class PathReachability {
             }
             case Core.If iff -> {
                 walk(iff.cond(), k, at, reads, decided, nothingAbove);
-                ControlPointId.ArmPoint[] arms = plan.armsOf(iff);
+                ControlPlace.Arm[] arms = plan.armsOf(iff);
                 enterArm(arms, 0, iff, iff.then(), k, at, reads, decided, true);
                 enterArm(arms, 1, iff, iff.els(), k, at, reads, decided, false);
             }
@@ -510,7 +562,7 @@ public final class PathReachability {
         }
         arriving.put(which, arrivalAt(comparison, k, at, reads));
         for (boolean result : new boolean[] {true, false}) {
-            java.util.Optional<ControlPointId.ComparisonPoint> where =
+            java.util.Optional<ControlPlace.Outcome> where =
                     plan.outcomeOf(which, result);
             if (where.isEmpty()) {
                 continue;
@@ -685,7 +737,7 @@ public final class PathReachability {
      * nothing, the arm is proven and what is under it is not walked: everything there is unreachable
      * for the same reason, and one finding is what an author is owed.
      */
-    private void enterArm(ControlPointId.ArmPoint[] arms, int index, Core.If iff, Core arm,
+    private void enterArm(ControlPlace.Arm[] arms, int index, Core.If iff, Core arm,
                           Known k, Denotations at, InputReads reads, List<PathDecision> decided,
                           boolean holds) {
         Predicates.Assumed taken = engine.assuming(iff.cond(), k, at, holds);
@@ -714,7 +766,7 @@ public final class PathReachability {
      * is built here where both are in hand rather than assembled by whoever asks.
      */
     private void cases(Core.Match match, InputReads reads, boolean nothingAbove) {
-        ControlPointId.ArmPoint[] arms = plan.armsOf(match);
+        ControlPlace.Arm[] arms = plan.armsOf(match);
         if (arms == null) {
             return;
         }

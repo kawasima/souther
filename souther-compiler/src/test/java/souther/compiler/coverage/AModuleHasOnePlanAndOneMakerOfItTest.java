@@ -132,14 +132,14 @@ class AModuleHasOnePlanAndOneMakerOfItTest {
                     + " souther.compiler.coverage.ComparisonEmissionSite",
             "method outcomeOf(souther.compiler.types.ConstructOccurrence,boolean) :"
                     + " java.util.Optional<"
-                    + "souther.compiler.coverage.ControlPointId$ComparisonPoint>",
+                    + "souther.compiler.coverage.ControlPlace$Outcome>",
             // What a number means, which is the half of a plan that outlives the graph.
             "method numbering() : souther.compiler.coverage.SiteNumbering",
             "method identity() : souther.compiler.coverage.NumberingIdentity",
             // Asked about a node the caller is already holding, which is the emitter's question.
             "method mayRepeat(souther.compiler.core.Core) : boolean",
             "method armsOf(souther.compiler.core.Core) :"
-                    + " souther.compiler.coverage.ControlPointId$ArmPoint[]",
+                    + " souther.compiler.coverage.ControlPlace$Arm[]",
             "method probesOf(souther.compiler.core.Core) : int[]",
             // Where the fork of each place this plan reached is written.
             "method whereEachArmsForkIsWritten() :"

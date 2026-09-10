@@ -30,6 +30,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * of the bodies it holds; a reader reaching for any other plan is one branch away from the stand-in,
  * and where the bodies are there is no answer at all rather than an empty one.
  *
+ * <p><b>Two things a taker does with one, and the stand-in is dangerous to one of them.</b> A
+ * numbering read as an address space says a run happened at these places, and taken off the
+ * stand-in it says that of nowhere. A numbering read as a name says which plan a value is of, and
+ * is only ever compared with another taken the same way — two readers of the plan of nothing agree
+ * they hold the plan of nothing, which is true. The reason beside each entry says which of the two
+ * it is doing.
+ *
  * <p><b>What this holds is the population, and not that each of them is right.</b> A walk over the
  * compiled classes sees which method takes a numbering off a plan; it does not see which plan, so
  * it cannot tell a reader holding the checked bodies from one holding the stand-in. That is what
@@ -63,7 +70,34 @@ class WhoTakesAPlansNumberingHasItsBodiesTest {
                             + " holds for the bodies it is emitting — and taken only where coverage"
                             + " was asked for, so it is never the stand-in's. The emission answers"
                             + " with it, rather than a caller working out a numbering of its own"
-                            + " beside the one the probes were written from"));
+                            + " beside the one the probes were written from"),
+            // The four below take one for the other reason there is to take one. None of them
+            // aligns a recording against it: each stamps or compares a reading of a plan with the
+            // plan it is being read against, so what a numbering says here is "these two are the
+            // same plan's" and never "this run happened at these places". The stand-in cannot make
+            // one of them answer about somewhere else — two readers of the plan of nothing agree
+            // that they hold the plan of nothing, which is what they hold.
+            new Licence("souther.compiler.check.PathReachability.of -> identity", 1,
+                    "the reading stamps itself with the plan whose places it files its answers"
+                            + " under, taken off the plan it was handed and walked. Absent, a"
+                            + " reading would be a map of places with nothing saying whose, and a"
+                            + " reader pairing it with another plan would be told every place of"
+                            + " the body is one nothing reached"),
+            new Licence("souther.compiler.claims.UnreachableClaims.of -> identity", 1,
+                    "the claims name arms of the plan they were read against, and say so, taken"
+                            + " off that same plan. What judges them looks each arm up in a"
+                            + " reading, and this is what says which reading answers about them"),
+            new Licence("souther.compiler.partition.ProducedCases.of -> identity", 1,
+                    "the walk asks a reading about the arms of the plan it was handed, so the two"
+                            + " are held to being one plan's before either is read. Both are"
+                            + " parameters of one call, which is where a caller could put two"
+                            + " modules' together"),
+            new Licence("souther.compiler.query.Adequacy.BranchCoverage.lambda$compute$0"
+                            + " -> identity", 1,
+                    "the arms of one behavior and the reading that says what arrives at them are"
+                            + " put together here, and are held to being one plan's. Taken only"
+                            + " where the checked bodies came back, so the plan is theirs and never"
+                            + " the stand-in this file is about"));
 
     @Test
     void everyReaderOfAPlansNumberingIsWrittenDownWithWhatMakesItSafe() {
