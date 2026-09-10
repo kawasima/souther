@@ -673,34 +673,40 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             // different question.
             Measure<List<BorderAssessment>> read =
                     lines == null ? null : lines.get(behavior.name());
+            // Read once and used twice: what this page shows, and the rules it may send a reader
+            // to. Asked of the module's whole list a second time, what it costs to assemble a
+            // module would grow with its behaviors times its findings, and every one of them is
+            // about some other behavior.
+            List<ReportedFinding> reported = ofBehavior(compilation, name, findings,
+                    behavior.name());
             behaviors.add(new BehaviorReport(behavior.name(),
                     module.implementationOf(behavior),
                     new BehaviorEvidence(reading, signature, partition, read,
                             accounts == null ? null : accounts.get(behavior.name()), branch),
                     claims == null ? ClaimAnnotations.NONE
                             : claims.getOrDefault(behavior.name(), ClaimAnnotations.NONE),
-                    ofBehavior(compilation, name, findings, behavior.name()),
+                    reported,
                     armPlaces(compilation, branch),
                     conditionPlaces(compilation, linesOf(read)),
                     rulePlaces(compilation, partition, linesOf(read),
                             accounts == null ? List.of()
                                     : pointsOf(accounts.get(behavior.name())),
-                            findings)));
+                            reported)));
         }
         Adequacy.DeclaredBoundaries declared =
                 compilation.db().ask(new Adequacy.DeclaredBorders(name)).value();
-        return new ModuleReport(name, compilation.sourceIdOf(name), behaviors,
-                findings == null ? List.of()
-                        : findings.stream()
-                                .filter(each -> !(each.subject()
-                                        instanceof FindingSubject.OfABehavior))
-                                .map(each -> reported(compilation, name, each))
-                                .toList(),
+        // What this module's own block shows, read once for the same reason a behavior's is.
+        List<ReportedFinding> owed = findings == null ? List.of()
+                : findings.stream()
+                        .filter(each -> !(each.subject() instanceof FindingSubject.OfABehavior))
+                        .map(each -> reported(compilation, name, each))
+                        .toList();
+        return new ModuleReport(name, compilation.sourceIdOf(name), behaviors, owed,
                 // The declarations' own block names conditions too, and the lines it names them
                 // under are the debts' rather than any behavior's.
                 new DeclarationsShown(declared,
                         conditionPlaces(compilation, declaredLines(declared)),
-                        rulePlaces(compilation, null, declaredLines(declared), null, findings)));
+                        rulePlaces(compilation, null, declaredLines(declared), null, owed)));
     }
 
     /** The lines a module's declarations were read at, which is where the block about them looks
@@ -822,7 +828,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
     private static Map<RuleCitation.Written, Citation> rulePlaces(
             Compilation compilation, PartitionEvidence partition,
             List<BorderAssessment> lines, List<BorderObligationPointAssessment> account,
-            List<Adequacy.Finding> found) {
+            List<ReportedFinding> found) {
         Map<RuleCitation.Written, Citation> places = new LinkedHashMap<>();
         Consumer<RuleCitation> take = cited -> {
             if (cited instanceof RuleCitation.Written written) {
@@ -839,7 +845,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             account.forEach(each -> each.citations().forEach(take));
         }
         if (found != null) {
-            found.stream().map(Adequacy.Finding::about)
+            found.stream().map(ReportedFinding::finding).map(Adequacy.Finding::about)
                     .filter(About.OfARule.class::isInstance)
                     .map(About.OfARule.class::cast)
                     .forEach(each -> each.cited().forEach(take));
@@ -1513,6 +1519,10 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
         // question and is said per module, where the measures are.
         UnderAWiderRun open = underAWiderRun();
         if (!open.isEmpty()) {
+            // Read once for the lines below rather than per line: the places are a fold over every
+            // page this report holds, and folding it again per opening is that walk once per thing
+            // said about it.
+            PublishedRuleHandle.WhereARuleIs places = rulePlaces();
             out.append("  what keeps it open\n");
             out.append(String.format("    may change in a wider run   %3d%n", open.mayChange()));
             out.append(String.format("    unaffected by a wider run   %3d%n", open.unaffected()));
@@ -1526,7 +1536,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                 // a line is owed a sentence. What kind of thing it is comes out in what is said to
                 // do about it, which is read from the same fact the word is.
                 out.append(String.format("      %s — %s%n",
-                        said(each.subject(), names, rulePlaces()),
+                        said(each.subject(), names, places),
                         next(ReaderDisposition.of(each))));
             }
         }
@@ -4483,6 +4493,8 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
     private void keptOpenBy(ObjectNode root, DocumentSources sources) {
         ArrayNode out = root.putArray("keptOpenBy");
         List<PublishedOpening> said = new ArrayList<>();
+        // Once for the fold below, for the reason the page's own line gives.
+        PublishedRuleHandle.WhereARuleIs places = rulePlaces();
         for (AdequacyOpening each : whatKeepsTheVerdictOpen()) {
             // The reason beside it, where the kind is one that has one. A measure nobody made says
             // what it was waiting for, and that word is one this document already writes wherever a
@@ -4490,7 +4502,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             Optional<NotMeasuredWord> why = each instanceof AdequacyOpening.NotMeasured it
                     ? Optional.of(NotMeasuredWord.of(it.why())) : Optional.empty();
             said.add(new PublishedOpening(kindOf(each), why, each.runSensitivity(),
-                    publishedSubject(each.subject(), sources, rulePlaces())));
+                    publishedSubject(each.subject(), sources, places)));
         }
         for (PublishedOpening each : PublicationOrders.WHAT_HOLDS_A_VERDICT_OPEN
                 .arrange(said).written()) {
