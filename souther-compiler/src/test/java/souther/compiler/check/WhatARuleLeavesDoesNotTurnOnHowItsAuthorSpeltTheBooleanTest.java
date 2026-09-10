@@ -87,21 +87,19 @@ class WhatARuleLeavesDoesNotTurnOnHowItsAuthorSpeltTheBooleanTest {
      */
     @Test
     void aConjunctionWrittenAsADeniedChoiceLeavesWhatTheConjunctionLeaves() {
-        assertEquals(endsOf("n <= 3 && n >= 0"), endsOf("Bool.not(n > 3 || n < 0)"));
-        assertEquals(boundsOf("n <= 3 && n >= 0"), boundsOf("Bool.not(n > 3 || n < 0)"));
+        assertEquals(leavesOf("n <= 3 && n >= 0"), leavesOf("Bool.not(n > 3 || n < 0)"));
     }
 
     /** And a choice written as a denied conjunction. */
     @Test
     void aChoiceWrittenAsADeniedConjunctionLeavesWhatTheChoiceLeaves() {
-        assertEquals(endsOf("n <= 3 || n >= 10"), endsOf("Bool.not(n > 3 && n < 10)"));
-        assertEquals(boundsOf("n <= 3 || n >= 10"), boundsOf("Bool.not(n > 3 && n < 10)"));
+        assertEquals(leavesOf("n <= 3 || n >= 10"), leavesOf("Bool.not(n > 3 && n < 10)"));
     }
 
     /** The pair that tier would pass without: a conjunction and a choice leave different things. */
     @Test
     void aConjunctionAndAChoiceDoNotLeaveTheSameThing() {
-        assertNotEquals(boundsOf("n <= 3 && n >= 0"), boundsOf("n <= 3 || n >= 10"));
+        assertNotEquals(leavesOf("n <= 3 && n >= 0"), leavesOf("n <= 3 || n >= 10"));
     }
 
     /**
@@ -132,15 +130,22 @@ class WhatARuleLeavesDoesNotTurnOnHowItsAuthorSpeltTheBooleanTest {
                 String.valueOf(domains.accounting()));
     }
 
-    /** The ends the rules leave, with the conjunct each is filed against dropped. */
-    private static Set<String> endsOf(String clause) {
-        return domainsOf(clause).placed().stream()
-                .map(each -> each.at() + (each.lower() ? " from " : " to ") + each.end())
-                .collect(java.util.stream.Collectors.toSet());
-    }
+    /**
+     * What the rules leave the position, with the conjunct each end is filed against dropped.
+     *
+     * <p>What the tier below holds. One reading, projected twice: asked as two questions of two
+     * readings, the two spellings are each read again for the second half, and a test that reads a
+     * model twice is a test that could be comparing two of them.
+     */
+    private record Leaves(Set<String> ends, String bounds) {}
 
-    private static String boundsOf(String clause) {
-        return String.valueOf(domainsOf(clause).at(RuleKey.of("n")));
+    private static Leaves leavesOf(String clause) {
+        FieldDomains domains = domainsOf(clause);
+        return new Leaves(
+                domains.placed().stream()
+                        .map(each -> each.at() + (each.lower() ? " from " : " to ") + each.end())
+                        .collect(java.util.stream.Collectors.toSet()),
+                String.valueOf(domains.at(RuleKey.of("n"))));
     }
 
     private static FieldDomains domainsOf(String clause) {
