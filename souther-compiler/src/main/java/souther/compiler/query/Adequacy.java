@@ -3508,7 +3508,7 @@ public final class Adequacy {
          * value at each position is a set of values they reached for together, and that is read
          * from the rows rather than assembled ({@link #namesIn}).
          */
-        private static List<Generator.Baseline> named(String module, Hir.SpecBehavior spec, Sig sig,
+        static List<Generator.Baseline> named(String module, Hir.SpecBehavior spec, Sig sig,
                                                       Map<String, Hir.FnDef> values,
                                                       Map<ValueName.Behavior, Sig> behaviors,
                                                       Symbols symbols,
