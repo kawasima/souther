@@ -2,6 +2,7 @@ package souther.compiler.partition;
 
 import souther.compiler.check.AffineForms;
 import souther.compiler.check.Comparison;
+import souther.compiler.check.StatedComparison;
 import souther.compiler.check.ComparisonClaim;
 import souther.compiler.check.Location;
 import souther.compiler.check.RuleReadingSource;
@@ -51,8 +52,8 @@ record AffineReading(LinearForm<NumericTerm> form, BigDecimal cut, ComparisonCla
      */
     static AffineReading of(Comparison comparison, InputDomain inputs, InputReads reads,
                             RuleReadingSource ruleSource) {
-        return read(comparison, inputs, reads, ruleSource) instanceof OfAComparison.Cuts cuts
-                ? cuts.read() : null;
+        return read(comparison.stated(), inputs, reads, ruleSource) instanceof OfAComparison.Cuts
+                cuts ? cuts.read() : null;
     }
 
     /**
@@ -108,7 +109,7 @@ record AffineReading(LinearForm<NumericTerm> form, BigDecimal cut, ComparisonCla
     }
 
     /** The same, saying which of the three it is. */
-    static OfAComparison read(Comparison comparison, InputDomain inputs, InputReads reads,
+    static OfAComparison read(StatedComparison comparison, InputDomain inputs, InputReads reads,
                               RuleReadingSource ruleSource) {
         // What this reading names as it goes, kept so that a reading which ran to the end can say
         // what it was about without anybody reading the comparison again.

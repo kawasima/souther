@@ -14,8 +14,8 @@ import java.util.function.Function;
  *
  * <p>One procedure and two readings of it. Where the values at a position stop is one order and how
  * long the string standing there is is another, and each is read by whoever owns it — but what a
- * comparison does to an order does not change with which order it is: the side naming the number is
- * found, the claim is turned to match, a denial swaps what it states, and an end is read against the
+ * comparison does to an order does not change with which order it is: what the comparison states of
+ * the number it names is asked once ({@link StatedComparison}), and an end is read against the
  * carrier. Written once per reading, the two would be one algorithm with two accounts, and the
  * reading that was not kept in step would answer about a comparison this compiler reads.
  *
@@ -113,22 +113,16 @@ final class OrderedLeaf {
      */
     static <K> Read<K> of(Core.Binary bin, boolean positive, Denotations at, Terms terms,
                           Function<Core, K> named, Function<K, Carrier> carrierOf) {
-        Comparison read = Comparison.of(bin).orElse(null);
-        if (read == null) {
+        StatedComparison stated = StatedComparison.of(bin, positive);
+        if (stated == null) {
             // Written with an operator and not a comparison. The same as a rule of another shape.
             return notFollowed();
         }
-        // The side bearing the number read as the left one, as `0 <= value` says what `value >= 0`
-        // says.
-        K number = named.apply(bin.left());
-        Core bound = bin.right();
-        ComparisonClaim claim = read.claim();
-        if (number == null) {
-            number = named.apply(bin.right());
-            bound = bin.left();
-            claim = claim.turned();
-        }
-        Carrier carrier = number == null ? null : carrierOf.apply(number);
+        // What the comparison states of the number it names, with the denial and the side it was
+        // written on both already spent ({@link StatedComparison#at}). Nothing below applies either
+        // of them, so there is nothing below for either to be forgotten at.
+        StatedComparison.Numbered<K> said = stated.at(named);
+        Carrier carrier = said == null ? null : carrierOf.apply(said.number());
         if (carrier == null) {
             // Neither side is a number this reading has. The rule may still be about one — a
             // length, an absolute value, a reversal — and what it holds that number to is then
@@ -140,15 +134,14 @@ final class OrderedLeaf {
         // hand and before either is read for what it leaves: put inside what one claim does with
         // its side, the same rule written with a different operator is a rule nobody read
         // ({@code n == m} beside {@code n < m}).
-        boolean against = named.apply(bound) != null;
-        Hir.Expr written = Terms.asWrittenValue(bound, at);
-        ComparisonClaim said = positive ? claim : claim.denied();
-        return new Read<>(switch (said) {
+        boolean against = named.apply(said.other()) != null;
+        Hir.Expr written = Terms.asWrittenValue(said.other(), at);
+        return new Read<>(switch (said.claim()) {
             case ComparisonClaim.Singled singled -> singled.holdsAtTheValue()
-                    ? onlyTheValue(number, carrier, written)
+                    ? onlyTheValue(said.number(), carrier, written)
                     : new Left.PlacesNoEnd<>();
             case ComparisonClaim.Cut cut ->
-                    ends(number, carrier, InvariantBound.at(cut, written, carrier));
+                    ends(said.number(), carrier, InvariantBound.at(cut, written, carrier));
         }, against);
     }
 

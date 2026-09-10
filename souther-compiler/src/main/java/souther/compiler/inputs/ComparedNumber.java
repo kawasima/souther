@@ -1,7 +1,7 @@
 package souther.compiler.inputs;
 
 import souther.compiler.check.Carrier;
-import souther.compiler.check.Comparison;
+import souther.compiler.check.StatedComparison;
 import souther.compiler.check.ComparisonClaim;
 import souther.compiler.check.ComparisonPlacement;
 import souther.compiler.core.Core;
@@ -110,7 +110,8 @@ public record ComparedNumber(NumericTerm term, TermOrders orders, ComparisonPlac
      * would be about one position for a reader that came this way and another for one that came the
      * other.
      */
-    public static DrawnLine lineOf(Comparison comparison, InputReading read, InputReads reads) {
+    public static DrawnLine lineOf(StatedComparison comparison, InputReading read,
+                                   InputReads reads) {
         OnASide side = sideOf(comparison.left(), comparison.right(), read, reads);
         NumericTerm.FromOnePosition position =
                 side == null ? null : side.named().term().atOnePosition();

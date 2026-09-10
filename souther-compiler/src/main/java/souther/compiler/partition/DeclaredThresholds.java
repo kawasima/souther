@@ -1,12 +1,10 @@
 package souther.compiler.partition;
 
-import souther.compiler.check.Comparison;
 import souther.compiler.check.ComparisonClaim;
 import souther.compiler.check.Location;
 import souther.compiler.check.Symbols;
 import souther.compiler.check.TypeOps;
 import souther.compiler.types.Type;
-import souther.compiler.core.Core;
 import souther.compiler.diag.Citation;
 import souther.compiler.inputs.ClauseWithoutAnEnd;
 import souther.compiler.inputs.InputReading;
@@ -67,13 +65,6 @@ public final class DeclaredThresholds {
     private static void drawn(String behavior, ClauseWithoutAnEnd clause,
                               InputReading read, List<LineDrawn> out) {
         Symbols symbols = read.symbols();
-        if (!(clause.read() instanceof Core.Binary binary)) {
-            return;
-        }
-        Comparison comparison = Comparison.of(binary).orElse(null);
-        if (comparison == null) {
-            return;
-        }
         Map<BindingId, TermPath> roots = rootsOf(clause, symbols);
         if (roots.isEmpty()) {
             return;
@@ -82,8 +73,8 @@ public final class DeclaredThresholds {
         // there is nothing a behavior answered for it to be about.
         // And no arrival: a declaration's clause stands in no body for anything to be on the way
         // to, which reads as an arrival that restricts nothing.
-        ComparisonAssessment assessed = ComparisonAssessment.of(behavior, comparison,
-                Citation.of(binary.pos()), read,
+        ComparisonAssessment assessed = ComparisonAssessment.of(behavior, clause.states(),
+                Citation.of(clause.wrote()), read,
                 InputReads.ofADeclaredClause(roots), null, true);
         // Only the quantity that is on no position. Why this drew no line where it drew none is not
         // said here: the reading of ends already answered for this clause at each position it names,

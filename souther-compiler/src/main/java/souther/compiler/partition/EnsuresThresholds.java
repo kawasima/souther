@@ -214,7 +214,7 @@ public final class EnsuresThresholds {
         // No arrival either: a clause stands in no body, it is checked whenever the behavior
         // answers, so there is nothing on the way to it and what arrives is the declarations'
         // whole domain — which is what an arrival that restricts nothing reads as.
-        ComparisonAssessment assessed = ComparisonAssessment.of(out.behavior(), comparison,
+        ComparisonAssessment assessed = ComparisonAssessment.of(out.behavior(), comparison.stated(),
                 Citation.of(e.pos()), read,
                 reads, rule.value(), false);
         // What the positions this names are left with, where the reading of lines drew none. Asked

@@ -1,6 +1,6 @@
 package souther.compiler.partition;
 
-import souther.compiler.check.Comparison;
+import souther.compiler.check.StatedComparison;
 import souther.compiler.check.ComparisonClaim;
 import souther.compiler.inputs.InputReading;
 import souther.compiler.inputs.InputReads;
@@ -137,7 +137,7 @@ record Cutting(BorderQuantity of, Level at, ComparisonClaim claim,
      * over the comparison and answered about the shape rather than about what this reading could do
      * with it.
      */
-    static Read read(String behavior, Comparison comparison,
+    static Read read(String behavior, StatedComparison comparison,
                      InputReading read, InputReads reads) {
         AffineReading.OfAComparison canonical =
                 AffineReading.read(comparison, read.domain(), reads, read.rules());
@@ -271,7 +271,7 @@ record Cutting(BorderQuantity of, Level at, ComparisonClaim claim,
      * a case of an enumeration, one string against another. Reached only from a reading that
      * stopped, so a spelling never answers a question the canonical form has already answered.
      */
-    private static Read asWritten(String behavior, Comparison comparison,
+    private static Read asWritten(String behavior, StatedComparison comparison,
                                   AffineReading.OfAComparison.Stopped canonical,
                                   InputReading read, InputReads reads) {
         Quantities quantities = read.quantities();

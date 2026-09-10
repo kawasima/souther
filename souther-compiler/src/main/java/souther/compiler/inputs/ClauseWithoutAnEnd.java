@@ -2,7 +2,8 @@ package souther.compiler.inputs;
 
 import souther.compiler.check.PartId;
 import souther.compiler.check.RuleRef;
-import souther.compiler.core.Core;
+import souther.compiler.check.StatedComparison;
+import souther.compiler.diag.SourcePos;
 import souther.compiler.types.TypeSymbol;
 
 /**
@@ -22,7 +23,11 @@ import souther.compiler.types.TypeSymbol;
  * @param part     which part of which rule this is, as the split that wrote the parts down named
  *                 it. What tells one authored line from another is this name, and a reader holding
  *                 the expression alone cannot tell two identical conjuncts apart
- * @param read     the conjunct itself
+ * @param states   what the conjunct compares and what it claims of the two sides, as the clause
+ *                 states it. The comparison and not the node it was written as: a rule written
+ *                 under a denial reads off its operator as the comparison that holds exactly where
+ *                 the rule does not, and a reader handed the node reads the operator
+ * @param wrote    where the author wrote it, for the sentence a line carries
  * @param at       where the value the clause is written about stands. The clause binds each field of
  *                 the declaration that wrote it, and a field an include brought in keeps that
  *                 declaration's binding, so the names under this path are what the clause reads
@@ -33,11 +38,11 @@ import souther.compiler.types.TypeSymbol;
  *                 is that name's — matched against the writing declaration's bindings alone, a
  *                 clause under a name names no position at all
  */
-public record ClauseWithoutAnEnd(PartId<RuleRef.Invariant> part, Core read, TermPath at,
-                                 TypeSymbol.AtModule readUnder) {
+public record ClauseWithoutAnEnd(PartId<RuleRef.Invariant> part, StatedComparison states,
+                                 SourcePos wrote, TermPath at, TypeSymbol.AtModule readUnder) {
 
     public ClauseWithoutAnEnd {
-        if (part == null || read == null || at == null || readUnder == null) {
+        if (part == null || states == null || wrote == null || at == null || readUnder == null) {
             throw new IllegalArgumentException(
                     "a clause is one of a declaration's, is written, and is about a value somewhere");
         }

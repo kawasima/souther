@@ -3,7 +3,7 @@ package souther.compiler.partition;
 import souther.compiler.check.AnalysisBody;
 import souther.compiler.check.Carrier;
 import souther.compiler.check.RuleReadingSource;
-import souther.compiler.check.Comparison;
+import souther.compiler.check.StatedComparison;
 import souther.compiler.check.ComparisonClaim;
 import souther.compiler.check.RuleAt;
 import souther.compiler.check.RuleCitation;
@@ -309,7 +309,7 @@ public final class GuardThresholds {
      * be. Answered alike, a rule about an element of a sequence would be reported as one about a
      * value somebody computed, and an author would go looking for the operation to invert.
      */
-    static void cameFrom(Comparison comparison, InputReads reads, Symbols symbols,
+    static void cameFrom(StatedComparison comparison, InputReads reads, Symbols symbols,
                          SequencedMap<FilingCoordinate, BlockReason.RuleReadingStopped> out) {
         for (Core side : List.of(comparison.left(), comparison.right())) {
             // Where a side's values came from, and nothing where they came from nowhere.
@@ -434,7 +434,7 @@ public final class GuardThresholds {
      * whatever the caller happens to hold.
      */
     static java.util.SequencedMap<FilingCoordinate, BlockReason.RuleReadingStopped>
-            whatEachPlaceIsLeftWith(Comparison comparison,
+            whatEachPlaceIsLeftWith(StatedComparison comparison,
                                     AffineReading.OfAComparison.Stopped stopped,
                                     InputReading read, InputReads reads) {
         Symbols symbols = read.symbols();
@@ -503,7 +503,7 @@ public final class GuardThresholds {
      * the position's own values — which number of it the rule is about is exactly the part that was
      * not read.
      */
-    static List<FilingCoordinate> filedAt(Comparison comparison,
+    static List<FilingCoordinate> filedAt(StatedComparison comparison,
                                                InputReading read,
                                                InputReads reads) {
         Symbols symbols = read.symbols();

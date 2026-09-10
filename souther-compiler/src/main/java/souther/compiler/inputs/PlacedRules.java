@@ -2,8 +2,6 @@ package souther.compiler.inputs;
 
 import souther.compiler.ast.Hir;
 import souther.compiler.check.NumberAt;
-import souther.compiler.check.PartId;
-import souther.compiler.check.RuleRef;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.DeclarationReadings;
 import souther.compiler.check.FieldDomains;
@@ -640,10 +638,13 @@ record PlacedRules(TermPath root, TypeSymbol value, Rules rules, Reaching alsoRe
      * part — so it is handed over as a clause, with the path the value it is written about stands
      * at, and read there in the vocabulary a line is drawn in.
      *
-     * <p>Once per conjunct, not once per coordinate. The same conjunct is filed at each coordinate
-     * it names, which is what a reader after a position wants and what a reader after a rule must
-     * not have: taken as they are filed, {@code lo <= hi} would draw its line twice and owe two
-     * rows where the model states one thing.
+     * <p>One per comparison the reading arrived at, which is what it is handed. A conjunct read at
+     * several places of one value is one conjunct and is handed on once; a conjunct stating several
+     * comparisons — which is what a conjunction an author wrote as a denied choice is — states each
+     * of them, and each is a rule this reading has something to do with. Both are settled where the
+     * conjuncts are read and arrive that way, so there is nothing to work out again here: counted
+     * by the rule alone, the second comparison of one conjunct was the first said again and never
+     * reached the reading below.
      *
      * <p>Not what any of them came to. Which of these is a line is the drawing reading's answer,
      * and this reading's word for why it drew none is no part of the question — the two read the
@@ -654,16 +655,11 @@ record PlacedRules(TermPath root, TypeSymbol value, Rules rules, Reaching alsoRe
      * which places no end and is nothing anyone has to lift, could not be passed along at all.
      */
     List<ClauseWithoutAnEnd> clausesWithoutAnEnd() {
-        java.util.Map<Key, ClauseWithoutAnEnd> once = new java.util.LinkedHashMap<>();
-        for (FieldDomains.WithoutAnEnd each : bounds().withoutAnEnd()) {
-            once.putIfAbsent(new Key(each.part()),
-                    new ClauseWithoutAnEnd(each.part(), each.read(), root, bounds().named()));
-        }
-        return List.copyOf(once.values());
+        return bounds().withoutAnEnd().stream()
+                .map(each -> new ClauseWithoutAnEnd(each.part(), each.states(), each.wrote(), root,
+                        bounds().named()))
+                .toList();
     }
-
-    /** What makes two of them one: which part of which rule it is. */
-    private record Key(PartId<RuleRef.Invariant> part) {}
 
     /**
      * The declaration a value of {@code type} is read under: the name the signature wrote where it

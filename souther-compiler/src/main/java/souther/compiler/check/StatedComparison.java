@@ -3,6 +3,8 @@ package souther.compiler.check;
 import souther.compiler.core.Core;
 import souther.compiler.numeric.Rel;
 
+import java.util.function.Function;
+
 /**
  * A comparison a reading arrived at: what it places, and the two values it places it on.
  *
@@ -24,7 +26,7 @@ import souther.compiler.numeric.Rel;
  * instead of. Whoever reports about a clause holds the expression the source wrote and reports about
  * that.
  */
-record StatedComparison(ComparisonClaim claim, Core left, Core right) {
+public record StatedComparison(ComparisonClaim claim, Core left, Core right) {
 
     /**
      * The relation this states, asserted with polarity {@code positive}.
@@ -38,4 +40,63 @@ record StatedComparison(ComparisonClaim claim, Core left, Core right) {
     Rel relationUnder(boolean positive) {
         return (positive ? claim : claim.denied()).statedRelation();
     }
+
+    /**
+     * What the part states, or null where it states no comparison.
+     *
+     * <p>The one way from a part of a clause to what its comparison says. How the part stands is
+     * the shape's answer ({@link ClauseExpr#positive}) and what the part is is the shape's too
+     * ({@link ClauseExpr.Part#of}), so a reader that takes a part through here is reading the
+     * comparison the clause states rather than the one an author happened to spell — and the
+     * denial is spent here, once, instead of arriving at each reader as a flag it has to remember
+     * to apply.
+     */
+    static StatedComparison of(ClauseExpr.Part part) {
+        return part.of() instanceof Core.Binary bin ? of(bin, part.positive()) : null;
+    }
+
+    /** The same of a comparison held under {@code positive} by a reader whose polarity did not come
+     *  from a clause's shape. */
+    static StatedComparison of(Core.Binary bin, boolean positive) {
+        Comparison read = Comparison.of(bin).orElse(null);
+        return read == null ? null
+                : new StatedComparison(positive ? read.claim() : read.claim().denied(),
+                        read.left(), read.right());
+    }
+
+    /**
+     * The same read from the side {@code named} recognises a number on, or null where it names one
+     * on neither.
+     *
+     * <p>The second half of the crossing from an operator to a statement, and it is spent here for
+     * the same reason the denial is. {@code 0 <= n} says what {@code n >= 0} says, and a reader
+     * handed the two sides and told which of them bore the number is a reader that has to turn the
+     * claim itself — where forgetting to states the comparison that holds exactly where this one
+     * does not, which is the denial's failure again one step further on.
+     *
+     * <p>Which expressions are numbers is the reading's, and arrives as {@code named}. Nothing here
+     * decides what a number is, so a reader holding the positions and one holding the lengths reach
+     * this the same way and neither can reach the other's.
+     */
+    <K> Numbered<K> at(Function<Core, K> named) {
+        K found = named.apply(left);
+        if (found != null) {
+            return new Numbered<>(claim, found, right);
+        }
+        K other = named.apply(right);
+        return other == null ? null : new Numbered<>(claim.turned(), other, left);
+    }
+
+    /**
+     * What one comparison states of one of a reading's numbers.
+     *
+     * <p>Neither the polarity the clause held it under nor which side it was written on is left
+     * here: both are spent making it, and what is left is a claim about {@code number} and
+     * {@code other} in that order. A reader below has nothing to apply and nothing to forget.
+     *
+     * @param other what the number is held against, which may be a constant, a number of the same
+     *              reading, or something with no number in it at all — telling those apart is the
+     *              reader's and not this
+     */
+    record Numbered<K>(ComparisonClaim claim, K number, Core other) {}
 }

@@ -1,6 +1,6 @@
 package souther.compiler.partition;
 
-import souther.compiler.check.Comparison;
+import souther.compiler.check.StatedComparison;
 import souther.compiler.check.Symbols;
 import souther.compiler.core.Core;
 import souther.compiler.diag.Citation;
@@ -241,7 +241,7 @@ sealed interface ComparisonAssessment {
      * form written two ways agree as arithmetic and are made of different things, so the rule they
      * state would come back as one about no input at all.
      */
-    static ComparisonAssessment of(String behavior, Comparison comparison, Citation at,
+    static ComparisonAssessment of(String behavior, StatedComparison comparison, Citation at,
                                    InputReading read, InputReads reads,
                                    BindingId answer,
                                    boolean drawnByAnInvariant) {
@@ -370,8 +370,8 @@ sealed interface ComparisonAssessment {
      * the second went out as a rule about nothing, and the position it plainly concerns came back
      * as one the model states nothing about.
      */
-    private static ComparisonAssessment aboutNoPosition(Comparison comparison, InputReads reads,
-                                                        Symbols symbols) {
+    private static ComparisonAssessment aboutNoPosition(StatedComparison comparison,
+                                                        InputReads reads, Symbols symbols) {
         SequencedMap<FilingCoordinate, BlockReason.RuleReadingStopped> why =
                 new LinkedHashMap<>();
         GuardThresholds.cameFrom(comparison, reads, symbols, why);
