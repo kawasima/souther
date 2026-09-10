@@ -10,6 +10,7 @@ import souther.compiler.query.Compilation;
 
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.node.ObjectNode;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -72,9 +73,34 @@ class EveryFindingAboutAnObligationJoinsToItsAccountTest {
                 | "both hold" : (Person { active = true, retired = true }) -> Yes
             """;
 
+    /**
+     * Two positions of one behavior, dividing into classes that read alike.
+     *
+     * <p>The corpus reaches no class no row is in, so the join for one would hold over nothing.
+     * Both positions are left in the same class, which is the pair a consumer joining on the words
+     * would land on twice — the class is spelled {@code No} at each of them.
+     */
+    private static final String TWO_POSITIONS_ONE_CLASS_NAME = """
+            module example.both
+
+            data Yes
+            data No
+            data Flag = Yes | No
+            data Res = { n: Int }
+
+            behavior both : (left: Flag, right: Flag) -> Res
+                constructs Res
+
+            let both (left, right) = Res { n = 1 }
+
+            example both
+                | "both say yes" : (Yes, Yes) -> Res { n = 1 }
+            """;
+
     /** The kinds that are about something a row is owed for, and the account each is counted in. */
     private static final List<String> ABOUT_AN_OBLIGATION =
-            List.of("boundary_unmet", "domain_point_uncovered", "arm_unreached");
+            List.of("boundary_unmet", "domain_point_uncovered", "arm_unreached",
+                    "axis_class_uncovered");
 
     @Test
     void everyFindingAboutAnObligationNamesOneEntryOfItsAccount() {
@@ -157,8 +183,59 @@ class EveryFindingAboutAnObligationJoinsToItsAccountTest {
         }
     }
 
+    /**
+     * Two classes spelled alike at two positions, each landing on its own axis.
+     *
+     * <p>Said here as well as in the sweep above because the sweep is over whatever the corpus
+     * happens to reach, and it reaches no class no row is in. A join that holds over nothing holds
+     * while the mechanism is gone.
+     */
+    @Test
+    void twoClassesSpeltAlikeLandOnTheAxisEachIsAClassOf() {
+        JsonNode document = reportOf(TWO_POSITIONS_ONE_CLASS_NAME);
+        JsonNode behavior = onlyBehaviorOf(document);
+        List<JsonNode> classes = new ArrayList<>();
+        for (JsonNode finding : behavior.get("findings")) {
+            if ("axis_class_uncovered".equals(finding.get("kind").asString())) {
+                classes.add(finding);
+            }
+        }
+
+        assertEquals(2, classes.size(),
+                () -> "one class left at each position: " + behavior.get("findings"));
+        assertEquals(1, classes.stream()
+                        .map(f -> f.get("obligationId").get("class").asString()).distinct().count(),
+                () -> "spelt alike: " + classes);
+        assertEquals(2, classes.stream()
+                        .map(f -> String.valueOf(f.get("obligationId"))).distinct().count(),
+                () -> "told apart by which position's axis: " + classes);
+        for (JsonNode each : classes) {
+            assertEquals(1, entriesOf(behavior, onlyModuleOf(document), "axis_class_uncovered")
+                            .stream()
+                            .filter(entry -> each.get("obligationId")
+                                    .equals(entry.get("obligationId"))).count(),
+                    () -> "and lands on one class of the axes: " + each);
+        }
+    }
+
     private static List<JsonNode> entriesOf(JsonNode behavior, JsonNode module, String kind) {
         List<JsonNode> out = new ArrayList<>();
+        // A class of a position is kept as the axis it is a class of and the string that axis
+        // lists, so the entry a finding joins to is that pair. Made here rather than published as
+        // a third array, because the axes already carry every class of every position and an array
+        // beside them would be the same membership declared twice.
+        if ("axis_class_uncovered".equals(kind)) {
+            for (JsonNode axis : behavior.get("partition").get("axes")) {
+                for (JsonNode cls : axis.get("classes")) {
+                    ObjectNode entry = JSON.createObjectNode();
+                    ObjectNode id = entry.putObject("obligationId");
+                    id.put("axis", axis.get("axis").asString());
+                    id.put("class", cls.asString());
+                    out.add(entry);
+                }
+            }
+            return out;
+        }
         JsonNode from = switch (kind) {
             case "arm_unreached" -> behavior.get("branch").get("obligations");
             case "boundary_unmet", "domain_point_uncovered" ->
@@ -196,6 +273,7 @@ class EveryFindingAboutAnObligationJoinsToItsAccountTest {
             out.add(JSON.readTree(corpus.analyse().report().json(corpus.names())));
         }
         out.add(reportOf(TWO_RULES_AT_ONE_FORK));
+        out.add(reportOf(TWO_POSITIONS_ONE_CLASS_NAME));
         return out;
     }
 }

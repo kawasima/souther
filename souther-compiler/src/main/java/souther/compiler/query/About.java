@@ -4,6 +4,8 @@ import souther.compiler.check.RuleCitation;
 import souther.compiler.coverage.CoverageSites;
 import souther.compiler.diag.SourcePos;
 import souther.compiler.observe.RowIdentity;
+import souther.compiler.partition.ClassOfAPosition;
+import souther.compiler.partition.ObligationIdentity;
 import souther.compiler.types.TypeSymbol;
 
 import java.util.Objects;
@@ -62,10 +64,23 @@ public sealed interface About {
         }
     }
 
-    /** A class of a derived position no row is in, which knows the position it is a class of. */
-    record AClassNoRowIsIn(PartitionEvidence.AxisClass axisClass) implements About {
+    /**
+     * A class of a derived position no row is in, which knows the position it is a class of.
+     *
+     * <p>One entry of the domain account, and it says so by being an {@link OfAnObligation}. What
+     * tells it from every other is the axis and which class of it — the words a report writes for
+     * the class do not, since two positions of one behavior can divide into classes that read
+     * alike.
+     */
+    record AClassNoRowIsIn(PartitionEvidence.AxisClass axisClass) implements OfAnObligation {
         public AClassNoRowIsIn {
             java.util.Objects.requireNonNull(axisClass, "a finding is about something");
+        }
+
+        @Override
+        public ObligationIdentity obligationIdentity() {
+            return new ObligationIdentity.OfAClass(
+                    new ClassOfAPosition(axisClass.axis().at(), axisClass.name()));
         }
     }
 
@@ -89,37 +104,6 @@ public sealed interface About {
 
         /** What tells this obligation from every other, in the shape its account keeps. */
         ObligationIdentity obligationIdentity();
-    }
-
-    /**
-     * What tells one thing a row is owed for from every other, over the accounts that keep such
-     * things.
-     *
-     * <p>Closed, so that a surface writing one writes every shape there is: an account added
-     * arrives at each of them as a case to decide about rather than as a value that falls through.
-     * What the shapes have in common is what they are for and not what they hold — a line's point
-     * is a point of an authored line at a level, an arm's is the fork and which of its ways — so
-     * there is nothing here to lift out of them.
-     */
-    sealed interface ObligationIdentity {
-
-        /** A point of a line, which is what the border accounts are owed at. */
-        record OfALine(souther.compiler.partition.BorderObligationPoint point)
-                implements ObligationIdentity {
-
-            public OfALine {
-                java.util.Objects.requireNonNull(point, "an obligation is told apart by something");
-            }
-        }
-
-        /** An arm of a body, which is what the arm account is owed at. */
-        record OfAnArm(souther.compiler.coverage.CoverageSites.Obligation arm)
-                implements ObligationIdentity {
-
-            public OfAnArm {
-                java.util.Objects.requireNonNull(arm, "an obligation is told apart by something");
-            }
-        }
     }
 
     /**

@@ -14,6 +14,7 @@ import souther.compiler.check.RuleRef;
 import souther.compiler.numeric.Towards;
 import souther.compiler.partition.AuthoredLine;
 import souther.compiler.partition.BorderObligationPoint;
+import souther.compiler.partition.ObligationIdentity;
 import souther.compiler.partition.ClosureGap;
 import souther.compiler.partition.ConditionReportAnchor;
 import souther.compiler.partition.CompositionBudget;
@@ -187,7 +188,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
         };
     }
 
-    public static final int SCHEMA_VERSION = 18;
+    public static final int SCHEMA_VERSION = 19;
 
     /**
      * Where the schema this writes documents ships.
@@ -2954,11 +2955,19 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
      * they are two lines. Which declarations took an end in is {@code narrowedWithin}: a bound
      * another type narrowed is not the bound it narrows.
      */
-    private static void obligationId(ObjectNode into, About.ObligationIdentity identity,
+    private static void obligationId(ObjectNode into, ObligationIdentity identity,
                                      DocumentSources sources) {
         switch (identity) {
-            case About.ObligationIdentity.OfALine(var point) -> obligationId(into, point);
-            case About.ObligationIdentity.OfAnArm(var arm) -> armId(into, arm, sources);
+            case ObligationIdentity.OfALine(var point) -> obligationId(into, point);
+            case ObligationIdentity.OfAnArm(var arm) -> armId(into, arm, sources);
+            // The axis and which class of it, which is what an axis of the document is keyed by.
+            // The words a report writes for a class are not it: two positions of one behavior can
+            // divide into classes that read alike, and a consumer joining on the words would join
+            // one behavior's finding to the other position's entry.
+            case ObligationIdentity.OfAClass(var owed) -> {
+                into.put("axis", owed.at().toString());
+                into.put("class", owed.classId());
+            }
         }
     }
 
