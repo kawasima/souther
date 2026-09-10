@@ -58,7 +58,7 @@ class WhoNamesAComparisonAndWhoAddressesOneTest {
     private static final String READ = "souther/compiler/partition/LineOrigin$ComparisonOrigin$Read";
 
     /** A method that may make one, how many times it does, and why it is the one that does. */
-    private record Licence(String who, int calls, String why) { }
+    private record Licence(String who, int makes, String why) { }
 
     private static final List<Licence> MAY_ADDRESS = List.of(
             new Licence("souther.compiler.coverage.SiteNumbering.comparison", 1,
@@ -107,7 +107,7 @@ class WhoNamesAComparisonAndWhoAddressesOneTest {
 
     @Test
     void onlyACheckPairsAModuleWithItsBodies() {
-        assertEquals(declared(MAY_PAIR), callsToConstructor(BODIES),
+        assertEquals(declared(MAY_PAIR), makersOf(BODIES),
                 "a module's name beside another module's trees has the catalog issue names true of"
                         + " nothing, and no later check can refuse them. What may pair them, and"
                         + " why: " + why(MAY_PAIR));
@@ -115,21 +115,21 @@ class WhoNamesAComparisonAndWhoAddressesOneTest {
 
     @Test
     void onlyTheWalkPutsACataloguedComparisonTogether() {
-        assertEquals(declared(MAY_CATALOGUE), callsToConstructor(CATALOGUED),
+        assertEquals(declared(MAY_CATALOGUE), makersOf(CATALOGUED),
                 "a name, a recognition and a place are true together or not at all. What may put"
                         + " them together, and why: " + why(MAY_CATALOGUE));
     }
 
     @Test
     void onlyOnePlaceSaysWhichComparisonARuleIsReadOff() {
-        assertEquals(declared(MAY_READ), callsToConstructor(READ),
+        assertEquals(declared(MAY_READ), makersOf(READ),
                 "an occurrence of one plan beside the emission site of another is a rule pointing"
                         + " at two places. What may pair them, and why: " + why(MAY_READ));
     }
 
     @Test
     void onlyTheNumberingAddressesAComparisonOfARun() {
-        assertEquals(declared(MAY_ADDRESS), callsToConstructor(SITE),
+        assertEquals(declared(MAY_ADDRESS), makersOf(SITE),
                 "an address made anywhere else is a place no run was recorded at. What may make"
                         + " one, and why: " + why(MAY_ADDRESS));
     }
@@ -143,14 +143,14 @@ class WhoNamesAComparisonAndWhoAddressesOneTest {
      */
     @Test
     void onlyTheNumberingAddressesAnArmOfARun() {
-        assertEquals(declared(MAY_ADDRESS_AN_ARM), callsToConstructor(ARM),
+        assertEquals(declared(MAY_ADDRESS_AN_ARM), makersOf(ARM),
                 "an address made anywhere else is a place no run was recorded at. What may make"
                         + " one, and why: " + why(MAY_ADDRESS_AN_ARM));
     }
 
     private static Map<String, Integer> declared(List<Licence> licences) {
         Map<String, Integer> out = new TreeMap<>();
-        licences.forEach(each -> out.put(each.who(), each.calls()));
+        licences.forEach(each -> out.put(each.who(), each.makes()));
         return out;
     }
 
@@ -161,20 +161,20 @@ class WhoNamesAComparisonAndWhoAddressesOneTest {
     }
 
     /** How many times each method of the compiler makes one of {@code owner}. */
-    private static Map<String, Integer> callsToConstructor(String owner) {
-        Map<String, Integer> calls = new TreeMap<>();
+    private static Map<String, Integer> makersOf(String owner) {
+        Map<String, Integer> makers = new TreeMap<>();
         for (ClassModel model : WhatWasCompiled.compiled().all()) {
             String from = model.thisClass().asInternalName().replace('/', '.').replace('$', '.');
             for (MethodModel method : model.methods()) {
                 String in = from + "." + method.methodName().stringValue();
                 method.code().ifPresent(code -> code.forEach(element -> {
                     if (makesOne(element, owner)) {
-                        calls.merge(in, 1, Integer::sum);
+                        makers.merge(in, 1, Integer::sum);
                     }
                 }));
             }
         }
-        return calls;
+        return makers;
     }
 
     /**
@@ -197,7 +197,7 @@ class WhoNamesAComparisonAndWhoAddressesOneTest {
                     && call.name().stringValue().equals("<init>");
         }
         if (element instanceof InvokeDynamicInstruction reference) {
-            for (ConstantDesc argument : reference.invokedynamic().asSymbol().bootstrapArgs()) {
+            for (ConstantDesc argument : reference.bootstrapArgs()) {
                 if (argument instanceof DirectMethodHandleDesc handle
                         && handle.kind() == DirectMethodHandleDesc.Kind.CONSTRUCTOR
                         && handle.owner().descriptorString().equals("L" + owner + ";")) {
