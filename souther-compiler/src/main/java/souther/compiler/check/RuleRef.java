@@ -89,6 +89,18 @@ public sealed interface RuleRef permits RuleRef.Named, RuleRef.Written {
     sealed interface Written extends RuleRef permits Comparison, Fork, Predicate {
 
         /**
+         * Which construct of which module the author wrote, which is what tells one of these from
+         * every other wherever it is met.
+         *
+         * <p>On the seal because it is what the half has in common and what a reader of the half
+         * asks: where such a rule is written is the writing module's answer, and this is the
+         * identity that question is put by ({@code Sites.WhereARuleIsWritten}). Read off each arm
+         * instead, every caller would say which kinds it knew about, and a kind added later would
+         * be one they silently did not.
+         */
+        SourceConstructOrigin origin();
+
+        /**
          * What a report calls a rule that has no name, which is one word per kind of them.
          *
          * <p>A word about the rule and not about the construct it stands in. A comparison may stand

@@ -2,12 +2,14 @@ package souther.compiler.query;
 
 import souther.compiler.ast.Hir;
 import souther.compiler.check.Prepared;
+import souther.compiler.check.RuleRef;
 import souther.compiler.coverage.ArmReportAnchor;
 import souther.compiler.diag.Citation;
 import souther.compiler.diag.SourcePos;
 import souther.compiler.partition.ConditionOccurrence;
 import souther.compiler.partition.ConditionReportAnchor;
 import souther.compiler.sites.AuthoredSites;
+import souther.compiler.sites.WrittenApplications;
 import souther.compiler.sites.WrittenCondition;
 import souther.compiler.sites.WrittenConditions;
 import souther.compiler.sites.WrittenForks;
@@ -331,6 +333,87 @@ public final class Sites {
         public Answer<WrittenConditions> compute(Db db) {
             Answer<AuthoredSites.Walked> walked = db.ask(new Walk(name));
             return walked.present() ? Answer.of(walked.value().conditions()) : Answer.absent();
+        }
+    }
+
+    /**
+     * Where each application one module's source wrote stands.
+     *
+     * <p>Under {@link WhereARuleIsWritten} for the reason {@link ForksWrittenIn} is under
+     * {@link WhereAForkIsWritten}: what a report means is one place, and one walk answers for every
+     * place at once.
+     */
+    record ApplicationsWrittenIn(String name) implements Key<WrittenApplications> {
+
+        @Override
+        public String module() {
+            return name;
+        }
+
+        @Override
+        public Answer<WrittenApplications> compute(Db db) {
+            Answer<AuthoredSites.Walked> walked = db.ask(new Walk(name));
+            return walked.present() ? Answer.of(walked.value().applications()) : Answer.absent();
+        }
+    }
+
+    /**
+     * Where one rule the author wrote rather than named is written.
+     *
+     * <p>Asked of the module that wrote it, whichever module read it. A helper expanded into three
+     * callers holds one rule written once, so where it is written is not a question any of the three
+     * can answer for itself — and a caller that answered it would say where its own copy came to
+     * stand.
+     *
+     * <p><b>Which table by what the rule is, and no {@code default}.</b> A rule the author wrote is
+     * a fork, a comparison or a predicate, and the source wrote a different construct for each: what
+     * a body takes an arm of, what a row had to satisfy, and a call. One table asked about all three
+     * would answer that nobody wrote two of them, which is a false answer rather than a missing one
+     * ({@link WhereAForkIsWritten}). A kind added to the seal is a compile error here.
+     *
+     * <p><b>Only where the rule has a name and the seal does not.</b> A rule the author named is
+     * found by that name from anywhere, so there is no place to ask for and no question to put; that
+     * is why this takes {@link RuleRef.Written} rather than a rule.
+     *
+     * <p>Absent where nothing this compilation holds wrote the rule. What the language itself ships
+     * is the case that matters: its bodies are read from every module that calls into them, and no
+     * source of this compilation is where they are written — which is the reading that places such a
+     * rule instead ({@code RuleReportAnchor}).
+     */
+    public record WhereARuleIsWritten(RuleRef.Written rule) implements Key<Citation> {
+
+        @Override
+        public String module() {
+            return rule.origin().module();
+        }
+
+        @Override
+        public Answer<Citation> compute(Db db) {
+            String module = rule.origin().module();
+            if (module == null) {
+                return Answer.absent();
+            }
+            SourcePos at = switch (rule) {
+                case RuleRef.Fork it -> {
+                    Answer<WrittenForks> written = db.ask(new ForksWrittenIn(module));
+                    yield written.present() ? written.value().at(it.origin()) : null;
+                }
+                // A comparison is a binary, which is what the writing module files every one of
+                // under the identity a condition is asked by. Which of them a reading calls a rule
+                // is that reading's answer and is not asked again here.
+                case RuleRef.Comparison it -> {
+                    Answer<WrittenConditions> written = db.ask(new ConditionsWrittenIn(module));
+                    yield written.present()
+                            ? written.value().at(new WrittenCondition.Construct(it.origin()))
+                            : null;
+                }
+                case RuleRef.Predicate it -> {
+                    Answer<WrittenApplications> written =
+                            db.ask(new ApplicationsWrittenIn(module));
+                    yield written.present() ? written.value().at(it.origin()) : null;
+                }
+            };
+            return at == null ? Answer.absent() : Answer.of(Citation.of(at));
         }
     }
 
