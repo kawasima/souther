@@ -208,6 +208,64 @@ class WhatIsLeftOfADotIsSaidByTheSnapshotAndNotGuessedTest {
     }
 
     /**
+     * A declaration a function argument would close is read as far as the other arguments settled
+     * it.
+     *
+     * <p>{@code List.distinctBy} says its key answers something and relates that to nothing else it
+     * wrote, so what the call answers is settled by the list alone. Held to the declaration as a
+     * whole, the one position the key would close refuses the call — and a reader who wrote down
+     * what the key is gets less than one who left it to a block, which is information taking an
+     * answer away.
+     */
+    @Test
+    void aFunctionArgumentDeclaredWhereTheSignatureLeftAVariableOpenIsAdmitted() {
+        MemberReceiver receiver = leftOfTheDot("""
+                module m
+
+                data Item  = { id: String }
+                data Shelf = { items: List<Item> }
+
+                behavior keyOf : (item: Item) -> String
+
+                behavior distinct : (of: Shelf) -> Int
+                    depends on keyOf
+                let distinct (of, keyOf) = List.distinctBy(keyOf, of.items).
+                """);
+
+        Type.ListOf holds = assertInstanceOf(Type.ListOf.class,
+                assertInstanceOf(MemberReceiver.Value.class, receiver).type().type());
+        assertEquals("Item", assertInstanceOf(Type.Ref.class, holds.element()).name().name(),
+                "the list says what the call answers, whatever the key answers");
+    }
+
+    /**
+     * And what the arguments did settle is still held to.
+     *
+     * <p>The other half of the same rule: a position a declaration states and an argument answers
+     * for is read, and the key here answers for a position the list settled to something else. Read
+     * as nothing because part of the declaration is open, a call the check refuses would come back
+     * with a type.
+     */
+    @Test
+    void andAFunctionArgumentDisagreeingWhereTheyDidSettleIsNot() {
+        MemberReceiver receiver = leftOfTheDot("""
+                module m
+
+                data Item  = { id: String }
+                data Basket = { items: List<Int> }
+
+                behavior keyOf : (item: Item) -> String
+
+                behavior distinct : (of: Basket) -> Int
+                    depends on keyOf
+                let distinct (of, keyOf) = List.distinctBy(keyOf, of.items).
+                """);
+
+        assertInstanceOf(MemberReceiver.UntypedValue.class, receiver,
+                "a key of `Item` over a list of `Int` is a call no declaration states a type for");
+    }
+
+    /**
      * A call of a behavior is what that behavior's signature answers.
      *
      * <p>Which is a declaration, and the one the author wrote a line above. Read as a value nothing

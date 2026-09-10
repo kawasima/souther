@@ -66,51 +66,17 @@ final class Substitution {
     }
 
     /**
-     * Whether a value of {@code actual} may stand where {@code declared} was written, reading a
-     * position this application has not decided as one that states nothing. Everything around it
-     * still states what it states.
+     * Whether a value of {@code actual} may stand where {@code declared} was written, in this
+     * application's reading of both.
      *
-     * <p>Every position is asked on its own. There is no test for whether the type holds a hole
-     * somewhere before descending into it, because that is the question this is: a hole is one
-     * position, and asking about the type as a whole is what would let one silence the rest.
+     * <p>What a position admits is {@link TypeOps#admits}'s and is not asked again here. What this
+     * adds is whose decisions the two are read under: a variable this application decided stands at
+     * what it decided, and one it has not is a position stating nothing. Written here as well, the
+     * reader that has no application to decide under would have been given a second rule about
+     * open positions, and the two would part at exactly the positions a declaration leaves open.
      */
     private boolean fits(Type is, Type declared, Symbols symbols) {
-        Type want = zonk(declared);
-        Type actual = zonk(is);
-        // A position states nothing where a variable stands at it — one this application has not
-        // decided, or one a declaration wrote, which stands for whatever each use of it makes — and
-        // where it stands at what an empty collection carries, which is a reading so far and is
-        // widened by a later one (ADR-0028). Nothing is refused at any of them, and everything
-        // around them is read.
-        if (want instanceof Type.Open || want instanceof Type.Nothing
-                || actual instanceof Type.Open) {
-            return true;
-        }
-        if (actual instanceof Type.Nothing || actual instanceof Type.Never
-                || actual instanceof Type.Erroneous) {
-            return true;   // nothing arrives from there, so nothing of the wrong shape can
-        }
-        return switch (want) {
-            case Type.ListOf l -> actual instanceof Type.ListOf a
-                    && fits(a.element(), l.element(), symbols);
-            case Type.SetOf s -> actual instanceof Type.SetOf a
-                    && fits(a.element(), s.element(), symbols);
-            case Type.OptionOf o -> actual instanceof Type.OptionOf a
-                    && fits(a.element(), o.element(), symbols);
-            case Type.MapOf m -> actual instanceof Type.MapOf a
-                    && fits(a.key(), m.key(), symbols) && fits(a.value(), m.value(), symbols);
-            case Type.TupleOf t -> actual instanceof Type.TupleOf a
-                    && t.elements().size() == a.elements().size()
-                    && allFit(a.elements(), t.elements(), symbols);
-            case Type.FnOf f -> actual instanceof Type.FnOf a
-                    && f.params().size() == a.params().size()
-                    && allFit(a.params(), f.params(), symbols)
-                    && fits(a.result(), f.result(), symbols);
-            // Nothing inside it to weigh position by position, so what is left is the ordinary
-            // question. It answers a variable the declaration wrote too, which is not this
-            // application's to decide and stands for whatever each use of it makes it.
-            case Type.Leaf _ -> TypeOps.assignable(actual, want, symbols);
-        };
+        return TypeOps.admits(zonk(declared), zonk(is), symbols);
     }
 
     private boolean allFit(List<Type> actual, List<Type> declared, Symbols symbols) {

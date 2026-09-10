@@ -559,11 +559,13 @@ public record DeclaredTypeReading(DeclarationFacts facts,
          * caller that could forget — and what it forgets is a type stated for an application that
          * cannot happen, which is worse than stating nothing.
          *
-         * <p>Whether an argument fits is asked after the variables are settled and not before: a
-         * position written as a variable takes whatever the arguments decide it to be, and asking of
-         * the unsettled parameter would refuse every polymorphic declaration. It is asked with the
-         * one rule the elaboration holds an argument to, so a call this reading states a type for is
-         * one that reading would accept.
+         * <p>Whether the declaration admits an argument is asked after the variables are settled and
+         * not before: a position written as a variable takes whatever the arguments decide it to be,
+         * and asking of the unsettled parameter would refuse every polymorphic declaration. Asked as
+         * far as the settling went and no further — a signature relating a function to the rest of
+         * what it wrote is left open at the positions that function would close, and this reading
+         * does not type one, so a rule that wanted the whole declaration settled would take the
+         * answer away exactly where an argument said more.
          *
          * <p>A position where the declaration states nothing, or where the arguments do, settles
          * nothing and is held to nothing. Standing a type in for either would settle a variable off
@@ -597,8 +599,8 @@ public record DeclaredTypeReading(DeclarationFacts facts,
                 return new Settlement.Disagrees();
             }
             for (int i = 0; i < settling.size(); i++) {
-                if (!TypeOps.assignable(stated.get(i),
-                        TypeOps.substitute(settling.get(i), bindings), symbols())) {
+                if (!TypeOps.admits(TypeOps.substitute(settling.get(i), bindings), stated.get(i),
+                        symbols())) {
                     return new Settlement.Disagrees();
                 }
             }

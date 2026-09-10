@@ -11,6 +11,8 @@ import souther.compiler.query.Bodies;
 import souther.compiler.query.Compilation;
 import souther.compiler.query.Scopes;
 import souther.compiler.types.Type;
+import souther.compiler.types.TypeKey;
+import souther.compiler.types.TypeSymbols;
 
 import java.util.HashMap;
 import java.util.List;
@@ -67,6 +69,13 @@ class WhatAnApplicationStatesComesFromTheDeclarationItAppliesTest {
             let after (a, b) = List.drop(List.length(a), b)
 
             let atTwoElements = after(after(strings.items, ints.items), strings.items)
+
+            data Item  = { id: String }
+            data Shelf = { items: List<Item> }
+
+            let shelf = Shelf { items = [] }
+
+            let byABlock = List.distinctBy(i -> i.id, shelf.items)
             let widened          = {
                 let d: Deal = closed
                 d
@@ -242,6 +251,22 @@ class WhatAnApplicationStatesComesFromTheDeclarationItAppliesTest {
         assertEquals(Type.list(Type.STRING), declaredTypeOf("atTwoElements"),
                 "the outer `after` answers what its second argument holds, whatever the inner one"
                         + " was applied to");
+    }
+
+    /**
+     * A declaration left open where a function would close it is still admitted.
+     *
+     * <p>{@code List.distinctBy} relates its key function to nothing else it wrote: what the key
+     * answers appears at no other position, so the arguments settle everything the answer needs and
+     * the function's own variable stays open. Held to a settled declaration, the call would be
+     * refused for the one position the arguments were never going to reach — and this reading does
+     * not type a function argument, which is the whole reason that position is open.
+     */
+    @Test
+    void aDeclarationLeftOpenWhereAFunctionWouldCloseItIsStillAdmitted() {
+        assertEquals(Type.list(Type.ref(TypeSymbols.declared(new TypeKey("demo", "Item")))),
+                declaredTypeOf("byABlock"),
+                "`List.distinctBy` answers a list of what it was given, whatever the key answers");
     }
 
     /** A library operation is its declared signature applied to what the arguments state — the same
