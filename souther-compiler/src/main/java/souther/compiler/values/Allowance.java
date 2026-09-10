@@ -196,6 +196,18 @@ public final class Allowance<A> {
     }
 
     /**
+     * The same, where what the second rule leaves is said as a plan rather than as a set.
+     *
+     * <p>For a caller that knows which values a rule leaves without having built them. A rule about
+     * how many a value holds leaves a set of strings nobody has a machine for yet, and building one
+     * to hand in here would be the composing this exists to allow, done where nothing is counting —
+     * so what comes in is the plan, and the one number is spent on the whole of it.
+     */
+    public Composed meet(Sameness.Block<A> block, ValueSet one, AdmittedPlan other) {
+        return put(block, AdmittedPlan.meeting(List.of(AdmittedPlan.of(one), other)));
+    }
+
+    /**
      * The values any of them admits, said as one plan over all of them.
      *
      * <p>For a caller holding several at once, which is what a block holds across the

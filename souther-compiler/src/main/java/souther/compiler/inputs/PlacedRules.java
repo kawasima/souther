@@ -243,9 +243,13 @@ record PlacedRules(TermPath root, TypeSymbol value, Rules rules, Reaching alsoRe
      * <p>Asked at every path, the value's own included: what a name wraps is at no path of its own
      * and is the position a reader of a newtype asks about, which is why this is not the empty
      * answer where {@link #at} is.
+     *
+     * @param valuesAt what stands at the position, through whatever names it is written under. What
+     *                 a rule about a number taken of it leaves is a set of those values, so which
+     *                 shape they are is what says whether there is such a set to be written
      */
-    AdmissibleSet admits(TermPath path) {
-        AdmissibleSet here = rules.admits(under(path));
+    AdmissibleSet admits(TermPath path, souther.compiler.types.Type valuesAt) {
+        AdmissibleSet here = narrowedByWhatItCounts(rules.admits(under(path)), path, valuesAt);
         TermPath above = alsoAt(path);
         if (above == null) {
             return here;
@@ -253,7 +257,7 @@ record PlacedRules(TermPath root, TypeSymbol value, Rules rules, Reaching alsoRe
         // What both leave, and short of what either was short of. A value the case admits and the
         // value above refuses stands nowhere, and a rule either of them could not read leaves the
         // set wider than the rules are however completely the other was read.
-        AdmissibleSet outer = alsoReaching.outer().admits(above);
+        AdmissibleSet outer = alsoReaching.outer().admits(above, valuesAt);
         // Spent from this reading's own allowance, which is what every position of it is met out
         // of. The two sides were read from two declarations and each was read in full where it was
         // written; what is being built here is a third set, the one this position finally admits.
@@ -267,6 +271,37 @@ record PlacedRules(TermPath root, TypeSymbol value, Rules rules, Reaching alsoRe
         return new AdmissibleSet(made.set(), made.gaveUp()
                 ? alsoWidened(read, new AdmissibleSet.Widening.ExactValuesTooCostly())
                 : read);
+    }
+
+    /**
+     * {@code here} with what the rules about a number taken of the position leave met into it.
+     *
+     * <p>Of this reading's own rules and not of what reaches it from above. The value this was
+     * narrowed out of narrows its own set the same way, where its own allowance is spent, and the
+     * two are put together below like everything else — done here for both, the rules of the value
+     * above would be met in twice, and what a run of an automaton costs is not the same twice.
+     *
+     * <p>A run this cannot say the values of leaves them as they stood. Nothing is written down for
+     * it: what the set is short of is what a rule leaves, and a run whose values have no spelling
+     * here is one the reading never took in — which is what the set already says of itself.
+     */
+    private AdmissibleSet narrowedByWhatItCounts(AdmissibleSet here, TermPath path, Type valuesAt) {
+        FieldDomains.CountLeft counted = rules.bounds().countLeftAt(under(path));
+        if (counted == null) {
+            return here;
+        }
+        souther.compiler.values.AdmittedPlan leaves =
+                ProjectionPreimage.of(valuesAt, counted.by(), counted.left());
+        if (leaves == null) {
+            return here;
+        }
+        // Spent from this reading's allowance, which is what every position of it is met out of.
+        souther.compiler.values.Allowance.Composed made = sets.meet(
+                souther.compiler.values.Sameness.Block.of(path), here.approximation(), leaves);
+        return new AdmissibleSet(made.set(), made.gaveUp()
+                ? alsoWidened(here.completeness(),
+                        new AdmissibleSet.Widening.ExactValuesTooCostly())
+                : here.completeness());
     }
 
     /** The same completeness, and one more thing standing between the set and the rules. */

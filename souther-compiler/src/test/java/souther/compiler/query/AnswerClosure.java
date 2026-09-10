@@ -434,6 +434,23 @@ final class AnswerClosure {
                 way.toArray(new Locus.Step[0])), A_MACHINE_UNDER_A_LANGUAGE, Set.of(met));
     }
 
+    /**
+     * The machine under a language, wherever the walk arrives at one.
+     *
+     * <p>{@code steps} is the way to the language; what hangs under it is the same wherever it is
+     * reached from, because a language is a language and what it is walked as does not turn on
+     * which answer happened to hold it.
+     */
+    private static Known machineUnderALanguage(String question, Observation met,
+                                               Locus.Step... steps) {
+        List<Locus.Step> way = new java.util.ArrayList<>(List.of(steps));
+        way.addAll(List.of(
+                m("souther.compiler.values.ValueSet$Matching", "language"),
+                m("souther.compiler.regex.Language", "machine")));
+        return new Known(at(question, "souther.compiler.regex.Automaton",
+                way.toArray(new Locus.Step[0])), A_MACHINE_UNDER_A_LANGUAGE, Set.of(met));
+    }
+
     private static final String Q = "souther.compiler.query.";
 
     /** What the reading of a body left of the model's own divisions, which is the half of it the
@@ -507,6 +524,30 @@ final class AnswerClosure {
                     m(ANSWER, "value")),
             machineInAClass(Q + "Adequacy$Dividing", walked(Scenario.THE_CORPORA),
                     m(ANSWER, "value"), m(Q + "Adequacy$BodyDivided", "geometry")),
+            // What a position admits, which is a language wherever a rule about a number taken of
+            // it leaves a run of its values. Held twice by the reading that found it — in the order
+            // the positions were read, and under the paths they were read at — and again by the
+            // account each measure carries of the location it is of.
+            machineUnderALanguage(Q + "Adequacy$Inputs", walked(Scenario.THE_CORPORA),
+                    m(ANSWER, "value"), VALUE,
+                    m("souther.compiler.inputs.InputDomain", "positions"), ELEMENT,
+                    m("souther.compiler.inputs.ReadPosition", "admitted"),
+                    m("souther.compiler.values.AdmissibleSet", "approximation")),
+            machineUnderALanguage(Q + "Adequacy$Inputs", walked(Scenario.THE_CORPORA),
+                    m(ANSWER, "value"), VALUE,
+                    m("souther.compiler.inputs.InputDomain", "byPath"), VALUE,
+                    m("souther.compiler.inputs.ReadPosition", "admitted"),
+                    m("souther.compiler.values.AdmissibleSet", "approximation")),
+            machineUnderALanguage(Q + "Adequacy$Divided", walked(Scenario.THE_CORPORA),
+                    m(ANSWER, "value"),
+                    m("souther.compiler.partition.Partitions$Partitioning", "measurements"),
+                    ELEMENT, m("souther.compiler.partition.PositionMeasurements", "position"),
+                    m("souther.compiler.partition.PositionAccount", "admits")),
+            machineUnderALanguage(Q + "Adequacy$Dividing", walked(Scenario.THE_CORPORA),
+                    m(ANSWER, "value"), m(Q + "Adequacy$BodyDivided", "geometry"),
+                    m("souther.compiler.partition.Partitions$Partitioning", "measurements"),
+                    ELEMENT, m("souther.compiler.partition.PositionMeasurements", "position"),
+                    m("souther.compiler.partition.PositionAccount", "admits")),
             new Known(at(EVERY_ANSWER, "souther.compiler.diag.Diagnostic",
                     m(ANSWER, "reports"), ELEMENT, m("souther.compiler.query.Report", "diagnostic")),
                     A_REPORT, BOTH_EVERYWHERE));

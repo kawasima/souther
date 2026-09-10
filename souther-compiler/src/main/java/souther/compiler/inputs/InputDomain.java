@@ -1417,7 +1417,8 @@ public final class InputDomain {
         // reading the numbers come from and a separate question of it: a rule can name the values a
         // position holds without stating where they stop, and one that states where they stop
         // without naming any of them.
-        AdmissibleSet admitted = placed.admits(path);
+        AdmissibleSet admitted =
+                placed.admits(path, souther.compiler.check.TypeOps.base(type, source.symbols()));
         List<PositionBounds> bounds = new ArrayList<>();
         for (NumberAt.OfWhatNumber kind : kinds) {
             bounds.add(boundsOn(kind, path, type, taken, view, source, carried, placed,
