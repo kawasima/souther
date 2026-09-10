@@ -12,10 +12,10 @@ import souther.compiler.check.Symbols;
 import souther.compiler.check.StringPredicates;
 import souther.compiler.inputs.BlockReason;
 import souther.compiler.inputs.FilingCoordinate;
-import souther.compiler.inputs.RuleWithoutALine;
 import souther.compiler.inputs.InputReading;
 import souther.compiler.inputs.NumericTerm;
 import souther.compiler.inputs.PathResolution;
+import souther.compiler.inputs.StandingQuestion;
 import souther.compiler.regex.PatternPlan;
 import souther.compiler.values.AdmittedPlan;
 import souther.compiler.values.Allowance;
@@ -89,18 +89,20 @@ public final class BehaviorSetStatements {
      *                   holds, which is settled where those are known and not here
      * @param blocked the distinctions of a position this compiler did not get, which is what keeps
      *                its classes from being composed out of the ones it did
-     * @param saying  the rules that reached here and divide no position, which a reader is owed and
-     *                which hold nothing open. A rule about a value an operation made from a
-     *                position is one of these: it is about that value, and a denominator held open
-     *                by it would be held open by a rule that never reached the position
+     * @param nothingClassifies the rules that reached here and whose subject this reading could not
+     *                place at a position, each as the question standing where it was filed. Nothing
+     *                works out what such a rule states of the values there — reading it back
+     *                through the operation that made them is a capability this has not — so what is
+     *                undecided is what the rule does at all, which is what the question says
      */
     public record Read(List<RuleEvidence> statements, List<ClassingBlocker> blocked,
-                       List<RuleWithoutALine> saying, List<ForkOfItsOwn> forks) {
+                       List<StandingQuestion.NothingClassifiesIt> nothingClassifies,
+                       List<ForkOfItsOwn> forks) {
 
         public Read {
             statements = List.copyOf(statements);
             blocked = List.copyOf(blocked);
-            saying = List.copyOf(saying);
+            nothingClassifies = List.copyOf(nothingClassifies);
             forks = List.copyOf(forks);
         }
     }
@@ -212,17 +214,22 @@ public final class BehaviorSetStatements {
                    RuleReachNumbering reaches) {
         List<Asked> asked = new ArrayList<>();
         List<ClassingBlocker> blocked = new ArrayList<>();
-        List<RuleWithoutALine> saying = new ArrayList<>();
+        List<StandingQuestion.NothingClassifiesIt> nothingClassifies = new ArrayList<>();
         for (PredicateReadings.Reading each : read.predicates()) {
             switch (ask(each, symbols)) {
                 case Outcome.OfADistinction(Asked it) -> asked.add(it);
                 case Outcome.NotGot(var at, var why) ->
                         blocked.add(new ClassingBlocker(at, each.origin(), why));
-                // At every place it may be about. A rule said to divide nothing is one sentence,
-                // and where the reading could not settle which position it was of, each of the
-                // places it may have been of is owed it.
+                // At every place it may be about. A rule this could not place is one sentence, and
+                // where the reading could not settle which position it was of, each of the places
+                // it may have been of is owed it.
+                //
+                // As a question and not as a finding. What such a rule states of the values there
+                // is what nothing worked out, so a measure that closed over it would be closing
+                // over a reading that stopped — while the report went on naming the rule.
                 case Outcome.SayingNothing(var at, var why) -> at.forEach(where ->
-                        saying.add(RuleWithoutALine.of(each.origin().cited(), where, why)));
+                        nothingClassifies.add(StandingQuestion.NothingClassifiesIt
+                                .of(each.origin().cited(), where, why)));
                 // Nothing places it, so there is nobody to say it to. Which is the answer the
                 // reading of a comparison gives the same shape, and not this walk being quiet.
                 case Outcome.Nowhere _ -> { }
@@ -244,7 +251,7 @@ public final class BehaviorSetStatements {
         for (Asked each : asked) {
             state(each, answers.get(each.term()), statements, blocked);
         }
-        return new Read(statements, blocked, saying,
+        return new Read(statements, blocked, nothingClassifies,
                 ofTheirOwn(behavior, read, symbols, forks, reaches));
     }
 
@@ -253,14 +260,13 @@ public final class BehaviorSetStatements {
      *
      * <p><b>Named outcomes and not what a walk had left over.</b> Three things can be true of such a
      * rule and they are not one another: it states a distinction of this position, it states one
-     * this compiler did not get, or it states nothing about this position at all. Only the second
-     * keeps a position's classes from being composed — the first is one of them, and the third is
-     * not about the position, so a denominator held open by it would be held open by a rule that
-     * never reached it.
+     * this compiler did not get, or its subject stands at no position this reading can place. Only
+     * the second keeps a position's classes from being composed — the first is one of them, and the
+     * third is a reading that stopped before it reached a position, so a denominator held open by
+     * it would be held open by a rule that never got there.
      *
      * <p>Filled from the branches a reading fell through, the three were one list: everything that
-     * did not become a statement kept the position's classes shut, and a rule read to the end that
-     * says nothing took its siblings down with it.
+     * did not become a statement kept the position's classes shut.
      */
     private sealed interface Outcome {
 
@@ -278,20 +284,25 @@ public final class BehaviorSetStatements {
                       BlockReason.RuleWithoutLineReason why) implements Outcome {}
 
         /**
-         * A rule of the model that divides no position here, and where to say so.
+         * A rule of the model whose subject this could not place at a position, and where to say
+         * so.
          *
-         * <p>A reader is owed the sentence and the classes are not held open by it: a rule about a
-         * value an operation made from a position is about that value, and a rule read to the end
-         * that tells nothing apart has been read. Neither is a distinction gone missing.
+         * <p>A reading that stopped, and the reason says which way. A value an operation made out
+         * of what stands somewhere is about that value, and what the rule says about the values it
+         * was made from would take reading the operation backwards; a value that is what stands at
+         * one of several places is about the input at whichever of them this run is. Neither is a
+         * distinction gone missing, and neither is a rule read to the end — so what stands where
+         * this is filed is a question, and what a measure there rests on is that nothing worked out
+         * what the rule states.
          */
         record SayingNothing(List<FilingCoordinate> at,
-                             BlockReason.RuleWithoutLineReason why) implements Outcome {
+                             BlockReason.RuleReadingStopped why) implements Outcome {
 
             public SayingNothing {
                 at = List.copyOf(at);
                 if (at.isEmpty()) {
                     throw new IllegalArgumentException(
-                            "a rule said to divide nothing is said somewhere: " + why);
+                            "a rule this could not place is said somewhere: " + why);
                 }
             }
         }

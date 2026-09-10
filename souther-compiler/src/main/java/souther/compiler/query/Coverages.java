@@ -186,18 +186,18 @@ final class Coverages {
             EnsuresThresholds.Clauses clauses, GuardThresholds.Guards guards,
             LinesWhereTheyFall.Filed filed,
             souther.compiler.partition.BehaviorSetStatements.Read sets) {
-        // And the rules about the strings that divided no position, which are findings of the same
-        // kind. Left out, a rule an author wrote would reach the measure, come to nothing, and be
-        // shown to nobody — while the position it names came back as one the model says nothing
-        // about.
+        // Every producer's answer in one gathering. Left out of it, a rule an author wrote would
+        // reach the measure, come to nothing, and be shown to nobody — while the position it names
+        // came back as one the model says nothing about.
         souther.compiler.inputs.RulesWithNoLine.Gathered found =
                 new souther.compiler.inputs.RulesWithNoLine.Gathered();
+        // The lines that had nowhere to fall, as the findings whoever could not place them made.
         filed.blocked().forEach(each -> found.add(each.reported()));
-        // And the rules that reached the measure and divide no position. They hold nothing open —
-        // a rule read to the end that tells nothing apart has been read, and one about a value an
-        // operation made from a position is about that value — so they are said and nothing waits
-        // on them.
-        sets.saying().forEach(found::add);
+        // And the rules about the strings whose subject this reading could not place at a position.
+        // A question each and no finding: what a report is owed about such a rule is that nothing
+        // worked out what it states there, which the question says, and a measure that closed over
+        // it would be closing over a reading that stopped.
+        sets.nothingClassifies().forEach(found::asked);
         // And the forks whose condition no reader took in. A question for each and no finding: what
         // a report is owed about such a rule is that nothing worked out what it states, which the
         // question says, and where it says it is what the reading got to rather than what the fork

@@ -29,14 +29,15 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *
  * <p><b>Asked of every reader that can file one.</b> Which of them owes a question is a decision
  * each of them makes where it files: the accounting of a declaration's clauses raises it, and a
- * body's comparison and a clause of an {@code ensures} say instead that nothing classifies them.
+ * body's comparison, a clause of an {@code ensures} and a predicate over the strings say instead
+ * that nothing classifies them.
  * Nothing in the types holds them to the same answer, so this does — a reader added, or one that
  * starts filing a stop where it used to file a statement, fails here rather than taking a measure
  * quietly with it.
  *
- * <p>Over the models this repository carries and over two written for the readers the corpora do
- * not exercise, since what is being checked is a property of the readers rather than of any one
- * model.
+ * <p>Over the models this repository carries and over the ones written here for the readers the
+ * corpora do not exercise, since what is being checked is a property of the readers rather than of
+ * any one model.
  */
 @Tag("population")
 class ARuleWhoseReadingStoppedLeavesAQuestionTest {
@@ -65,6 +66,22 @@ class ARuleWhoseReadingStoppedLeavesAQuestionTest {
 
             behavior look : (item: Item) -> Ok
                 ensures Bool.not(item.price > 100)
+            """;
+
+    /** A predicate over the strings of a value an operation handed out, which is about those
+     *  strings and not the ones at the position they came from. */
+    private static final String A_PREDICATE_OVER_A_MADE_VALUE = """
+            module probe.codes
+
+            data Person = { code: String }
+            data Count = Int
+
+            behavior seen : (people: List<Person>) -> Count
+                constructs Count
+            let seen (people) =
+                Count(List.length(
+                    List.filter(s -> String.startsWith("JP", s),
+                        List.map(q -> q.code, people))))
             """;
 
     @Test
@@ -103,10 +120,11 @@ class ARuleWhoseReadingStoppedLeavesAQuestionTest {
         assertTrue(stopped > 0, "no reading stopped anywhere, so this checked nothing");
     }
 
-    /** The models this repository carries, and the two readers they do not exercise. */
+    /** The models this repository carries, and the readers they do not exercise. */
     private static List<Compilation> every() {
         List<Compilation> out = new ArrayList<>(RepositoryModels.all());
-        for (String each : List.of(A_COMPARISON_NOBODY_READS, AN_ENSURES_NOBODY_READS)) {
+        for (String each : List.of(A_COMPARISON_NOBODY_READS, AN_ENSURES_NOBODY_READS,
+                A_PREDICATE_OVER_A_MADE_VALUE)) {
             Compilation one = Compilation.ofSource(each, "Main");
             one.measure(Adequacy.Asked.fullReport());
             one.answerEverything();
