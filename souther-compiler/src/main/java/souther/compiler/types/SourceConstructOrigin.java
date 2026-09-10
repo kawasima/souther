@@ -34,8 +34,9 @@ package souther.compiler.types;
  * comprehension rather than of when the lowering ran. Nothing else makes one — an origin minted after
  * expansion would give two copies of one fork two origins, which is the thing this exists to prevent.
  * A record's constructor is public and takes every component, so that last sentence is held against
- * the compiled classes rather than left to be read: what settles an origin is written down, with who
- * calls it.
+ * the compiled classes rather than left to be read: what may settle an origin, and every compiled
+ * class of this repository that names one of those makers, is written down in {@code
+ * WhoMaySettleASourceConstructOriginTest}.
  *
  * <p>Not a name anything outside one compilation can be matched by. {@code ordinal} is the builder's
  * own count over what {@link #owner} names, and the builder does not take the numbers in the order
