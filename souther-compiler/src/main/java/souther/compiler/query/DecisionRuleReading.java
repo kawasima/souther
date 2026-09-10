@@ -38,14 +38,33 @@ public sealed interface DecisionRuleReading {
     /**
      * A comparison the author wrote, coming out one way.
      *
+     * <p>The site and not the occurrence. Where a comparison is written is a thing the coverage
+     * sites already hold, and a reader sent there by a second answer would be sent by whichever of
+     * the two had been kept in step.
+     *
      * @param comparison which comparison of the model, which is what a reader is sent to
      * @param held       whether the path took it holding — of the comparison as written, not of the
      *                   proposition the rule is keyed on
      */
-    record AComparisonCameOut(ModelOccurrence comparison, boolean held)
+    record AComparisonCameOut(CoverageSites.ComparisonSite comparison, boolean held)
             implements DecisionRuleReading {
 
         public AComparisonCameOut {
+            Objects.requireNonNull(comparison, "a comparison of the model is some site");
+        }
+    }
+
+    /**
+     * A comparison of the model this run has no site for.
+     *
+     * <p>Beside {@link AConditionIsNotShown} for the reason {@link AForkIsNotPlaced} is: this is
+     * the plan that numbered the places having nothing under the construct the reading named,
+     * rather than the reading of the body falling short of saying what a condition means.
+     */
+    record AComparisonIsNotPlaced(ModelOccurrence comparison, boolean held)
+            implements DecisionRuleReading {
+
+        public AComparisonIsNotPlaced {
             Objects.requireNonNull(comparison, "a comparison of the model is some construct");
         }
     }
@@ -110,13 +129,24 @@ public sealed interface DecisionRuleReading {
         for (ShownBy each : ruled.shownBy()) {
             out.add(switch (each) {
                 case ShownBy.AtAComparison(var comparison, var held) ->
-                        new AComparisonCameOut(comparison, held);
+                        comparisonOf(plan, behavior, comparison, held);
                 case ShownBy.AtAnArm(var fork, var part) -> armOf(plan, behavior, fork, part);
                 case ShownBy.NothingIsRecorded(var condition) ->
                         new AConditionIsNotShown(condition);
             });
         }
         return List.copyOf(out);
+    }
+
+    /** The site of one comparison, or the fact that this run has no site for it. */
+    private static DecisionRuleReading comparisonOf(CoverageSites.Plan plan, String behavior,
+                                                    ModelOccurrence comparison, boolean held) {
+        for (CoverageSites.ComparisonSite site : plan.comparisons(behavior)) {
+            if (site.obligation().origin().equals(comparison.origin())) {
+                return new AComparisonCameOut(site, held);
+            }
+        }
+        return new AComparisonIsNotPlaced(comparison, held);
     }
 
     /**

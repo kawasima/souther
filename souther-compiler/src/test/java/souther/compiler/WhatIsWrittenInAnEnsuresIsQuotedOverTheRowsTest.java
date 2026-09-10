@@ -92,9 +92,6 @@ class WhatIsWrittenInAnEnsuresIsQuotedOverTheRowsTest {
                 // nothing offers a row for `a decision rule of findTodo` in `findTodo`: something \
                 was seen standing in this rule while it was being settled, and nothing turns what \
                 a search stood there into a row an author can complete
-                // nothing offers a row for `a decision rule of echo` in `echo`: something was \
-                seen standing in this rule while it was being settled, and nothing turns what a \
-                search stood there into a row an author can complete
                 """, block(TODO));
     }
 

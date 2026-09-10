@@ -38,13 +38,19 @@ package souther.compiler.query;
  *                         each once however many of its positions read it
  *                         ({@link Adequacy.BodyBorders})
  * @param branch           what they establish about the arms of its body
+ * @param decision         the rules of the decision its body states and which of them the rows
+ *                         took, or null where the compile did not get far enough to be asked.
+ *                         Beside {@code branch} and not among it: two rules can go through one
+ *                         arm, and a body whose arms answer alike states two rules that one row
+ *                         through each arm covers
  */
 public record BehaviorEvidence(Adequacy.RowReading reading,
                                Adequacy.SignatureEvidence signature,
                                PartitionEvidence partition,
                                Measure<java.util.List<BorderAssessment>> boundaryReadings,
                                Measure<java.util.List<BorderObligationPointAssessment>> account,
-                               Adequacy.BranchEvidence branch) {
+                               Adequacy.BranchEvidence branch,
+                               DecisionEvidence decision) {
 
     public BehaviorEvidence {
         java.util.Objects.requireNonNull(reading,

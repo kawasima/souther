@@ -5024,6 +5024,13 @@ public final class Adequacy {
             }
             for (souther.compiler.partition.DecisionReading.Ruled ruled
                     : decision.read().found()) {
+                // A way that consults nothing is not a distinction the body draws. It is the whole
+                // of a straight-line body, and a row is owed for it by what the signature says
+                // already — the account keeps one obligation per distinction, and two measures
+                // naming one fact do not make two.
+                if (ruled.rule().consulted().isEmpty()) {
+                    continue;
+                }
                 if (settled.get(ruled.rule()) instanceof RuleRequirement.Required) {
                     out.add(Finding.noticed(behavior, new About.ARuleNoRowTakes(behavior, ruled)));
                 }
@@ -5565,7 +5572,7 @@ public final class Adequacy {
                     Bodies.Elaborated checked = db.ask(new Bodies.Checked(module)).value();
                     for (DecisionRuleReading read : DecisionRuleReading.of(ruled,
                             checked == null ? CoverageSites.Plan.NONE : checked.plan(), behavior)) {
-                        said(built, read);
+                        said(db, built, read);
                     }
                 }
                 // Which of the two this arm is, is already settled: a row is there. What is left is
@@ -5687,23 +5694,52 @@ public final class Adequacy {
          * <p>What each of them says is which construct and which way, and never the proposition an
          * account keys on: the author reads their own comparison at the place this points to.
          */
-        private static void said(souther.compiler.diag.Diagnostic.Builder built,
+        private static void said(Db db, souther.compiler.diag.Diagnostic.Builder built,
                                  DecisionRuleReading read) {
             switch (read) {
                 case DecisionRuleReading.AComparisonCameOut(var comparison, var held) ->
-                        built.hint(held
-                                ? new ExampleMessage.TheRuleTakesThatComparisonHolding(
-                                        comparison.toString())
-                                : new ExampleMessage.TheRuleTakesThatComparisonFailing(
-                                        comparison.toString()));
+                        label(built, comparison.at(), held
+                                ? new ExampleMessage.TheRuleTakesThisComparisonHolding()
+                                : new ExampleMessage.TheRuleTakesThisComparisonFailing());
                 case DecisionRuleReading.AForkTookAnArm(var arm) ->
-                        built.hint(new ExampleMessage.TheRuleGoesThroughThatArm(phraseFor(arm)));
-                // Both shapes with nothing to send a reader to, said as one note. What differs
+                        label(built, Sites.placeOf(db, arm.anchor()),
+                                new ExampleMessage.TheRuleGoesThroughThisArm(phraseFor(arm)));
+                // Every shape with nothing to send a reader to, said as one note. What differs
                 // between them is which part of this compiler fell short, which is not something
-                // an author acts on — and a note is written for either so that the rule is never
+                // an author acts on — and a note is written for each so that the rule is never
                 // described by fewer conditions than it turns on.
                 case DecisionRuleReading.AConditionIsNotShown _,
+                        DecisionRuleReading.AComparisonIsNotPlaced _,
                         DecisionRuleReading.AForkIsNotPlaced _ ->
+                        built.hint(new ExampleMessage.OneConditionOfTheRuleIsNotShown());
+            }
+        }
+
+        /**
+         * One condition of the rule, marked where the author wrote it.
+         *
+         * <p>A marker and not a sentence naming a place. Nothing here knows what to call a source,
+         * so a line and a column written into the words would be read against whichever file the
+         * reader has in mind — which is the same reason the construct that draws a line is marked
+         * rather than said.
+         *
+         * <p>Where there is nowhere to put one, the note says the condition cannot be shown. A
+         * marker over a region whose source this compilation does not hold is not an option: a
+         * place a reader is sent to names its source, and that one cannot.
+         */
+        private static <M extends ExampleMessage & souther.compiler.diag.msg.Supporting> void label(
+                souther.compiler.diag.Diagnostic.Builder built, Citation at, M said) {
+            switch (at) {
+                case Citation.Written w ->
+                        built.secondary(souther.compiler.diag.Region.point(w.at()), said);
+                case Citation.Reached r ->
+                        built.secondary(souther.compiler.diag.Region.point(r.at()), said);
+                case Citation.OutOfSight out ->
+                        built.secondaryOutOfSight(out.provenance(), said);
+                // Nowhere this compilation can put a marker and no source to name instead. Said as
+                // a condition that cannot be shown, which is what it is: a place a reader is sent
+                // to names its source, and neither of these has one.
+                case Citation.Unplaced _, Citation.UnplacedElsewhere _ ->
                         built.hint(new ExampleMessage.OneConditionOfTheRuleIsNotShown());
             }
         }

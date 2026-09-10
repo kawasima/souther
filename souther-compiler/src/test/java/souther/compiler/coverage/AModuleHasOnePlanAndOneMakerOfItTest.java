@@ -122,6 +122,11 @@ class AModuleHasOnePlanAndOneMakerOfItTest {
                     + " java.util.List<souther.compiler.coverage.CoverageSites$Site>",
             "method arms(java.lang.String) :"
                     + " java.util.List<souther.compiler.coverage.CoverageSites$ArmSite>",
+            // And the comparisons of one behavior, for a reader sending somebody to the one a
+            // condition was drawn by. A value like the arms beside it: a site says where it is
+            // written and carries no way into the tree it was numbered in.
+            "method comparisons(java.lang.String) :"
+                    + " java.util.List<souther.compiler.coverage.CoverageSites$ComparisonSite>",
             "method hasNoProbes() : boolean",
             // Which comparisons the bodies hold, and what this plan did about each.
             "method comparisons() : souther.compiler.coverage.ComparisonCatalog",

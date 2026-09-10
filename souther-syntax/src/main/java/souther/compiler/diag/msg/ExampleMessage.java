@@ -311,17 +311,21 @@ public sealed interface ExampleMessage extends Message {
     @Code(DiagnosticCode.E1935)
     record NoRowTakesADecisionRule(String behavior) implements ExampleMessage, Reported {}
 
-    /** One condition of that rule: a comparison the author wrote, and the way the rule takes it. */
-    record TheRuleTakesThatComparisonHolding(String comparison)
-            implements ExampleMessage, Supporting {}
+    /**
+     * One condition of that rule: a comparison the author wrote, which the rule takes holding.
+     *
+     * <p>Carries nothing. Which comparison it is is where the label is put, so a reader reads the
+     * comparison they wrote rather than one this compiler spelled from the proposition its account
+     * keys on — {@code n > 100} in a body is held there as {@code n <= 100} denied.
+     */
+    record TheRuleTakesThisComparisonHolding() implements ExampleMessage, Supporting {}
 
     /** The same, where the rule takes it failing. Two entries and not one that selects a word: a
      *  wording that turns on a value is two messages. */
-    record TheRuleTakesThatComparisonFailing(String comparison)
-            implements ExampleMessage, Supporting {}
+    record TheRuleTakesThisComparisonFailing() implements ExampleMessage, Supporting {}
 
     /** One condition of that rule: a fork of the body, and which of its arms the rule goes down. */
-    record TheRuleGoesThroughThatArm(souther.compiler.diag.Localizable arm)
+    record TheRuleGoesThroughThisArm(souther.compiler.diag.Localizable arm)
             implements ExampleMessage, Supporting {}
 
     /** A condition of the rule with nothing to send a reader to, so that a rule is never described

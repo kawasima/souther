@@ -57,6 +57,8 @@ import souther.compiler.coverage.CoverageSites;
 import souther.compiler.coverage.DecidedBy;
 import souther.compiler.coverage.SuppliedRules;
 import souther.compiler.query.About;
+import souther.compiler.query.DecisionEvidence;
+import souther.compiler.query.DecisionRuleReading;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.ArmDisposition;
 import souther.compiler.query.ArmExclusion;
@@ -438,12 +440,32 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                                  List<ReportedFinding> reported,
                                  Map<ArmReportAnchor, Citation> armPlaces,
                                  Map<ConditionReportAnchor, Citation> conditionPlaces,
-                                 Map<RuleCitation.Written, Citation> rulePlaces) {
+                                 Map<RuleCitation.Written, Citation> rulePlaces,
+                                 Map<About.ARuleNoRowTakes, List<ShownCondition>> ruleReadings) {
         public BehaviorReport {
             reported = List.copyOf(reported);
             armPlaces = Map.copyOf(armPlaces);
             conditionPlaces = Map.copyOf(conditionPlaces);
             rulePlaces = Map.copyOf(rulePlaces);
+            ruleReadings = Map.copyOf(ruleReadings);
+        }
+
+        /**
+         * How this report tells a reader which rule a finding is about, one note per condition.
+         *
+         * <p>Worked out when the report was assembled, for the reason {@link #placeOf} gives about
+         * an arm: naming the arm a condition goes through takes the plan that numbered the places,
+         * and a page is not where that is asked. A finding this report was not assembled with is
+         * one nothing here can say anything about — which is two of this compiler's answers
+         * disagreeing rather than a rule to describe by fewer conditions than it turns on.
+         */
+        public List<ShownCondition> readingsOf(About.ARuleNoRowTakes finding) {
+            List<ShownCondition> read = ruleReadings.get(finding);
+            if (read == null) {
+                throw new IllegalStateException("this report was not assembled with a rule of `"
+                        + name + "` that one of its findings is about");
+            }
+            return read;
         }
 
         /**
@@ -642,6 +664,11 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                 compilation.db().ask(new Adequacy.BodyBorders(name)).value();
         Map<String, Adequacy.BranchEvidence> branches =
                 compilation.db().ask(new Adequacy.BranchCoverage(name)).value();
+        // The rules of each body's decision and which of them the rows took, beside the arms and
+        // never among them. Asked once for the module, the way the arms are: read per behavior,
+        // what a page costs would grow with its behaviors reading one another's bodies.
+        Map<String, DecisionEvidence> decisions =
+                compilation.db().ask(new Adequacy.Decides(name)).value();
         // What each body declared, read where it was judged. Beside the measures and never inside
         // one: this report is where the two are put together.
         Map<String, ClaimAnnotations> claims =
@@ -686,7 +713,8 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             behaviors.add(new BehaviorReport(behavior.name(),
                     module.implementationOf(behavior),
                     new BehaviorEvidence(reading, signature, partition, read,
-                            accounts == null ? null : accounts.get(behavior.name()), branch),
+                            accounts == null ? null : accounts.get(behavior.name()), branch,
+                            decisions == null ? null : decisions.get(behavior.name())),
                     claims == null ? ClaimAnnotations.NONE
                             : claims.getOrDefault(behavior.name(), ClaimAnnotations.NONE),
                     reported,
@@ -695,7 +723,8 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                     rulePlaces(compilation, partition, linesOf(read),
                             accounts == null ? List.of()
                                     : pointsOf(accounts.get(behavior.name())),
-                            reported)));
+                            reported),
+                    ruleReadings(compilation, name, behavior.name(), reported)));
         }
         Adequacy.DeclaredBoundaries declared =
                 compilation.db().ask(new Adequacy.DeclaredBorders(name)).value();
@@ -755,6 +784,78 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
         return findings == null ? List.of()
                 : findings.stream().filter(each -> each.subject().isBehavior(name))
                         .map(each -> reported(compilation, module, each)).toList();
+    }
+
+    /**
+     * How each rule a finding of this behavior is about is told to a reader.
+     *
+     * <p>Resolved here because naming the arm a condition goes through takes the plan that
+     * numbered the places, and a page is not where that is asked — the same reason the arm places
+     * beside this are worked out at assembly.
+     *
+     * <p>One entry per finding about a rule and nothing else, so a page describes a rule by every
+     * condition it turns on: read off whichever conditions a walk happened to have words for,
+     * two rules of one behavior would be shown the same sentence with nothing under it.
+     */
+    private static Map<About.ARuleNoRowTakes, List<ShownCondition>> ruleReadings(
+            Compilation compilation, String module, String behavior,
+            List<ReportedFinding> reported) {
+        CoverageSites.Plan plan = placesOf(compilation, module);
+        Map<About.ARuleNoRowTakes, List<ShownCondition>> out = new LinkedHashMap<>();
+        for (ReportedFinding each : reported) {
+            if (each.finding().about() instanceof About.ARuleNoRowTakes rule) {
+                List<ShownCondition> shown = new ArrayList<>();
+                for (DecisionRuleReading read
+                        : DecisionRuleReading.of(rule.ruled(), plan, behavior)) {
+                    shown.add(new ShownCondition(read, whereItIsWritten(compilation, read)));
+                }
+                out.put(rule, List.copyOf(shown));
+            }
+        }
+        return out;
+    }
+
+    /**
+     * Where the construct one condition of a rule was drawn by is written, or null where there is
+     * none to send a reader to.
+     *
+     * <p>Asked here and not off the arm places beside it. Those are the arms the branch measure
+     * holds, and a rule turns on the arms of whatever its way went through — a body whose branch
+     * measure came to no answer states rules all the same, and asking that table for one of their
+     * arms is a page failing on an arm it was never assembled with.
+     */
+    private static Citation whereItIsWritten(Compilation compilation, DecisionRuleReading read) {
+        return switch (read) {
+            case DecisionRuleReading.AComparisonCameOut(var comparison, var _) -> comparison.at();
+            case DecisionRuleReading.AForkTookAnArm(var arm) ->
+                    Sites.placeOf(compilation.db(), arm.anchor());
+            case DecisionRuleReading.AConditionIsNotShown _,
+                    DecisionRuleReading.AComparisonIsNotPlaced _,
+                    DecisionRuleReading.AForkIsNotPlaced _ -> null;
+        };
+    }
+
+    /**
+     * One condition of a rule, with where a reader is sent for it.
+     *
+     * <p>The place beside the reading and not inside it. What each condition of a rule is is the
+     * same for a page and for a warning; where a page can send a reader is a question only a page
+     * asks, and it is answered where the plan that numbered the places is in reach.
+     *
+     * @param at where the construct that drew it is written, or null where there is none
+     */
+    public record ShownCondition(DecisionRuleReading read, Citation at) {
+
+        public ShownCondition {
+            java.util.Objects.requireNonNull(read, "a condition shown is some condition");
+        }
+    }
+
+    /** Where this compilation numbered the places a run through each construct is recorded. */
+    private static CoverageSites.Plan placesOf(Compilation compilation, String module) {
+        Bodies.Elaborated checked =
+                compilation.db().ask(new Bodies.Checked(module)).value();
+        return checked == null ? CoverageSites.Plan.NONE : checked.plan();
     }
 
     /**
@@ -1489,6 +1590,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                 signature(out, behavior);
                 partition(out, behavior, module.declaredIn(), names, behavior.rulePlace());
                 branch(out, behavior, module.declaredIn(), names);
+                decision(out, behavior, module.declaredIn(), names);
                 // Under the behavior it names, because a reason printed at the module's foot is
                 // read as belonging to whichever behavior came last. That was survivable while the
                 // only reasons naming one were rare; a position that could not be read is not.
@@ -2271,6 +2373,92 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                         f.at().said(names, declaredIn)));
             }
         }
+    }
+
+    /**
+     * Which rules of the decision the body states the rows take.
+     *
+     * <p>Beside the arms and never among them. An arm is one branch the author wrote and a rule is
+     * one way through the body: two rules can go through one arm, and a body whose arms answer
+     * alike states two rules that one row through each arm covers. Folded into the branch line,
+     * the second of those would have been reported as covered by the first.
+     *
+     * <p>The rules the body states and the ones some row was seen taking, and no ratio between
+     * them and what is owed. A rule no row takes may be one nothing can stand in, which is settled
+     * against the model and is settled for some of them and not others — so a denominator here
+     * would be counting rules as gaps that nothing has shown to be gaps. What is owed a row is
+     * said under this, one entry apiece, by the findings that established it.
+     */
+    void decision(StringBuilder out, BehaviorReport behavior,
+                  SourceId declaredIn, SourceNameResolver names) {
+        DecisionEvidence decision = behavior.evidence().decision();
+        if (decision == null || decision.rules().isEmpty()) {
+            return;
+        }
+        // Absent where nothing was read, which is not a count of none: a build that ran no row did
+        // not see the rows take none of the rules, it saw nothing. Said the way every other
+        // measure here says it.
+        out.append(decision.covered().isPresent()
+                ? String.format("    decision    rules %d   taken %d%n",
+                        decision.rules().size(), decision.covered().getAsInt())
+                : String.format("    decision    rules %d   %s%n",
+                        decision.rules().size(), whyNothingWasRead(decision)));
+        for (ReportedFinding f : behavior.reported()) {
+            if (!(f.finding().about() instanceof About.ARuleNoRowTakes rule)) {
+                continue;
+            }
+            out.append(String.format("      %s no row takes a decision rule%n",
+                    mark(f.finding())));
+            // Every condition of it, so that two rules of one behavior are told apart by what a
+            // reader is shown. The sentence above says only which behavior, because what tells the
+            // rules apart is the proposition each condition is keyed on and that is written the
+            // one way round an account needs rather than the way the author wrote it.
+            for (ShownCondition read : behavior.readingsOf(rule)) {
+                out.append(String.format("          · %s%n", said(read, declaredIn, names)));
+            }
+        }
+    }
+
+    /** Why nothing was read about which rules the rows took, in the reading's own words. */
+    private static String whyNothingWasRead(DecisionEvidence decision) {
+        return decision.taken() instanceof DecisionEvidence.Taken.NothingWasRead(var why)
+                ? switch (why) {
+                    case THE_ROWS_ARE_NOT_INSTRUMENTED -> "what the rows take was not measured";
+                    case NO_ROWS -> "no row names this behavior";
+                    case NO_RULE_IS_RECOGNISABLE ->
+                            "no run through any of them can be recognised";
+                }
+                : "what the rows take was not measured";
+    }
+
+    /**
+     * One condition of a rule, as a page writes it.
+     *
+     * <p>Which construct and which way, and never the proposition the account keys the condition
+     * on: a rule holding {@code n <= 100} denied is a body whose author wrote {@code n > 100}, and
+     * a page spelling the first would be showing them a comparison they did not write.
+     *
+     * <p>Exhaustive with no {@code default}, so a shape added to the reading is one somebody words
+     * rather than one that goes quiet.
+     */
+    private static String said(ShownCondition shown, SourceId declaredIn,
+                               SourceNameResolver names) {
+        return switch (shown.read()) {
+            case DecisionRuleReading.AComparisonCameOut(var _, var held) ->
+                    "the comparison at " + shown.at().said(names, declaredIn)
+                            + (held ? " holds" : " does not hold");
+            case DecisionRuleReading.AForkTookAnArm(var arm) ->
+                    "it goes through `" + ArmVocabulary.label(arm) + "` ("
+                            + shown.at().said(names, declaredIn) + ")";
+            // Every shape with nothing to send a reader to. What differs between them is which
+            // part of this compiler fell short, which is not something an author acts on — and a
+            // line is written for each so that the rule is never described by fewer conditions
+            // than it turns on.
+            case DecisionRuleReading.AConditionIsNotShown _,
+                    DecisionRuleReading.AComparisonIsNotPlaced _,
+                    DecisionRuleReading.AForkIsNotPlaced _ ->
+                    "one condition of it is one this compiler has nothing to send you to";
+        };
     }
 
     /**

@@ -6587,15 +6587,15 @@ Told apart from <<e1918>>, which is an arm no row goes through. A row does go th
 [,text]
 ----
 No row takes a decision rule of `judgeHours`.
-Hint: The rule takes the comparison at 14:16 failing.
-Hint: The rule goes through the arm for `Extended`.
 ----
 
 A warning, and only where the build asked for a bar that refuses over it (<<a-bar-is-a-criterion-and-what-it-adds>>). A body of guards and matches states a decision; its rules are the ways through it, each carrying the distinctions that way consulted and what each came out as, with a condition the way never reached left out rather than written as a don't-care.
 
 Said only of the rules something was seen standing in. Whether a rule is owed a row at all is settled before this and the other two answers are not warned about: a rule the readings that already exist show no row takes is owed nothing, and a rule this compiler looked for and did not find is neither covered nor a gap — reporting the second would tell an author that a shortfall of this compiler is work of theirs.
 
-*The sentence names the behavior and no more, and the rule is said underneath.* One note per condition, sending the reader to the construct that drew it and saying which way the rule takes it. What tells one rule from another is the proposition each of its conditions is keyed on, written the one way round that makes a comparison and its denial one column — so a sentence spelling it would show an author `+n <= 100+` where they wrote `+n > 100+`. Two rules of one behavior are shown alike here and are told apart by the identity the document carries (<<example-report-vocabulary>>), which is what that field is for.
+*The sentence names the behavior and no more, and which rule it is, is marked.* One label per condition, put where the construct that drew it is written and saying which way the rule takes it — `+the rule takes this failing+` at a comparison, `+the rule goes through the else+` at a fork. What tells one rule from another is the proposition each of its conditions is keyed on, written the one way round that makes a comparison and its denial one column — so a sentence spelling it would show an author `+n <= 100+` where they wrote `+n > 100+`. Where a condition has no construct to mark, a hint says so rather than the condition being left out: a rule described by fewer conditions than it turns on is one two of which a reader cannot tell apart.
+
+The report says the same rule the same way, in its own words: one line per condition under the sentence, each naming the construct and the way the rule takes it. Two rules of one behavior are shown alike in the sentence and are told apart by those lines, and by the identity the document carries (<<example-report-vocabulary>>).
 
 Told apart from <<e1918>>, which is an arm the author wrote that no row goes through. Two rules can go through one arm, and a body whose arms answer alike states two rules that one row through each arm covers — so neither measure is the other read another way.
 
