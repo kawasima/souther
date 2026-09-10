@@ -28,6 +28,7 @@ import souther.compiler.check.DeclarationReadings;
 import souther.compiler.check.DeclaredSig;
 import souther.compiler.check.PublishedDeclarations;
 import souther.compiler.check.RuleRef;
+import souther.compiler.publish.PublicationOrders;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.CheckSurface;
 import souther.compiler.check.Sig;
@@ -5045,26 +5046,27 @@ public final class Adequacy {
                         // is found by where it is written. Writing where the point is takes a
                         // quantity and a quantity is a reading's, so that is said under this, by
                         // the reading whose word it is.
-                        case About.APointOfABorder(var point) -> switch (point.cited()) {
-                            case souther.compiler.check.RuleCitation.Named named ->
+                        // Asked of the rule the point is filed under and not of a handle for it.
+                        // What the sentence says is what the author called the rule, or what the
+                        // rule is where they called it nothing; how a reader is sent to it is the
+                        // other question, and a rule reached at two calls has an answer per call.
+                        case About.APointOfABorder(var point) ->
+                                switch (point.point().line().provenance()) {
+                            case RuleRef.Named named ->
                                     point.role().againstTheLine()
                                             ? new ExampleMessage.NoRowIsAtThePointOfTheLineARuleDrew(
-                                                    point.role().name(),
-                                                    named.rule().citedName())
+                                                    point.role().name(), named.citedName())
                                             : new ExampleMessage
                                                     .NoRowIsAtThePointAwayFromTheLineARuleDrew(
-                                                    point.role().name(),
-                                                    named.rule().citedName());
-                            case RuleCitation.Written written ->
+                                                    point.role().name(), named.citedName());
+                            case RuleRef.Written written ->
                                     point.role().againstTheLine()
                                             ? new ExampleMessage
                                                     .NoRowIsAtThePointOfTheLineAConstructDrew(
-                                                    point.role().name(),
-                                                    whatItIs(written.rule()))
+                                                    point.role().name(), whatItIs(written))
                                             : new ExampleMessage
                                                     .NoRowIsAtThePointAwayFromTheLineAConstructDrew(
-                                                    point.role().name(),
-                                                    whatItIs(written.rule()));
+                                                    point.role().name(), whatItIs(written));
                         };
                         case About.AnArmNoRowGoesThrough(var arm) ->
                                 new ExampleMessage.NoRowGoesThroughThatArm(
@@ -5136,7 +5138,11 @@ public final class Adequacy {
                     // dropped, on the grounds that a label naming no source would be read against
                     // the file the diagnostic is in; a label no longer takes its file from where it
                     // is shown, so what was left unsaid can be said.
-                    if (point.cited()
+                    // One marker, from the one handle a document would write of the several a rule
+                    // reached at several calls offers — chosen where that choice is made rather
+                    // than by whichever reading this happened to walk first.
+                    if (PublicationOrders.handleFor(point.citations(),
+                                    cited -> Sites.placeOf(db, cited)).orElse(null)
                             instanceof RuleCitation.Written written) {
                         switch (Sites.placeOf(db, written)) {
                             case souther.compiler.diag.Citation.Written w ->

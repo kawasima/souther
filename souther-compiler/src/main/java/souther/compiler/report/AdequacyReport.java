@@ -836,7 +836,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
         }
         lines.forEach(line -> take.accept(line.origin().cited()));
         if (account != null) {
-            account.forEach(each -> take.accept(each.cited()));
+            account.forEach(each -> each.citations().forEach(take));
         }
         if (found != null) {
             found.stream().map(Adequacy.Finding::about)
