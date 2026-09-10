@@ -2,7 +2,7 @@ package souther.compiler.inputs;
 
 import souther.compiler.check.RuleCitation;
 import souther.compiler.check.RuleRef;
-import souther.compiler.diag.Citation;
+import souther.compiler.check.RuleReportAnchor;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -25,10 +25,10 @@ import java.util.Set;
  * then came back as one the model divides no way, which is the opposite of what the declaration
  * says.
  *
- * <p>The rule once, and the places it was reached at beside it. What a reader groups by is the rule
- * ({@link Fact}); what an author acts on is a handle, which is that rule together with a place, and
- * {@link #cited} makes them rather than keeping them. Kept, a handle would be a second answer to
- * which rule this is about, free to be of another one.
+ * <p>The rule once, and the questions that place it beside it. What a reader groups by is the rule
+ * ({@link Fact}); what an author acts on is a handle, which is that rule together with one of those
+ * questions, and {@link #cited} makes them rather than keeping them. Kept, a handle would be a
+ * second answer to which rule this is about, free to be of another one.
  *
  * <p><b>Named for what is true of everything in it.</b> Two opposite things bring a rule here — one
  * this compiler got partway through, and one it read from end to end that draws no line — and what
@@ -43,20 +43,20 @@ import java.util.Set;
  *
  * @param fact      which rule, at which position, and why there is no line — the whole of what makes
  *                  two of these one finding ({@link Fact})
- * @param reachedAt every place a reader was offered for the rule, because a rule found by two
- *                  readers is one finding and each of them says where it reached it; which of them a
+ * @param reachedBy every question a reader was offered for the rule, because a rule found by two
+ *                  readers is one finding and each of them says how to reach it; which of them a
  *                  document writes is that document's to decide. Empty exactly where the author
  *                  named the rule, which is found by that name from anywhere
  */
-public record RuleWithoutALine(Fact fact, Set<Citation> reachedAt) {
+public record RuleWithoutALine(Fact fact, Set<RuleReportAnchor> reachedBy) {
 
     public RuleWithoutALine {
         if (fact == null) {
             throw new IllegalArgumentException("a rule is without a line somewhere, and for a"
                     + " reason");
         }
-        reachedAt = reachedAt == null ? Set.of() : Set.copyOf(reachedAt);
-        RuleCitation.requireReached(fact.rule(), reachedAt);
+        reachedBy = reachedBy == null ? Set.of() : Set.copyOf(reachedBy);
+        RuleCitation.requireReached(fact.rule(), reachedBy);
     }
 
     /** One reader's finding about the whole of a rule, as that reader produced it. */
@@ -70,7 +70,7 @@ public record RuleWithoutALine(Fact fact, Set<Citation> reachedAt) {
                                       WhereInTheRule sentTo,
                                       BlockReason.RuleWithoutLineReason why) {
         return new RuleWithoutALine(new Fact(cited.rule(), at, sentTo, why),
-                RuleCitation.placeOf(cited));
+                RuleCitation.anchorOf(cited));
     }
 
     /**
@@ -126,7 +126,7 @@ public record RuleWithoutALine(Fact fact, Set<Citation> reachedAt) {
      * other ({@link RuleCitation}).
      */
     public Set<RuleCitation> cited() {
-        return RuleCitation.handlesFor(fact.rule(), reachedAt);
+        return RuleCitation.handlesFor(fact.rule(), reachedBy);
     }
 
     /**
@@ -141,8 +141,8 @@ public record RuleWithoutALine(Fact fact, Set<Citation> reachedAt) {
             throw new IllegalArgumentException("two findings put together are one rule with no"
                     + " line: " + fact + " and " + other.fact);
         }
-        Set<Citation> both = new HashSet<>(reachedAt);
-        both.addAll(other.reachedAt);
+        Set<RuleReportAnchor> both = new HashSet<>(reachedBy);
+        both.addAll(other.reachedBy);
         return new RuleWithoutALine(fact, both);
     }
 

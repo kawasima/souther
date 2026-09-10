@@ -6,9 +6,9 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 import souther.compiler.check.RuleCitation;
+import souther.compiler.check.RuleReportAnchor;
 import souther.compiler.types.WrittenOwner;
 import souther.compiler.check.RuleRef;
-import souther.compiler.diag.Citation;
 import souther.compiler.diag.SourcePos;
 import souther.compiler.observe.RunSensitivity;
 import souther.compiler.partition.ReportedReason;
@@ -323,11 +323,11 @@ class WhatEachWayOfDrawingNoLineLeavesIsWrittenDownOnceTest {
     void aReasonSaysWhatBecameOfTheReadingAndNotWhatAMeasureIsShortOf() {
         for (BlockReason.RuleWithoutLineReason each : everyRuleWithoutALine()) {
             RulesWithNoLine.Gathered gathered = new RulesWithNoLine.Gathered();
-            gathered.add(new RuleCitation.WrittenAt(
+            gathered.add(new RuleCitation.Written(
                             new RuleRef.Comparison("b",
                                     new SourceConstructOrigin(new WrittenOwner.Body("m", "b"),
                                             1, 1, SourceConstruct.IF)),
-                            Citation.of(new SourcePos(1, 1))),
+                            new RuleReportAnchor.ByTheModuleThatWroteIt()),
                     new FilingCoordinate.AtPosition(TermPath.of("x")), each);
             RulesWithNoLine filed = gathered.found();
 

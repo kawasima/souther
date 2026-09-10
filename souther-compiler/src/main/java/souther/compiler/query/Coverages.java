@@ -1,6 +1,7 @@
 package souther.compiler.query;
 
 import souther.compiler.check.CoverageObligation;
+import souther.compiler.diag.Citation;
 import souther.compiler.check.ElementBindings;
 import souther.compiler.check.ReadingPolicy;
 import souther.compiler.inputs.FilingCoordinate;
@@ -8,6 +9,7 @@ import souther.compiler.inputs.InputQuestion;
 import souther.compiler.inputs.RulesWithNoLine;
 import souther.compiler.inputs.StandingQuestion;
 import souther.compiler.partition.LinesWhereTheyFall;
+import souther.compiler.partition.RuleReachNumbering;
 import souther.compiler.publish.PublicationOrders;
 import souther.compiler.ast.Hir;
 import souther.compiler.check.PathReachability;
@@ -71,7 +73,8 @@ final class Coverages {
     record Partitioned(Partitions.Partitioning geometry,
                        souther.compiler.inputs.Quantities reading,
                        java.util.Map<souther.compiler.partition.ConditionOccurrence,
-                               souther.compiler.diag.Citation> conditionsMet) {}
+                               souther.compiler.diag.Citation> conditionsMet,
+                       Map<Integer, Citation> rulesReachedAt) {}
 
     /**
      * The positions one behavior is measured at, with what its own comparisons divide them into.
@@ -116,8 +119,15 @@ final class Coverages {
         // Whether there is a tree to read is the reading's own answer, so a body with no analysis
         // representation is handed over and comes back with nothing rather than being checked for
         // here as well.
+        // Where this reading writes down the places it met rules nothing this compilation holds
+        // wrote. One numbering for every reader of this body, because an address means a place only
+        // under something that says which addresses were being handed out — numbered apiece, one
+        // number would name a place per reader and nothing downstream could tell them apart.
+        RuleReachNumbering reaches =
+                new RuleReachNumbering(read.symbols().module(), behavior.name());
         GuardThresholds.Guards guards = body == null ? GuardThresholds.Guards.NONE
-                : GuardThresholds.of(behavior.name(), analysis, body, plan, read, standing, arrives);
+                : GuardThresholds.of(behavior.name(), analysis, body, plan, read, standing, arrives,
+                        reaches);
         // And what the declarations state between two of this input's positions. Such a rule places
         // no end at either of them, so the reading of ends has nothing to draw it from; read here,
         // it is a line like the two above and is arranged with them.
@@ -129,7 +139,8 @@ final class Coverages {
         // be two measures of it, each told nothing of the other's.
         souther.compiler.partition.BehaviorSetStatements.Read sets =
                 souther.compiler.partition.BehaviorSetStatements.of(behavior.name(), analysis, stated, read,
-                        read.domain().parameterReads(), standing, distinctions, guards.forks());
+                        read.domain().parameterReads(), standing, distinctions, guards.forks(),
+                        reaches);
         List<souther.compiler.partition.LineDrawn> declared =
                 souther.compiler.partition.DeclaredThresholds.between(behavior.name(), read);
         // Every producer of one kind of line, put together before the position is divided. Two
@@ -158,7 +169,10 @@ final class Coverages {
                 // Where this reading met each condition it places itself, beside the geometry and
                 // not inside it. A report points at a condition and an answer says which condition
                 // it is, and the two are kept apart so that moving one leaves the other alone.
-                guards.conditionsMet());
+                guards.conditionsMet(),
+                // And the same for the rules it places itself, which is every rule written where
+                // this compilation holds no file to open.
+                reaches.reachedAt());
     }
 
     /**

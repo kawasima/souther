@@ -6,6 +6,7 @@ import souther.compiler.check.BehaviorContract;
 import souther.compiler.check.Clause;
 import souther.compiler.check.ClauseName;
 import souther.compiler.check.RuleCitation;
+import souther.compiler.check.RuleReportAnchor;
 import souther.compiler.check.RuleRef;
 import souther.compiler.diag.Citation;
 import souther.compiler.diag.SourceNameResolver;
@@ -52,6 +53,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * the point of asking here rather than folding them into one string.
  */
 class OneRuleIsCalledOneThingOnBothSurfacesTest {
+
+    /** Somewhere for a rule with no name to be, since what is read here is the word in front of
+     *  the place and not the place. Which module answers where a rule is is asked elsewhere. */
+    private static final PublishedRuleHandle.WhereARuleIs SOMEWHERE =
+            _ -> Citation.of(new SourcePos(1, 1));
 
     /**
      * One of each kind, built by hand.
@@ -119,10 +125,10 @@ class OneRuleIsCalledOneThingOnBothSurfacesTest {
             if (!(each instanceof RuleRef.Written written)) {
                 continue;
             }
-            RuleCitation cited = new RuleCitation.WrittenAt(written,
-                    Citation.of(new SourcePos(1, 1)));
+            RuleCitation cited = new RuleCitation.Written(written,
+                    new RuleReportAnchor.ByTheModuleThatWroteIt());
             String said = RuleHandleProse.said(
-                    PublishedRuleHandle.of(cited), SourceNameResolver.identity(), null);
+                    PublishedRuleHandle.of(cited, SOMEWHERE), SourceNameResolver.identity(), null);
 
             assertEquals(AdequacyReport.schemaRuleKind(each),
                     said.substring(0, said.indexOf('@')),
@@ -154,7 +160,8 @@ class OneRuleIsCalledOneThingOnBothSurfacesTest {
             RuleCitation cited = new RuleCitation.Named(named);
 
             assertEquals(named.citedName(), RuleHandleProse.said(
-                            PublishedRuleHandle.of(cited), SourceNameResolver.identity(), null),
+                            PublishedRuleHandle.of(cited, SOMEWHERE),
+                            SourceNameResolver.identity(), null),
                     () -> "a rule with a name is cited by it: " + each);
             assertTrue(!named.citedName().isBlank(),
                     () -> "and there is a name to cite it by: " + each);

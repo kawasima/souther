@@ -59,15 +59,20 @@ class WhoMaySayWhatARuleHandleReadsAsTest {
      */
     private static final List<String> SAYING_IT_IN_PROSE = List.of(
             "souther/compiler/report/AdequacyReport"
-                    + "#cited(Set, SourceNameResolver, SourceId)",
+                    + "#cited(Set, SourceNameResolver, SourceId, PublishedRuleHandle$WhereARuleIs)",
             "souther/compiler/report/AdequacyReport"
-                    + "#declared(StringBuilder, AdequacyReport$ModuleReport, SourceNameResolver)",
+                    + "#declared(StringBuilder, AdequacyReport$ModuleReport, SourceNameResolver,"
+                    + " PublishedRuleHandle$WhereARuleIs)",
             "souther/compiler/report/AdequacyReport#partition lambda taking (StringBuilder,"
-                    + " BorderAssessment, SourceNameResolver, SourceId, PointRole, RoleAnswer)",
+                    + " BorderAssessment, PublishedRuleHandle$WhereARuleIs, SourceNameResolver,"
+                    + " SourceId, PointRole, RoleAnswer)",
             "souther/compiler/report/AdequacyReport#partition(StringBuilder,"
-                    + " AdequacyReport$BehaviorReport, SourceId, SourceNameResolver)",
-            "souther/compiler/report/AdequacyReport#said(Subject, SourceNameResolver)",
-            "souther/compiler/report/GeneratedRows#about(Adequacy$Finding)");
+                    + " AdequacyReport$BehaviorReport, SourceId, SourceNameResolver,"
+                    + " PublishedRuleHandle$WhereARuleIs)",
+            "souther/compiler/report/AdequacyReport"
+                    + "#said(Subject, SourceNameResolver, PublishedRuleHandle$WhereARuleIs)",
+            "souther/compiler/report/GeneratedRows"
+                    + "#about(Adequacy$Finding, PublishedRuleHandle$WhereARuleIs)");
 
     /**
      * And every class that writes one into the document, which is one.
@@ -78,13 +83,17 @@ class WhoMaySayWhatARuleHandleReadsAsTest {
     private static final List<String> WRITING_IT_INTO_THE_DOCUMENT = List.of(
             "souther/compiler/report/AdequacyReport"
                     + "#about(ObjectNode, PublishedSubject, DocumentSources)",
-            "souther/compiler/report/AdequacyReport#findings(DocumentArray, List, DocumentSources)",
+            "souther/compiler/report/AdequacyReport#findings(DocumentArray, List, DocumentSources,"
+                    + " PublishedRuleHandle$WhereARuleIs)",
             "souther/compiler/report/AdequacyReport"
-                    + "#obligations(DocumentArray, List, Map, DocumentSources)",
+                    + "#obligations(DocumentArray, List, Map, DocumentSources,"
+                    + " PublishedRuleHandle$WhereARuleIs)",
             "souther/compiler/report/AdequacyReport#partition lambda taking (DocumentArray,"
-                    + " DocumentSources, PartitionEvidence$NotRead)",
+                    + " PublishedRuleHandle$WhereARuleIs, DocumentSources,"
+                    + " PartitionEvidence$NotRead)",
             "souther/compiler/report/AdequacyReport#partition(ObjectNode, PartitionEvidence,"
-                    + " Measure, List, ClaimAnnotations, DocumentSources)");
+                    + " Measure, List, ClaimAnnotations, DocumentSources,"
+                    + " PublishedRuleHandle$WhereARuleIs)");
 
     @Test
     void everyClassThatTurnsARuleHandleIntoWordsIsWrittenDown() {

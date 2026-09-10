@@ -260,7 +260,7 @@ class WhatIsWrittenInAnEnsuresIsQuotedOverTheRowsTest {
                         souther.compiler.query.OfferingRequest.overTheModule("example.todo", true),
                         Map.of("findTodo", nothingOffered()), null)),
                 Map.of("findTodo", List.of("ensures asked = NotFound -> id.value > 0")),
-                SourceNameResolver.identity()).text();
+                SourceNameResolver.identity(), compiled(TODO).db()).text();
 
         assertEquals("", block);
     }

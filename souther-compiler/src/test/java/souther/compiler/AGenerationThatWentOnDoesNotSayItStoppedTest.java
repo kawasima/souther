@@ -62,9 +62,18 @@ class AGenerationThatWentOnDoesNotSayItStoppedTest {
             let submit (request) = Accepted { at = "now" }
             """;
 
-    private static MeasuredInput subject() {
+    /** The model these read, compiled once. Held rather than compiled per question, because the
+     *  block below asks it where the rules it names are written. */
+    private static final Compilation COMPILED = compiled();
+
+    private static Compilation compiled() {
         Compilation compilation = Compilation.ofSource(TRIP, "Main");
         compilation.answerEverything();
+        return compilation;
+    }
+
+    private static MeasuredInput subject() {
+        Compilation compilation = COMPILED;
         String module = compilation.modules().get(0);
         Map<String, DeclaredSig> sigs =
                 compilation.db().ask(new Bodies.DeclaredSignatures(module)).value();
@@ -84,7 +93,7 @@ class AGenerationThatWentOnDoesNotSayItStoppedTest {
                         souther.compiler.query.OfferingRequest.overTheModule("example.trip", false),
                         Map.of("submit", new Adequacy.Filling(result,
                                 Generator.GenerationResult.NONE, List.of())), null)),
-                Map.of(), SourceNameResolver.identity()).text();
+                Map.of(), SourceNameResolver.identity(), COMPILED.db()).text();
     }
 
     /** A run asked for nothing, which is what a reason about the run alone is written against. */

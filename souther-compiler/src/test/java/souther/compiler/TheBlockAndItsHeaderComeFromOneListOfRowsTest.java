@@ -91,7 +91,7 @@ class TheBlockAndItsHeaderComeFromOneListOfRowsTest {
         assertNotNull(generated, "the model under test compiles");
         return GeneratedRows.of(Adequacy.offeredFor(compilation.db(),
                         souther.compiler.query.OfferingRequest.overTheModule(module, true)),
-                Map.of(), SourceNameResolver.identity()).text();
+                Map.of(), SourceNameResolver.identity(), compilation.db()).text();
     }
 
     /** Where each row starts. A row the formatter wrapped is still one row, and one {@code |}. */

@@ -10,6 +10,7 @@ import souther.compiler.coverage.CoverageSites;
 import souther.compiler.inputs.InputDomain;
 import souther.compiler.partition.GuardThresholds;
 import souther.compiler.partition.ProducedCases;
+import souther.compiler.partition.RuleReachNumbering;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.Bodies;
 import souther.compiler.query.Compilation;
@@ -285,7 +286,7 @@ class AReadingAnswersAboutThePlacesOfOnePlanTest {
             AnalysisBody analysis = checked.analysisBodies().get("pick");
             return GuardThresholds.of("pick", analysis, body, plan, inputs.reading(rules),
                     ElementBindings.of(analysis.core(), analysis.elements(), rules.symbols()),
-                    against);
+                    against, new RuleReachNumbering(module, "pick"));
         }
 
         /** What this behavior's body declares cannot arrive. */

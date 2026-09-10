@@ -73,7 +73,8 @@ class AClosureIsTheSameRuleHoweverItIsWrittenDownTest {
                 inputs.reading(rules), inputs.parameterReads(),
                 checked.elementBindings().get("pick"),
                 Allowance.of(new PatternPlan.Budget(1000, 1000)),
-                guardsOf(declaration).forks());
+                guardsOf(declaration).forks(),
+                new RuleReachNumbering(module, "pick"));
         List<String> found = new ArrayList<>();
         sets.forks().forEach(each -> each.filed().forEach((at, why) ->
                 found.add(((RuleRef.Written) each.cited().rule()).whatItIs() + " at " + at + " "
@@ -121,7 +122,8 @@ class AClosureIsTheSameRuleHoweverItIsWrittenDownTest {
         BehaviorSetStatements.Read sets = BehaviorSetStatements.of("pick", states, stated,
                 inputs.reading(rules), inputs.parameterReads(),
                 checked.elementBindings().get("pick"),
-                Allowance.of(new PatternPlan.Budget(1000, 1000)), guards.forks());
+                Allowance.of(new PatternPlan.Budget(1000, 1000)), guards.forks(),
+                new RuleReachNumbering(module, "pick"));
         return new Read(guards.thresholds().size(), sets.forks().size(),
                 guards.noLine().reported().size() + guards.noLine().unclassified().size());
     }

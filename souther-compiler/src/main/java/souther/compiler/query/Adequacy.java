@@ -15,6 +15,7 @@ import souther.compiler.reach.Reachability;
 import souther.compiler.diag.DiagnosticCode;
 import souther.compiler.diag.msg.DeadBranchMessage;
 import souther.compiler.diag.msg.ExampleMessage;
+import souther.compiler.check.RuleCitation;
 import souther.compiler.diag.Citation;
 import souther.compiler.diag.Localizable;
 import souther.compiler.diag.SourcePos;
@@ -27,6 +28,7 @@ import souther.compiler.check.DeclarationReadings;
 import souther.compiler.check.DeclaredSig;
 import souther.compiler.check.PublishedDeclarations;
 import souther.compiler.check.RuleRef;
+import souther.compiler.publish.PublicationOrders;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.CheckSurface;
 import souther.compiler.check.Sig;
@@ -1456,7 +1458,8 @@ public final class Adequacy {
      */
     record BodyDivided(souther.compiler.partition.Partitions.Partitioning geometry,
                        java.util.Map<souther.compiler.partition.ConditionOccurrence,
-                               souther.compiler.diag.Citation> conditionsMet) {}
+                               souther.compiler.diag.Citation> conditionsMet,
+                       Map<Integer, Citation> rulesReachedAt) {}
 
     /**
      * Where the reading that divided one behavior met each condition it places itself.
@@ -1489,6 +1492,34 @@ public final class Adequacy {
                 souther.compiler.diag.Citation>> compute(Db db) {
             Answer<BodyDivided> read = db.ask(new Dividing(name, behavior));
             return read.present() ? Answer.of(read.value().conditionsMet()) : Answer.absent();
+        }
+    }
+
+    /**
+     * Where the reading that divided one behavior met each rule it places itself.
+     *
+     * <p>Beside {@link ConditionsMet} and read off the same reading, and the same question one
+     * level up: a rule a reader can go and open is placed by whoever wrote it
+     * ({@link Sites.WhereARuleIsWritten}), and what is here is the rest — a rule of a body written
+     * in a file this compilation holds none of, which a report shows at the call it came in
+     * through.
+     *
+     * <p>Under the address the reading handed out, which is a number counted within this
+     * behavior's reading. Which behavior that is is what the rule says, so a reader holding a
+     * handle asks for the module and the behavior it already has.
+     */
+    public record RulesReached(String name, String behavior)
+            implements Key<Map<Integer, Citation>> {
+
+        @Override
+        public String module() {
+            return name;
+        }
+
+        @Override
+        public Answer<Map<Integer, Citation>> compute(Db db) {
+            Answer<BodyDivided> read = db.ask(new Dividing(name, behavior));
+            return read.present() ? Answer.of(read.value().rulesReachedAt()) : Answer.absent();
         }
     }
 
@@ -1561,7 +1592,8 @@ public final class Adequacy {
                     // the two came to would be bought by nobody.
                     db.ask(new Front.Adequacy()).value().measures()
                             .allowanceForBehaviorDistinctions());
-            return Answer.of(new BodyDivided(read.geometry(), read.conditionsMet()));
+            return Answer.of(new BodyDivided(read.geometry(), read.conditionsMet(),
+                    read.rulesReachedAt()));
         }
     }
 
@@ -5023,26 +5055,27 @@ public final class Adequacy {
                         // is found by where it is written. Writing where the point is takes a
                         // quantity and a quantity is a reading's, so that is said under this, by
                         // the reading whose word it is.
-                        case About.APointOfABorder(var point) -> switch (point.cited()) {
-                            case souther.compiler.check.RuleCitation.Named named ->
+                        // Asked of the rule the point is filed under and not of a handle for it.
+                        // What the sentence says is what the author called the rule, or what the
+                        // rule is where they called it nothing; how a reader is sent to it is the
+                        // other question, and a rule reached at two calls has an answer per call.
+                        case About.APointOfABorder(var point) ->
+                                switch (point.point().line().provenance()) {
+                            case RuleRef.Named named ->
                                     point.role().againstTheLine()
                                             ? new ExampleMessage.NoRowIsAtThePointOfTheLineARuleDrew(
-                                                    point.role().name(),
-                                                    named.rule().citedName())
+                                                    point.role().name(), named.citedName())
                                             : new ExampleMessage
                                                     .NoRowIsAtThePointAwayFromTheLineARuleDrew(
-                                                    point.role().name(),
-                                                    named.rule().citedName());
-                            case souther.compiler.check.RuleCitation.WrittenAt written ->
+                                                    point.role().name(), named.citedName());
+                            case RuleRef.Written written ->
                                     point.role().againstTheLine()
                                             ? new ExampleMessage
                                                     .NoRowIsAtThePointOfTheLineAConstructDrew(
-                                                    point.role().name(),
-                                                    whatItIs(written.rule()))
+                                                    point.role().name(), whatItIs(written))
                                             : new ExampleMessage
                                                     .NoRowIsAtThePointAwayFromTheLineAConstructDrew(
-                                                    point.role().name(),
-                                                    whatItIs(written.rule()));
+                                                    point.role().name(), whatItIs(written));
                         };
                         case About.AnArmNoRowGoesThrough(var arm) ->
                                 new ExampleMessage.NoRowGoesThroughThatArm(
@@ -5114,9 +5147,13 @@ public final class Adequacy {
                     // dropped, on the grounds that a label naming no source would be read against
                     // the file the diagnostic is in; a label no longer takes its file from where it
                     // is shown, so what was left unsaid can be said.
-                    if (point.cited()
-                            instanceof souther.compiler.check.RuleCitation.WrittenAt written) {
-                        switch (written.at()) {
+                    // One marker, from the one handle a document would write of the several a rule
+                    // reached at several calls offers — chosen where that choice is made rather
+                    // than by whichever reading this happened to walk first.
+                    if (PublicationOrders.handleFor(point.citations(),
+                                    cited -> Sites.placeOf(db, cited)).orElse(null)
+                            instanceof RuleCitation.Written written) {
+                        switch (Sites.placeOf(db, written)) {
                             case souther.compiler.diag.Citation.Written w ->
                                     built.secondary(souther.compiler.diag.Region.point(w.at()),
                                             new ExampleMessage.TheConstructThatDrawsTheLine(

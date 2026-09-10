@@ -104,6 +104,10 @@ class ABoundaryIsAValueTheRecordCanHoldTest {
         assertNotNull(borders, "the model under test compiles");
         souther.compiler.diag.SourceNameResolver names =
                 souther.compiler.diag.SourceNameResolver.identity();
+        // Where each rule a line names is shown, asked of the compile that read it — which is what
+        // a sentence about a rule with no name is written from.
+        souther.compiler.publish.PublishedRuleHandle.WhereARuleIs places =
+                cited -> souther.compiler.query.Sites.placeOf(compilation.db(), cited);
         List<String> out = new java.util.ArrayList<>();
         borders.forEach((behavior, lines) -> lines.forEach(line -> {
             for (souther.compiler.query.BorderAssessment.Point point : line.points()) {
@@ -113,10 +117,10 @@ class ABoundaryIsAValueTheRecordCanHoldTest {
                 out.add(point.role().againstTheLine()
                         ? "no row is at the " + point.role() + " point " + behavior + "/"
                                 + line.axis() + " = " + point.against()
-                                + " (" + RuleHandleProse.said(line.describe(), names, null) + ")"
+                                + " (" + RuleHandleProse.said(line.describe(places), names, null) + ")"
                         : "no row is at an " + point.role() + " point of " + behavior + "/"
                                 + line.axis() + ", " + point.against()
-                                + " (" + RuleHandleProse.said(line.describe(), names, null) + ")");
+                                + " (" + RuleHandleProse.said(line.describe(places), names, null) + ")");
             }
         }));
         return List.copyOf(out);

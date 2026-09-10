@@ -2,8 +2,6 @@ package souther.compiler.partition;
 
 import souther.compiler.coverage.Numberings;
 import souther.compiler.coverage.SiteNumbering;
-import souther.compiler.diag.Citation;
-import souther.compiler.diag.SourcePos;
 import souther.compiler.numeric.Towards;
 import souther.compiler.types.ExpansionLineage;
 import souther.compiler.types.ExpansionSite;
@@ -17,6 +15,7 @@ import org.junit.jupiter.api.Test;
 
 import souther.compiler.check.ComparisonClaim;
 import souther.compiler.check.RuleReadingSource;
+import souther.compiler.check.RuleReportAnchor;
 import souther.compiler.check.RuleReadings;
 import souther.compiler.check.RuleRef;
 import souther.compiler.query.Adequacy;
@@ -250,7 +249,7 @@ class ABorderDebtIsTheLineTheAuthorWroteTest {
                                 new ExpansionSite.Written(SourceConstructOrigin.written(
                                         new WrittenOwner.Body("example.banding", "caller"),
                                         occurrence, SourceConstruct.CALL)))),
-                        Citation.of(new SourcePos(15, 16)),
+                        new RuleReportAnchor.ByTheModuleThatWroteIt(),
                         List.of(WHERE.comparison(occurrence))),
                 new LineFacts(new ComparisonClaim.Cut(Towards.BELOW, true)));
     }

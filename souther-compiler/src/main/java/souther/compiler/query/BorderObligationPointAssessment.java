@@ -5,6 +5,8 @@ import souther.compiler.partition.BorderQuantity;
 import souther.compiler.partition.Demand;
 import souther.compiler.partition.DomainPoint;
 import souther.compiler.partition.PointRole;
+import souther.compiler.check.RuleReportAnchor;
+import souther.compiler.publish.PublicationOrders;
 import souther.compiler.publish.PublishedRuleHandle;
 import souther.compiler.publish.PublishedSentence;
 
@@ -61,10 +63,28 @@ import java.util.Map;
 public record BorderObligationPointAssessment(BorderObligationPoint point,
                                               souther.compiler.partition.PointAttribution
                                                       attribution,
-                                              souther.compiler.check.RuleCitation cited,
+                                              java.util.Set<RuleReportAnchor> reachedBy,
                                               Demand demand, ObligationAssessment item,
                                               java.util.SequencedMap<Reading, BorderAssessment>
                                                       met) {
+
+    /**
+     * Every handle a reader was offered for the rule that drew this line.
+     *
+     * <p>Which rule it is comes from the point, which is what the debt is filed under
+     * ({@link souther.compiler.partition.BorderObligationId#provenance}); what varies is how a
+     * reader is sent to it. Made here rather than kept, so that a handle is of this point's rule
+     * and can be of no other.
+     *
+     * <p><b>Several, because one authored rule reached twice is one debt.</b> A comparison inside a
+     * helper this compilation holds no source for is met at each call, and each call is a way a
+     * reader can be sent to it — while the author wrote one guard and owes one row. Held as one
+     * handle, the debt would name whichever way in the walk met first, which is what the
+     * publication order exists to decide instead.
+     */
+    public java.util.Set<souther.compiler.check.RuleCitation> citations() {
+        return souther.compiler.check.RuleCitation.handlesFor(point.line().provenance(), reachedBy);
+    }
 
     /**
      * One reading of the line: which behavior met it, and where in that behavior it was met.
@@ -131,11 +151,12 @@ public record BorderObligationPointAssessment(BorderObligationPoint point,
             throw new IllegalArgumentException(
                     "a point is what its readings came to, and this is none of them: " + point);
         }
-        if (demand == null || item == null || attribution == null || cited == null) {
+        if (demand == null || item == null || attribution == null || reachedBy == null) {
             throw new IllegalArgumentException(
                     "a point owed a row asks for one, came to something, is owed to somebody and"
                             + " is found somewhere: " + point);
         }
+        reachedBy = java.util.Set.copyOf(reachedBy);
         met = java.util.Collections.unmodifiableSequencedMap(new LinkedHashMap<>(met));
     }
 
@@ -222,40 +243,48 @@ public record BorderObligationPointAssessment(BorderObligationPoint point,
         List<BorderAssessment> readings = List.copyOf(met.values());
         Demand asked = asked(point, readings);
         return new BorderObligationPointAssessment(point, attribution,
-                foundAt(point, readings), asked, came(point.point(), readings, asked), met);
+                reachedBy(point, readings), asked, came(point.point(), readings, asked), met);
     }
 
     /**
-     * How a reader finds the line, which every reading of it answers the same way.
+     * Every way a reader can be sent to the rule that drew this line, out of the readings of it.
      *
-     * <p>Not the origin. A reading carries which reading of the rule drew its line — a comparison
-     * inside a helper carries the call it was read through — and a point read at two positions has
-     * as many of those as it has readings, so a point that held one would name whichever the walk
-     * met first. How the rule is found is what the origin already projects to
-     * ({@link souther.compiler.partition.LineOrigin#cited}): the name where the author gave the rule
-     * one, and the place where the rule is a comparison. That is the same at all of them.
+     * <p><b>All of them, because one debt is not one way in.</b> A rule the author named is found
+     * by that name from anywhere and every reading offers the same question; a comparison inside a
+     * helper this compilation holds no source for is met at each call, and each call is a different
+     * thing to show. The author wrote one guard and owes one row either way
+     * ({@link souther.compiler.partition.BorderObligationId}), so the several are ways in and never
+     * several points.
+     *
+     * <p>Which is why nothing is chosen here. Which of them a document writes is decided where a
+     * sentence is written, over what a document would write of each
+     * ({@link souther.compiler.publish.PublicationOrders#handleFor}); chosen at the fold, it would
+     * be whichever reading the walk met first — the thing the whole projection exists to remove.
+     *
+     * <p><b>Held to the point's own rule.</b> What tells this debt from another is the authored
+     * line the point carries, and a reading whose rule is a different one is a reading of another
+     * debt filed here. Compared with the point rather than with each other, so that a set of
+     * readings that agree on the wrong rule is refused as well.
      *
      * <p><b>And it is not what the line is on.</b> That is the reading's word — {@code n} here and
      * {@code r@P.deadline} there — and a point read at two positions has one for each, so a point
      * that held one would be named after a place it is not owed at. Which is why what a report says
      * about the quantity comes from the readings and what it says about the rule comes from here.
-     *
-     * <p>Checked and not folded, for the reason the demand is: a pair that disagrees says the two
-     * are not one point, and picking one would send a reader to a rule they were not told about.
      */
-    private static souther.compiler.check.RuleCitation foundAt(
+    private static java.util.Set<RuleReportAnchor> reachedBy(
             BorderObligationPoint point, List<BorderAssessment> readings) {
-        souther.compiler.check.RuleCitation found = readings.get(0).border().origin().cited();
+        java.util.Set<RuleReportAnchor> out = new java.util.LinkedHashSet<>();
         for (BorderAssessment reading : readings) {
-            souther.compiler.check.RuleCitation also = reading.border().origin().cited();
-            if (!found.equals(also)) {
-                throw new IllegalStateException("two readings of one point are found in different"
-                        + " places, so they are not one point: " + point + " at " + found + " by "
-                        + readings.get(0).border().cut().named() + " and at " + also + " by "
-                        + reading.border().cut().named());
+            souther.compiler.check.RuleCitation cited = reading.border().origin().cited();
+            if (!cited.rule().equals(point.line().provenance())) {
+                throw new IllegalStateException("a reading filed under this point is of another"
+                        + " rule, so they are not one point: " + point + " is "
+                        + point.line().provenance() + " and " + reading.border().cut().named()
+                        + " read " + cited.rule());
             }
+            out.addAll(souther.compiler.check.RuleCitation.anchorOf(cited));
         }
-        return found;
+        return out;
     }
 
     /**
@@ -266,8 +295,8 @@ public record BorderObligationPointAssessment(BorderObligationPoint point,
      * author named is found by that name wherever it is read, and a comparison by the place it is
      * written.
      */
-    public PublishedSentence describe() {
-        return PublishedSentence.AroundAHandle.alone(handle());
+    public PublishedSentence describe(PublishedRuleHandle.WhereARuleIs places) {
+        return PublishedSentence.AroundAHandle.alone(handle(places));
     }
 
     /**
@@ -276,8 +305,12 @@ public record BorderObligationPointAssessment(BorderObligationPoint point,
      * <p>The handle rather than what it reads as, for the field that is the handle and nothing
      * else. What that field says is the surface's to write.
      */
-    public PublishedRuleHandle handle() {
-        return PublishedRuleHandle.of(cited);
+    public PublishedRuleHandle handle(PublishedRuleHandle.WhereARuleIs places) {
+        return PublishedRuleHandle.of(
+                PublicationOrders.handleFor(citations(), places)
+                        .orElseThrow(() -> new IllegalStateException("a line a reader is sent to is"
+                                + " one some reading said how to find: " + point)),
+                places);
     }
 
     /**
@@ -610,7 +643,7 @@ public record BorderObligationPointAssessment(BorderObligationPoint point,
      * be at two places, and two runs beside one line can stop in two places, and this says the
      * same of both — a consumer joins on {@code obligationId} and shows this.
      */
-    public PublishedSentence said() {
-        return new PublishedSentence.AroundAHandle(role() + " point of ", handle(), "");
+    public PublishedSentence said(PublishedRuleHandle.WhereARuleIs places) {
+        return new PublishedSentence.AroundAHandle(role() + " point of ", handle(places), "");
     }
 }

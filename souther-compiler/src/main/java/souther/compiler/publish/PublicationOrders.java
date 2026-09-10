@@ -14,6 +14,7 @@ import souther.compiler.query.ObligationDisposition;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.Map;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -150,28 +151,36 @@ public final class PublicationOrders {
     }
 
     /**
-     * How a document sends a reader to a rule that two readers each offered a handle for.
-     *
-     * <p>A name where the author gave one, before a place where they did not. A reader given a name
-     * has the word the model uses; a place is what there is instead, and a rule that has both is a
-     * rule a reader can be asked about in the author's own words.
-     *
-     * <p>Two names, or two places, are told apart by what a document writes of them — which is the
-     * text it prints, and comparing that is the same serialization order the identities of two
-     * sources are compared in.
-     */
-    private static final Comparator<RuleCitation> HANDLES =
-            Comparator.comparing(PublishedRuleHandle::of);
-
-    /**
      * The one handle a document writes for a rule met with several, or nothing where none was
      * offered.
      *
      * <p>The schema has room for one and a rule is one rule however many readers found it, so a
      * choice is made and it is made here rather than by whichever reader a walk reached first.
+     *
+     * <p><b>Chosen over what a document writes and never over what a citation is.</b> The order is
+     * taken over the handles the offered citations come to, which is what the whole of
+     * {@link PublishedRuleHandle} exists to be taken over: two that a document writes alike are one
+     * value there, and two it writes apart are ordered by what it writes. Compared as citations —
+     * by which reading offered one and in what order that reading met it — the choice would be the
+     * one the walk registered first, which is the defect said in other words.
+     *
+     * <p>So {@code places} is asked, once per handle offered. A rule met at one call by two readers
+     * is one citation and is asked about once; one met at two calls is two, and a document choosing
+     * between them is choosing between two places it could send a reader to.
+     *
+     * <p><b>Which is why each is projected before any of them are compared.</b> A comparison built
+     * out of a projection reads it afresh on both sides of every comparison it makes, so the
+     * handle that survives a fold is resolved once per step of the fold rather than once at all —
+     * and a caller whose answer to where a rule is takes a question of its own would ask it that
+     * many times. What is folded here is the pairs, so what is asked is what the sentence above
+     * says is asked.
      */
-    public static Optional<RuleCitation> handleFor(Collection<RuleCitation> offered) {
-        return offered.stream().min(HANDLES);
+    public static Optional<RuleCitation> handleFor(Collection<RuleCitation> offered,
+                                                   PublishedRuleHandle.WhereARuleIs places) {
+        return offered.stream()
+                .map(cited -> Map.entry(cited, PublishedRuleHandle.of(cited, places)))
+                .min(Map.Entry.comparingByValue())
+                .map(Map.Entry::getKey);
     }
 
     /**

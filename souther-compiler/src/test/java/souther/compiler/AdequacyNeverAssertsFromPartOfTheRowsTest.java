@@ -224,7 +224,9 @@ class AdequacyNeverAssertsFromPartOfTheRowsTest {
                             .made().orElseGet(List::of)) {
                 if (point.item().coverage().settled() && !point.owed().hasRowWitness()) {
                     wrong.add("boundary "
-                            + RuleHandleProse.said(point.said(),
+                            + RuleHandleProse.said(
+                                    point.said(cited -> souther.compiler.query.Sites.placeOf(
+                                            compilation.db(), cited)),
                                     souther.compiler.source.SourceId::value, null));
                 }
             }
@@ -278,7 +280,7 @@ class AdequacyNeverAssertsFromPartOfTheRowsTest {
 
             String written = GeneratedRows.of(Adequacy.offeredFor(compilation.db(),
                             souther.compiler.query.OfferingRequest.overTheModule(module, true)),
-                    Map.of(), SourceNameResolver.identity()).text();
+                    Map.of(), SourceNameResolver.identity(), compilation.db()).text();
             assertFalse(written.contains("example "),
                     module + " offers a row that may already be written: " + written);
             // Either word, because the two models get here differently: one has rows nothing read
@@ -335,7 +337,7 @@ class AdequacyNeverAssertsFromPartOfTheRowsTest {
                 .get("take").arms().unmet().isEmpty(), "an arm nothing goes through");
         assertFalse(GeneratedRows.of(Adequacy.offeredFor(compilation.db(),
                         souther.compiler.query.OfferingRequest.overTheModule(module, true)),
-                Map.of(), SourceNameResolver.identity()).text().isEmpty(),
+                Map.of(), SourceNameResolver.identity(), compilation.db()).text().isEmpty(),
                 "and rows offered for them");
     }
 }

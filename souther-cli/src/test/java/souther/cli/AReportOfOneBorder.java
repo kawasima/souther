@@ -127,7 +127,7 @@ final class AReportOfOneBorder {
                 new LineOrigin.ComparisonOrigin.Read(
                         new RuleRef.Comparison("weigh", wrote),
                         new ModelOccurrence(wrote, ExpansionLineage.ORIGINAL),
-                        Citation.of(new SourcePos(3, 5)),
+                        new souther.compiler.check.RuleReportAnchor.ByTheModuleThatWroteIt(),
                         List.of(WHERE)),
                 new LineFacts(new ComparisonClaim.Cut(Towards.BELOW, true)));
         return Border.at(
@@ -271,7 +271,7 @@ final class AReportOfOneBorder {
                                 .toList()),
                         null),
                 souther.compiler.query.ClaimAnnotations.NONE, List.of(), java.util.Map.of(),
-                java.util.Map.of());
+                java.util.Map.of(), rulePlaces(lines));
         return new AdequacyReport(AdequacyReport.SCHEMA_VERSION, "test",
                 held, WeakeningSet.none(),
                 List.of(new AdequacyReport.ModuleReport("example.wide",
@@ -280,7 +280,27 @@ final class AReportOfOneBorder {
                         // them went without: the fixture is about one behavior's own lines.
                         new AdequacyReport.DeclarationsShown(
                                 new Adequacy.DeclaredBoundaries(List.of(), java.util.Map.of()),
-                                java.util.Map.of()))))
+                                java.util.Map.of(), java.util.Map.of()))))
                 .adequacy();
+    }
+
+    /**
+     * Where this fixture's page shows each rule its lines name.
+     *
+     * <p>Stood up here because there is no compile to ask. The rules are written in the source this
+     * fixture is about, so the module that wrote them places them, and the place is the one the
+     * line was built at.
+     */
+    private static java.util.Map<souther.compiler.check.RuleCitation.Written,
+            Citation> rulePlaces(Measurement<List<BorderAssessment>> lines) {
+        java.util.Map<souther.compiler.check.RuleCitation.Written, Citation> places =
+                new java.util.LinkedHashMap<>();
+        for (BorderAssessment line : lines.made().orElse(List.of())) {
+            if (line.origin().cited()
+                    instanceof souther.compiler.check.RuleCitation.Written written) {
+                places.put(written, Citation.of(new SourcePos(3, 5)));
+            }
+        }
+        return places;
     }
 }

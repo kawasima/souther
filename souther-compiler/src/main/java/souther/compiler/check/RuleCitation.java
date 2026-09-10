@@ -1,7 +1,5 @@
 package souther.compiler.check;
 
-import souther.compiler.diag.Citation;
-
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -29,10 +27,18 @@ import java.util.stream.Collectors;
  * {@link RuleRef.Written}). An author names a clause of an invariant and looks it up by that name; a
  * comparison in a body has no name and is found where it is written.
  *
- * <p><b>Not {@link souther.compiler.partition.LineOrigin}.</b> That says where a rule was read, and
- * one rule read in two calls of a helper has two of them — so putting it here would make a document
- * choose which reading to show for a question the model raised once. This says where the rule was
- * written, which is the rule's own and is one however often it is read.
+ * <p><b>No place, and that is what makes it a projection rather than an answer.</b> Where a reader
+ * is sent is worked out when a sentence is written, from the question {@link RuleReportAnchor}
+ * names — so a helper whose rules move, saying the same thing, moves where the sentences point and
+ * leaves every value holding one of these alone. A place here is a place in every answer that
+ * carries one, which is every answer of every module that reads the rule.
+ *
+ * <p><b>Not {@link souther.compiler.partition.LineOrigin}.</b> That says which reading of a rule
+ * this is, and one rule read in two calls of a helper has two of them. What is here is one per way
+ * a document can be sent to the rule, which is not the same count: a rule the author named has one
+ * from anywhere, a rule written where a reader can open it has one however often it is read, and a
+ * rule whose source this compilation holds no file for has one per call it was reached through —
+ * because there is nothing to open, and the call is what there is to show instead.
  */
 public sealed interface RuleCitation {
 
@@ -55,56 +61,59 @@ public sealed interface RuleCitation {
     }
 
     /**
-     * Where the author wrote it, for a rule that has no name.
+     * How a reader finds a rule the author wrote rather than named, which is by where it is.
      *
-     * <p>{@link Citation} and not a bare position, because where a rule is written and where a
-     * reader is standing are not always the same file: a comparison inside a helper is written
-     * there and reached from the call, and the same type says both.
+     * <p>{@link RuleReportAnchor} and not a place. Which question answers where such a rule is is
+     * settled where the rule is read — the module that wrote it, or the reading that met it where
+     * there is no such module to ask — and the answer is worked out when a sentence is written.
      *
      * <p>{@link RuleRef.Written} and not a kind of one. A holder that answers for a comparison and
-     * for nothing else keeps the comparison and the place, and makes the handle
+     * for nothing else keeps the comparison and the anchor, and makes the handle
      * ({@link souther.compiler.partition.LineOrigin.ComparisonOrigin}) — which is the shape a fold
      * over these already has. Carried as a type variable here instead, the variable is unbound
      * wherever a handle is reached through this interface, and a document's own answers are then
      * types nothing settles.
      */
-    record WrittenAt(RuleRef.Written rule, Citation at) implements RuleCitation {
+    record Written(RuleRef.Written rule, RuleReportAnchor anchor) implements RuleCitation {
 
-        public WrittenAt {
-            if (rule == null || at == null) {
-                throw new IllegalArgumentException(
-                        "a rule with no name is found by where it is: " + rule + " at " + at);
+        public Written {
+            if (rule == null || anchor == null) {
+                throw new IllegalArgumentException("a rule with no name is found by where it is: "
+                        + rule + " placed " + anchor);
             }
         }
     }
 
     /**
-     * Where a handle reaches its rule, which is nothing for a rule the author named.
+     * Which question places a handle's rule, which is nothing for a rule the author named.
      *
      * <p>The one place a handle is taken apart. What a fold over these keeps is the rule once and
-     * the places beside it, so that no state holds a second answer to which rule it is about, and
-     * this is how a reader's handle becomes a place to keep.
+     * the anchors beside it, so that no state holds a second answer to which rule it is about, and
+     * this is how a reader's handle becomes something to keep.
      */
-    static Set<Citation> placeOf(RuleCitation cited) {
+    static Set<RuleReportAnchor> anchorOf(RuleCitation cited) {
         return switch (cited) {
             case Named _ -> Set.of();
-            case WrittenAt it -> Set.of(it.at());
+            case Written it -> Set.of(it.anchor());
         };
     }
 
     /**
-     * Every handle for {@code rule} that the places in {@code reachedAt} offer.
+     * Every handle for {@code rule} that the questions in {@code reachedBy} offer.
      *
-     * <p>The inverse of {@link #placeOf}, and the one place a handle is put back together. A rule
+     * <p>The inverse of {@link #anchorOf}, and the one place a handle is put back together. A rule
      * the author named is found by that name from anywhere, so it has one handle however many
-     * readers offered it; one written rather than named has a handle per place it was reached at.
+     * readers offered it. So is one written where a reader can open it: every reader of it offers
+     * the same question, which is the writing module's, and the set comes to one entry by being
+     * one value. A rule whose source this compilation holds no file for has a handle per call it
+     * was reached through, because the call is what a report can show and each is a different one.
      */
-    static Set<RuleCitation> handlesFor(RuleRef rule, Set<Citation> reachedAt) {
-        requireReached(rule, reachedAt);
+    static Set<RuleCitation> handlesFor(RuleRef rule, Set<RuleReportAnchor> reachedBy) {
+        requireReached(rule, reachedBy);
         return switch (rule) {
             case RuleRef.Named it -> Set.of(new Named(it));
-            case RuleRef.Written it -> reachedAt.stream()
-                    .map(each -> (RuleCitation) new WrittenAt(it, each))
+            case RuleRef.Written it -> reachedBy.stream()
+                    .map(each -> (RuleCitation) new Written(it, each))
                     .collect(Collectors.toUnmodifiableSet());
         };
     }
@@ -112,14 +121,14 @@ public sealed interface RuleCitation {
     /**
      * That {@code rule} was reached in the way rules of its kind are reached.
      *
-     * <p>A rule with no name is found by where it is, so one of those with no place is something
-     * nobody can be sent to look at; and a place beside a rule the author named is a second way to
-     * say one thing, which two readers could spell two ways.
+     * <p>A rule with no name is found by where it is, so one of those with nothing to ask is
+     * something nobody can be sent to look at; and a question about where a rule the author named
+     * is written is a second way to say one thing, which two readers could spell two ways.
      */
-    static void requireReached(RuleRef rule, Set<Citation> reachedAt) {
-        if (rule instanceof RuleRef.Written == reachedAt.isEmpty()) {
-            throw new IllegalArgumentException("a rule with no name is reached at a place and a rule"
-                    + " with one is reached by it: " + rule + " at " + reachedAt);
+    static void requireReached(RuleRef rule, Set<RuleReportAnchor> reachedBy) {
+        if (rule instanceof RuleRef.Written == reachedBy.isEmpty()) {
+            throw new IllegalArgumentException("a rule with no name is placed by some question and"
+                    + " a rule with one is found by it: " + rule + " placed " + reachedBy);
         }
     }
 }

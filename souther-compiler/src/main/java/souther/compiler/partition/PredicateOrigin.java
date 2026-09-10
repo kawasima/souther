@@ -2,7 +2,7 @@ package souther.compiler.partition;
 
 import souther.compiler.check.RuleCitation;
 import souther.compiler.check.RuleRef;
-import souther.compiler.diag.Citation;
+import souther.compiler.check.RuleReportAnchor;
 
 /**
  * One reading of a predicate applied in a behavior's body.
@@ -29,16 +29,16 @@ import souther.compiler.diag.Citation;
  *                   and the only thing here that does — {@code helper("JP", code)} and
  *                   {@code helper("US", code)} read one rule twice and divide one position two ways
  * @param rule       which predicate, which is the rule and the whole of it
- * @param writtenAt  where it is written, which is how a reader finds a rule with no name. The
- *                   application's own place: a condition holding two predicates is two rules, and a
- *                   reader sent to the condition is given one handle for both
+ * @param anchor     which question says where it is written, which is how a reader finds a rule
+ *                   with no name. About the application: a condition holding two predicates is two
+ *                   rules, and a reader sent to the condition is given one handle for both
  */
 public record PredicateOrigin(PredicateOccurrence occurrence, RuleRef.Predicate rule,
-                              Citation writtenAt)
+                              RuleReportAnchor anchor)
         implements RuleEvidenceOrigin {
 
     public PredicateOrigin {
-        if (occurrence == null || rule == null || writtenAt == null) {
+        if (occurrence == null || rule == null || anchor == null) {
             throw new IllegalArgumentException(
                     "a reading of a predicate is a reading of some rule, told from the others, and"
                             + " written somewhere");
@@ -46,7 +46,7 @@ public record PredicateOrigin(PredicateOccurrence occurrence, RuleRef.Predicate 
     }
 
     /**
-     * How a reader finds it, which is where it is written.
+     * How a reader finds it, which is by where it is written.
      *
      * <p>Made here rather than kept, so that the handle is of {@link #rule} and can be of no other.
      * Kept beside the rule, the two could be built about different predicates — and a document
@@ -54,6 +54,6 @@ public record PredicateOrigin(PredicateOccurrence occurrence, RuleRef.Predicate 
      */
     @Override
     public RuleCitation cited() {
-        return new RuleCitation.WrittenAt(rule, writtenAt);
+        return new RuleCitation.Written(rule, anchor);
     }
 }

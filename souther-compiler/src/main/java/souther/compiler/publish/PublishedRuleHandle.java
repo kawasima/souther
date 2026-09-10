@@ -184,15 +184,34 @@ public sealed interface PublishedRuleHandle extends Comparable<PublishedRuleHand
     }
 
     /**
-     * How a document would write {@code cited}.
+     * Where a rule the author wrote rather than named is, asked of whoever places it.
+     *
+     * <p>Handed in rather than read off the citation, because a citation holds no place: which
+     * question places such a rule is what it says, and the answer is worked out here, at the one
+     * moment a place is wanted. So a rule that moves without changing what it says moves the
+     * sentence and leaves every answer about the rule alone.
+     */
+    @FunctionalInterface
+    interface WhereARuleIs {
+
+        /** Where {@code cited}'s rule is, as a report may say it. */
+        Citation of(RuleCitation.Written cited);
+    }
+
+    /**
+     * How a document would write {@code cited}, with {@code places} asked where it has to be.
      *
      * <p>The one projection, and total over both seals it reads: which sentence a rule with a name
      * takes is the clause's own answer, and which one a rule without takes is the citation's.
+     *
+     * <p>{@code places} is asked for exactly the rules that have somewhere to be asked about. A
+     * rule the author named is found by that name from anywhere, so nothing is asked for it — and
+     * a place handed in beside one would be a second way to say one thing.
      */
-    static PublishedRuleHandle of(RuleCitation cited) {
+    static PublishedRuleHandle of(RuleCitation cited, WhereARuleIs places) {
         return switch (cited) {
             case RuleCitation.Named it -> named(it.rule());
-            case RuleCitation.WrittenAt it -> written(it.rule(), it.at());
+            case RuleCitation.Written it -> written(it.rule(), places.of(it));
         };
     }
 

@@ -151,7 +151,8 @@ class ARuleAboutTheStringsAtAPositionIsReadWhereTheOperationStandsTest {
         return PredicateReadings.of("f", body,
                         compilation.db().ask(new Bodies.StatedContracts(module)).value().get("f"),
                         inputs.reading(rules), inputs.parameterReads(),
-                        checked.elementBindings().get("f"))
+                        checked.elementBindings().get("f"),
+                        new RuleReachNumbering(module, "f"))
                 .predicates();
     }
 }

@@ -228,7 +228,7 @@ class AnEqualityDividesTheValuesInTwoTest {
         return GeneratedRows.of(Adequacy.offeredFor(compilation.db(),
                         souther.compiler.query.OfferingRequest.overTheModule(
                                 "example.ratio", false)),
-                Map.of(), SourceNameResolver.identity()).text();
+                Map.of(), SourceNameResolver.identity(), compilation.db()).text();
     }
 
     /** An ordering comparison beside it is a distinction the model does draw, and is kept. */

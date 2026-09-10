@@ -843,13 +843,12 @@ class EverySchemaWordIsAccountedForTest {
     /** A rule read far enough to say it restricts the values, and no further. */
     private static souther.compiler.inputs.StandingQuestion boundaryUndetermined() {
         return souther.compiler.inputs.StandingQuestion.BoundaryUndetermined.of(
-                new souther.compiler.check.RuleCitation.WrittenAt(
+                new souther.compiler.check.RuleCitation.Written(
                         new RuleRef.Comparison("f",
                                 new SourceConstructOrigin(
                                         new WrittenOwner.Body("m", "b"), 0, 0,
                                         SourceConstruct.IF)),
-                        souther.compiler.diag.Citation.of(
-                                new souther.compiler.diag.SourcePos(1, 1))),
+                        new souther.compiler.check.RuleReportAnchor.ByTheModuleThatWroteIt()),
                 souther.compiler.inputs.FilingCoordinate.at(
                         souther.compiler.inputs.TermPath.of("x")),
                 new souther.compiler.inputs.BlockReason.UnreadComparisonForm());
@@ -858,13 +857,12 @@ class EverySchemaWordIsAccountedForTest {
     /** A rule this compiler did not read far enough to classify. */
     private static souther.compiler.inputs.StandingQuestion unclassified() {
         return souther.compiler.inputs.StandingQuestion.NothingClassifiesIt.of(
-                new souther.compiler.check.RuleCitation.WrittenAt(
+                new souther.compiler.check.RuleCitation.Written(
                         new RuleRef.Comparison("f",
                                 new SourceConstructOrigin(
                                         new WrittenOwner.Body("m", "b"), 0, 0,
                                         SourceConstruct.IF)),
-                        souther.compiler.diag.Citation.of(
-                                new souther.compiler.diag.SourcePos(1, 1))),
+                        new souther.compiler.check.RuleReportAnchor.ByTheModuleThatWroteIt()),
                 souther.compiler.inputs.FilingCoordinate.at(
                         souther.compiler.inputs.TermPath.of("x")),
                 new souther.compiler.inputs.BlockReason.UnreadComparisonForm());
@@ -874,13 +872,12 @@ class EverySchemaWordIsAccountedForTest {
     private static souther.compiler.inputs.StandingQuestion asking(
             souther.compiler.inputs.InputQuestion about) {
         return souther.compiler.inputs.StandingQuestion.Exact.of(
-                new souther.compiler.check.RuleCitation.WrittenAt(
+                new souther.compiler.check.RuleCitation.Written(
                         new RuleRef.Comparison("f",
                                 new SourceConstructOrigin(
                                         new WrittenOwner.Body("m", "b"), 0, 0,
                                         SourceConstruct.IF)),
-                        souther.compiler.diag.Citation.of(
-                                new souther.compiler.diag.SourcePos(1, 1))),
+                        new souther.compiler.check.RuleReportAnchor.ByTheModuleThatWroteIt()),
                 about,
                 new souther.compiler.inputs.WhatAQuestionStandsOn(
                         souther.compiler.inputs.RuleReasons.one(

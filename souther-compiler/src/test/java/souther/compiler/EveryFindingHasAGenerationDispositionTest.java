@@ -906,7 +906,7 @@ class EveryFindingHasAGenerationDispositionTest {
                         souther.compiler.query.OfferingRequest.overTheModule("example.kind", true),
                         Map.of("pick", new Adequacy.Filling(stopped(why),
                                 atTheEdges(alsoAtTheEdges), List.of())), null)),
-                Map.of(), SourceNameResolver.identity()).text();
+                Map.of(), SourceNameResolver.identity(), compiled(KIND).db()).text();
     }
 
     /** A run asked for nothing that came to a reason about itself, which is what a stopped
@@ -981,7 +981,7 @@ class EveryFindingHasAGenerationDispositionTest {
         String block = GeneratedRows.of(Adequacy.offeredFor(compilation.db(),
                         souther.compiler.query.OfferingRequest.overTheModule(
                                 "example.policy", true)),
-                Map.of(), SourceNameResolver.identity()).text();
+                Map.of(), SourceNameResolver.identity(), compilation.db()).text();
 
         assertTrue(block.contains("`then`"),
                 "the arm nothing offers a row for is named: " + block);

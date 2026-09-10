@@ -65,7 +65,7 @@ class WhatWasObservedDecidesWhatAReportMayNameTest {
                 new souther.compiler.query.BehaviorEvidence(
                         souther.compiler.query.Adequacy.RowReading.NONE,
                         null, null, null, null, read()),
-                null, List.of(), shown(), Map.of());
+                null, List.of(), shown(), Map.of(), Map.of());
     }
 
     /** Where this report shows each of the two forks. A place per fork and not per arm: the arms of

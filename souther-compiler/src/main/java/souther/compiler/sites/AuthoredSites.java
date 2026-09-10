@@ -5,6 +5,7 @@ import souther.compiler.diag.QuotedFrom;
 import souther.compiler.diag.Region;
 import souther.compiler.diag.SourcePos;
 import souther.compiler.source.SourceId;
+import souther.compiler.types.ApplicationOrigin;
 import souther.compiler.types.SourceConstructOrigin;
 
 
@@ -67,15 +68,17 @@ public final class AuthoredSites {
      * What one walk of a module's source found: its occurrences, and where each construct it wrote
      * stands.
      *
-     * <p>Three answers and one walk, which is the whole of why they are made together. A module
-     * wrote what it wrote once, and three walks of it would be three answers to that — agreeing
+     * <p>Four answers and one walk, which is the whole of why they are made together. A module
+     * wrote what it wrote once, and four walks of it would be four answers to that — agreeing
      * until the day one of them was taught something the others were not.
      *
-     * <p>The forks and the conditions are answered whether or not the occurrences could be told
-     * apart. Two expressions written over one stretch of source is a fact about extents; which fork
-     * and which condition is which is settled by an identity the extents play no part in.
+     * <p>The forks, the conditions and the applications are answered whether or not the occurrences
+     * could be told apart. Two expressions written over one stretch of source is a fact about
+     * extents; which fork, which condition and which application is which is settled by an identity
+     * the extents play no part in.
      */
-    public record Walked(Census census, WrittenForks forks, WrittenConditions conditions) {}
+    public record Walked(Census census, WrittenForks forks, WrittenConditions conditions,
+                         WrittenApplications applications) {}
 
     /** {@code module} walked, once. */
     public static Walked walk(Hir.Module module) {
@@ -84,7 +87,8 @@ public final class AuthoredSites {
         return new Walked(walk.refusal != null ? walk.refusal
                 : new Census.Identified(new AuthoredSites(walk.byExtent)),
                 new WrittenForks(walk.byOrigin),
-                new WrittenConditions(walk.byCondition));
+                new WrittenConditions(walk.byCondition),
+                new WrittenApplications(walk.byApplication));
     }
 
     /** The occurrences of {@code module}, or why they could not be told apart. */
@@ -193,6 +197,10 @@ public final class AuthoredSites {
          *  Beside {@link #byOrigin} rather than inside it: what a body takes an arm of and what a
          *  row had to satisfy are two questions, and a reader holds one of them. */
         private final Map<WrittenCondition, SourcePos> byCondition = new LinkedHashMap<>();
+        /** Where each application this module wrote stands, under the identity a copy cannot
+         *  change. Beside the other two rather than inside them: a rule read off a call is neither
+         *  a fork a body takes an arm of nor a condition a row had to satisfy. */
+        private final Map<SourceConstructOrigin, SourcePos> byApplication = new LinkedHashMap<>();
         private Census refusal;
 
         /**
@@ -207,6 +215,27 @@ public final class AuthoredSites {
         private void wrote(SourceConstructOrigin origin, SourcePos at) {
             if (origin != null && origin.isWritten() && at != null) {
                 byOrigin.putIfAbsent(origin, at);
+            }
+        }
+
+        /**
+         * Files where an application the source wrote stands.
+         *
+         * <p>Every one of them, and what the call states is not read here — for the reason
+         * {@link #wroteCondition(Hir.Binary)} gives about an operator. Which applications state a
+         * rule about the strings at a position is the reading's answer, and asking it here would be
+         * that recognition made a second time by a walk with none of what the reading knows.
+         *
+         * <p>Only an application an author wrote, which is what {@link ApplicationOrigin.Written}
+         * is and refuses anything else of. A call a pass composed states nothing, so a place filed
+         * for one would answer a question about a rule with somewhere no author can be sent. The
+         * first stands: an application is written once, and a tree holding a second node under one
+         * origin is a copy, which the module that wrote it does not have.
+         */
+        private void wroteApplication(Hir.Apply apply) {
+            if (apply.application() instanceof ApplicationOrigin.Written written
+                    && apply.pos() != null) {
+                byApplication.putIfAbsent(written.application(), apply.pos());
             }
         }
 
@@ -358,6 +387,7 @@ public final class AuthoredSites {
                 }
                 case Hir.Apply apply -> {
                     take(e);
+                    wroteApplication(apply);
                     expr(apply.function());
                     each(apply.args());
                 }

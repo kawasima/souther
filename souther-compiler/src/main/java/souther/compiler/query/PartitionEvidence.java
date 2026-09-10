@@ -325,6 +325,16 @@ public record PartitionEvidence(Measure<List<AxisCoverage>> partitioned,
          */
         boolean readingStopped();
 
+        /**
+         * Every handle a reader was offered for what this is about, which is nothing for an entry
+         * about no rule.
+         *
+         * <p>On the seal so that whoever asks where the rules of this array are shown asks one
+         * question of every kind of entry. A position nothing divides is about the position and
+         * names no rule, and says so by answering with none.
+         */
+        Set<RuleCitation> cited();
+
         /** A rule of the model this read and could not turn into a line. */
         record ARule(souther.compiler.inputs.RuleWithoutALine finding) implements NotRead {
 
@@ -350,6 +360,7 @@ public record PartitionEvidence(Measure<List<AxisCoverage>> partitioned,
 
             /** And how a reader finds that rule, which is not what tells it from another. Every
              *  handle offered, for the reason a standing question gives. */
+            @Override
             public java.util.Set<RuleCitation> cited() {
                 return finding.cited();
             }
@@ -389,6 +400,7 @@ public record PartitionEvidence(Measure<List<AxisCoverage>> partitioned,
             }
 
             /** And how a reader finds that rule, which is not what tells it from another. */
+            @Override
             public java.util.Set<RuleCitation> cited() {
                 return finding.cited();
             }
@@ -413,6 +425,12 @@ public record PartitionEvidence(Measure<List<AxisCoverage>> partitioned,
             @Override
             public boolean readingStopped() {
                 return true;
+            }
+
+            /** None: this entry is about the position and names no rule of the model. */
+            @Override
+            public Set<RuleCitation> cited() {
+                return Set.of();
             }
         }
     }

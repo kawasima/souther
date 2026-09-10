@@ -133,7 +133,7 @@ record PredicateReadings(List<Reading> predicates, Set<Core> statedAt) {
      */
     static PredicateReadings of(String behavior, AnalysisBody body, StatedContract stated,
                                 InputReading read, Map<BindingId, String> parameters,
-                                ElementBindings elements) {
+                                ElementBindings elements, RuleReachNumbering reaches) {
         List<Reading> predicates = new ArrayList<>();
         // Where each of these was read, for the reader that decides which parts of a fork's
         // condition already state a rule. The node and not a fork: which parts a condition has is
@@ -144,7 +144,7 @@ record PredicateReadings(List<Reading> predicates, Set<Core> statedAt) {
         if (body != null) {
             walk(body.core(), behavior, read,
                     InputReads.ofParametersWhereCallsStand(parameters, elements),
-                    LiveFlow.of(body.core()), true, predicates, statedAt);
+                    LiveFlow.of(body.core()), true, predicates, reaches, statedAt);
         }
         // And what the behavior states about its own answer, which is the same kind of rule written
         // somewhere else. Two walks and one list: a body and an `ensures` may write a rule about one
@@ -176,7 +176,7 @@ record PredicateReadings(List<Reading> predicates, Set<Core> statedAt) {
                                 && it.stated().application()
                                         instanceof ApplicationOrigin.Written wrote) {
                             read(it.stated(), wrote.application(), behavior, it.states(), it.reads(),
-                                    predicates);
+                                    predicates, reaches);
                         }
                     }
                 }
@@ -198,7 +198,7 @@ record PredicateReadings(List<Reading> predicates, Set<Core> statedAt) {
      * answer.
      */
     private static void found(Core e, String behavior, InputReading read, InputReads reads,
-                              List<Reading> out) {
+                              List<Reading> out, RuleReachNumbering reaches) {
         // A rule is read off a call the author wrote; what a pass composed states nothing an author
         // owes rows for.
         if (!(e instanceof Core.PreservedCall call)
@@ -209,7 +209,7 @@ record PredicateReadings(List<Reading> predicates, Set<Core> statedAt) {
         StringPredicates.Stated stated =
                 StringPredicates.statedBy(call, symbols, at -> reads.writtenStringOf(at, symbols));
         if (stated != null) {
-            read(call, written.application(), behavior, stated, reads, out);
+            read(call, written.application(), behavior, stated, reads, out, reaches);
         }
     }
 
@@ -222,11 +222,12 @@ record PredicateReadings(List<Reading> predicates, Set<Core> statedAt) {
      * be free to disagree about what the author wrote.
      */
     private static void read(Core.PreservedCall call, SourceConstructOrigin written, String behavior,
-                             StringPredicates.Stated states, InputReads reads, List<Reading> out) {
+                             StringPredicates.Stated states, InputReads reads, List<Reading> out,
+                             RuleReachNumbering reaches) {
         out.add(new Reading(
                 new PredicateOrigin(new PredicateOccurrence(out.size()),
                         new RuleRef.Predicate(behavior, written),
-                        Citation.of(call.pos())),
+                        reaches.anchorOf(written, Citation.of(call.pos()))),
                 states, reads));
     }
 
@@ -237,10 +238,10 @@ record PredicateReadings(List<Reading> predicates, Set<Core> statedAt) {
      */
     private static void walk(Core e, String behavior, InputReading read, InputReads reads,
                              LiveFlow flow, boolean live, List<Reading> out,
-                             Set<Core> statedAt) {
+                             RuleReachNumbering reaches, Set<Core> statedAt) {
         int before = out.size();
         if (live) {
-            found(e, behavior, read, reads, out);
+            found(e, behavior, read, reads, out, reaches);
         }
         if (out.size() != before) {
             statedAt.add(e);
@@ -251,23 +252,23 @@ record PredicateReadings(List<Reading> predicates, Set<Core> statedAt) {
             // body is where the name stands for what was bound to it.
             case Core.LetIn let -> {
                 walk(let.value(), behavior, read, reads, flow, live && flow.reads(let), out,
-                        statedAt);
+                        reaches, statedAt);
                 walk(let.body(), behavior, read, reads.and(let.binder(), let.value()), flow, live,
-                        out, statedAt);
+                        out, reaches, statedAt);
             }
             // And each arm under what the arm says the value it matched turned out to be. A name
             // the arm binds is the scrutinee's position narrowed to that case, so a predicate
             // written inside an arm is about a position the reading of the input has — read
             // without it, every rule an author writes inside a `match` was about nothing.
             case Core.Match match -> {
-                walk(match.scrutinee(), behavior, read, reads, flow, live, out, statedAt);
+                walk(match.scrutinee(), behavior, read, reads, flow, live, out, reaches, statedAt);
                 for (Core.Case arm : match.cases()) {
                     walk(arm.body(), behavior, read, reads.insideArm(match, arm, read.symbols()),
-                            flow, live, out, statedAt);
+                            flow, live, out, reaches, statedAt);
                 }
             }
             default -> Core.forEachChild(e, child ->
-                    walk(child, behavior, read, reads, flow, live, out, statedAt));
+                    walk(child, behavior, read, reads, flow, live, out, reaches, statedAt));
         }
     }
 }

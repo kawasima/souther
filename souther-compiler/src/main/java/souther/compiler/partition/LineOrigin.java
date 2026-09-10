@@ -3,9 +3,10 @@ package souther.compiler.partition;
 
 import souther.compiler.check.ComparisonClaim;
 import souther.compiler.check.DeclaredBorders;
+import souther.compiler.check.RuleCitation;
 import souther.compiler.check.RuleRef;
+import souther.compiler.check.RuleReportAnchor;
 import souther.compiler.coverage.ComparisonEmissionSite;
-import souther.compiler.diag.Citation;
 import souther.compiler.numeric.Endpoint;
 import souther.compiler.publish.PublishedRuleHandle;
 import souther.compiler.publish.PublishedSentence;
@@ -170,10 +171,10 @@ public sealed interface LineOrigin extends RuleEvidenceOrigin {
          *              it: a rule is what a report names and what a document cites, and one
          *              construct of the model states one rule while a helper called twice states
          *              that rule at two constructs
-         * @param writtenAt where a reader finds it, which is where it is written. The comparison's
-         *              own place and not the fork's — a condition holding three comparisons is
-         *              three rules, and a reader sent to the {@code if} is given one handle for all
-         *              of them
+         * @param anchor which question says where a reader finds it, settled here because this is
+         *              where what the position was in could still be seen. About the comparison and
+         *              not the fork — a condition holding three comparisons is three rules, and a
+         *              reader sent to the {@code if} is given one handle for all of them
          * @param recordedAt every place a run through the rule is written down. Only places: which
          *              materialisation of the construct each of them is is the tree that runs
          *              saying something about itself, and nothing a reader of the rule asks turns
@@ -183,11 +184,12 @@ public sealed interface LineOrigin extends RuleEvidenceOrigin {
          *              handed twice writes the comparison twice, and the model states one rule at
          *              one construct all the same
          */
-        public record Read(RuleRef.Comparison rule, ModelOccurrence states, Citation writtenAt,
+        public record Read(RuleRef.Comparison rule, ModelOccurrence states,
+                           RuleReportAnchor anchor,
                            List<ComparisonEmissionSite> recordedAt) {
 
             public Read {
-                if (rule == null || states == null || writtenAt == null) {
+                if (rule == null || states == null || anchor == null) {
                     throw new IllegalArgumentException(
                             "a rule read off a comparison names one, states it somewhere and cites"
                                     + " it");
@@ -201,15 +203,15 @@ public sealed interface LineOrigin extends RuleEvidenceOrigin {
             }
 
             /**
-             * How a reader finds the rule, which is where it is written.
+             * How a reader finds the rule, which is by where it is written.
              *
              * <p>Made here rather than kept, so that the handle is of {@link #rule} and can be of no
              * other. Kept beside the rule, the two could be built about different comparisons — and
              * a document writing both would file an entry under one rule with a sentence about
              * another.
              */
-            public souther.compiler.check.RuleCitation.WrittenAt written() {
-                return new souther.compiler.check.RuleCitation.WrittenAt(rule, writtenAt);
+            public RuleCitation.Written written() {
+                return new RuleCitation.Written(rule, anchor);
             }
         }
 
@@ -421,8 +423,8 @@ public sealed interface LineOrigin extends RuleEvidenceOrigin {
      * have drawn alone, and the rule is the same rule either way — so those words go around the
      * handle rather than into it.
      */
-    default PublishedSentence describe() {
-        PublishedRuleHandle handle = PublishedRuleHandle.of(cited());
+    default PublishedSentence describe(PublishedRuleHandle.WhereARuleIs places) {
+        PublishedRuleHandle handle = PublishedRuleHandle.of(cited(), places);
         return switch (this) {
             case InvariantOrigin _, EnsuresOrigin _, ComparisonOrigin _ ->
                     PublishedSentence.AroundAHandle.alone(handle);
@@ -498,7 +500,8 @@ public sealed interface LineOrigin extends RuleEvidenceOrigin {
      * <p>What a diagnostic's own sentence says. A diagnostic is built where no reader is — nothing
      * there knows what to call a source — so a place written into its text would be a line and a
      * column with no file, read against whichever file the report happens to be about. Where the rule
-     * has no name, the place is pointed at instead, by {@link #citation}.
+     * has no name, what a reader is pointed at is worked out when a sentence is written, from the
+     * question the handle names ({@link souther.compiler.check.RuleReportAnchor}).
      */
     default String saidWithoutAPlace() {
         return authoredLine().saidWithoutAPlace();
@@ -524,19 +527,6 @@ public sealed interface LineOrigin extends RuleEvidenceOrigin {
      */
     default boolean isWrittenRatherThanNamed() {
         return rule() instanceof RuleRef.Written;
-    }
-
-    /**
-     * Where the rule is written, where it is a rule that has a place rather than a name.
-     *
-     * <p>Taken out of the handle, for the reason above: the handle is what carries the place, and a
-     * reading that answered from its own arm would be a second answer to what the handle already
-     * says.
-     */
-    default Optional<Citation> citation() {
-        return cited() instanceof souther.compiler.check.RuleCitation.WrittenAt written
-                ? Optional.of(written.at())
-                : Optional.empty();
     }
 
     /**
