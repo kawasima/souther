@@ -1172,6 +1172,17 @@
           "status" : "complete"
         },
         "axes" : [ {
+          "axis" : "redeem/voucher",
+          "path" : "voucher",
+          "read" : {
+            "extent" : "complete"
+          },
+          "classes" : [ "voucher/= spring", "voucher//= spring" ],
+          "excluded" : [ ],
+          "unprovenClaims" : [ ],
+          "status" : "unavailable",
+          "reason" : "no_rows"
+        }, {
           "axis" : "redeem/party",
           "path" : "party",
           "read" : {
@@ -1185,6 +1196,61 @@
         } ],
         "claimsOffAxis" : [ ],
         "boundaries" : [ {
+          "axis" : "redeem/voucher",
+          "origin" : "comparison@1:23:25",
+          "kind" : "at_value",
+          "value" : "spring",
+          "items" : [ {
+            "point" : "on",
+            "location" : {
+              "kind" : "at_the_line"
+            },
+            "relation" : "=",
+            "against" : "spring",
+            "knownWritable" : true,
+            "writableBecause" : [ "the_rules_prove_it", "a_value_was_built" ],
+            "status" : "unavailable",
+            "reason" : "no_rows"
+          }, {
+            "point" : "off",
+            "location" : {
+              "kind" : "beside_the_line",
+              "side" : "below"
+            },
+            "notOwed" : "the_carrier_names_no_neighbour"
+          }, {
+            "point" : "off",
+            "location" : {
+              "kind" : "beside_the_line",
+              "side" : "above"
+            },
+            "notOwed" : "the_carrier_names_no_neighbour"
+          }, {
+            "point" : "out",
+            "location" : {
+              "kind" : "in_the_region",
+              "side" : "below"
+            },
+            "relation" : "in",
+            "against" : "voucher < spring",
+            "knownWritable" : true,
+            "writableBecause" : [ "the_rules_prove_it" ],
+            "status" : "unavailable",
+            "reason" : "no_rows"
+          }, {
+            "point" : "out",
+            "location" : {
+              "kind" : "in_the_region",
+              "side" : "above"
+            },
+            "relation" : "in",
+            "against" : "spring < voucher",
+            "knownWritable" : true,
+            "writableBecause" : [ "the_rules_prove_it" ],
+            "status" : "unavailable",
+            "reason" : "no_rows"
+          } ]
+        }, {
           "axis" : "redeem/String.length(voucher)",
           "origin" : "invariant Voucher #1",
           "kind" : "at_value",
@@ -1368,6 +1434,184 @@
           } ]
         } ],
         "obligations" : [ {
+          "obligationId" : {
+            "line" : {
+              "which" : {
+                "kind" : "comparison",
+                "rule" : {
+                  "kind" : "comparison",
+                  "declaredIn" : "conformance.vouchers",
+                  "definition" : "redeem",
+                  "behavior" : "redeem",
+                  "ordinal" : 3,
+                  "lowered" : 0
+                }
+              },
+              "facts" : {
+                "holdsAtTheValue" : true,
+                "singles" : true
+              },
+              "narrowedWithin" : [ ]
+            },
+            "level" : {
+              "kind" : "on_a_carrier",
+              "carrier" : {
+                "kind" : "text"
+              },
+              "at" : "spring"
+            },
+            "location" : {
+              "kind" : "at_the_line"
+            }
+          },
+          "point" : "on",
+          "rule" : "comparison@1:23:25",
+          "ruleId" : {
+            "kind" : "comparison",
+            "declaredIn" : "conformance.vouchers",
+            "definition" : "redeem",
+            "behavior" : "redeem",
+            "ordinal" : 3,
+            "lowered" : 0
+          },
+          "relation" : "=",
+          "knownWritable" : true,
+          "writableBecause" : [ "the_rules_prove_it", "a_value_was_built" ],
+          "status" : "unavailable",
+          "reason" : "no_rows",
+          "disposition" : "undecided",
+          "undecidedAbout" : [ "whether_a_row_is_at_it" ],
+          "readings" : [ {
+            "behavior" : "redeem",
+            "axis" : "redeem/voucher",
+            "relation" : "=",
+            "against" : "spring",
+            "status" : "unavailable",
+            "reason" : "no_rows"
+          } ]
+        }, {
+          "obligationId" : {
+            "line" : {
+              "which" : {
+                "kind" : "comparison",
+                "rule" : {
+                  "kind" : "comparison",
+                  "declaredIn" : "conformance.vouchers",
+                  "definition" : "redeem",
+                  "behavior" : "redeem",
+                  "ordinal" : 3,
+                  "lowered" : 0
+                }
+              },
+              "facts" : {
+                "holdsAtTheValue" : true,
+                "singles" : true
+              },
+              "narrowedWithin" : [ ]
+            },
+            "level" : {
+              "kind" : "on_a_carrier",
+              "carrier" : {
+                "kind" : "text"
+              },
+              "at" : "spring"
+            },
+            "location" : {
+              "kind" : "in_the_region",
+              "side" : "below"
+            },
+            "stops" : {
+              "kind" : "at_the_order_end",
+              "towards" : "below"
+            }
+          },
+          "point" : "out",
+          "rule" : "comparison@1:23:25",
+          "ruleId" : {
+            "kind" : "comparison",
+            "declaredIn" : "conformance.vouchers",
+            "definition" : "redeem",
+            "behavior" : "redeem",
+            "ordinal" : 3,
+            "lowered" : 0
+          },
+          "relation" : "in",
+          "knownWritable" : true,
+          "writableBecause" : [ "the_rules_prove_it" ],
+          "status" : "unavailable",
+          "reason" : "no_rows",
+          "disposition" : "undecided",
+          "undecidedAbout" : [ "whether_a_row_is_at_it" ],
+          "readings" : [ {
+            "behavior" : "redeem",
+            "axis" : "redeem/voucher",
+            "relation" : "in",
+            "against" : "voucher < spring",
+            "status" : "unavailable",
+            "reason" : "no_rows"
+          } ]
+        }, {
+          "obligationId" : {
+            "line" : {
+              "which" : {
+                "kind" : "comparison",
+                "rule" : {
+                  "kind" : "comparison",
+                  "declaredIn" : "conformance.vouchers",
+                  "definition" : "redeem",
+                  "behavior" : "redeem",
+                  "ordinal" : 3,
+                  "lowered" : 0
+                }
+              },
+              "facts" : {
+                "holdsAtTheValue" : true,
+                "singles" : true
+              },
+              "narrowedWithin" : [ ]
+            },
+            "level" : {
+              "kind" : "on_a_carrier",
+              "carrier" : {
+                "kind" : "text"
+              },
+              "at" : "spring"
+            },
+            "location" : {
+              "kind" : "in_the_region",
+              "side" : "above"
+            },
+            "stops" : {
+              "kind" : "at_the_order_end",
+              "towards" : "above"
+            }
+          },
+          "point" : "out",
+          "rule" : "comparison@1:23:25",
+          "ruleId" : {
+            "kind" : "comparison",
+            "declaredIn" : "conformance.vouchers",
+            "definition" : "redeem",
+            "behavior" : "redeem",
+            "ordinal" : 3,
+            "lowered" : 0
+          },
+          "relation" : "in",
+          "knownWritable" : true,
+          "writableBecause" : [ "the_rules_prove_it" ],
+          "status" : "unavailable",
+          "reason" : "no_rows",
+          "disposition" : "undecided",
+          "undecidedAbout" : [ "whether_a_row_is_at_it" ],
+          "readings" : [ {
+            "behavior" : "redeem",
+            "axis" : "redeem/voucher",
+            "relation" : "in",
+            "against" : "spring < voucher",
+            "status" : "unavailable",
+            "reason" : "no_rows"
+          } ]
+        }, {
           "obligationId" : {
             "line" : {
               "which" : {
@@ -1780,11 +2024,14 @@
           } ]
         } ],
         "pairs" : {
-          "total" : 0,
-          "between" : [ ],
-          "status" : "complete",
-          "covered" : 0,
-          "unknown" : 0
+          "total" : 4,
+          "between" : [ {
+            "one" : "redeem/voucher",
+            "other" : "redeem/party",
+            "total" : 4
+          } ],
+          "status" : "unavailable",
+          "reason" : "no_rows"
         },
         "notDerivable" : [ ],
         "notRead" : [ ]
@@ -2081,6 +2328,17 @@
           "status" : "complete"
         },
         "axes" : [ {
+          "axis" : "seat/ticket",
+          "path" : "ticket",
+          "read" : {
+            "extent" : "complete"
+          },
+          "classes" : [ "ticket/String.startsWith(\"w-\", x)", "ticket/not String.startsWith(\"w-\", x)" ],
+          "excluded" : [ ],
+          "unprovenClaims" : [ ],
+          "status" : "unavailable",
+          "reason" : "no_rows"
+        }, {
           "axis" : "seat/party",
           "path" : "party",
           "read" : {
@@ -2689,11 +2947,14 @@
           } ]
         } ],
         "pairs" : {
-          "total" : 0,
-          "between" : [ ],
-          "status" : "complete",
-          "covered" : 0,
-          "unknown" : 0
+          "total" : 4,
+          "between" : [ {
+            "one" : "seat/ticket",
+            "other" : "seat/party",
+            "total" : 4
+          } ],
+          "status" : "unavailable",
+          "reason" : "no_rows"
         },
         "notDerivable" : [ ],
         "notRead" : [ ]

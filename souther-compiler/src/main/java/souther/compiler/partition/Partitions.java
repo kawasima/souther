@@ -544,7 +544,7 @@ public final class Partitions {
      */
     private static List<NumericTerm.FromOnePosition> numbersMeasuring(
             PositionMeasurements at, List<RuleEvidence> evidence,
-            List<ClassingBlocker> blocked, EvidenceAccount account) {
+            List<ClassingBlocker> blocked) {
         TermPath path = at.position().path();
         List<RuleEvidence> here = evidence.stream()
                 .filter(each -> each.at().position().equals(path)).toList();
@@ -563,17 +563,16 @@ public final class Partitions {
                 numbers.add(each.at());
             }
         }
-        // A position the declarations already divide keeps the measures they gave it. What a body
-        // says about another number of such a position is not taken up as a second measure, and
-        // this is where that is said: an account with no entry could not tell a policy from a loss.
-        if (at.hasMeasures()) {
-            List<NumericTerm.FromOnePosition> declared =
-                    at.axes().stream().map(Axis::term).toList();
-            here.stream().filter(each -> !declared.contains(each.at()))
-                    .forEach(each -> account.disposedOf(each,
-                            new EvidenceAccount.Disposition.ThePositionIsAlreadyMeasured(path)));
-            return numbers.stream().filter(declared::contains).toList();
-        }
+        // Every number a rule named, whether or not the declarations already measured some other
+        // number of the same place. A measure is of a number and a location has as many as the
+        // rules name of it, so which measures there are is a question about numbers and never
+        // about how many the location already has — asked of the location, a body dividing the
+        // value of a position whose length a declaration bounds says nothing anybody reads, and
+        // the distinction the model does make is not published at all.
+        //
+        // Nothing is deduplicated here that the walk below does not already: one entry per number,
+        // and the measure of each is looked up by that number, so a number both a declaration and
+        // a body speak about is one measure with both read into it.
         return numbers;
     }
 
@@ -1060,7 +1059,7 @@ public final class Partitions {
             // taken together rather than chosen between by the order this happens to walk them in.
             BodyCutInspection came = null;
             List<NumericTerm.FromOnePosition> numbers =
-                    numbersMeasuring(at, evidence, blocked, account);
+                    numbersMeasuring(at, evidence, blocked);
             for (NumericTerm.FromOnePosition term : numbers) {
                 // The measure of this number where the declarations made one, and nothing where a
                 // body's rules are the first to name it. What such a measure starts from is what

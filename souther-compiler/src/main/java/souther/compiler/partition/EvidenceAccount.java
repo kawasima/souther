@@ -38,21 +38,6 @@ final class EvidenceAccount {
         record Measured(AxisId at) implements Disposition {}
 
         /**
-         * The declarations already measure this position at another number, and this stage does not
-         * add a second measure of a position a rule of its own divides.
-         *
-         * <p>A policy of this stage and not a fact about the model, which is why it is said rather
-         * than left out: an author is not told anything, and an account that simply had no entry
-         * would be an account that cannot tell this from a loss.
-         *
-         * <p>The position and not one of the measures on it. What refused the evidence is that the
-         * location is measured, which is true of the location however many numbers measure it —
-         * named by one of them, whichever was reached for would be the reason.
-         */
-        record ThePositionIsAlreadyMeasured(souther.compiler.inputs.TermPath at)
-                implements Disposition {}
-
-        /**
          * The rules about this position are not all sayable as one list of classes, so it has none
          * here and this rule divided nothing.
          *

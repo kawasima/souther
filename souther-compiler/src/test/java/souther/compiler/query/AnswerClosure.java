@@ -408,6 +408,32 @@ final class AnswerClosure {
                 Set.of(met));
     }
 
+    /**
+     * The machine under the language a class of a measure holds, on the way down to it.
+     *
+     * <p>Reached wherever a body's rules divide a position into sets of its strings: the class
+     * means that set, the set is the language, and the language is walked as one machine. Under the
+     * names the position wears, because that is how a class of such a position is written down.
+     *
+     * <p>{@code steps} is the way to the measures of the question this is under, and the rest of
+     * the way is the same wherever it is reached from — a class is a class, and what hangs under
+     * one does not turn on which question asked for the measure it is in.
+     */
+    private static Known machineInAClass(String question, Observation met, Locus.Step... steps) {
+        List<Locus.Step> way = new java.util.ArrayList<>(List.of(steps));
+        way.addAll(List.of(
+                m("souther.compiler.partition.Partitions$Partitioning", "measurements"), ELEMENT,
+                m("souther.compiler.partition.PositionMeasurements", "axes"), ELEMENT,
+                m("souther.compiler.partition.Axis", "classes"), ELEMENT,
+                m("souther.compiler.partition.PartitionClass", "recognises"),
+                m("souther.compiler.partition.Recognition$Under", "inner"),
+                m("souther.compiler.partition.Recognition$OfASet", "values"),
+                m("souther.compiler.values.ValueSet$Matching", "language"),
+                m("souther.compiler.regex.Language", "machine")));
+        return new Known(at(question, "souther.compiler.regex.Automaton",
+                way.toArray(new Locus.Step[0])), A_MACHINE_UNDER_A_LANGUAGE, Set.of(met));
+    }
+
     private static final String Q = "souther.compiler.query.";
 
     /** What the reading of a body left of the model's own divisions, which is the half of it the
@@ -475,6 +501,12 @@ final class AnswerClosure {
                     ELEMENT, m("souther.compiler.partition.PositionMeasurements", "axes"), ELEMENT,
                     m("souther.compiler.partition.Axis", "narrowed"),
                     m("souther.compiler.check.NarrowedBounds$Reading", "lower")),
+            // And the machines the classes of those measures hold, by both names the reading a
+            // body's geometry comes off answers to.
+            machineInAClass(Q + "Adequacy$Divided", walked(Scenario.THE_CORPORA),
+                    m(ANSWER, "value")),
+            machineInAClass(Q + "Adequacy$Dividing", walked(Scenario.THE_CORPORA),
+                    m(ANSWER, "value"), m(Q + "Adequacy$BodyDivided", "geometry")),
             new Known(at(EVERY_ANSWER, "souther.compiler.diag.Diagnostic",
                     m(ANSWER, "reports"), ELEMENT, m("souther.compiler.query.Report", "diagnostic")),
                     A_REPORT, BOTH_EVERYWHERE));
