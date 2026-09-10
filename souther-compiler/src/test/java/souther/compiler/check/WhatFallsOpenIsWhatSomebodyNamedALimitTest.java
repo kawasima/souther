@@ -230,20 +230,16 @@ class WhatFallsOpenIsWhatSomebodyNamedALimitTest {
         Scope params = heldTo(new Type.Ref(TypeSymbols.declared(new TypeKey("demo", "制限木"))));
 
         assertEquals(InvariantChecker.Status.COMPLETE,
-                InvariantChecker.analyze(body, lookupOf(c), ClauseMeanings.NONE,
-                        ClauseLocations.NONE,
-                        DeclarationReadings.NONE, Map.of(), params,
-                        symbolsOf(c), POLICY).status(),
+                InvariantChecker.analyze(body, readingOf(c, lookupOf(c)),
+                        DeclarationReadings.NONE, Map.of(), params, POLICY).status(),
                 "the control: read through a lookup that answers, this analysis runs to the end");
 
         ExpandedClauseLookup broken = _ -> {
             throw new IllegalStateException("this compiler could not read its own answer");
         };
         IllegalStateException why = assertThrows(IllegalStateException.class,
-                () -> InvariantChecker.analyze(body, broken, ClauseMeanings.NONE,
-                        ClauseLocations.NONE,
-                        DeclarationReadings.NONE, Map.of(), params,
-                        symbolsOf(c), POLICY),
+                () -> InvariantChecker.analyze(body, readingOf(c, broken),
+                        DeclarationReadings.NONE, Map.of(), params, POLICY),
                 "the analysis has no rule that makes this the program's problem");
 
         assertEquals("this compiler could not read its own answer", why.getMessage(),
@@ -348,6 +344,13 @@ class WhatFallsOpenIsWhatSomebodyNamedALimitTest {
 
     private static ExpandedClauseLookup lookupOf(Compilation c) {
         return RuleReadings.declaredBy(c.db(), c.modules().get(0));
+    }
+
+    /** {@code c}'s scope, reading its clauses from {@code clauses} — a source this test assembles,
+     *  which is what lets it put a lookup of its own where the compilation's would be. */
+    private static RuleReadingSource readingOf(Compilation c, ExpandedClauseLookup clauses) {
+        return new RuleReadingSource(symbolsOf(c), clauses, ClauseMeanings.NONE,
+                ClauseLocations.NONE);
     }
 
     private static Hir.Data declarationOf(Compilation c, TypeSymbol.AtModule named) {

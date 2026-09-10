@@ -155,8 +155,8 @@ class EveryTermIsReadForWhatItSaysTest {
      */
     @Test
     void twoReadingsOfOneTermAreAssumedAlike() {
-        PathEngine engine = new PathEngine(Symbols.none(DefaultStdlib.get()),
-                RuleReadings.noClauseFiled(), ClauseMeanings.NONE, ClauseLocations.NONE,
+        PathEngine engine = new PathEngine(
+                RuleReadings.ofNoClauseFiled(Symbols.none(DefaultStdlib.get())),
                 DeclarationReadings.NONE, Terms.Of.THE_DISCHARGE_TREE,
                 ReadAs.THE_COMPILATION_DOES);
         Predicates predicates = engine.predicates();

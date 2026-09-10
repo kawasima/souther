@@ -140,9 +140,10 @@ class AClauseReadsTheSameWhicheverCompileBuiltTheTermTest {
      * the answer a reader that could not tell which fields are read would fall into.
      */
     private static Clauses.StatedClauses readOf(Compilation mine, ClauseMeanings states) {
-        Clauses reading = new Clauses(Scopes.resolved(mine.db(), "demo").value(),
-                RuleReadings.declaredBy(mine.db(), "demo"), ClauseLocations.NONE,
-                DeclarationReadings.NONE, states);
+        Clauses reading = new Clauses(new RuleReadingSource(
+                Scopes.resolved(mine.db(), "demo").value(),
+                RuleReadings.declaredBy(mine.db(), "demo"), states, ClauseLocations.NONE),
+                DeclarationReadings.NONE);
         Map<BindingId, Core> given = new LinkedHashMap<>();
         reading.bindingsOf(HELD).values()
                 .forEach(each -> given.put(each, new Core.Bool(true, Type.BOOL, POS)));

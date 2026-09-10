@@ -325,11 +325,15 @@ final class Terms {
      * <p>{@code clauses} is what lets a recipe say what choosing an arm settles where the arm binds
      * a value: the answer is what that value's type guarantees, read through the one reading of a
      * declaration there is ({@link TypeGuarantees}).
+     *
+     * <p>Where this reads is {@code clauses}'s own source and is not assembled here. A reading made
+     * under a source put together by whoever is reading is one nothing else can name, so a reader
+     * that rebuilt the source from the parts it was handed would be reading a world of its own and
+     * would be lent nothing ({@link RuleReadingSource#origin}).
      */
-    Terms(Symbols symbols, Of reading, ReadingPolicy policy, Clauses clauses) {
-        this.symbols = symbols;
-        this.rules = new RuleReadingSource(symbols, clauses.expandedClauses(), clauses.states(),
-                clauses.written());
+    Terms(Of reading, ReadingPolicy policy, Clauses clauses) {
+        this.rules = clauses.source();
+        this.symbols = rules.symbols();
         this.reading = reading;
         this.policy = policy;
         this.predicates = new Predicates(this);

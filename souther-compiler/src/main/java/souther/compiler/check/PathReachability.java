@@ -263,10 +263,8 @@ public final class PathReachability {
         if (body == null) {
             return Answers.NONE;
         }
-        PathEngine engine =
-                new PathEngine(source.symbols(), source.invariants(), source.states(),
-                        source.written(), DeclarationReadings.NONE,
-                        Terms.Of.THE_TREE_THAT_RUNS, policy);
+        PathEngine engine = new PathEngine(source, DeclarationReadings.NONE,
+                Terms.Of.THE_TREE_THAT_RUNS, policy);
         Map<ControlPlace, Reachability> out = new LinkedHashMap<>();
         Map<ConstructOccurrence,
                 souther.compiler.reach.ComparisonArrival> arriving = new LinkedHashMap<>();

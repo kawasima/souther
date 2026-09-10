@@ -2008,8 +2008,14 @@ public final class Bodies {
                     discharge.present()
                     ? new InvariantChecker.Source(discharge.value().value().writtenBody(),
                             discharge.value().provenance(),
-                            Shapes.expandedClauses(db), Shapes.clauseMeanings(db),
-                            Shapes.clauseLocations(db), db.readings(),
+                            // A source of this check's own, over the scope everything below the
+                            // check reads. Not the one a module's rules are counted under, which is
+                            // over the declarations as resolution left them: the two are different
+                            // scopes, so a reading made here is not a reading made there and says
+                            // so.
+                            new RuleReadingSource(scope.value(), Shapes.expandedClauses(db),
+                                    Shapes.clauseMeanings(db), Shapes.clauseLocations(db)),
+                            db.readings(),
                             contracts.present() ? contracts.value() : Map.of())
                     : null;
             List<Diagnostic> warnings = new ArrayList<>();

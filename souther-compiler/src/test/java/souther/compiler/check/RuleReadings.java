@@ -78,8 +78,7 @@ public final class RuleReadings {
      *  that a reading of a module's declarations is built by saying which representation it reads
      *  and never by handing over a scope alone. */
     static Terms termsOfNoClauseFiled(Symbols symbols, ReadingPolicy policy) {
-        return new Terms(symbols, Terms.Of.THE_DISCHARGE_TREE, policy,
-                new Clauses(symbols, noClauseFiled(), ClauseLocations.NONE,
-                        DeclarationReadings.NONE, ClauseMeanings.NONE));
+        return new Terms(Terms.Of.THE_DISCHARGE_TREE, policy,
+                new Clauses(ofNoClauseFiled(symbols), DeclarationReadings.NONE));
     }
 }
