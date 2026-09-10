@@ -1899,7 +1899,7 @@ public final class InvariantChecker {
         List<Direct> out = new ArrayList<>();
         List<FieldDomains.NoLine> noLines = new ArrayList<>();
         SequencedMap<HandOver, FieldDomains.WithoutAnEnd> withoutAnEnd = new LinkedHashMap<>();
-        List<FieldDomains.AboutOneCoordinate> aboutOneCoordinate = new ArrayList<>();
+        SequencedMap<Candidate, Set<InvariantStatementId>> aboutOneCoordinate = new LinkedHashMap<>();
         Map<RuleKey, List<TypeSymbol.AtModule>> narrowers = new LinkedHashMap<>();
         Map<RuleRef.Invariant, Required> raised = new LinkedHashMap<>();
         Map<ReadingPlace, Required> raisedByPart = new LinkedHashMap<>();
@@ -1925,7 +1925,12 @@ public final class InvariantChecker {
         // what a report prints for a position is these in the order the declaration writes them.
         return new Reading(List.copyOf(out), List.copyOf(noLines),
                 List.copyOf(withoutAnEnd.values()),
-                List.copyOf(aboutOneCoordinate),
+                // Made once each, from the statements gathered under them: a candidate rebuilt as
+                // the walk met another statement copied what it had so far every time.
+                aboutOneCoordinate.entrySet().stream()
+                        .map(each -> new FieldDomains.AboutOneCoordinate(
+                                each.getKey().at(), each.getValue()))
+                        .toList(),
                 Map.copyOf(narrowers),
                 Collections.unmodifiableMap(new LinkedHashMap<>(raised)),
                 Collections.unmodifiableMap(new LinkedHashMap<>(raisedByPart)),
@@ -2035,7 +2040,7 @@ public final class InvariantChecker {
                         Map<FactSubject, Coordinate> byName, List<Direct> out,
                         List<FieldDomains.NoLine> noLines,
                         SequencedMap<HandOver, FieldDomains.WithoutAnEnd> withoutAnEnd,
-                        List<FieldDomains.AboutOneCoordinate> naming,
+                        SequencedMap<Candidate, Set<InvariantStatementId>> naming,
                         Map<RuleKey, List<TypeSymbol.AtModule>> narrowers,
                         Map<RuleRef.Invariant, Required> raised, ReadingEvidence took,
                         Map<RuleKey, Type> typeAt,
@@ -2280,7 +2285,7 @@ public final class InvariantChecker {
      */
     private void aChoiceAboutOneCoordinate(ClauseExpr.Part said, InvariantStatementId statement,
                                            Denotations at, Map<FactSubject, Coordinate> byName,
-                                           List<FieldDomains.AboutOneCoordinate> naming) {
+                                           SequencedMap<Candidate, Set<InvariantStatementId>> naming) {
         // The shape the walk is already holding. Read again from the node, this would be a second
         // reading of the clause's structure, and one made under a polarity of its own: a choice an
         // author wrote as a denied conjunction is a choice, and the shape says so.
@@ -3183,12 +3188,22 @@ public final class InvariantChecker {
      * ({@link FieldDomains#movedEndsOf}).
      */
     private static void aboutOneCoordinate(CanonicalForm read, InvariantStatementId statement,
-                                          List<FieldDomains.AboutOneCoordinate> out) {
+                                          SequencedMap<Candidate, Set<InvariantStatementId>> out) {
         if (!(read instanceof CanonicalForm.Over over) || over.numbers().size() != 1) {
             return;
         }
         aboutOneCoordinate(over.numbers().iterator().next().at(), statement, out);
     }
+
+    /**
+     * One conjunct's quantity over one number, as the walk gathers the statements that reach it.
+     *
+     * <p>What the candidates are being collected under while the clause is read, and no part of what
+     * a reading answers. A candidate is made once, from the statements gathered here, rather than
+     * remade with one more statement in it each time the walk meets another — which copied the set
+     * it had grown so far, once per statement, for every statement.
+     */
+    private record Candidate(NumberAt<RuleKey> at, PartId<RuleRef.Invariant> part) {}
 
     /**
      * One candidate, kept once, with the statement that reached this number written into it.
@@ -3200,15 +3215,9 @@ public final class InvariantChecker {
      * about which.
      */
     private static void aboutOneCoordinate(NumberAt<RuleKey> at, InvariantStatementId statement,
-                                           List<FieldDomains.AboutOneCoordinate> out) {
-        for (int i = 0; i < out.size(); i++) {
-            FieldDomains.AboutOneCoordinate had = out.get(i);
-            if (had.at().equals(at) && had.part().equals(statement.part())) {
-                out.set(i, had.and(statement));
-                return;
-            }
-        }
-        out.add(new FieldDomains.AboutOneCoordinate(at, Set.of(statement)));
+                                           SequencedMap<Candidate, Set<InvariantStatementId>> out) {
+        out.computeIfAbsent(new Candidate(at, statement.part()), _ -> new LinkedHashSet<>())
+                .add(statement);
     }
 
     /** One finding, kept once. A coordinate reached twice is one place with one thing to say. */

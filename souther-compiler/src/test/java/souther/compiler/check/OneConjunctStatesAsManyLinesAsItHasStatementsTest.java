@@ -252,36 +252,48 @@ class OneConjunctStatesAsManyLinesAsItHasStatementsTest {
                 | "a" : (Pair { name = "x", code = "y" }, Pair { name = "x", code = "y" }) -> Ok
             """;
 
-    /** Every line the model draws, by what a report calls it. */
-    private static Map<String, LineOrigin> linesOf(String model) {
-        Compilation compilation = compiled(model);
+    /**
+     * Each model read once, and every question below put to that reading.
+     *
+     * <p>One compilation per source rather than one per question. What is asked here is what the
+     * readings of one model came to, so a second compilation of the same source is the same answer
+     * worked out again — and these ask several questions apiece of the two models.
+     */
+    private static final Map<String, Compilation> READ = new LinkedHashMap<>();
+
+    private static synchronized Compilation compiled(String model) {
+        return READ.computeIfAbsent(model, each -> {
+            Compilation compilation = Compilation.ofSource(each, "Main");
+            compilation.measure(Adequacy.Asked.fullReport());
+            compilation.answerEverything();
+            return compilation;
+        });
+    }
+
+    /** Every boundary the model states, as a report meets them. */
+    private static List<BorderAssessment> bordersOf(String model) {
         Map<String, List<BorderAssessment>> boundaries =
-                Adequacy.boundariesOf(compilation.db(), "example.forms");
+                Adequacy.boundariesOf(compiled(model).db(), "example.forms");
         assertNotNull(boundaries, "the model under test compiles");
-        Map<String, LineOrigin> out = new LinkedHashMap<>();
-        boundaries.values().forEach(each ->
-                each.forEach(line -> out.put(line.label(), line.border().origin())));
+        List<BorderAssessment> out = new java.util.ArrayList<>();
+        boundaries.values().forEach(out::addAll);
         return out;
     }
 
-    private static Compilation compiled(String model) {
-        Compilation compilation = Compilation.ofSource(model, "Main");
-        compilation.measure(Adequacy.Asked.fullReport());
-        compilation.answerEverything();
-        return compilation;
+    /** Every line the model draws, by what a report calls it. */
+    private static Map<String, LineOrigin> linesOf(String model) {
+        Map<String, LineOrigin> out = new LinkedHashMap<>();
+        bordersOf(model).forEach(line -> out.put(line.label(), line.border().origin()));
+        return out;
     }
 
     /** Every line drawn at {@code label}, which is more than one where two rules stop the values in
      *  the same place. */
     private static List<DeclaredLine> drawnAt(String model, String label) {
-        Compilation compilation = compiled(model);
-        Map<String, List<BorderAssessment>> boundaries =
-                Adequacy.boundariesOf(compilation.db(), "example.forms");
-        assertNotNull(boundaries, "the model under test compiles");
-        List<DeclaredLine> out = new java.util.ArrayList<>();
-        boundaries.values().forEach(each -> each.stream()
+        List<DeclaredLine> out = bordersOf(model).stream()
                 .filter(line -> line.label().equals(label))
-                .forEach(line -> out.add(drawnBy(line.border().origin()))));
+                .map(line -> drawnBy(line.border().origin()))
+                .collect(java.util.stream.Collectors.toCollection(java.util.ArrayList::new));
         org.junit.jupiter.api.Assertions.assertFalse(out.isEmpty(),
                 () -> label + " is not a line of the model");
         return out;
