@@ -360,6 +360,7 @@ public record PartitionEvidence(Measure<List<AxisCoverage>> partitioned,
 
             /** And how a reader finds that rule, which is not what tells it from another. Every
              *  handle offered, for the reason a standing question gives. */
+            @Override
             public java.util.Set<RuleCitation> cited() {
                 return finding.cited();
             }
@@ -399,6 +400,7 @@ public record PartitionEvidence(Measure<List<AxisCoverage>> partitioned,
             }
 
             /** And how a reader finds that rule, which is not what tells it from another. */
+            @Override
             public java.util.Set<RuleCitation> cited() {
                 return finding.cited();
             }
