@@ -77,7 +77,8 @@ public final class ValueGuarantees {
      * a declaration says. */
     private static InvariantChecker.Seeded seededOf(TypeSymbol.AtModule named,
                                                     RuleReadingSource source, ReadingPolicy policy) {
-        InvariantChecker.Seeded seeded = InvariantChecker.seedFields(named, source, policy);
+        InvariantChecker.Seeded seeded =
+                InvariantChecker.seedFieldsUnshared(named, source, policy);
         return seeded.everyClauseRead() && !seeded.constraints().isBottom() ? seeded : null;
     }
 }

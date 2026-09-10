@@ -66,6 +66,13 @@ public record DeclaredBorders(souther.compiler.diag.Citation at,
     public static DeclaredBorders of(TypeSymbol declaredOn, PublishedDeclarations declarations,
                                      DeclarationCitations citations, RuleReadingSource source,
                                      ReadingPolicy policy) {
+        return of(declaredOn, declarations, citations, source, policy, DeclarationReadings.NONE);
+    }
+
+    /** The same, asking {@code machines} for what somebody has already made of the declaration. */
+    public static DeclaredBorders of(TypeSymbol declaredOn, PublishedDeclarations declarations,
+                                     DeclarationCitations citations, RuleReadingSource source,
+                                     ReadingPolicy policy, DeclarationReadings machines) {
         // One address, and two questions put to it. What kind of declaration this is decides whether
         // there are lines to read at all; where its code is decides what a report calls the place.
         // Neither is looked up by the name a second time, which is what would give one declaration
@@ -80,7 +87,8 @@ public record DeclaredBorders(souther.compiler.diag.Citation at,
         }
         Citation at = citations.of(named.key());
         Map<Key, NumberAt<RuleKey>> forms = new LinkedHashMap<>();
-        for (FieldDomains.Placed placed : Rules.of(declaredOn, source, policy).bounds().placed()) {
+        for (FieldDomains.Placed placed
+                : Rules.of(declaredOn, source, policy, machines).bounds().placed()) {
             // A clause reaching this declaration through a spread is written on another one and is
             // that one's to name, the way a line is named by the rule that drew it (ADR-0090). Its
             // own reading answers for it.

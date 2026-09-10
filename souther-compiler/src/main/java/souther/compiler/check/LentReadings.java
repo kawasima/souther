@@ -31,8 +31,18 @@ import java.util.function.Supplier;
  * to lend to another — it is what this revision has found out, and every reading made under the
  * revision asks the one table.
  *
+ * <p>What a reading decides on its own goes with it. The ends a declaration's conjuncts moved are
+ * read by asking what its rules leave without each of them, and each of those is a reading of the
+ * declaration — so what a lent reading has been asked is lent along with it, and the borrowers of
+ * one reading put such a question once between them ({@link DeclarationReading}).
+ *
  * <p>This shares work and not answers. Which questions are recomputed is settled before anything is
  * asked of this, and an answer is never kept here for a reader to find later.
+ *
+ * <p><b>Confined to the thread its store's walk is on.</b> Nothing here is synchronised and nothing
+ * lent from here is: a store answers its questions on the one thread holding it, and what is lent
+ * is reached through the store. That is ownership rather than a property of any one object, so a
+ * store answered from two threads is not made sound by synchronising what it lends.
  */
 public final class LentReadings implements DeclarationReadings {
 
@@ -42,7 +52,7 @@ public final class LentReadings implements DeclarationReadings {
                                       ReadingPolicy policy) {}
 
     /** A reading, and what the store was asked to make it. */
-    private record Shared(InvariantChecker.Seeded seeded, StoreWork.Reads reads) {}
+    private record Shared(DeclarationReading reading, StoreWork.Reads reads) {}
 
     private final DeclarationReadings machines;
     private final LongSupplier revision;
@@ -100,9 +110,9 @@ public final class LentReadings implements DeclarationReadings {
     };
 
     @Override
-    public InvariantChecker.Seeded reading(TypeKey declaration, RuleReadingSource source,
-                                           ReadingPolicy policy,
-                                           Supplier<InvariantChecker.Seeded> read) {
+    public DeclarationReading reading(TypeKey declaration, RuleReadingSource source,
+                                      ReadingPolicy policy,
+                                      Supplier<InvariantChecker.Seeded> read) {
         Shared held = current().get(new OfDeclarationUnder(declaration, source.origin(), policy));
         if (held == null) {
             return readingForAnAnswer(declaration, source, policy, read);
@@ -110,17 +120,18 @@ public final class LentReadings implements DeclarationReadings {
         // What the making read is what whoever is being answered out of it read: they are getting
         // the reading rather than doing it, and an edit to what it was made from has to reach them.
         held.reads().here();
-        return held.seeded();
+        return held.reading();
     }
 
     @Override
-    public InvariantChecker.Seeded readingForAnAnswer(TypeKey declaration, RuleReadingSource source,
-                                                      ReadingPolicy policy,
-                                                      Supplier<InvariantChecker.Seeded> read) {
+    public DeclarationReading readingForAnAnswer(TypeKey declaration, RuleReadingSource source,
+                                                 ReadingPolicy policy,
+                                                 Supplier<InvariantChecker.Seeded> read) {
         StoreWork.Made<InvariantChecker.Seeded> made = work.watching(read);
+        DeclarationReading reading = DeclarationReading.of(made.value());
         current().put(new OfDeclarationUnder(declaration, source.origin(), policy),
-                new Shared(made.value(), made.reads()));
-        return made.value();
+                new Shared(reading, made.reads()));
+        return reading;
     }
 
     /**

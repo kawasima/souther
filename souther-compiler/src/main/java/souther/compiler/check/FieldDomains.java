@@ -367,19 +367,28 @@ public final class FieldDomains {
      * fields is this reading's question, so the body it is written on is this reading's to fetch —
      * a caller made to fetch one has a declaration in its hands for a question that was never its
      * own, and can read the record's structure back out of it.
+     *
+     * <p>Where the reading comes from is said. A reader with a store to ask hands it over; one
+     * with none says so, and the overloads that leave it out read for themselves and are a test's
+     * to call — what keeps a reading of this compiler's own from quietly becoming one of those is
+     * checked over the compiled classes rather than left to which overload was to hand.
      */
-    public static FieldDomains of(TypeSymbol.AtModule named, RuleReadingSource source,
-                                  ReadingPolicy policy) {
-        return of(named, source, policy, Map.of());
-    }
-
-    /** The same, asking {@code machines} for what somebody has already made of the declaration's
-     *  string rules before building any of it. */
     public static FieldDomains of(TypeSymbol.AtModule named, RuleReadingSource source,
                                   ReadingPolicy policy, DeclarationReadings machines) {
         return of(named, source, policy, Map.of(), machines);
     }
 
+    /** The same, reading for itself. */
+    public static FieldDomains of(TypeSymbol.AtModule named, RuleReadingSource source,
+                                  ReadingPolicy policy) {
+        return unshared(named, source, policy, Map.of());
+    }
+
+    /** The same, with some fields already settled at a value and reading for itself. */
+    public static FieldDomains of(TypeSymbol.AtModule named, RuleReadingSource source,
+                                  ReadingPolicy policy, Map<RuleKey, Count> settled) {
+        return unshared(named, source, policy, settled);
+    }
 
     /**
      * The same, with some fields already settled at a value.
@@ -389,12 +398,6 @@ public final class FieldDomains {
      * not read off {@code endsAt}'s own range — which still runs from 1 — but off what is left of it
      * once the other end is fixed, which is 1440 and nothing else.
      */
-    public static FieldDomains of(TypeSymbol.AtModule named, RuleReadingSource source,
-                                  ReadingPolicy policy, Map<RuleKey, Count> settled) {
-        return of(named, source, policy, settled, DeclarationReadings.NONE);
-    }
-
-    /** The same, asking {@code machines} first. */
     public static FieldDomains of(TypeSymbol.AtModule named, RuleReadingSource source,
                                   ReadingPolicy policy, Map<RuleKey, Count> settled,
                                   DeclarationReadings machines) {
@@ -406,6 +409,22 @@ public final class FieldDomains {
                 ? of(named, data, source, policy, atValues(settled),
                         InvariantChecker.Reach.EVERYTHING, machines)
                 : NONE;
+    }
+
+    /**
+     * The same, read without borrowing anything anybody else has made of the declaration.
+     *
+     * <p><b>Where a reading cannot be reached rather than where none would help.</b> The callers
+     * here are inside the composing of a value, which is handed a plan and a strategy for filling
+     * it and is handed nothing that could say where a reading comes from — so what borrowing would
+     * take is a capability carried through the composing, and whether it belongs there is not
+     * settled. This keeps what those callers did before while saying that is what it is: named, so
+     * that what is unsettled can be found by looking for it, and separate from
+     * {@link DeclarationReadings#NONE}, which is what a reader with no store says.
+     */
+    public static FieldDomains unshared(TypeSymbol.AtModule named, RuleReadingSource source,
+                                        ReadingPolicy policy, Map<RuleKey, Count> settled) {
+        return of(named, source, policy, settled, DeclarationReadings.NONE);
     }
 
     /** Settlings written as names, read as what stands at each. What a caller naming a place means
@@ -441,8 +460,23 @@ public final class FieldDomains {
         // is the value it is, so there are no siblings to relate. Everything else is the same
         // question — its own rules can hold a hole no range keeps, and they can contradict, and both
         // answers were being given away by treating it as a value with nothing to say.
-        InvariantChecker.Seeded seeded =
-                InvariantChecker.seedFields(named, source, policy, settled, reach, machines);
+        //
+        // Asked of the reading and kept there. What the rules leave is decided by the reading and
+        // by nothing the asker brings, and the ends its conjuncts moved are read by reading the
+        // declaration again without each of them — so a second asker working this out again puts
+        // the whole attribution a second time. Which readings are kept and which belong to one
+        // question is settled where a reading is asked for, and is not asked again here.
+        return InvariantChecker.readFields(named, source, policy, settled, reach, machines)
+                .fields(seeded -> leftBy(seeded, named, data, source, policy, settled, reach,
+                        machines));
+    }
+
+    /** What the reading {@code seeded} leaves the fields able to hold, under the terms it was made
+     *  with. */
+    private static FieldDomains leftBy(InvariantChecker.Seeded seeded, TypeSymbol.AtModule named,
+                                       Hir.Data data, RuleReadingSource source,
+                                       ReadingPolicy policy, Map<NumberAt<RuleKey>, Count> settled,
+                                       InvariantChecker.Reach reach, DeclarationReadings machines) {
         Map<RuleKey, NumericDomain.Bounds> out = new LinkedHashMap<>();
         seeded.atoms().forEach((field, atom) -> {
             // The value itself is at no name of its own, and its range is the one thing not worth
@@ -1613,8 +1647,15 @@ public final class FieldDomains {
      */
     public static boolean mayHoldNothingAt(TypeSymbol.AtModule named, Hir.Data data, RuleKey path,
                                            RuleReadingSource source, ReadingPolicy policy) {
+        return mayHoldNothingAt(named, data, path, source, policy, DeclarationReadings.NONE);
+    }
+
+    /** The same, asking {@code machines} for what somebody has already made of the declaration. */
+    public static boolean mayHoldNothingAt(TypeSymbol.AtModule named, Hir.Data data, RuleKey path,
+                                           RuleReadingSource source, ReadingPolicy policy,
+                                           DeclarationReadings machines) {
         // A count is never below none, so leaving it no room above none is leaving it at none.
-        return OccurrenceCounts.of(named, source, policy).mayHoldAtMost(path, 0);
+        return OccurrenceCounts.of(named, source, policy, machines).mayHoldAtMost(path, 0);
     }
 
     /**

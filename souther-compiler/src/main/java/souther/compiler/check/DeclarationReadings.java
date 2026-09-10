@@ -63,10 +63,10 @@ public interface DeclarationReadings {
      * one declaration's rules does exactly that — and what comes back is a reading of what that
      * source left, which is not the declaration's own.
      */
-    default InvariantChecker.Seeded reading(TypeKey declaration, RuleReadingSource source,
-                                            ReadingPolicy policy,
-                                            Supplier<InvariantChecker.Seeded> read) {
-        return read.get();
+    default DeclarationReading reading(TypeKey declaration, RuleReadingSource source,
+                                       ReadingPolicy policy,
+                                       Supplier<InvariantChecker.Seeded> read) {
+        return DeclarationReading.of(read.get());
     }
 
     /**
@@ -77,10 +77,10 @@ public interface DeclarationReadings {
      * nothing. What it makes is kept, because it is the declaration's canonical reading and the
      * question that asked for the answer is the next to want it.
      */
-    default InvariantChecker.Seeded readingForAnAnswer(TypeKey declaration, RuleReadingSource source,
-                                                       ReadingPolicy policy,
-                                                       Supplier<InvariantChecker.Seeded> read) {
-        return read.get();
+    default DeclarationReading readingForAnAnswer(TypeKey declaration, RuleReadingSource source,
+                                                  ReadingPolicy policy,
+                                                  Supplier<InvariantChecker.Seeded> read) {
+        return DeclarationReading.of(read.get());
     }
 
     /**
@@ -119,17 +119,17 @@ public interface DeclarationReadings {
             }
 
             @Override
-            public InvariantChecker.Seeded reading(TypeKey declaration, RuleReadingSource source,
-                                                   ReadingPolicy policy,
-                                                   Supplier<InvariantChecker.Seeded> read) {
+            public DeclarationReading reading(TypeKey declaration, RuleReadingSource source,
+                                              ReadingPolicy policy,
+                                              Supplier<InvariantChecker.Seeded> read) {
                 return lender.readingForAnAnswer(declaration, source, policy, read);
             }
 
             @Override
-            public InvariantChecker.Seeded readingForAnAnswer(TypeKey declaration,
-                                                              RuleReadingSource source,
-                                                              ReadingPolicy policy,
-                                                              Supplier<InvariantChecker.Seeded> read) {
+            public DeclarationReading readingForAnAnswer(TypeKey declaration,
+                                                         RuleReadingSource source,
+                                                         ReadingPolicy policy,
+                                                         Supplier<InvariantChecker.Seeded> read) {
                 return lender.readingForAnAnswer(declaration, source, policy, read);
             }
         };
@@ -137,6 +137,11 @@ public interface DeclarationReadings {
 
     /**
      * Nothing to borrow, for a reading with no store to ask.
+     *
+     * <p>Named where it is wanted and never arrived at by leaving an argument out. Reading a
+     * declaration for oneself where somebody has already read it is not a slower way to the same
+     * answer — it is the whole of what a reading costs, paid again — so which readers do that is a
+     * thing said in the source rather than a consequence of which overload was to hand.
      *
      * <p>A reading's own answers all the same, and a fresh one at each asking: a reading that
      * borrows nothing still comes to the machines it built, and what it came to is what its own
