@@ -62,17 +62,17 @@ class WhatACountIsShortOfIsTheReadingsAndNotTheRunsTest {
         RuleReadingSource whole = RuleReadings.of(compilation, module);
         ReadingPolicy policy = compilation.db().ask(new Front.Reading()).value();
 
-        InvariantChecker.Seeded email = InvariantChecker.seedFields(
-                named(compilation, module, "Email"), whole, policy, DeclarationReadings.NONE);
-        assertFalse(email.notGathered().isEmpty(),
-                "the model is only worth reading here while a reading of it stops somewhere");
-        assertFalse(email.clausesNotExpanded(),
-                "and stops for a reason that is not a rule failing to arrive");
-
         assertTrue(TypeCardinality.solve(declarationsOf(compilation, module), whole, policy)
                         .everyRuleReached(),
                 "a reading that stopped where it could go no further was given every rule there is,"
                         + " and a count over it is a count of what the model states");
+
+        InvariantChecker.Seeded email = InvariantChecker.seedFields(
+                named(compilation, module, "Email"), whole, policy, DeclarationReadings.NONE);
+        assertFalse(email.notGathered().isEmpty(),
+                "the model says nothing here unless a reading of it does stop somewhere");
+        assertFalse(email.clausesNotExpanded(),
+                "and stops for a reason that is not a rule failing to arrive");
 
         assertFalse(TypeCardinality.solve(declarationsOf(compilation, module),
                         refusing(new TypeKey(module, "Held"), whole), policy).everyRuleReached(),
