@@ -9,9 +9,11 @@ import souther.compiler.query.Adequacy;
 import souther.compiler.query.Compilation;
 
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 /**
  * A rule written under a denial draws the line the rule states, not the one its operator does.
@@ -62,12 +64,44 @@ class ADeniedComparisonDrawsTheLineItStatesTest {
                 "the two keep opposite ends of the number the positions stand apart");
     }
 
+    /**
+     * And a conjunct stating two comparisons hands on both of them.
+     *
+     * <p>A denial is carried to the leaves, so a conjunction an author wrote as a denied choice is
+     * one authored conjunct stating two rules. Both are rules this reading draws a line for, and
+     * both have to reach it: counted by the rule they are a conjunct of, the second is the first
+     * said again and the line it would have drawn is not drawn at all.
+     *
+     * <p>The cuts and not the lines, because which authored conjunct each is filed against is what
+     * the two spellings differ about and is #1583's question. What is held here is that the reading
+     * below is given the same rules.
+     */
+    @Test
+    void aConjunctStatingTwoComparisonsHandsOnBoth() {
+        assertEquals(cutsOf("lo <= hi && lo2 <= hi2"),
+                cutsOf("Bool.not(lo > hi || lo2 > hi2)"),
+                "both halves of a denied choice are rules the reading of lines is given");
+    }
+
+    /** The pair that would pass without it: one comparison is not two. */
+    @Test
+    void oneComparisonIsNotTwo() {
+        assertNotEquals(cutsOf("lo <= hi && lo2 <= hi2"), cutsOf("lo <= hi"),
+                "a conjunct stating one rule hands on one");
+    }
+
+    /** What the lines cut, with the conjunct each is filed against dropped. */
+    private static Set<String> cutsOf(String clause) {
+        return linesOf(clause).stream().map(each -> String.valueOf(each.cuts()))
+                .collect(java.util.stream.Collectors.toSet());
+    }
+
     /** What the reading that draws lines makes of a declaration whose rule is {@code clause}. */
     private static List<LineDrawn> linesOf(String clause) {
         String source = """
                 module example.denied
 
-                data R = { lo: Int, hi: Int }
+                data R = { lo: Int, hi: Int, lo2: Int, hi2: Int }
                     invariant same = %s
 
                 data Taken

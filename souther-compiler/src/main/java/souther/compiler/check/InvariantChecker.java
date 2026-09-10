@@ -1466,6 +1466,36 @@ public final class InvariantChecker {
     }
 
     /**
+     * What a conjunct handed to the next reading is one of: which part of which rule, and where in
+     * that part the comparison stands.
+     *
+     * <p><b>The occurrence, because one authored part states more than one comparison.</b> A denial
+     * is carried to the leaves as a clause is read, so a conjunction an author wrote as a denied
+     * choice is one part and two comparisons — and both are handed on, because each is a rule the
+     * reading that draws lines has something to do with. Named by the part alone, the second is the
+     * first said again and the reading below never sees it.
+     *
+     * <p><b>And the place is not here, because one conjunct read twice is one conjunct.</b> A rule
+     * is read once per place the walk opens a value at, so a record holding two of a type is two
+     * readings of that type's clause — one written rule, and a row is owed for it once. Named by
+     * the place as well, each reading would hand on its own and the model would owe a row per
+     * place it happens to be carried to.
+     *
+     * <p>Which is why this is neither {@link ReadingPlace} nor {@link PartId} but the pair that
+     * says what a hand-over is: one per comparison the reading arrived at inside a conjunct,
+     * however many places that conjunct was read at.
+     */
+    record HandOver(PartId<RuleRef.Invariant> part, ClauseExpr.Occurrence at) {
+
+        HandOver {
+            if (part == null || at == null) {
+                throw new IllegalArgumentException(
+                        "a conjunct handed on is part of some rule, somewhere in it");
+            }
+        }
+    }
+
+    /**
      * One clause reaching a value, rebased onto the positions of that value, which clause it is,
      * and the parts its author wrote it in.
      *
@@ -1861,7 +1891,7 @@ public final class InvariantChecker {
                                    ReadingEvidence took, RulesRead rules) {
         List<Direct> out = new ArrayList<>();
         List<FieldDomains.NoLine> noLines = new ArrayList<>();
-        List<FieldDomains.WithoutAnEnd> withoutAnEnd = new ArrayList<>();
+        SequencedMap<HandOver, FieldDomains.WithoutAnEnd> withoutAnEnd = new LinkedHashMap<>();
         List<FieldDomains.AboutOneCoordinate> aboutOneCoordinate = new ArrayList<>();
         Map<RuleKey, List<TypeSymbol.AtModule>> narrowers = new LinkedHashMap<>();
         Map<RuleRef.Invariant, Required> raised = new LinkedHashMap<>();
@@ -1882,7 +1912,8 @@ public final class InvariantChecker {
                         raised, took, typeAt, rules, raisedByPart, standing)));
         // Insertion order, kept: `Map.copyOf` iterates in an order salted once per JVM run, and
         // what a report prints for a position is these in the order the declaration writes them.
-        return new Reading(List.copyOf(out), List.copyOf(noLines), List.copyOf(withoutAnEnd),
+        return new Reading(List.copyOf(out), List.copyOf(noLines),
+                List.copyOf(withoutAnEnd.values()),
                 List.copyOf(aboutOneCoordinate),
                 Map.copyOf(narrowers),
                 Collections.unmodifiableMap(new LinkedHashMap<>(raised)),
@@ -1992,7 +2023,7 @@ public final class InvariantChecker {
                         Denotations at,
                         Map<FactSubject, Coordinate> byName, List<Direct> out,
                         List<FieldDomains.NoLine> noLines,
-                        List<FieldDomains.WithoutAnEnd> withoutAnEnd,
+                        SequencedMap<HandOver, FieldDomains.WithoutAnEnd> withoutAnEnd,
                         List<FieldDomains.AboutOneCoordinate> naming,
                         Map<RuleKey, List<TypeSymbol.AtModule>> narrowers,
                         Map<RuleRef.Invariant, Required> raised, ReadingEvidence took,
@@ -2111,8 +2142,8 @@ public final class InvariantChecker {
             // out places no end and is no failure of this reading, so there is nothing here for an
             // author to lift and there is a conjunct for the reading that draws lines to make what
             // it can of.
-            withoutAnEnd.add(new FieldDomains.WithoutAnEnd(part, comparison,
-                    said.written().pos()));
+            withoutAnEnd.putIfAbsent(new HandOver(part, said.at()),
+                    new FieldDomains.WithoutAnEnd(part, comparison, said.written().pos()));
             return;
         }
         // An end where the other side is a constant, and a relation everywhere else. Which it is
@@ -2190,8 +2221,8 @@ public final class InvariantChecker {
             // The hand-over beside the finding, and not read off it. Both come of this conjunct
             // having no end, and they answer different questions: what an author is owed a word
             // about, and what the next reading is given to read.
-            withoutAnEnd.add(new FieldDomains.WithoutAnEnd(part, comparison,
-                    said.written().pos()));
+            withoutAnEnd.putIfAbsent(new HandOver(part, said.at()),
+                    new FieldDomains.WithoutAnEnd(part, comparison, said.written().pos()));
             // The declaration and not the clause. Which declaration took an edge in is what ADR-0090
             // names beside a line, and what a reader is sent to look at is the declaration holding
             // the relation.

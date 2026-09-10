@@ -51,6 +51,25 @@ class WhatARuleLeavesDoesNotTurnOnHowItsAuthorSpeltTheBooleanTest {
         assertEquals(readingOf("n /= 3"), readingOf("Bool.not(n == 3)"));
     }
 
+    /**
+     * And a rule named through a helper, denied.
+     *
+     * <p>A helper's expansion is a binding, and what a reading meets under a denial there is the
+     * binding with the denial above it. Crossed only where nothing stood above it, a rule an author
+     * named and denied was a form this reading had no word for — and since almost every binding it
+     * meets is one an expansion made, that is most of the rules stated through a helper.
+     */
+    @Test
+    void aRuleNamedThroughAHelperAndDeniedIsTheRuleItDenies() {
+        assertEquals(readingOf("n <= 3"), readingOf("Bool.not(aboveThree(n))", HELPER));
+        assertEquals(readingOf("n > 3"), readingOf("aboveThree(n)", HELPER));
+    }
+
+    /** A helper naming the rule the fixtures above deny. */
+    private static final String HELPER = """
+            let aboveThree (n: Int): Bool = n > 3
+            """;
+
     /** The pair the tier above would pass without: a rule and its denial are different rules. */
     @Test
     void aRuleAndItsDenialAreNotOneReading() {
@@ -102,7 +121,11 @@ class WhatARuleLeavesDoesNotTurnOnHowItsAuthorSpeltTheBooleanTest {
                            List<ComparisonClaim> handedOn, String bounds, String accounting) {}
 
     private static Reading readingOf(String clause) {
-        FieldDomains domains = domainsOf(clause);
+        return readingOf(clause, "");
+    }
+
+    private static Reading readingOf(String clause, String helpers) {
+        FieldDomains domains = domainsOf(clause, helpers);
         return new Reading(domains.placed(), domains.stated(), domains.aboutOneCoordinate(),
                 domains.withoutAnEnd().stream().map(each -> each.states().claim()).toList(),
                 String.valueOf(domains.at(RuleKey.of("n"))),
@@ -121,14 +144,19 @@ class WhatARuleLeavesDoesNotTurnOnHowItsAuthorSpeltTheBooleanTest {
     }
 
     private static FieldDomains domainsOf(String clause) {
+        return domainsOf(clause, "");
+    }
+
+    private static FieldDomains domainsOf(String clause, String helpers) {
         String source = """
                 module example.spelling
 
+                %s
                 data Box =
                     { n: Int
                     }
                     invariant capped = %s
-                """.formatted(clause);
+                """.formatted(helpers, clause);
         Compilation compilation = Compilation.ofSource(source, "Main");
         compilation.answerEverything();
         assertEquals(List.of(), compilation.diagnostics().values().stream()
