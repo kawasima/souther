@@ -171,9 +171,13 @@ public final class PathReachability {
          * neither is derivable from the other afterwards: the corrected answers no longer say which
          * arms were corrected, and the corrections do not say what everything else came to.
          *
-         * @param lit the probes a row was recorded at
+         * @param lit the probes a row was recorded at, which are places of the numbering this
+         *            reading was made under. A probe of another is one no arm here answers to, so
+         *            the run would correct nothing and every proof would stand — the same answer as
+         *            a run that went nowhere
          */
         public AsRun asRunWith(java.util.Set<ArmProbe> lit) {
+            lit.forEach(probe -> requireNumbering(probe.numbering()));
             Map<ControlPlace, Reachability> out = new LinkedHashMap<>(found);
             java.util.Set<ArmProbe> provedWrong =
                     new java.util.LinkedHashSet<>();
@@ -318,7 +322,7 @@ public final class PathReachability {
      *
      * @return what went unanswered, or empty where nothing did
      */
-    private static java.util.Optional<String> unanswered(
+    private static Optional<String> unanswered(
             Core body, CoverageSites.Plan plan, Map<ControlPlace, Reachability> out,
             Map<ConstructOccurrence,
                     souther.compiler.reach.ComparisonArrival> arriving) {
@@ -326,7 +330,7 @@ public final class PathReachability {
         // owed for the places a run could be recorded at, and a node that is no comparison of this
         // plan is a node there was nothing to answer about.
         if (body instanceof Core.Binary comparison) {
-            java.util.Optional<String> here = unansweredAt(comparison, plan, out, arriving);
+            Optional<String> here = unansweredAt(comparison, plan, out, arriving);
             if (here.isPresent()) {
                 return here;
             }
@@ -334,8 +338,8 @@ public final class PathReachability {
         List<String> missed = new ArrayList<>();
         Core.forEachChild(body, child ->
                 unanswered(child, plan, out, arriving).ifPresent(missed::add));
-        return missed.isEmpty() ? java.util.Optional.empty()
-                : java.util.Optional.of(missed.get(0));
+        return missed.isEmpty() ? Optional.empty()
+                : Optional.of(missed.get(0));
     }
 
     /**
@@ -344,19 +348,19 @@ public final class PathReachability {
      * <p>Owed only where the plan numbers one here. A node that is no comparison of this plan is a
      * place no run is recorded at, so there was never an answer for the walk to have missed.
      */
-    private static java.util.Optional<String> unansweredAt(
+    private static Optional<String> unansweredAt(
             Core.Binary comparison, CoverageSites.Plan plan,
             Map<ControlPlace, Reachability> out,
             Map<ConstructOccurrence,
                     souther.compiler.reach.ComparisonArrival> arriving) {
         ConstructOccurrence which = numbered(comparison, plan);
         if (which == null) {
-            return java.util.Optional.empty();
+            return Optional.empty();
         }
         for (boolean result : new boolean[] {true, false}) {
             ControlPlace where = plan.outcomeOf(which, result).orElse(null);
             if (where != null && !out.containsKey(where)) {
-                return java.util.Optional.of(
+                return Optional.of(
                         "this reading answered for no run through " + comparison.op()
                                 + " at " + comparison.pos() + " coming out " + result
                                 + "; the plan numbered it and a reader below cannot tell an "
@@ -367,13 +371,13 @@ public final class PathReachability {
         // owes it for the same reason it owes them — a reader below reads an absence as the answer
         // that restricts nothing, so only an audit here can tell the two apart.
         if (!arriving.containsKey(which)) {
-            return java.util.Optional.of(
+            return Optional.of(
                     "this reading said nothing about what arrives at " + comparison.op()
                             + " at " + comparison.pos()
                             + "; the plan numbered it and a reader below cannot tell an answer"
                             + " that was never made from one that restricts nothing");
         }
-        return java.util.Optional.empty();
+        return Optional.empty();
     }
 
     private final PathEngine engine;
@@ -562,7 +566,7 @@ public final class PathReachability {
         }
         arriving.put(which, arrivalAt(comparison, k, at, reads));
         for (boolean result : new boolean[] {true, false}) {
-            java.util.Optional<ControlPlace.Outcome> where =
+            Optional<ControlPlace.Outcome> where =
                     plan.outcomeOf(which, result);
             if (where.isEmpty()) {
                 continue;

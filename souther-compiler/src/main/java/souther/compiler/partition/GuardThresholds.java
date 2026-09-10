@@ -176,6 +176,11 @@ public final class GuardThresholds {
         if (states == null) {
             return Guards.NONE;
         }
+        // The reading below is asked what arrives at comparisons this plan names, so the two are
+        // held to being one plan's. Both are handed in, which is where a reader can put two
+        // modules' together — and a reading of another plan answers that nothing is known about
+        // every comparison here, which restricts nothing and is what an unread body looks like.
+        arrives.requireNumbering(plan.identity());
         InputDomain inputs = read.domain();
         List<RuleEvidence> found = new ArrayList<>();
         RulesWithNoLine.Gathered withoutALine = new RulesWithNoLine.Gathered();

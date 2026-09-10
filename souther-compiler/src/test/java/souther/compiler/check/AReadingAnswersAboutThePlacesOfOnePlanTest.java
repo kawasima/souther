@@ -2,6 +2,7 @@ package souther.compiler.check;
 
 import org.junit.jupiter.api.Test;
 import souther.compiler.core.Core;
+import souther.compiler.coverage.ArmProbe;
 import souther.compiler.coverage.ControlPlace;
 import souther.compiler.coverage.CoverageSites;
 import souther.compiler.partition.ProducedCases;
@@ -125,6 +126,32 @@ class AReadingAnswersAboutThePlacesOfOnePlanTest {
 
         assertTrue(refusal.getMessage().contains("was made under")
                         && refusal.getMessage().contains("is being read against"),
+                () -> "the refusal names the two numberings: " + refusal.getMessage());
+    }
+
+    /**
+     * Taking the rows in refuses probes of another numbering rather than correcting nothing.
+     *
+     * <p>The same invariant met from the other side. What a run corrects is read by looking each
+     * arm's probe up among the probes a row was recorded at, so probes of another numbering answer
+     * to no arm here — every proof stands, and a reading shown wrong by a run goes on saying
+     * nothing arrives.
+     */
+    @Test
+    void takingTheRowsInRefusesProbesOfAnotherNumbering() {
+        Read capped = read(CAPPED);
+        Read refused = read(REFUSED);
+
+        ArmProbe elsewhere = refused.armProvenDead().probe().orElseThrow();
+
+        assertEquals(Set.of(),
+                capped.arrives.asRunWith(Set.of()).provedWrong(),
+                "no row ran, so this reading is shown wrong nowhere");
+
+        IllegalArgumentException refusal = assertThrows(IllegalArgumentException.class,
+                () -> capped.arrives.asRunWith(Set.of(elsewhere)));
+
+        assertTrue(refusal.getMessage().contains("was made under"),
                 () -> "the refusal names the two numberings: " + refusal.getMessage());
     }
 

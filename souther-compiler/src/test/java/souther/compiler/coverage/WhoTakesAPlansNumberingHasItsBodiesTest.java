@@ -71,7 +71,7 @@ class WhoTakesAPlansNumberingHasItsBodiesTest {
                             + " was asked for, so it is never the stand-in's. The emission answers"
                             + " with it, rather than a caller working out a numbering of its own"
                             + " beside the one the probes were written from"),
-            // The four below take one for the other reason there is to take one. None of them
+            // The ones below take one for the other reason there is to take one. None of them
             // aligns a recording against it: each stamps or compares a reading of a plan with the
             // plan it is being read against, so what a numbering says here is "these two are the
             // same plan's" and never "this run happened at these places". The stand-in cannot make
@@ -92,12 +92,10 @@ class WhoTakesAPlansNumberingHasItsBodiesTest {
                             + " are held to being one plan's before either is read. Both are"
                             + " parameters of one call, which is where a caller could put two"
                             + " modules' together"),
-            new Licence("souther.compiler.query.Adequacy.BranchCoverage.lambda$compute$0"
-                            + " -> identity", 1,
-                    "the arms of one behavior and the reading that says what arrives at them are"
-                            + " put together here, and are held to being one plan's. Taken only"
-                            + " where the checked bodies came back, so the plan is theirs and never"
-                            + " the stand-in this file is about"));
+            new Licence("souther.compiler.partition.GuardThresholds.of -> identity", 1,
+                    "the rules read off the guards are asked what arrives at comparisons this plan"
+                            + " names, so the two are held to being one plan's. Both are handed in,"
+                            + " which is where a caller could put two modules' together"));
 
     @Test
     void everyReaderOfAPlansNumberingIsWrittenDownWithWhatMakesItSafe() {

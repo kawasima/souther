@@ -2538,17 +2538,6 @@ public final class Adequacy {
                 souther.compiler.check.PathReachability.Answers.AsRun arrives =
                         reachable == null ? NOTHING_PROVEN
                                 : reachable.getOrDefault(behavior.name(), NOTHING_PROVEN);
-                // The arms are this plan's and the reading is asked about them by place, so the two
-                // are held to being one another's here, where they are put together. A reading of
-                // another module's plan answers "nothing reached it" about every one of these arms,
-                // which is the same shape as a behavior that owes nothing.
-                //
-                // Only where the bodies came back. What stands here otherwise is the plan of
-                // nothing, which is no module's, and what this behavior is owed is answered by the
-                // gate below saying the bodies were not read.
-                if (bodiesRead) {
-                    arrives.answers().requireNumbering(plan.identity());
-                }
                 BranchEvidence absent = whyNoArms(name, prepared.value().writesItsOwnBody(behavior),
                         bodiesRead, arms, arrives, instrumented, observed);
                 if (absent != null) {
