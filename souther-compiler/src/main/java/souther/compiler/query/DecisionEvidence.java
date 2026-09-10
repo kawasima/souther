@@ -29,6 +29,19 @@ public record DecisionEvidence(DecisionReading read, Taken taken) {
         Objects.requireNonNull(taken, "there is always an answer to what the rows took");
     }
 
+    /**
+     * The rules nothing has been shown to stand in.
+     *
+     * <p>Neither covered nor a gap. A row standing in a rule is what shows something can, and
+     * nothing has looked anywhere else — so a row is not owed here and the rule has not gone away.
+     * What would move one of these is a search that composes a value and sees it take the rule,
+     * which is evidence about the model rather than about the rows.
+     */
+    public List<DecisionRule> nothingStandsIn() {
+        Set<DecisionRule> covered = taken instanceof Taken.Read seen ? seen.rules() : Set.of();
+        return read.rules().stream().filter(rule -> !covered.contains(rule)).toList();
+    }
+
     /** What the rows were seen taking, or why nothing was seen. */
     public sealed interface Taken {
 
