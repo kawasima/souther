@@ -12,6 +12,9 @@ import souther.compiler.numeric.Endpoint;
 import souther.compiler.numeric.NumericDomain;
 import souther.compiler.numeric.Towards;
 import souther.compiler.check.Clause;
+import souther.compiler.check.DeclaredLine;
+import souther.compiler.check.InvariantStatementId;
+import souther.compiler.check.PartId;
 import souther.compiler.check.ClauseName;
 import souther.compiler.check.RuleRef;
 import souther.compiler.diag.SourceNameResolver;
@@ -224,14 +227,14 @@ class ABorderSaysWhichOfItsTwoPointsALineIsTest {
     void aBoundThatStopsShortOfItsLineWhereTheOrderStepsIsRefused() {
         Border kept = borderOf(
                 new LineOrigin.InvariantOrigin(
-                        new souther.compiler.check.PartId<>(invariant(), THE_ONLY_CONJUNCT),
+                        theOnlyStatement(),
                         souther.compiler.numeric.EndSide.LOWER, true));
         assertEquals("= 5", kept.demand(PointRole.ON).criterion().asked(kept.cut().of()),
                 "a bound that admits its own end is at that end's ON point");
 
         IllegalStateException refused = assertThrows(IllegalStateException.class,
                 () -> borderOf(new LineOrigin.InvariantOrigin(
-                        new souther.compiler.check.PartId<>(invariant(), THE_ONLY_CONJUNCT),
+                        theOnlyStatement(),
                         souther.compiler.numeric.EndSide.LOWER, false)),
                 "a rule parting the values at 6 over a range that stops at 5 is two readings of one"
                         + " model that disagree");
@@ -284,7 +287,7 @@ class ABorderSaysWhichOfItsTwoPointsALineIsTest {
 
         // A bound owes nothing outside itself, and says which of the three answers settled it.
         Border bound = borderOf(new LineOrigin.InvariantOrigin(
-                        new souther.compiler.check.PartId<>(invariant(), THE_ONLY_CONJUNCT),
+                        theOnlyStatement(),
                         souther.compiler.numeric.EndSide.LOWER, true));
         assertEquals(new Demand.NotOwed(NotOwedReason.THE_RULES_REFUSE_IT),
                 bound.demand(PointRole.OFF));
@@ -303,6 +306,12 @@ class ABorderSaysWhichOfItsTwoPointsALineIsTest {
         return BoundaryTarget.at(new BorderQuantity.OfACoordinate(axis.behavior(), term,
                         souther.compiler.inputs.TermOrdersFixtures.itself(term, carrier)),
                 new Level.OnACarrier(carrier, at));
+    }
+
+    /** The one statement of the one conjunct that clause was written in. */
+    private static DeclaredLine theOnlyStatement() {
+        return new DeclaredLine.OfAStatement(new InvariantStatementId(
+                new PartId<>(invariant(), THE_ONLY_CONJUNCT), 0));
     }
 
     /** The clause the bound tests name, which is only an identity here. */

@@ -168,7 +168,7 @@ public record AuthoredLine(WhichLine which, LineFacts facts,
      */
     public Optional<souther.compiler.check.DeclaredBorders.Key> declaredLine() {
         return which instanceof WhichLine.OfAPart it
-                ? Optional.of(new souther.compiler.check.DeclaredBorders.Key(it.part()))
+                ? Optional.of(new souther.compiler.check.DeclaredBorders.Key(it.drawnBy()))
                 : Optional.empty();
     }
 

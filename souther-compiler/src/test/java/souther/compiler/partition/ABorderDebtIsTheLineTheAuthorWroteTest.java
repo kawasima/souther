@@ -14,6 +14,9 @@ import souther.compiler.types.WrittenOwner;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.check.ComparisonClaim;
+import souther.compiler.check.DeclaredLine;
+import souther.compiler.check.InvariantStatementId;
+import souther.compiler.check.PartId;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.RuleReportAnchor;
 import souther.compiler.check.RuleReadings;
@@ -198,8 +201,7 @@ class ABorderDebtIsTheLineTheAuthorWroteTest {
     void aComparisonAndABoundAtOneValueAreTwoDebts() {
         Border guard = Border.at(aLineAt(100), readAt(1), ANYWHERE);
         Border bound = Border.at(aLineAt(100),
-                new LineOrigin.InvariantOrigin(
-                        new souther.compiler.check.PartId<>(aClause(), 0),
+                new LineOrigin.InvariantOrigin(aStatementOf(aClause()),
                         souther.compiler.numeric.EndSide.LOWER, true),
                 new souther.compiler.numeric.NumericDomain.Bounds(
                         souther.compiler.numeric.Endpoint.inclusive(
@@ -252,6 +254,13 @@ class ABorderDebtIsTheLineTheAuthorWroteTest {
                         new RuleReportAnchor.ByTheModuleThatWroteIt(),
                         List.of(WHERE.comparison(occurrence))),
                 new LineFacts(new ComparisonClaim.Cut(Towards.BELOW, true)));
+    }
+
+    /** The one statement of the first conjunct of {@code clause}, which is only an identity
+     *  here. */
+    private static DeclaredLine aStatementOf(RuleRef.Invariant clause) {
+        return new DeclaredLine.OfAStatement(
+                new InvariantStatementId(new PartId<>(clause, 0), 0));
     }
 
     /** The clause the bound in these tests names, which is only an identity here. */

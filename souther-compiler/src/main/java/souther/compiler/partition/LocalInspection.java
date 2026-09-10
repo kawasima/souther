@@ -193,9 +193,9 @@ final class LocalInspection {
         // was settled where the clause was read and arrives as it was. What is added is a
         // boundary's own answer about that rule — that a reading of it drew this cut, taken in by
         // these declarations — which is nothing the rule says about itself.
-        for (DeclaredBounds.Drawn from : end.from()) {
+        for (DeclaredBounds.Drawn drawn : end.from()) {
             put(into, carrier, end.value(),
-                    new LineOrigin.InvariantOrigin(from.part(), side, end.at().inclusive()),
+                    new LineOrigin.InvariantOrigin(drawn.line(), side, end.at().inclusive()),
                     end.at(), took);
         }
     }

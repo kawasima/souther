@@ -39,15 +39,20 @@ public record DeclaredBorders(souther.compiler.diag.Citation at,
                               Map<Key, NumberAt<RuleKey>> forms) {
 
     /**
-     * Which authored line: the part of the clause that placed the end.
+     * Which authored line: what the reading knows about the clause that placed the end.
      *
      * <p>A part of a {@code data}'s clause and of nothing else. These are the lines a declaration
      * wrote in its own terms, and a behavior's {@code ensures} writes none of them — so the kind of
      * clause is in the type rather than asked of a part that arrives. Written over parts of any
      * clause, this would take a behavior's and answer null, which is the word it has for a
      * declaration that drew no such line.
+     *
+     * <p>The line and not the conjunct alone, because this is a pairing key and a conjunct does not
+     * name one line. A conjunct written under a denial places an end on each of two numbers, and
+     * keyed by the conjunct the second overwrites the first — leaving one of the two lines named
+     * after the other's number.
      */
-    public record Key(PartId<RuleRef.Invariant> part) {}
+    public record Key(DeclaredLine line) {}
 
     public DeclaredBorders {
         if (at == null) {
@@ -93,7 +98,7 @@ public record DeclaredBorders(souther.compiler.diag.Citation at,
             // that one's to name, the way a line is named by the rule that drew it (ADR-0090). Its
             // own reading answers for it.
             if (placed.part().rule().clause().id().declaredOn().equals(declaredOn)) {
-                forms.put(new Key(placed.part()), placed.at());
+                forms.put(new Key(placed.from().line()), placed.at());
             }
         }
         return new DeclaredBorders(at, forms);
@@ -106,8 +111,8 @@ public record DeclaredBorders(souther.compiler.diag.Citation at,
      * not read is a clause with no form to print, and a caller handed one has nothing to call the
      * line but the rule's own name.
      */
-    public NumberAt<RuleKey> at(PartId<RuleRef.Invariant> part) {
-        return at(new Key(part));
+    public NumberAt<RuleKey> at(DeclaredLine line) {
+        return at(new Key(line));
     }
 
     /** The same, for a caller holding the key the rule handed it
@@ -137,8 +142,8 @@ public record DeclaredBorders(souther.compiler.diag.Citation at,
                 ? taken.operation() + "(" + where + ")" : where;
     }
 
-    /** The same, for a caller holding the part that drew the line. */
-    public String nameOf(PartId<RuleRef.Invariant> part) {
-        return nameOf(new Key(part));
+    /** The same, for a caller holding the line as the clause drew it. */
+    public String nameOf(DeclaredLine line) {
+        return nameOf(new Key(line));
     }
 }

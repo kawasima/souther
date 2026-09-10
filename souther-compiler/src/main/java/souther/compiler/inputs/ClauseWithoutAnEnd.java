@@ -1,5 +1,6 @@
 package souther.compiler.inputs;
 
+import souther.compiler.check.InvariantStatementId;
 import souther.compiler.check.PartId;
 import souther.compiler.check.RuleRef;
 import souther.compiler.check.StatedComparison;
@@ -38,18 +39,24 @@ import souther.compiler.types.TypeSymbol;
  *                 is that name's — matched against the writing declaration's bindings alone, a
  *                 clause under a name names no position at all
  */
-public record ClauseWithoutAnEnd(PartId<RuleRef.Invariant> part, StatedComparison states,
+public record ClauseWithoutAnEnd(InvariantStatementId statement, StatedComparison states,
                                  SourcePos wrote, TermPath at, TypeSymbol.AtModule readUnder) {
 
     public ClauseWithoutAnEnd {
-        if (part == null || states == null || wrote == null || at == null || readUnder == null) {
+        if (statement == null || states == null || wrote == null || at == null
+                || readUnder == null) {
             throw new IllegalArgumentException(
                     "a clause is one of a declaration's, is written, and is about a value somewhere");
         }
     }
 
+    /** Which conjunct of the clause this statement is of. */
+    public PartId<RuleRef.Invariant> part() {
+        return statement.part();
+    }
+
     /** Which clause of which declaration this is a part of. */
     public RuleRef.Invariant rule() {
-        return part.rule();
+        return statement.rule();
     }
 }

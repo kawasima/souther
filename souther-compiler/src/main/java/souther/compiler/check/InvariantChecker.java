@@ -832,7 +832,7 @@ public final class InvariantChecker {
             public void gathered(RuleRef.Invariant from, Core clause,
                                  List<Clauses.StatedPart> parts,
                                  Map<PartId<RuleRef.Invariant>,
-                                         Map<ClauseExpr.Occurrence, PartAsRead>> constrained,
+                                         Map<ClauseOccurrence, PartAsRead>> constrained,
                                  Set<FactSubject> spokenFor) {
                 written.add(Written.of(new ReadingId(written.size()), clause, parts,
                         reach.withoutParts(), constrained));
@@ -906,7 +906,7 @@ public final class InvariantChecker {
             // written into a table every reading shares: a clause is read once per place the walk
             // opens a value at, and a table holding all of them together has nothing to say which
             // reading an entry came from.
-            Map<PartId<RuleRef.Invariant>, Map<ClauseExpr.Occurrence, PartAsRead>> constrained =
+            Map<PartId<RuleRef.Invariant>, Map<ClauseOccurrence, PartAsRead>> constrained =
                     new LinkedHashMap<>();
             Predicates.Owed owed = null;
             for (Clauses.StatedPart part : view.present()) {
@@ -1401,13 +1401,20 @@ public final class InvariantChecker {
      *                 once per place the walk opens a value at, so which reading placed it is the
      *                 other half of the same answer
      */
-    record Direct(NumberAt<RuleKey> at, PartId<RuleRef.Invariant> part, InvariantBound bound,
+    record Direct(NumberAt<RuleKey> at, InvariantStatementId statement, InvariantBound bound,
                   ReadingPlace stands) {
 
         /** What the value's rules call where the end was placed. Never which end it is: one name
          *  carries more than one number and {@link #at} is what says which of them this is. */
         RuleKey path() {
             return at.position();
+        }
+
+        /** Which conjunct the statement is of, which is what a rule is named by. Read off the
+         *  statement rather than carried beside it: the two would be free to disagree about which
+         *  conjunct a statement belongs to. */
+        PartId<RuleRef.Invariant> part() {
+            return statement.part();
         }
     }
 
@@ -1451,7 +1458,7 @@ public final class InvariantChecker {
      * reading walked the tree a substitution built for it, so the node was where and whose at once;
      * held apart, both halves have to be here.
      */
-    record ReadingPlace(ReadingId reading, ClauseExpr.Occurrence at) {
+    record ReadingPlace(ReadingId reading, ClauseOccurrence at) {
 
         ReadingPlace {
             if (reading == null || at == null) {
@@ -1481,14 +1488,14 @@ public final class InvariantChecker {
      * the place as well, each reading would hand on its own and the model would owe a row per
      * place it happens to be carried to.
      *
-     * <p>Which is why this is neither {@link ReadingPlace} nor {@link PartId} but the pair that
-     * says what a hand-over is: one per comparison the reading arrived at inside a conjunct,
-     * however many places that conjunct was read at.
+     * <p>Which is why this is neither {@link ReadingPlace} nor {@link PartId} but the statement:
+     * one hand-over per comparison the reading arrived at inside a conjunct, however many places
+     * that conjunct was read at.
      */
-    record HandOver(PartId<RuleRef.Invariant> part, ClauseExpr.Occurrence at) {
+    record HandOver(InvariantStatementId statement) {
 
         HandOver {
-            if (part == null || at == null) {
+            if (statement == null) {
                 throw new IllegalArgumentException(
                         "a conjunct handed on is part of some rule, somewhere in it");
             }
@@ -1508,9 +1515,9 @@ public final class InvariantChecker {
      * is its own and a rule is read once per place the walk opens a value at.
      */
     record Written(ReadingId opened, Core clause, ClauseView view,
-                   Map<PartId<RuleRef.Invariant>, Map<ClauseExpr.Occurrence, PartAsRead>>
+                   Map<PartId<RuleRef.Invariant>, Map<ClauseOccurrence, PartAsRead>>
                            constrained,
-                   Map<ClauseExpr.Occurrence, ReadByClauses.OfAPart> adopted) {
+                   Map<ClauseOccurrence, ReadByClauses.OfAPart> adopted) {
 
         Written {
             constrained = Map.copyOf(constrained);
@@ -1521,7 +1528,7 @@ public final class InvariantChecker {
         static Written of(ReadingId opened, Core clause, List<Clauses.StatedPart> authored,
                           PartsLeftOut world,
                           Map<PartId<RuleRef.Invariant>,
-                                  Map<ClauseExpr.Occurrence, PartAsRead>> constrained) {
+                                  Map<ClauseOccurrence, PartAsRead>> constrained) {
             if (authored.isEmpty()) {
                 throw new IllegalArgumentException("a clause reaching a value is written in parts");
             }
@@ -1537,8 +1544,8 @@ public final class InvariantChecker {
          * objects those substitutions happened to allocate.
          */
         Written alsoAdopting(
-                List<Map.Entry<ClauseExpr.Occurrence, ReadByClauses.OfAPart>> account) {
-            Map<ClauseExpr.Occurrence, ReadByClauses.OfAPart> out = new LinkedHashMap<>();
+                List<Map.Entry<ClauseOccurrence, ReadByClauses.OfAPart>> account) {
+            Map<ClauseOccurrence, ReadByClauses.OfAPart> out = new LinkedHashMap<>();
             account.forEach(each -> out.put(each.getKey(), each.getValue()));
             return new Written(opened, clause, view, constrained,
                     Collections.unmodifiableMap(out));
@@ -1546,7 +1553,7 @@ public final class InvariantChecker {
 
         /** What this reading made of the part at {@code at}, or null where it read no such part —
          *  which is not the same as having read it and made nothing of it. */
-        ReadByClauses.OfAPart adoptedAt(ClauseExpr.Occurrence at) {
+        ReadByClauses.OfAPart adoptedAt(ClauseOccurrence at) {
             return adopted.get(at);
         }
 
@@ -1560,8 +1567,8 @@ public final class InvariantChecker {
          * holding all of them together has to say which reading each entry came from — and the
          * only thing that said so was which objects a substitution happened to allocate.
          */
-        PartRead read(PartId<RuleRef.Invariant> part, ClauseExpr.Occurrence at) {
-            Map<ClauseExpr.Occurrence, PartAsRead> said = constrained.get(part);
+        PartRead read(PartId<RuleRef.Invariant> part, ClauseOccurrence at) {
+            Map<ClauseOccurrence, PartAsRead> said = constrained.get(part);
             PartAsRead one = said == null ? null : said.get(at);
             return one == null ? null : one.said();
         }
@@ -1662,7 +1669,7 @@ public final class InvariantChecker {
          *                  semantics
          */
         void gathered(RuleRef.Invariant from, Core clause, List<Clauses.StatedPart> parts,
-                      Map<PartId<RuleRef.Invariant>, Map<ClauseExpr.Occurrence, PartAsRead>>
+                      Map<PartId<RuleRef.Invariant>, Map<ClauseOccurrence, PartAsRead>>
                               constrained,
                       Set<FactSubject> spokenFor);
 
@@ -1907,7 +1914,11 @@ public final class InvariantChecker {
                 // again, the occurrences under one part would be numbered afresh from wherever the
                 // part begins, and an answer filed by the reading that seeded it would be asked
                 // for under a number this walk made up.
-                direct(part.of(), each, part.id(), at, byName, out, noLines,
+                //
+                // A counter apiece, because a statement is which of its own conjunct's it is: two
+                // conjuncts each have a statement numbered nought, and what pairs the number with
+                // the conjunct is the identity the two go into.
+                direct(part.of(), each, part.id(), new int[1], at, byName, out, noLines,
                         withoutAnEnd, aboutOneCoordinate, narrowers,
                         raised, took, typeAt, rules, raisedByPart, standing)));
         // Insertion order, kept: `Map.copyOf` iterates in an order salted once per JVM run, and
@@ -1937,7 +1948,7 @@ public final class InvariantChecker {
      * >= 4` came back with nothing to say while the same two rules written apart were reported.
      */
     private void settle(Core part, RuleRef.Invariant rule, Written of,
-                        PartId<RuleRef.Invariant> its, ClauseExpr.Occurrence at,
+                        InvariantStatementId statement, ClauseOccurrence at,
                         ClauseStates states, InvariantBound.Read placed,
                         Map<FactSubject, Coordinate> byName, Map<RuleRef.Invariant, Required> raised,
                         ReadingEvidence took,
@@ -1985,7 +1996,7 @@ public final class InvariantChecker {
         // the position it names. The seeding hands the whole clause to the same reader this walks,
         // so there is no such part — and if the two ever come apart, this value reads as one whose
         // rules were not gathered rather than as one whose rules were read and said nothing.
-        PartRead read = of.read(its, at);
+        PartRead read = of.read(statement.part(), at);
         Set<FactSubject> constrained = read == null ? null : read.constrained();
         if (here == null || constrained == null) {
             throw new APartNoReadingSaw(part);
@@ -2020,7 +2031,7 @@ public final class InvariantChecker {
      * What a helper's body joined is still this one part, and this reading has one end for it.
      */
     private void direct(ClauseExpr saidAs, Written of, PartId<RuleRef.Invariant> part,
-                        Denotations at,
+                        int[] statements, Denotations at,
                         Map<FactSubject, Coordinate> byName, List<Direct> out,
                         List<FieldDomains.NoLine> noLines,
                         SequencedMap<HandOver, FieldDomains.WithoutAnEnd> withoutAnEnd,
@@ -2041,7 +2052,8 @@ public final class InvariantChecker {
         // states, and a helper's rule denied is read as the rule it denies rather than left as a
         // form this reader has no word for.
         if (saidAs instanceof ClauseExpr.Scoped scoped) {
-            direct(scoped.body(), of, part, terms.inside(scoped.binding(), at), byName, out,
+            direct(scoped.body(), of, part, statements, terms.inside(scoped.binding(), at),
+                    byName, out,
                     noLines, withoutAnEnd, naming, narrowers, raised, took, typeAt, rules,
                     raisedByPart, standing);
             return;
@@ -2062,15 +2074,27 @@ public final class InvariantChecker {
         // an author wrote as a denied choice is a part this reading never descends into.
         if (saidAs instanceof ClauseExpr.Joined joined
                 && joined.how() == ConditionJoin.BOTH) {
-            direct(joined.left(), of, part, at, byName, out, noLines, withoutAnEnd, naming,
-                    narrowers, raised, took, typeAt, rules, raisedByPart, standing);
-            direct(joined.right(), of, part, at, byName, out, noLines, withoutAnEnd, naming,
-                    narrowers, raised, took, typeAt, rules, raisedByPart, standing);
+            direct(joined.left(), of, part, statements, at, byName, out, noLines, withoutAnEnd,
+                    naming, narrowers, raised, took, typeAt, rules, raisedByPart, standing);
+            direct(joined.right(), of, part, statements, at, byName, out, noLines, withoutAnEnd,
+                    naming, narrowers, raised, took, typeAt, rules, raisedByPart, standing);
             return;
         }
         // A binding is crossed above and a conjunction is descended into, so what is left is a part
         // of the clause: a leaf, or a choice this reading takes whole.
         ClauseExpr.Part said = (ClauseExpr.Part) saidAs;
+        // Which statement of the conjunct this is, numbered here and handed to everything below
+        // that records an answer about it. A conjunct states as many of these as the reading
+        // arrives at, so a reader naming the conjunct alone calls the second of them the first said
+        // again.
+        //
+        // Here, where a statement is recognised and before anything is made of it. A binding is
+        // crossed above and a conjunction expanded into the part is descended into, and neither is
+        // a statement: what is left is one, whatever this reading goes on to read from it. Numbered
+        // where an end or a hand-over is written down instead, the number would say which of the
+        // outcomes this was rather than which of the statements, and the same rule read by a
+        // reading that made more of it would be a different line.
+        InvariantStatementId statement = new InvariantStatementId(part, statements[0]++);
         // The rule this part states, which is what every reading below is of. Under a denial that
         // is what the denial denies, and the denial itself is spent where the comparison is read
         // ({@link StatedComparison#of}) rather than carried down as a flag each reader applies.
@@ -2086,11 +2110,11 @@ public final class InvariantChecker {
         //
         // Before the reading below, which needs to know: a conjunct that stated where the values
         // stop has a line, and is not one an author is owed a sentence about for having drawn none.
-        RunsRead runs = runsOf(new ReadingPlace(of.opened(), said.at()), of, part, byName, out);
+        RunsRead runs = runsOf(new ReadingPlace(of.opened(), said.at()), of, statement, byName, out);
         // What an author wrote and where, which is what a sentence about the rule points at. A rule
         // written under a denial is shown as the denial: that is what is on the line.
         restricting(said.written(), said.at(), from, of, part, byName, rules, noLines, runs);
-        aChoiceAboutOneCoordinate(said, part, at, byName, naming);
+        aChoiceAboutOneCoordinate(said, statement, at, byName, naming);
         // Where this clause is recognised as a comparison, and the one place it is. What each
         // reader below wants is what the recognition established — the two sides to walk, and what
         // the rule states of them — so each is handed that rather than the node it was read off.
@@ -2108,7 +2132,7 @@ public final class InvariantChecker {
             // to be handed: what is below reads a clause for the end it places on a position and
             // for which declarations narrowed that position, and neither is a thing another shape
             // of rule states.
-            settle(clause, from, of, part, said.at(), states(clause, at, byName, null, runs),
+            settle(clause, from, of, statement, said.at(), states(clause, at, byName, null, runs),
                     new InvariantBound.Read.NoEnd(),
                     byName, raised, took, raisedByPart);
             return;
@@ -2123,7 +2147,7 @@ public final class InvariantChecker {
         // did to it. Every shape of rule alike: whether an end is read from it below decides which
         // reader states where the values stop, and decides nothing about which conjuncts account
         // for where they stop.
-        aboutOneCoordinate(read, part, naming);
+        aboutOneCoordinate(read, statement, naming);
         // What the comparison states of the coordinate it names, read from whichever side bears
         // one, as `0 <= value` says what `value >= 0` says. The turn is spent making this, so no
         // reader below holds a claim beside a note about which way round it was written.
@@ -2135,15 +2159,15 @@ public final class InvariantChecker {
         StatedComparison.Numbered<Coordinate> numbered =
                 comparison.at(each -> byName.get(nameOf(each, at)));
         if (asWritten instanceof ComparisonClaim.Singled named && !named.holdsAtTheValue()) {
-            settle(bin, from, of, part, said.at(), states(bin, at, byName, read, runs),
+            settle(bin, from, of, statement, said.at(), states(bin, at, byName, read, runs),
                     new InvariantBound.Read.NoEnd(),
                     byName, raised, took, raisedByPart);
             // And handed on, which is not the same as being reported. A rule that rules one value
             // out places no end and is no failure of this reading, so there is nothing here for an
             // author to lift and there is a conjunct for the reading that draws lines to make what
             // it can of.
-            withoutAnEnd.putIfAbsent(new HandOver(part, said.at()),
-                    new FieldDomains.WithoutAnEnd(part, comparison, said.written().pos()));
+            withoutAnEnd.putIfAbsent(new HandOver(statement),
+                    new FieldDomains.WithoutAnEnd(statement, comparison, said.written().pos()));
             return;
         }
         // An end where the other side is a constant, and a relation everywhere else. Which it is
@@ -2203,7 +2227,7 @@ public final class InvariantChecker {
                                             List.of(part))
                                     : had.and(part)));
         }
-        settle(bin, from, of, part, said.at(), shape, end, byName, raised, took,
+        settle(bin, from, of, statement, said.at(), shape, end, byName, raised, took,
                 raisedByPart);
         if (end instanceof InvariantBound.Read.NoEnd) {
             // A rule saying where the values stop that no end came out of, said as that. Here,
@@ -2221,8 +2245,8 @@ public final class InvariantChecker {
             // The hand-over beside the finding, and not read off it. Both come of this conjunct
             // having no end, and they answer different questions: what an author is owed a word
             // about, and what the next reading is given to read.
-            withoutAnEnd.putIfAbsent(new HandOver(part, said.at()),
-                    new FieldDomains.WithoutAnEnd(part, comparison, said.written().pos()));
+            withoutAnEnd.putIfAbsent(new HandOver(statement),
+                    new FieldDomains.WithoutAnEnd(statement, comparison, said.written().pos()));
             // The declaration and not the clause. Which declaration took an edge in is what ADR-0090
             // names beside a line, and what a reader is sent to look at is the declaration holding
             // the relation.
@@ -2230,7 +2254,7 @@ public final class InvariantChecker {
             return;
         }
         if (end instanceof InvariantBound.Read.AnEnd placed) {
-            out.add(new Direct(about.at(), part, placed.bound(),
+            out.add(new Direct(about.at(), statement, placed.bound(),
                     new ReadingPlace(of.opened(), said.at())));
         }
     }
@@ -2254,7 +2278,7 @@ public final class InvariantChecker {
      * candidate costs a counterfactual and claims nothing, and a rule saying which of them may be
      * one would be a second place deciding what a choice does.
      */
-    private void aChoiceAboutOneCoordinate(ClauseExpr.Part said, PartId<RuleRef.Invariant> part,
+    private void aChoiceAboutOneCoordinate(ClauseExpr.Part said, InvariantStatementId statement,
                                            Denotations at, Map<FactSubject, Coordinate> byName,
                                            List<FieldDomains.AboutOneCoordinate> naming) {
         // The shape the walk is already holding. Read again from the node, this would be a second
@@ -2264,8 +2288,12 @@ public final class InvariantChecker {
                 || joined.how() != ConditionJoin.EITHER) {
             return;
         }
-        Set<NumberAt<RuleKey>> numbers = numbersALineIsStatedOn(joined, at, byName);
-        numbers.forEach(each -> naming.add(new FieldDomains.AboutOneCoordinate(each, part)));
+        // Of the choice's own statement, because that is the statement there is. This walk stops at
+        // a choice, so what is under it is how the choice states its rule and not a statement of
+        // the conjunct — a leaf of one is reached by no reading that files an answer about it, and
+        // naming it here would be a statement nobody issued.
+        numbersALineIsStatedOn(joined, at, byName)
+                .forEach(number -> aboutOneCoordinate(number, statement, naming));
     }
 
     /**
@@ -2280,6 +2308,7 @@ public final class InvariantChecker {
      * no line does. What each number here is is a candidate and no more — whether the part is why
      * an end is there is the counterfactual's answer ({@link FieldDomains#movedEnds}) — so a leaf
      * with no number to offer has nothing to put forward either way.
+     *
      */
     private Set<NumberAt<RuleKey>> numbersALineIsStatedOn(ClauseExpr stated, Denotations at,
                                                           Map<FactSubject, Coordinate> byName) {
@@ -2836,7 +2865,7 @@ public final class InvariantChecker {
      * beside a rule that says nothing lends the second its narrowing — and the reason goes out
      * against the one rule that holds the position to nothing.
      */
-    private void restricting(Core clause, ClauseExpr.Occurrence at, RuleRef.Invariant from,
+    private void restricting(Core clause, ClauseOccurrence at, RuleRef.Invariant from,
                              Written of, PartId<RuleRef.Invariant> part,
                              Map<FactSubject, Coordinate> byName, RulesRead rules,
                              List<FieldDomains.NoLine> noLines, RunsRead runs) {
@@ -2937,7 +2966,7 @@ public final class InvariantChecker {
      * where whole numbers are.
      */
     private RunsRead runsOf(ReadingPlace stands,
-                        Written of, PartId<RuleRef.Invariant> part,
+                        Written of, InvariantStatementId statement,
                         Map<FactSubject, Coordinate> byName, List<Direct> out) {
         ReadByClauses.OfAPart account = of.adoptedAt(stands.at());
         if (account == null) {
@@ -2959,7 +2988,7 @@ public final class InvariantChecker {
             // stop is undecided, which is not the same as its stating that they stop nowhere.
             switch (stated) {
                 case AdmittedStrings.Admitting it ->
-                        byPosition.put(position, placed(it.set(), value, part, stands, out));
+                        byPosition.put(position, placed(it.set(), value, statement, stands, out));
                 case AdmittedStrings.NotKnown it ->
                         byPosition.put(position, new Run.Undecided(it.why()));
                 // And a rule of a position that could not hand its sets on leaves the question
@@ -2987,7 +3016,7 @@ public final class InvariantChecker {
      * with no end above them has said where none of them stop — and it is a run all the same, which
      * is why what is asked of it is which of its ends the rule placed.
      */
-    private Run placed(ValueSet set, NumberAt<RuleKey> value, PartId<RuleRef.Invariant> part,
+    private Run placed(ValueSet set, NumberAt<RuleKey> value, InvariantStatementId statement,
                        ReadingPlace stands, List<Direct> out) {
         switch (extentOf(set)) {
             // A run holding one string is the rule naming a value rather than bounding a range, and
@@ -2999,12 +3028,12 @@ public final class InvariantChecker {
                 boolean placed = false;
                 if (run.holdsFromAbove()) {
                     placed = true;
-                    out.add(new Direct(value, part,
+                    out.add(new Direct(value, statement,
                             new InvariantBound(true, Endpoint.inclusive(run.first())), stands));
                 }
                 if (run.after() != null) {
                     placed = true;
-                    out.add(new Direct(value, part,
+                    out.add(new Direct(value, statement,
                             new InvariantBound(false, Endpoint.exclusive(run.after())), stands));
                 }
                 return placed ? new Run.Bounding(value) : new Run.NotBounding();
@@ -3153,24 +3182,33 @@ public final class InvariantChecker {
      * what the rules leave the coordinate without this conjunct
      * ({@link FieldDomains#movedEndsOf}).
      */
-    private static void aboutOneCoordinate(CanonicalForm read, PartId<RuleRef.Invariant> part,
+    private static void aboutOneCoordinate(CanonicalForm read, InvariantStatementId statement,
                                           List<FieldDomains.AboutOneCoordinate> out) {
         if (!(read instanceof CanonicalForm.Over over) || over.numbers().size() != 1) {
             return;
         }
-        aboutOneCoordinate(over.numbers().iterator().next().at(), part, out);
+        aboutOneCoordinate(over.numbers().iterator().next().at(), statement, out);
     }
 
     /**
-     * One candidate, kept once. A part reaching one number twice is one thing to ask a
-     * counterfactual about, because taking a part away takes away everything it stated.
+     * One candidate, kept once, with the statement that reached this number written into it.
+     *
+     * <p>A part reaching one number twice is one thing to ask a counterfactual about, because
+     * taking a part away takes away everything it stated. Which statements those were is another
+     * question and is kept: the intervention is the conjunct's, and what tells the end on this
+     * number from the end the same conjunct accounts for on another is which of its statements are
+     * about which.
      */
-    private static void aboutOneCoordinate(NumberAt<RuleKey> at, PartId<RuleRef.Invariant> part,
+    private static void aboutOneCoordinate(NumberAt<RuleKey> at, InvariantStatementId statement,
                                            List<FieldDomains.AboutOneCoordinate> out) {
-        FieldDomains.AboutOneCoordinate said = new FieldDomains.AboutOneCoordinate(at, part);
-        if (!out.contains(said)) {
-            out.add(said);
+        for (int i = 0; i < out.size(); i++) {
+            FieldDomains.AboutOneCoordinate had = out.get(i);
+            if (had.at().equals(at) && had.part().equals(statement.part())) {
+                out.set(i, had.and(statement));
+                return;
+            }
         }
+        out.add(new FieldDomains.AboutOneCoordinate(at, Set.of(statement)));
     }
 
     /** One finding, kept once. A coordinate reached twice is one place with one thing to say. */

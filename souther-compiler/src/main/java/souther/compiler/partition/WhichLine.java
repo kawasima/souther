@@ -1,5 +1,6 @@
 package souther.compiler.partition;
 
+import souther.compiler.check.DeclaredLine;
 import souther.compiler.check.PartId;
 import souther.compiler.check.RuleRef;
 
@@ -28,25 +29,33 @@ public sealed interface WhichLine {
      * A part of a declaration's clause, named by what issued it.
      *
      * <p>One part may draw more than one line — a rule an author named states as many rules as its
-     * body joins — so this says which part drew it and not which line of that part it is. Two lines
-     * of one part are told apart by what each says about its own value ({@link LineFacts}).
+     * body joins, and a denial carried to the leaves makes a conjunct state one comparison per leaf
+     * — so what says which line this is is the statement that drew it and not the conjunct alone.
+     * Read as the conjunct, the two ends of
+     * {@code Bool.not(String.length(name) < 1 || String.length(code) < 1)} are one line: they are on
+     * two numbers, and {@link LineFacts} says the same of both.
      *
      * <p>A part of a {@code data}'s clause, which is where this parts from {@link OfAComparisonOfAPart}.
      * The lines a declaration draws are looked up by the words that declaration wrote
      * ({@link souther.compiler.check.DeclaredBorders}), and a behavior's clause has no such reading —
      * so which kind of clause the part is of is in the type rather than asked of one that arrives.
      */
-    record OfAPart(PartId<RuleRef.Invariant> part) implements WhichLine {
+    record OfAPart(DeclaredLine drawnBy) implements WhichLine {
 
         public OfAPart {
-            if (part == null) {
+            if (drawnBy == null) {
                 throw new IllegalArgumentException("a line of a declaration is some part's");
             }
         }
 
+        /** Which conjunct of the clause drew it. */
+        public PartId<RuleRef.Invariant> part() {
+            return drawnBy.part();
+        }
+
         @Override
         public RuleRef rule() {
-            return part.rule();
+            return part().rule();
         }
     }
 

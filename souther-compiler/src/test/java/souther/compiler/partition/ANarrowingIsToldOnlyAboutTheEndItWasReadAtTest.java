@@ -5,6 +5,9 @@ import org.junit.jupiter.api.Test;
 import souther.compiler.check.AReadingOfAPosition;
 import souther.compiler.check.Carrier;
 import souther.compiler.check.Clause;
+import souther.compiler.check.DeclaredLine;
+import souther.compiler.check.InvariantStatementId;
+import souther.compiler.check.PartId;
 import souther.compiler.check.ClauseName;
 import souther.compiler.check.MatchedEndAttribution;
 import souther.compiler.check.NarrowedBounds;
@@ -148,10 +151,12 @@ class ANarrowingIsToldOnlyAboutTheEndItWasReadAtTest {
     /** The clause the bound is written in, which is only an identity here. */
     private static LineOrigin.InvariantOrigin aMinimum() {
         return new LineOrigin.InvariantOrigin(
-                new souther.compiler.check.PartId<>(new RuleRef.Invariant(new Clause.Ref(
-                        new Clause.Id(
-                                TypeSymbols.declared(new TypeKey("example.weigh", "Amount")), 0),
-                        Optional.of(new ClauseName("floor")))), 0),
+                new DeclaredLine.OfAStatement(new InvariantStatementId(
+                        new PartId<>(new RuleRef.Invariant(new Clause.Ref(
+                                new Clause.Id(TypeSymbols.declared(
+                                        new TypeKey("example.weigh", "Amount")), 0),
+                                Optional.of(new ClauseName("floor")))), 0),
+                        0)),
                 EndSide.LOWER, true);
     }
 

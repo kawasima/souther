@@ -36,24 +36,40 @@ public final class DeclaredBounds {
      * character says nothing about {@code code}. Held as the rule, the two came out as one thing to
      * write a row for, which is the mistake issue #1062 is about with the halves the other way round.
      *
-     * <p><b>The conjunct and not the number it was written about.</b> Which coordinate a clause
-     * bounded is read from whatever value the reading started at — {@code Day}'s own clause is about
-     * {@code value} read from {@code Day} and about {@code d} read from the {@code Span} holding it
-     * — so two readings of one line spell the coordinate two ways, and an identity built on it calls
-     * one authored line two. The conjunct is the clause's own text: it is the same number whichever
-     * value the reading started at, and it is what tells the ends of {@code value >= 0 && value <=
-     * 10} apart.
+     * <p><b>The clause's own text and not the number it was written about.</b> Which coordinate a
+     * clause bounded is read from whatever value the reading started at — {@code Day}'s own clause
+     * is about {@code value} read from {@code Day} and about {@code d} read from the {@code Span}
+     * holding it — so two readings of one line spell the coordinate two ways, and an identity built
+     * on it calls one authored line two.
+     *
+     * <p><b>And not the conjunct alone.</b> A conjunct states as many comparisons as the reading
+     * arrives at inside it: a denial is carried to the leaves, so {@code Bool.not(String.length(name)
+     * < 1 || String.length(code) < 1)} is one conjunct placing an end on each of two numbers. Held
+     * as the conjunct, those two are one line, and a reader naming either of them names whichever
+     * was written down last.
+     *
+     * <p><b>The statement and not how it was arrived at.</b> Two readings reach one end of one
+     * statement — a comparison places it, and a counterfactual finds the conjunct accounts for it —
+     * and that is one line owed one row, which is what {@link End#tighter} folds them into. Held
+     * with the evidence in it, the same line came back twice because two readers had found it, and
+     * every report counted it twice. What each reading knew stays where it was established
+     * ({@link LineProvenance}) and is spent on the way here.
      *
      * <p>Counted over every conjunct and not over the ones a line came out of, so that a reading
      * that could make nothing of one conjunct still numbers the next the same as a reading that
      * could.
      */
-    public record Drawn(PartId<RuleRef.Invariant> part) {
+    public record Drawn(DeclaredLine line) {
 
         public Drawn {
-            if (part == null) {
+            if (line == null) {
                 throw new IllegalArgumentException("a rule put an end here, and this is which");
             }
+        }
+
+        /** Which conjunct of which rule put the end here, which is what a report names it by. */
+        public PartId<RuleRef.Invariant> part() {
+            return line.part();
         }
     }
 
@@ -117,6 +133,12 @@ public final class DeclaredBounds {
             return min == null && max == null;
         }
 
+        /** Where the value stops, with the lines left behind — for a caller asking how wide the
+         *  value is rather than what the model draws through it. */
+        public Range range() {
+            return new Range(min == null ? null : min.at(), max == null ? null : max.at(), carrier);
+        }
+
         /**
          * The end on one side, or null where nothing stops the values that way.
          *
@@ -131,9 +153,30 @@ public final class DeclaredBounds {
         }
     }
 
+    /**
+     * Where the rules a value wears stop it, with nothing about which of them said so.
+     *
+     * <p>Two numbers and no line. What a caller asking how wide a value is wants is where it stops;
+     * which rule stopped it there is a line of the model, and a line is owed a row. Held as ends
+     * with names on them, this reading's names met the reading of lines' names at the same value and
+     * the model owed two rows for one line.
+     *
+     * <p>Which is what this reading has to give. It hands a whole authored conjunct to the reading
+     * of one comparison, so a conjunct written under a denial arrives as a shape it makes nothing
+     * of — the statements inside it are not reached here and there is nothing to name a line by.
+     * The reading that does reach them is the one lines are read from
+     * ({@link FieldDomains#placed}).
+     */
+    public record Range(Endpoint min, Endpoint max, Carrier carrier) {
+
+        public boolean saysNothing() {
+            return min == null && max == null;
+        }
+    }
+
     /** What a numeric newtype's own rules leave its value between, for a caller that is asking about
      * the value and not about anything taken of it. */
-    public static Bounds of(TypeView view, RuleReadingSource source) {
+    public static Range of(TypeView view, RuleReadingSource source) {
         return of(view, source, Carrier.ofValue(view.declared(), source.symbols()), null);
     }
 
@@ -148,15 +191,13 @@ public final class DeclaredBounds {
      * @param measure the operation the number is taken by, or null where the number is the value
      *                itself
      */
-    public static Bounds of(TypeView view, RuleReadingSource source, Carrier carrier,
-                            ValueName measure) {
+    public static Range of(TypeView view, RuleReadingSource source, Carrier carrier,
+                           ValueName measure) {
         if (carrier == null) {
             return null;
         }
-        End min = null;
-        End max = null;
-        // The ends of the clauses, which is one projection of them and not the reading of them.
-        // Every layer that put an end where it is is kept, because each is a rule a row is owed.
+        Endpoint min = null;
+        Endpoint max = null;
         for (DeclaredClauses.Conjunct each : DeclaredClauses.allOf(view.wrappers(), source)) {
             // An end and nothing else. A rule this reads no end from narrows nothing here, and a
             // rule stepping past the last value of the order states an end no value is at — which
@@ -168,14 +209,13 @@ public final class DeclaredBounds {
                 continue;
             }
             InvariantBound read = placed.bound();
-            End end = new End(read.end(), List.of(new Drawn(each.part())));
             if (read.lower()) {
-                min = End.tighter(min, end, false);
+                min = Endpoint.lower(min, read.end());
             } else {
-                max = End.tighter(max, end, true);
+                max = Endpoint.upper(max, read.end());
             }
         }
-        return new Bounds(min, max, carrier);
+        return new Range(min, max, carrier);
     }
 
     /**
@@ -200,7 +240,7 @@ public final class DeclaredBounds {
             if (!each.at().of().equals(kind)) {
                 continue;
             }
-            End end = new End(each.end(), List.of(new Drawn(each.part())));
+            End end = new End(each.end(), List.of(new Drawn(each.from().line())));
             if (each.lower()) {
                 min = End.tighter(min, end, false);
             } else {
@@ -307,9 +347,9 @@ public final class DeclaredBounds {
     public static CountRange countsHeld(TypeView view, RuleReadingSource source,
                                         FieldDomains.Held held) {
         ValueName.Stdlib counts = NumericMeasures.takenOf(view.declared(), source.symbols());
-        Bounds sized = counts == null ? null : of(view, source, Carrier.WHOLE, counts);
-        Endpoint least = sized == null || sized.min() == null ? null : sized.min().at();
-        Endpoint most = sized == null || sized.max() == null ? null : sized.max().at();
+        Range sized = counts == null ? null : of(view, source, Carrier.WHOLE, counts);
+        Endpoint least = sized == null ? null : sized.min();
+        Endpoint most = sized == null ? null : sized.max();
         return new CountRange(
                 Math.max(CountDomain.leastFrom(least),
                         held == null ? 0 : CountDomain.leastFrom(held.bounds().min())),

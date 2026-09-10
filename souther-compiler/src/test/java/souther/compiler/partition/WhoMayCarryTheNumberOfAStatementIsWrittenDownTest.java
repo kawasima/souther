@@ -38,6 +38,9 @@ class WhoMayCarryTheNumberOfAStatementIsWrittenDownTest {
 
     private static final String STATEMENT_ID = "souther/compiler/partition/ClauseStatementId";
 
+    private static final String INVARIANT_STATEMENT_ID =
+            "souther/compiler/check/InvariantStatementId";
+
     /** A field that holds such a number, or a method that makes one, and why it may. */
     private record Licence(String who, String why) { }
 
@@ -45,13 +48,26 @@ class WhoMayCarryTheNumberOfAStatementIsWrittenDownTest {
             new Licence("souther.compiler.partition.ClauseStatementId.ordinal",
                     "the pair itself, made where a part is read for what it states and carried from"
                             + " there. This is the name everything downstream holds instead of a"
-                            + " number, so it is the one place the two stand together"));
+                            + " number, so it is the one place the two stand together"),
+            new Licence("souther.compiler.check.InvariantStatementId.ordinal",
+                    "the same pair for a declaration's clause, which is decomposed twice as a"
+                            + " behavior's is. Two of them and not one, because the number means"
+                            + " which statement of the part its own reading arrived at: the readings"
+                            + " are separate and a number issued by either would be a place in the"
+                            + " other's list"));
 
     private static final List<Licence> MAY_MAKE = List.of(
             new Licence("souther.compiler.partition.ClauseStatements.of",
                     "the one place a part is taken apart into the things it states, which is where"
                             + " the place each of them holds among that part's statements was"
                             + " assigned"));
+
+    private static final List<Licence> MAY_MAKE_AN_INVARIANTS = List.of(
+            new Licence("souther.compiler.check.InvariantChecker.direct",
+                    "the walk that reads a declaration's conjunct for what it states, which is where"
+                            + " a statement is recognised. Numbered where an end or a hand-over is"
+                            + " written down instead, the number would say which of the outcomes"
+                            + " this was rather than which of the statements"));
 
     /**
      * Only the reading that took a part apart names one of its statements.
@@ -65,6 +81,21 @@ class WhoMayCarryTheNumberOfAStatementIsWrittenDownTest {
                 "a statement named anywhere else is a number somebody counted for themselves put"
                         + " beside whichever part they were holding. What may make one, and why: "
                         + why(MAY_MAKE));
+    }
+
+    /**
+     * And the same of a declaration's clause, whose statements a walk of its own arrives at.
+     *
+     * <p>Asked apart from the behavior's, because the two readings are apart. What they share is
+     * that the number means a place in one reading's list of what a part states, so a second maker
+     * on either side is a second answer to which statement a statement is.
+     */
+    @Test
+    void andOnlyTheWalkThatReadsADeclarationsConjunctNamesOneOfIts() {
+        assertEquals(named(MAY_MAKE_AN_INVARIANTS), callsTo(INVARIANT_STATEMENT_ID, "<init>"),
+                "a statement named anywhere else is a number somebody counted for themselves put"
+                        + " beside whichever part they were holding. What may make one, and why: "
+                        + why(MAY_MAKE_AN_INVARIANTS));
     }
 
     /** And nothing downstream of that reading holds the number instead of the name. */

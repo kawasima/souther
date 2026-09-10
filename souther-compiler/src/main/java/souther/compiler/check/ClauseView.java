@@ -44,10 +44,10 @@ final class ClauseView {
     private final List<Clauses.StatedPart> present;
     /** And where in the clause the ones it does not are: two conjuncts spelled alike stand at two
      *  places, and a set comparing them by what they say would leave out both. */
-    private final Set<ClauseExpr.Occurrence> omitted;
+    private final Set<ClauseOccurrence> omitted;
 
     private ClauseView(List<Clauses.StatedPart> authored, List<Clauses.StatedPart> present,
-                       Set<ClauseExpr.Occurrence> omitted) {
+                       Set<ClauseOccurrence> omitted) {
         this.authored = authored;
         this.present = present;
         this.omitted = omitted;
@@ -96,7 +96,7 @@ final class ClauseView {
     static ClauseView without(List<Clauses.StatedPart> authored,
                               Set<PartId<RuleRef.Invariant>> left) {
         List<Clauses.StatedPart> here = new ArrayList<>(authored.size());
-        Set<ClauseExpr.Occurrence> omitted = new LinkedHashSet<>();
+        Set<ClauseOccurrence> omitted = new LinkedHashSet<>();
         for (Clauses.StatedPart each : authored) {
             if (left.contains(each.id())) {
                 omitted.add(each.of().at());

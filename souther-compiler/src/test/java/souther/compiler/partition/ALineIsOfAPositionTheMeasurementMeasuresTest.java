@@ -6,6 +6,9 @@ import souther.compiler.DefaultStdlib;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.RuleReadings;
 import souther.compiler.check.Carrier;
+import souther.compiler.check.DeclaredLine;
+import souther.compiler.check.InvariantStatementId;
+import souther.compiler.check.PartId;
 import souther.compiler.check.Clause;
 import souther.compiler.check.ClauseName;
 import souther.compiler.check.RuleRef;
@@ -90,9 +93,12 @@ class ALineIsOfAPositionTheMeasurementMeasuresTest {
 
     private static LineOrigin aBound() {
         return new LineOrigin.InvariantOrigin(
-                new souther.compiler.check.PartId<>(new RuleRef.Invariant(new Clause.Ref(
-                        new Clause.Id(TypeSymbols.declared(new TypeKey("example.fee", "Amount")), 0),
-                        Optional.of(new ClauseName("cap")))), 0),
+                new DeclaredLine.OfAStatement(new InvariantStatementId(
+                        new PartId<>(new RuleRef.Invariant(new Clause.Ref(
+                                new Clause.Id(TypeSymbols.declared(
+                                        new TypeKey("example.fee", "Amount")), 0),
+                                Optional.of(new ClauseName("cap")))), 0),
+                        0)),
                 EndSide.LOWER, true);
     }
 

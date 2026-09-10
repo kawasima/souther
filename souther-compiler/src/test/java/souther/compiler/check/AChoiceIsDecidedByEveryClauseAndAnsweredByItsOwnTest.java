@@ -216,7 +216,7 @@ class AChoiceIsDecidedByEveryClauseAndAnsweredByItsOwnTest {
     @Test
     void andWhichOfTheTwoIsNotAskedOfWhereItWasWritten() {
         RuleShortfall form = new RuleShortfall(CONSTRAINED, UnreadReason.FORM_NOT_READ,
-                new RuleShortfall.Site.AtALeaf(new ClauseExpr.Occurrence(0), new SourcePos(1, 1)));
+                new RuleShortfall.Site.AtALeaf(new ClauseOccurrence(0), new SourcePos(1, 1)));
         ChoiceSite choice = aChoice();
 
         assertEquals(java.util.Set.of(form),

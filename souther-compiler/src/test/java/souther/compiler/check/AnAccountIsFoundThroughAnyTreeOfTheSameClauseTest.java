@@ -61,8 +61,8 @@ class AnAccountIsFoundThroughAnyTreeOfTheSameClauseTest {
     void oneClauseBuiltTwiceHandsOutOneSetOfCoordinates() {
         ClauseExpr one = ClauseExpr.of(clause(), true);
         ClauseExpr other = ClauseExpr.of(clause(), true);
-        Map<ClauseExpr.Occurrence, Core> here = nodesBy(one);
-        Map<ClauseExpr.Occurrence, Core> there = nodesBy(other);
+        Map<ClauseOccurrence, Core> here = nodesBy(one);
+        Map<ClauseOccurrence, Core> there = nodesBy(other);
         assertEquals(here.keySet(), there.keySet(),
                 "the occurrences are the structure's, and the two trees are one structure");
         here.forEach((at, node) -> {
@@ -115,13 +115,13 @@ class AnAccountIsFoundThroughAnyTreeOfTheSameClauseTest {
     }
 
     /** Every node of the shape, under the coordinate the shape gives it. */
-    private static Map<ClauseExpr.Occurrence, Core> nodesBy(ClauseExpr shape) {
-        Map<ClauseExpr.Occurrence, Core> out = new LinkedHashMap<>();
+    private static Map<ClauseOccurrence, Core> nodesBy(ClauseExpr shape) {
+        Map<ClauseOccurrence, Core> out = new LinkedHashMap<>();
         gather(shape, out);
         return out;
     }
 
-    private static void gather(ClauseExpr shape, Map<ClauseExpr.Occurrence, Core> out) {
+    private static void gather(ClauseExpr shape, Map<ClauseOccurrence, Core> out) {
         out.put(shape.at(), shape.written());
         switch (shape) {
             case ClauseExpr.Leaf _ -> {

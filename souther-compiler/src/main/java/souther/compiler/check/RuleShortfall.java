@@ -65,7 +65,7 @@ record RuleShortfall(FactSubject position, UnreadReason why, RuleShortfall.Site 
          *
          * <p>The identity and the place beside each other, as a choice holds them
          * ({@link ChoiceSite}). Which part of the clause this is, is what
-         * {@link ClauseExpr.Occurrence} says and a node cannot: a clause is read once for every
+         * {@link ClauseOccurrence} says and a node cannot: a clause is read once for every
          * place the walk opens a value at, over whatever tree the substitution built there, so two
          * readings of one rule meet the same written part as two objects. Told apart by the tree
          * they landed in, one thing an author wrote came back as two things to look at.
@@ -85,7 +85,7 @@ record RuleShortfall(FactSubject position, UnreadReason why, RuleShortfall.Site 
          *                  because the reader that puts these in the author's order has no clause
          *                  left to ask
          */
-        record AtALeaf(ClauseExpr.Occurrence at, SourcePos writtenAt) implements Site {
+        record AtALeaf(ClauseOccurrence at, SourcePos writtenAt) implements Site {
 
             public AtALeaf {
                 if (at == null || writtenAt == null) {

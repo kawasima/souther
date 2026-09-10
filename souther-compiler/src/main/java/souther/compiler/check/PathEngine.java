@@ -668,7 +668,7 @@ final class PathEngine {
             // What this reading made of each occurrence of each part, handed over with the reading
             // it belongs to. Written into a table every reading shares instead, an entry would be
             // told from the next reading's only by which objects a substitution allocated.
-            Map<PartId<RuleRef.Invariant>, Map<ClauseExpr.Occurrence, InvariantChecker.PartAsRead>>
+            Map<PartId<RuleRef.Invariant>, Map<ClauseOccurrence, InvariantChecker.PartAsRead>>
                     constrained = new LinkedHashMap<>();
             for (TypeGuarantee.Part part : guarantee.parts()) {
                 constrained.computeIfAbsent(part.of(), _ -> new LinkedHashMap<>())

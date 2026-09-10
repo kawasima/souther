@@ -5,6 +5,9 @@ import org.junit.jupiter.api.Test;
 import souther.compiler.check.Carrier;
 import souther.compiler.check.Clause;
 import souther.compiler.check.ClauseName;
+import souther.compiler.check.DeclaredLine;
+import souther.compiler.check.InvariantStatementId;
+import souther.compiler.check.PartId;
 import souther.compiler.check.RuleRef;
 import souther.compiler.inputs.NumericTerm;
 import souther.compiler.inputs.TermPath;
@@ -174,10 +177,12 @@ class AClosedReadingIsOneThatDrewEveryLineItFoundTest {
 
     private static LineOrigin bound(String clause) {
         return new LineOrigin.InvariantOrigin(
-                new souther.compiler.check.PartId<>(new RuleRef.Invariant(new Clause.Ref(
-                        new Clause.Id(
-                                TypeSymbols.declared(new TypeKey("example.rate", "Amount")), 0),
-                        java.util.Optional.of(new ClauseName(clause)))), 0),
+                new DeclaredLine.OfAStatement(new InvariantStatementId(
+                        new PartId<>(new RuleRef.Invariant(new Clause.Ref(
+                                new Clause.Id(TypeSymbols.declared(
+                                        new TypeKey("example.rate", "Amount")), 0),
+                                java.util.Optional.of(new ClauseName(clause)))), 0),
+                        0)),
                 souther.compiler.numeric.EndSide.LOWER, true);
     }
 }
