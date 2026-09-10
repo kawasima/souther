@@ -2958,7 +2958,16 @@ public final class Adequacy {
             // that answer says the model holds nothing to cover, and read for this one it turned a
             // compile that stopped into a module with no work in it (issue #996).
             Answer<Map<String, PartitionEvidence>> coverage = db.ask(new Coverage(name));
-            if (!prepared.present() || !scope.present() || !sigs.present() || !coverage.present()) {
+            // What the module states of a parameter's type is read off its definitions and the
+            // behaviors a body of it can name, and both are answers that can be absent. Absence and
+            // not an empty table, for the reason above: read as a table with nothing in it, a module
+            // whose signatures could not be worked out became a module that states no value of any
+            // type, and every row it is offered was composed as though the author had written none.
+            Answer<Map<String, Hir.FnDef>> definitions =
+                    db.ask(new Bodies.ModuleDefinitions(name));
+            Answer<Map<ValueName.Behavior, Sig>> reachable = db.ask(new Bodies.Reachable(name));
+            if (!prepared.present() || !scope.present() || !sigs.present() || !coverage.present()
+                    || !definitions.present() || !reachable.present()) {
                 return Answer.absent();
             }
             souther.compiler.query.Bodies.Elaborated checked =
@@ -3031,9 +3040,7 @@ public final class Adequacy {
             souther.compiler.partition.FillResult composed;
             try {
                 composed = rowsFor(spec, sig, Shapes.ruleReading(db, name).value(), asked,
-                        baselines(name, spec, sig,
-                                db.ask(new Bodies.ModuleDefinitions(name)).value(),
-                                db.ask(new Bodies.Reachable(name)).value(),
+                        baselines(name, spec, sig, definitions.value(), reachable.value(),
                                 prepared.value(), symbols,
                                 // What the declarations of this module denote, and not what a check
                                 // settled about them: a generation is a measurement of a module
@@ -3513,9 +3520,6 @@ public final class Adequacy {
                                                       Map<ValueName.Behavior, Sig> behaviors,
                                                       Symbols symbols,
                                                       souther.compiler.observe.FieldTypes fields) {
-            if (values == null || behaviors == null) {
-                return List.of();
-            }
             // What a value is declared to be, asked of the one walk that answers it. A second
             // reading of a definition's type here would be a second answer about what a row may
             // name, differing from the reading that builds the row at whatever either forgot.
