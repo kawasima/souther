@@ -16,6 +16,11 @@ import java.util.function.Function;
  * discharged by a guard stating the same predicate of the same term, and reported when there is
  * none. Immutable, threaded functionally alongside the numeric domain.
  *
+ * <p>What the guards settled is held as they settled it ({@link SettledPredicates}) and read out
+ * once, where a reader asks. Every way a predicate arrives — a guard settling one, two readings said
+ * together, a change of vocabulary — is a composition and costs nothing that grows with what the
+ * path had already.
+ *
  * <p>Kept in the order the predicates were settled. Nothing here answers with one of them, and a
  * renaming that has to refuse two subjects under one name names whichever it reaches first — read
  * off a set whose iteration order is salted once per run, which of two collisions is reported would
@@ -26,28 +31,53 @@ import java.util.function.Function;
  */
 public final class PredicateFacts<A> {
 
-    private final boolean bottom;    // contradictory guards — this path is not taken
-    private final Set<A> holds;
-    private final Set<A> fails;
+    /**
+     * A contradiction settled under names this state does not have.
+     *
+     * <p>What a change of vocabulary leaves of guards that cannot all hold. Nothing there is asked
+     * of the naming: a path nothing reaches says the same thing under any names, and handing its
+     * subjects over would have a renaming refusing two of them over a disagreement on a path the
+     * program never takes.
+     */
+    private final boolean contradictedUnderOtherNames;
 
-    private PredicateFacts(boolean bottom, Set<A> holds, Set<A> fails) {
-        this.bottom = bottom;
-        this.holds = held(holds);
-        this.fails = held(fails);
+    private final SettledPredicates<A> settled;
+
+    /** What {@link #settled} comes to, computed where it is asked for and kept. */
+    private Settlings<A> settlings;
+
+    /** The predicates settled each way, and whether one of them was settled both ways. */
+    private record Settlings<A>(boolean contradictory, Set<A> holds, Set<A> fails) {}
+
+    private PredicateFacts(boolean contradictedUnderOtherNames, SettledPredicates<A> settled) {
+        this.contradictedUnderOtherNames = contradictedUnderOtherNames;
+        this.settled = settled;
     }
 
-    private static <A> Set<A> held(Set<A> of) {
-        return Collections.unmodifiableSet(new LinkedHashSet<>(of));
+    private Settlings<A> settlings() {
+        if (settlings == null) {
+            Set<A> holds = new LinkedHashSet<>();
+            Set<A> fails = new LinkedHashSet<>();
+            boolean contradictory = false;
+            for (SettledPredicates.One<A> one : settled.distinct()) {
+                Set<A> theOtherWay = one.positive() ? fails : holds;
+                contradictory = contradictory || theOtherWay.contains(one.key());
+                (one.positive() ? holds : fails).add(one.key());
+            }
+            settlings = new Settlings<>(contradictory, Collections.unmodifiableSet(holds),
+                    Collections.unmodifiableSet(fails));
+        }
+        return settlings;
     }
 
     /** Contradictory guards, which is one key settled both ways however it was reached. */
     private static <A> PredicateFacts<A> bottom() {
-        return new PredicateFacts<>(true, Set.of(), Set.of());
+        return new PredicateFacts<>(true, SettledPredicates.none());
     }
 
     /** Nothing settled either way. */
     public static <A> PredicateFacts<A> none() {
-        return new PredicateFacts<>(false, Set.of(), Set.of());
+        return new PredicateFacts<>(false, SettledPredicates.none());
     }
 
     /**
@@ -60,32 +90,23 @@ public final class PredicateFacts<A> {
      * needs the numbers.
      */
     public boolean isBottom() {
-        return bottom;
+        return contradictedUnderOtherNames || settlings().contradictory();
     }
 
     /** The facts with {@code key} settled. Settling it both ways makes the path infeasible. */
     PredicateFacts<A> assume(A key, boolean positive) {
-        if (bottom) {
-            return this;
-        }
-        if ((positive ? fails : holds).contains(key)) {
-            return bottom();
-        }
-        Set<A> next = new LinkedHashSet<>(positive ? holds : fails);
-        next.add(key);
-        return positive
-                ? new PredicateFacts<>(false, next, fails)
-                : new PredicateFacts<>(false, holds, next);
+        return new PredicateFacts<>(contradictedUnderOtherNames,
+                settled.and(SettledPredicates.of(key, positive)));
     }
 
     /** Whether the guards prove {@code key} (or its negation, when {@code positive} is false). */
     boolean entails(A key, boolean positive) {
-        return bottom || (positive ? holds : fails).contains(key);
+        return isBottom() || (positive ? settlings().holds() : settlings().fails()).contains(key);
     }
 
     /** Whether the guards prove the opposite of what {@code positive} asks of {@code key}. */
     boolean refutes(A key, boolean positive) {
-        return !bottom && (positive ? fails : holds).contains(key);
+        return !isBottom() && (positive ? settlings().fails() : settlings().holds()).contains(key);
     }
 
     /**
@@ -93,18 +114,12 @@ public final class PredicateFacts<A> {
      *
      * <p>A predicate one of them holds and the other denies is one key settled both ways, which is
      * the same contradiction reaching this the same way it reaches it from a single reading.
-     * Nothing else here relates two predicates, so the rest is the two sets put together.
+     * Nothing else here relates two predicates, so the rest is what each of them settled, settled.
      */
     public PredicateFacts<A> meet(PredicateFacts<A> other) {
-        if (bottom || other.bottom) {
-            return bottom();
-        }
-        Set<A> bothHold = new LinkedHashSet<>(holds);
-        bothHold.addAll(other.holds);
-        Set<A> bothFail = new LinkedHashSet<>(fails);
-        bothFail.addAll(other.fails);
-        return bothHold.stream().anyMatch(bothFail::contains)
-                ? bottom() : new PredicateFacts<>(false, bothHold, bothFail);
+        return new PredicateFacts<>(
+                contradictedUnderOtherNames || other.contradictedUnderOtherNames,
+                settled.and(other.settled));
     }
 
     /**
@@ -119,13 +134,16 @@ public final class PredicateFacts<A> {
      * caller holding one of those sees all of them.
      */
     public <B> PredicateFacts<B> renamed(Function<A, B> naming) {
-        if (bottom) {
+        if (isBottom()) {
             return bottom();
         }
-        Set<B> outHolds = new LinkedHashSet<>();
-        holds.forEach(key -> outHolds.add(naming.apply(key)));
-        Set<B> outFails = new LinkedHashSet<>();
-        fails.forEach(key -> outFails.add(naming.apply(key)));
-        return new PredicateFacts<>(false, outHolds, outFails);
+        SettledPredicates<B> out = SettledPredicates.none();
+        for (A key : settlings().holds()) {
+            out = out.and(SettledPredicates.of(naming.apply(key), true));
+        }
+        for (A key : settlings().fails()) {
+            out = out.and(SettledPredicates.of(naming.apply(key), false));
+        }
+        return new PredicateFacts<>(false, out);
     }
 }
