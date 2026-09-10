@@ -2900,7 +2900,54 @@
         "status" : "unavailable",
         "reason" : "no_rows"
       },
-      "findings" : [ ]
+      "findings" : [ {
+        "kind" : "decision_rule_uncovered",
+        "disposition" : "reported",
+        "subject" : "grantLeave",
+        "obligationId" : {
+          "behavior" : "grantLeave",
+          "conditions" : [ {
+            "kind" : "comparison",
+            "condition" : "GE LinearForm[constant=-0.8, coefs={rate=1}]",
+            "outcome" : "held"
+          }, {
+            "kind" : "comparison",
+            "condition" : "GE LinearForm[constant=-5, coefs={worked=1}]",
+            "outcome" : "held"
+          } ]
+        },
+        "code" : "E1935"
+      }, {
+        "kind" : "decision_rule_uncovered",
+        "disposition" : "reported",
+        "subject" : "grantLeave",
+        "obligationId" : {
+          "behavior" : "grantLeave",
+          "conditions" : [ {
+            "kind" : "comparison",
+            "condition" : "GE LinearForm[constant=-0.8, coefs={rate=1}]",
+            "outcome" : "held"
+          }, {
+            "kind" : "comparison",
+            "condition" : "GE LinearForm[constant=-5, coefs={worked=1}]",
+            "outcome" : "denied"
+          } ]
+        },
+        "code" : "E1935"
+      }, {
+        "kind" : "decision_rule_uncovered",
+        "disposition" : "reported",
+        "subject" : "grantLeave",
+        "obligationId" : {
+          "behavior" : "grantLeave",
+          "conditions" : [ {
+            "kind" : "comparison",
+            "condition" : "GE LinearForm[constant=-0.8, coefs={rate=1}]",
+            "outcome" : "denied"
+          } ]
+        },
+        "code" : "E1935"
+      } ]
     }, {
       "name" : "judgeHours",
       "implementation" : "implemented",
@@ -3865,7 +3912,75 @@
         "status" : "unavailable",
         "reason" : "no_rows"
       },
-      "findings" : [ ]
+      "findings" : [ {
+        "kind" : "decision_rule_uncovered",
+        "disposition" : "reported",
+        "subject" : "judgeHours",
+        "obligationId" : {
+          "behavior" : "judgeHours",
+          "conditions" : [ {
+            "kind" : "comparison",
+            "condition" : "GT LinearForm[constant=-100, coefs={hours=1}]",
+            "outcome" : "held"
+          }, {
+            "kind" : "position",
+            "condition" : "agreement",
+            "outcome" : "Extended"
+          } ]
+        },
+        "code" : "E1935"
+      }, {
+        "kind" : "decision_rule_uncovered",
+        "disposition" : "reported",
+        "subject" : "judgeHours",
+        "obligationId" : {
+          "behavior" : "judgeHours",
+          "conditions" : [ {
+            "kind" : "comparison",
+            "condition" : "GT LinearForm[constant=-100, coefs={hours=1}]",
+            "outcome" : "denied"
+          }, {
+            "kind" : "position",
+            "condition" : "agreement",
+            "outcome" : "Extended"
+          } ]
+        },
+        "code" : "E1935"
+      }, {
+        "kind" : "decision_rule_uncovered",
+        "disposition" : "reported",
+        "subject" : "judgeHours",
+        "obligationId" : {
+          "behavior" : "judgeHours",
+          "conditions" : [ {
+            "kind" : "comparison",
+            "condition" : "GT LinearForm[constant=-45, coefs={hours=1}]",
+            "outcome" : "held"
+          }, {
+            "kind" : "position",
+            "condition" : "agreement",
+            "outcome" : "Standard"
+          } ]
+        },
+        "code" : "E1935"
+      }, {
+        "kind" : "decision_rule_uncovered",
+        "disposition" : "reported",
+        "subject" : "judgeHours",
+        "obligationId" : {
+          "behavior" : "judgeHours",
+          "conditions" : [ {
+            "kind" : "comparison",
+            "condition" : "GT LinearForm[constant=-45, coefs={hours=1}]",
+            "outcome" : "denied"
+          }, {
+            "kind" : "position",
+            "condition" : "agreement",
+            "outcome" : "Standard"
+          } ]
+        },
+        "code" : "E1935"
+      } ]
     } ]
   } ],
   "sources" : {

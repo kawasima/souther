@@ -710,6 +710,11 @@ public final class GeneratedRows {
             // measured at more than one number.
             case About.AClassNoRowIsIn(var missing) ->
                     missing.name() + " at " + missing.axis().name();
+            // The behavior whose decision it is a rule of, which is as far as words about a rule
+            // go. What tells one from another is the proposition each of its conditions is keyed
+            // on, written the one way round that makes a comparison and its denial one column —
+            // and printing that would show an author a comparison they did not write.
+            case About.ARuleNoRowTakes(var behavior, var _) -> "a decision rule of " + behavior;
             // Findings row synthesis is not about, which `shown` leaves out and nothing here is
             // asked to name. Listed rather than defaulted so that a shape added later has to be
             // given words here.

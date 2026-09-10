@@ -459,6 +459,13 @@ public record Settlements(List<ObligationIdentity> requested,
                 case ObligationIdentity.OfAClass(var owed) -> inClass(asRead, owed);
                 case ObligationIdentity.OfAnArm(var owed) -> throughArm(asRead, owed);
                 case ObligationIdentity.OfALine at -> atThePoint(asRead, at);
+                // Nothing puts a rule of a decision into the universe a run is asked about, so
+                // nothing reaches here with one. Refused rather than answered that the row does
+                // not settle it: what a row does about a rule is which rule its run took, and an
+                // answer of "no" from a reader that never asked would be a row silently offered
+                // for work it does.
+                case ObligationIdentity.OfADecisionRule owed -> throw new IllegalArgumentException(
+                        "a run was asked what it does about a rule of a decision: " + owed);
             };
         }
 

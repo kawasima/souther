@@ -1742,10 +1742,32 @@
                   }
                 },
                 "else": {
-                  "not": {
+                  "if": {
+                    "properties": {
+                      "kind": {
+                        "const": "decision_rule_uncovered"
+                      }
+                    },
+                    "required": [
+                      "kind"
+                    ]
+                  },
+                  "then": {
                     "required": [
                       "obligationId"
-                    ]
+                    ],
+                    "properties": {
+                      "obligationId": {
+                        "$ref": "#/$defs/ruleObligationId"
+                      }
+                    }
+                  },
+                  "else": {
+                    "not": {
+                      "required": [
+                        "obligationId"
+                      ]
+                    }
                   }
                 }
               }
@@ -1763,6 +1785,7 @@
               "unanswered_row",
               "output_case_unverified",
               "axis_class_uncovered",
+              "decision_rule_uncovered",
               "domain_point_uncovered",
               "partition_not_derivable",
               "partition_not_read",
@@ -1790,6 +1813,9 @@
               },
               {
                 "$ref": "#/$defs/classObligationId"
+              },
+              {
+                "$ref": "#/$defs/ruleObligationId"
               }
             ]
           },
@@ -1814,6 +1840,52 @@
           "at": {
             "description": "Where the finding is, present exactly where its place is its own rather than the declaration it sits under — `arm_unreached` and nothing else. A behavior with two `guard`s has two arms labelled `else`, so the place is what tells two of these apart, and it is the same place under the same key as the matching `branch.obligations` entry, whose `disposition` is `unmet`. The other kinds are cited at the behavior's own declaration, which the entry above already names.",
             "$ref": "#/$defs/at"
+          }
+        }
+      }
+    },
+    "ruleObligationId": {
+      "type": "object",
+      "description": "What tells one rule of a body's decision from every other, which is not what a reader is shown. The behavior and what the path consulted, each condition written as the proposition an account keys on: a comparison and its denial are one column, so `n > 100` in a source is written here as `n <= 100` denied. That is what makes the table exclusive and it is why none of it goes into a sentence — `subject` beside it says only which behavior, and the notes point at the construct the author wrote. A condition the path never consulted is absent, which is what a rule leaving it out means. `conditions` is sorted by what each is written as and not by the order a walk met them: two runs that read one body's ways in two orders state one rule.",
+      "required": [
+        "behavior",
+        "conditions"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "behavior": {
+          "type": "string",
+          "description": "Whose decision it is a rule of. Rules are written in the terms of a body's own positions, so two behaviors comparing same-named positions the same way state equal rules."
+        },
+        "conditions": {
+          "type": "array",
+          "description": "One entry per condition the path consulted.",
+          "items": {
+            "type": "object",
+            "required": [
+              "kind",
+              "condition",
+              "outcome"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "description": "`comparison` is a comparison the arithmetic took in, `position` a fork on a sum read as the position its scrutinee stands at, and `not_read` a condition this compiler has no words for — told apart by the occurrence that met it, because two conditions nothing could read mean nothing to be told apart by.",
+                "enum": [
+                  "comparison",
+                  "position",
+                  "not_read"
+                ]
+              },
+              "condition": {
+                "type": "string",
+                "description": "Which distinction, as the account keys it."
+              },
+              "outcome": {
+                "type": "string",
+                "description": "What the path came out as: `held` or `denied` for a comparison and for a condition nothing read, and the case the position was read as for a fork."
+              }
+            }
           }
         }
       }

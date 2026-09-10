@@ -3416,7 +3416,7 @@ Which measures could have found a gap is what the model has and what the bar ask
 
 *What refuses a build.* A gap a measure came to an answer about and the bar the build asked for asks for.
 
-[[a-bar-is-a-criterion-and-what-it-adds]]*A bar is a domain-coverage criterion and whatever else it refuses over beside it.* The two are independent questions and neither is a stronger answer to the other: how firmly a border's points are asked for is what the syllabus's two criteria answer, and whether a class no row is in is a row somebody owes is not about borders at all. So the bars are named rather than ordered. `+reliable-domain+` is reliable domain coverage and nothing beside it; `+classes+` is that and a class no row is in (<<every-axis-class-has-a-row>>, <<e1931>>). A bar can add only findings about rows the model asks for: what a measure could not read is this compiler's shortfall rather than the model's, and no bar turns one into a gap.
+[[a-bar-is-a-criterion-and-what-it-adds]]*A bar is a domain-coverage criterion and whatever else it refuses over beside it.* The two are independent questions and neither is a stronger answer to the other: how firmly a border's points are asked for is what the syllabus's two criteria answer, and whether a class no row is in is a row somebody owes is not about borders at all. So the bars are named rather than ordered. `+reliable-domain+` is reliable domain coverage and nothing beside it; `+classes+` is that and everything the account is owed beside a border's points — a class no row is in (<<every-axis-class-has-a-row>>, <<e1931>>) and a rule of the decision no row takes (<<every-decision-rule-has-a-row>>, <<e1935>>). Its name is what it was called when a class was the only such obligation; what it asks for is that the account be finished, whichever derivation states an entry of it. One such bar and not one per derivation: a build wanting the account finished wants it finished, and a bar apiece would put the criterion in the caller's hands one gap at a time. A bar can add only findings about rows the model asks for: what a measure could not read is this compiler's shortfall rather than the model's, and no bar turns one into a gap.
 
 `+classes+` is asked for and is never a default. A model being written has classes no row is in — that is what writing rows is — so a build held to it by default would refuse every model before its rows were finished.
 
@@ -3523,6 +3523,7 @@ Where a behavior has a body, `+souther examples+` also reports which of its arms
 
 One more the dial asks, needing the arms measured:
 
+* [[every-decision-rule-has-a-row]]some row SHOULD take each rule of the decision the body states, of the rules something has been seen standing in. A rule is one way through the body, carrying the distinctions that way consulted and what each came out as; a condition the way never reached is absent from it rather than written as a don't-care, so a short-circuit that settled before reaching a condition states nothing about it. Beside the arms and not among them: two rules can go through one arm, and a body whose arms answer alike states two rules that one row through each arm covers;
 * [[every-arm-has-a-row]]some row that states what it expects SHOULD go through each arm of an `+if+`, a `+guard+` or an attempted construction. A row whose answer is owed (<<example-answer-owed>>) goes through an arm without saying what the behavior answers there, so it does not answer this; an arm whose only rows are those is reported as a row owing its answer (<<every-row-has-its-answer-written>>) rather than as an arm nothing reaches.
 
 The line such a fork draws is asked for as well, and it is asked for wherever a rule draws a border rather than here (<<every-obligation-against-its-line-has-a-row>>): a `+guard+` comparing one position against another draws its line where the two are equal (<<a-comparison-of-two-positions-draws-a-line-between-them>>), exactly as an `+invariant+` and an `+ensures+` draw theirs. For a guard the arms do not stand in for it: both arms of `+charge > ceiling+` are reached by rows nowhere near the line, and a row on it takes the same arm as one well below it.
@@ -6579,6 +6580,24 @@ Emitted at every row written `+<?>+` (<<example-answer-owed>>), and at every arm
 Read off the source rather than off what a run came to. A row's answer is owed whether or not the behavior has arms, whether or not another row covers the arm this one goes through, and whether or not anything could be measured about the rows at all — so none of those can take the finding away.
 
 Told apart from <<e1918>>, which is an arm no row goes through. A row does go through the arm reported here; what it is short of is the answer, and writing a second row for it would answer nothing.
+
+[#e1935]
+=== No row takes a rule of the decision a body states
+
+[,text]
+----
+No row takes a decision rule of `judgeHours`.
+Hint: The rule takes the comparison at 14:16 failing.
+Hint: The rule goes through the arm for `Extended`.
+----
+
+A warning, and only where the build asked for a bar that refuses over it (<<a-bar-is-a-criterion-and-what-it-adds>>). A body of guards and matches states a decision; its rules are the ways through it, each carrying the distinctions that way consulted and what each came out as, with a condition the way never reached left out rather than written as a don't-care.
+
+Said only of the rules something was seen standing in. Whether a rule is owed a row at all is settled before this and the other two answers are not warned about: a rule the readings that already exist show no row takes is owed nothing, and a rule this compiler looked for and did not find is neither covered nor a gap — reporting the second would tell an author that a shortfall of this compiler is work of theirs.
+
+*The sentence names the behavior and no more, and the rule is said underneath.* One note per condition, sending the reader to the construct that drew it and saying which way the rule takes it. What tells one rule from another is the proposition each of its conditions is keyed on, written the one way round that makes a comparison and its denial one column — so a sentence spelling it would show an author `+n <= 100+` where they wrote `+n > 100+`. Two rules of one behavior are shown alike here and are told apart by the identity the document carries (<<example-report-vocabulary>>), which is what that field is for.
+
+Told apart from <<e1918>>, which is an arm the author wrote that no row goes through. Two rules can go through one arm, and a body whose arms answer alike states two rules that one row through each arm covers — so neither measure is the other read another way.
 
 [#e2001]
 === A helper does not carry the termination guarantee it claims

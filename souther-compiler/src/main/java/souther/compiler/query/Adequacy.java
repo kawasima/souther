@@ -222,7 +222,12 @@ public final class Adequacy {
                 // are about a border's points, and a class of a position is not one — so which
                 // bar asks for it is {@link AdequacyBar}'s to say, and a criterion saying so
                 // would be the two questions answered by one ordered pair of values.
-                case AXIS_CLASS_UNCOVERED -> false;
+                //
+                // A rule of the decision is the same answer for its own reason. Domain coverage is
+                // a data-based technique and a decision table is a rule-based one; neither of the
+                // two answers here is about the rules a body states, so a criterion refusing over
+                // one would be saying how strongly a border's points are asked for.
+                case AXIS_CLASS_UNCOVERED, DECISION_RULE_UNCOVERED -> false;
                 // Not a row anyone owes: what was seen rather than what was asked for. A case
                 // nothing was observed producing is the rows' own account of themselves.
                 case OUTPUT_CASE_UNVERIFIED -> false;
@@ -264,13 +269,25 @@ public final class Adequacy {
         RELIABLE_DOMAIN(Criterion.RELIABLE_DOMAIN, Set.of()),
 
         /**
-         * Those, and a class of a position no row's value falls in.
+         * Those, and everything the account is owed beside a border's points: a class of a position
+         * no row's value falls in, and a rule of the decision no row takes.
          *
-         * <p>Not a default. A model being written has classes no row is in yet — that is what
-         * writing rows is — so a bar refusing over them is one a build asks for when its rows are
-         * meant to be finished, and never the one it is held to for having said nothing.
+         * <p>The bar that asks for a finished account rather than the bar that asks for classes.
+         * What it holds a build to is that every obligation the model derives has a row, whichever
+         * derivation states it — the name is what it was called when the only such obligation was a
+         * class, and the entries are what it means.
+         *
+         * <p>Not a default. A model being written has classes no row is in and rules no row takes —
+         * that is what writing rows is — so a bar refusing over them is one a build asks for when
+         * its rows are meant to be finished, and never the one it is held to for having said
+         * nothing.
+         *
+         * <p>One bar and not one per derivation. A build wanting the account finished wants it
+         * finished; a bar per derivation would put the criterion in the caller's hands one gap at a
+         * time, and their combinations would be listed here as values of an enum.
          */
-        CLASSES(Criterion.RELIABLE_DOMAIN, Set.of(Kind.AXIS_CLASS_UNCOVERED));
+        CLASSES(Criterion.RELIABLE_DOMAIN,
+                Set.of(Kind.AXIS_CLASS_UNCOVERED, Kind.DECISION_RULE_UNCOVERED));
 
         private final Criterion domain;
         private final Set<Kind> alsoRefuses;
@@ -2055,6 +2072,11 @@ public final class Adequacy {
                             .A_ROW_HERE_IS_WAITING_FOR_ITS_ANSWER);
             case About.ACaseNoRowExpects _ -> new GenerationOutcome.NotSupported(
                     GenerationOutcome.NotSupported.Reason.NO_STRATEGY_FOR_AN_OUTPUT_CASE);
+            // A row can stand here — the search that settled the rule stood one — and nothing
+            // turns what it stood into a row an author can complete. Said as a shortfall of this
+            // compiler rather than as a fact about the model, which is what it is.
+            case About.ARuleNoRowTakes _ -> new GenerationOutcome.NotSupported(
+                    GenerationOutcome.NotSupported.Reason.NO_STRATEGY_FOR_A_DECISION_RULE);
             // What the rows were seen doing rather than what they owe.
             case About.ACaseNothingWasSeenToProduce _ ->
                     new GenerationOutcome.NotApplicable(GenerationOutcome.NotApplicable
@@ -3424,10 +3446,10 @@ public final class Adequacy {
                                     atCase(input, missing, composed, spec);
                             case About.AClassNoRowIsIn(var missing) -> atClass(missing, composed);
                             case About.AnArmNoRowGoesThrough(var arm) -> atArm(arm, composed);
-                            // The eight above, which is what `none` was not null for.
+                            // The ones above, which is what `none` was not null for.
                             // A line a declaration is owed is not one of this behavior's findings,
                             // so nothing reaches here with one.
-                            case About.APointOfADeclaredBorder _,
+                            case About.APointOfADeclaredBorder _, About.ARuleNoRowTakes _,
                                     About.ACaseNoRowExpects _, About.ACaseNothingWasSeenToProduce _,
                                     About.ARowAtAnArmAwaitsItsAnswer _, About.AnUnansweredRow _,
                                     About.APositionNoLineDivides _,
@@ -4085,6 +4107,21 @@ public final class Adequacy {
         /** A class of an axis no row is in. */
         AXIS_CLASS_UNCOVERED(DiagnosticCode.E1931),
         /**
+         * A rule of the decision the body states that no row takes.
+         *
+         * <p>Said of the rules something was seen standing in. A rule the readings show no row
+         * takes is not owed one, and a rule this compiler looked for and did not find is neither
+         * covered nor a gap — which is {@link RuleRequirement}'s three answers, and none of them is
+         * a finding except the first.
+         *
+         * <p>Beside {@link #ARM_UNREACHED} and not among it. An arm is what the author wrote and is
+         * owed a row once however often a helper carrying it is called; a rule is a way through the
+         * body, and two rules can go through one arm. A body whose arms answer alike states two
+         * rules and one row through each arm covers them, so neither measure is the other read
+         * another way.
+         */
+        DECISION_RULE_UNCOVERED(DiagnosticCode.E1935),
+        /**
          * A point away from a border that no row is at — the {@code IN} or the {@code OUT} point.
          *
          * <p>Beside {@link #BOUNDARY_UNMET} rather than among its findings, and the difference is
@@ -4209,6 +4246,7 @@ public final class Adequacy {
             // its rules do not divide, what nothing here could read of them. Shown at the behavior.
             case About.ACaseNoRowExpects _, About.ACaseNothingWasSeenToProduce _,
                     About.ACaseNoRowAppliesItTo _, About.AClassNoRowIsIn _,
+                    About.ARuleNoRowTakes _,
                     About.APointOfABorder _, About.APositionNoLineDivides _,
                     About.ARuleWithoutALine _, About.ARuleNothingClassified _,
                     About.APositionThisCouldNotRead _, About.APositionReadWiderThanItsRules _,
@@ -4405,6 +4443,7 @@ public final class Adequacy {
                         Kind.PARTITION_VALUES_NOT_SEPARATED;
                 case About.AQuestionNothingAnswered _ -> Kind.RULE_UNACCOUNTED;
                 case About.AnArmNoRowGoesThrough _ -> Kind.ARM_UNREACHED;
+                case About.ARuleNoRowTakes _ -> Kind.DECISION_RULE_UNCOVERED;
                 // The row and the arm whose rows are all owed answers are one thing to do, and it
                 // is not the thing an unreached arm is. A row goes through this arm, so publishing
                 // it as an arm nothing reaches would tell a consumer the opposite of what happened.
@@ -4899,6 +4938,7 @@ public final class Adequacy {
             Map<String, Measure<List<BorderObligationPointAssessment>>> accounts =
                     db.ask(new BodyBorders(name)).value();
             Map<String, BranchEvidence> branches = db.ask(new BranchCoverage(name)).value();
+            Map<String, DecisionEvidence> decisions = db.ask(new Decides(name)).value();
 
             // One list and not a block per behavior. What each finding is about is its own
             // ({@link FindingSubject}), and a map keyed by behavior has no key for a finding about
@@ -4922,9 +4962,41 @@ public final class Adequacy {
                 if (branch != null && branch.measured().made().isPresent()) {
                     out.addAll(armFindings(behavior.name(), branch.arms()));
                 }
+                decisionFindings(db, name, behavior.name(),
+                        decisions == null ? null : decisions.get(behavior.name()), out);
             }
             declaredFindings(db, name, out);
             return Answer.of(List.copyOf(out));
+        }
+
+        /**
+         * The rules of one behavior's decision that no row takes and something can stand in.
+         *
+         * <p>Three answers upstream and one of them is a finding. A rule the readings show no row
+         * takes is owed nothing; a rule the search looked for and did not find is neither covered
+         * nor a gap, and reporting it would be a shortfall of this compiler told to an author as
+         * work of theirs. Only a rule something was seen standing in is a row somebody can write.
+         *
+         * <p>The search is asked only where a rule is left. A behavior whose rows take every rule
+         * settles the question without composing anything, which is what keeps this off the builds
+         * that have nothing to find.
+         */
+        private static void decisionFindings(Db db, String module, String behavior,
+                                             DecisionEvidence decision, List<Finding> out) {
+            if (decision == null || decision.notTakenByRows().isEmpty()) {
+                return;
+            }
+            Map<DecisionRule, RuleRequirement> settled =
+                    db.ask(new DecisionSearch(module, behavior)).value();
+            if (settled == null) {
+                return;
+            }
+            for (souther.compiler.partition.DecisionReading.Ruled ruled
+                    : decision.read().found()) {
+                if (settled.get(ruled.rule()) instanceof RuleRequirement.Required) {
+                    out.add(Finding.noticed(behavior, new About.ARuleNoRowTakes(behavior, ruled)));
+                }
+            }
         }
 
         /**
@@ -5368,6 +5440,13 @@ public final class Adequacy {
                         case About.AClassNoRowIsIn(var missing) ->
                                 new ExampleMessage.NoRowIsInThatClass(missing.name(),
                                         missing.axis().name(), finding.named());
+                        // The behavior and nothing else. What tells one rule from another is the
+                        // proposition an account keys on, written the one way round that makes a
+                        // comparison and its denial one column — so a sentence spelling it would
+                        // show an author a comparison they did not write. Which rule it is, is
+                        // said underneath, one note per condition.
+                        case About.ARuleNoRowTakes(var behavior, var _) ->
+                                new ExampleMessage.NoRowTakesADecisionRule(behavior);
                         // Kinds no build is told about under any code. Listed rather than
                         // defaulted, so that one added later has to be answered here rather than
                         // arriving as a warning with no sentence.
@@ -5448,6 +5527,16 @@ public final class Adequacy {
                 }
                 case About.AnArmNoRowGoesThrough _ ->
                         built.hint(new ExampleMessage.EitherARowIsMissingOrNothingReachesIt());
+                // One note per condition, which is what tells this rule from the rules beside it.
+                // The sentence above says only which behavior, so a rule whose conditions were
+                // dropped here would be a finding two of which a reader cannot act on.
+                case About.ARuleNoRowTakes(var behavior, var ruled) -> {
+                    Bodies.Elaborated checked = db.ask(new Bodies.Checked(module)).value();
+                    for (DecisionRuleReading read : DecisionRuleReading.of(ruled,
+                            checked == null ? CoverageSites.Plan.NONE : checked.plan(), behavior)) {
+                        said(built, read);
+                    }
+                }
                 // Which of the two this arm is, is already settled: a row is there. What is left is
                 // the answer, so the hint says how it is written rather than what might be wrong.
                 case About.ARowAtAnArmAwaitsItsAnswer _, About.AnUnansweredRow _ ->
@@ -5555,6 +5644,37 @@ public final class Adequacy {
                 case COMPARISON -> throw new IllegalStateException(
                         "no arm was unreached here: " + arm);
             };
+        }
+
+        /**
+         * One condition of a decision rule, said under the sentence about the rule.
+         *
+         * <p>Exhaustive with no {@code default}, so a shape added to the reading is one somebody
+         * words rather than one that goes quiet — and a rule described by fewer conditions than it
+         * turns on is a rule a reader cannot tell from the one beside it.
+         *
+         * <p>What each of them says is which construct and which way, and never the proposition an
+         * account keys on: the author reads their own comparison at the place this points to.
+         */
+        private static void said(souther.compiler.diag.Diagnostic.Builder built,
+                                 DecisionRuleReading read) {
+            switch (read) {
+                case DecisionRuleReading.AComparisonCameOut(var comparison, var held) ->
+                        built.hint(held
+                                ? new ExampleMessage.TheRuleTakesThatComparisonHolding(
+                                        comparison.toString())
+                                : new ExampleMessage.TheRuleTakesThatComparisonFailing(
+                                        comparison.toString()));
+                case DecisionRuleReading.AForkTookAnArm(var arm) ->
+                        built.hint(new ExampleMessage.TheRuleGoesThroughThatArm(phraseFor(arm)));
+                // Both shapes with nothing to send a reader to, said as one note. What differs
+                // between them is which part of this compiler fell short, which is not something
+                // an author acts on — and a note is written for either so that the rule is never
+                // described by fewer conditions than it turns on.
+                case DecisionRuleReading.AConditionIsNotShown _,
+                        DecisionRuleReading.AForkIsNotPlaced _ ->
+                        built.hint(new ExampleMessage.OneConditionOfTheRuleIsNotShown());
+            }
         }
 
         private static String casesOf(souther.compiler.coverage.CoverageSites.Site arm) {

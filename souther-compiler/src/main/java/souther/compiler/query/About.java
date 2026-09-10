@@ -5,6 +5,7 @@ import souther.compiler.coverage.CoverageSites;
 import souther.compiler.diag.SourcePos;
 import souther.compiler.observe.RowIdentity;
 import souther.compiler.partition.ClassOfAPosition;
+import souther.compiler.partition.DecisionReading;
 import souther.compiler.partition.ObligationIdentity;
 import souther.compiler.types.TypeSymbol;
 
@@ -389,6 +390,36 @@ public sealed interface About {
         @Override
         public ObligationIdentity obligationIdentity() {
             return new ObligationIdentity.OfAnArm(arm.obligation());
+        }
+    }
+
+    /**
+     * A rule of the decision a body states that no row takes.
+     *
+     * <p>One entry of the decision account. The rule is the whole of what tells it from every other
+     * — the distinctions the path consulted and what each came out as — and where those are written
+     * is not part of it, so a body stating one rule at two places states one rule.
+     *
+     * <p>Said only of the rules something was seen standing in. Whether a rule is owed a row at all
+     * is settled before this, and the two answers that are not "yes" are not findings: a rule the
+     * readings show no row takes is owed nothing, and one this compiler looked for and did not find
+     * is neither covered nor a gap.
+     *
+     * @param behavior whose decision it is a rule of, which the rule itself does not say
+     * @param ruled    the rule and what a run down its path would be seen doing, which is what a
+     *                 report sends a reader to
+     */
+    record ARuleNoRowTakes(String behavior, DecisionReading.Ruled ruled)
+            implements OfAnObligation {
+
+        public ARuleNoRowTakes {
+            Objects.requireNonNull(behavior, "a rule of a decision is some body's");
+            Objects.requireNonNull(ruled, "a finding is about something");
+        }
+
+        @Override
+        public ObligationIdentity obligationIdentity() {
+            return new ObligationIdentity.OfADecisionRule(behavior, ruled.rule());
         }
     }
 

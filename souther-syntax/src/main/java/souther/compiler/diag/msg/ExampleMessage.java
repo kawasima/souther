@@ -300,6 +300,35 @@ public sealed interface ExampleMessage extends Message {
             implements ExampleMessage, Supporting {}
 
     /**
+     * No row takes one of the rules of the decision a body states.
+     *
+     * <p>The behavior and nothing else. A rule is told apart by the distinctions it consulted,
+     * written the one way round that makes a comparison and its denial one column — which is what
+     * an account keys on and is not what an author wrote. Said here, an author would be shown a
+     * comparison they did not write, the wrong way round. Which rule it is, is said underneath: one
+     * note per condition, sending the reader to the construct that drew it.
+     */
+    @Code(DiagnosticCode.E1935)
+    record NoRowTakesADecisionRule(String behavior) implements ExampleMessage, Reported {}
+
+    /** One condition of that rule: a comparison the author wrote, and the way the rule takes it. */
+    record TheRuleTakesThatComparisonHolding(String comparison)
+            implements ExampleMessage, Supporting {}
+
+    /** The same, where the rule takes it failing. Two entries and not one that selects a word: a
+     *  wording that turns on a value is two messages. */
+    record TheRuleTakesThatComparisonFailing(String comparison)
+            implements ExampleMessage, Supporting {}
+
+    /** One condition of that rule: a fork of the body, and which of its arms the rule goes down. */
+    record TheRuleGoesThroughThatArm(souther.compiler.diag.Localizable arm)
+            implements ExampleMessage, Supporting {}
+
+    /** A condition of the rule with nothing to send a reader to, so that a rule is never described
+     *  by fewer conditions than it turns on. */
+    record OneConditionOfTheRuleIsNotShown() implements ExampleMessage, Supporting {}
+
+    /**
      * No row is at one of the points a border owes, the rule that drew it having a name.
      *
      * <p>{@code point} is which of them, in the word domain testing gives it (ISTQB CTAL-TA v4.0

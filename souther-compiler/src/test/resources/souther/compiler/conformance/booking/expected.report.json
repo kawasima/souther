@@ -2112,7 +2112,20 @@
         "status" : "unavailable",
         "reason" : "no_rows"
       },
-      "findings" : [ ]
+      "findings" : [ {
+        "kind" : "decision_rule_uncovered",
+        "disposition" : "reported",
+        "subject" : "redeem",
+        "obligationId" : {
+          "behavior" : "redeem",
+          "conditions" : [ {
+            "kind" : "not_read",
+            "condition" : "condition 1 of `redeem`",
+            "outcome" : "denied"
+          } ]
+        },
+        "code" : "E1935"
+      } ]
     } ]
   }, {
     "module" : "conformance.waitlist",

@@ -54,7 +54,13 @@ class PairCombinationsAreNotRowObligationsTest {
                 "AClassNoRowIsIn", "APointOfABorder", "APointOfADeclaredBorder",
                 // An arm and a row at it: what a row is owed at is the arm either way, and the
                 // second says the row is written and its answer is not.
-                "AnArmNoRowGoesThrough", "ARowAtAnArmAwaitsItsAnswer",
+                "AnArmNoRowGoesThrough",
+                // A way through the body no row takes. Not a combination: a rule says what a run
+                // consulted and how each of those came out, and a condition the run never reached
+                // is absent from it — so a rule constrains the positions its own way turns on and
+                // says nothing about the rest, which is the whole of what a combination is about.
+                "ARuleNoRowTakes",
+                "ARowAtAnArmAwaitsItsAnswer",
                 "ARuleWithoutALine", "ARuleNothingClassified",
                 "AQuestionNothingAnswered", "ARuleWithoutALine", "ARuleNothingClassified",
                 "APositionThisCouldNotRead", "APositionNoLineDivides",
@@ -93,7 +99,7 @@ class PairCombinationsAreNotRowObligationsTest {
         List<String> every = new ArrayList<>();
         walk(souther.compiler.partition.ObligationIdentity.class, every);
 
-        assertEquals(List.of("OfALine", "OfAnArm", "OfAClass"), every,
+        assertEquals(List.of("OfALine", "OfAnArm", "OfAClass", "OfADecisionRule"), every,
                 "a thing a row can be offered for that this law says nothing about");
     }
 

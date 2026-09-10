@@ -19,6 +19,8 @@ import souther.compiler.partition.ClosureGap;
 import souther.compiler.partition.ConditionReportAnchor;
 import souther.compiler.partition.CompositionBudget;
 import souther.compiler.partition.CompositionRepertoire;
+import souther.compiler.partition.DecidedCondition;
+import souther.compiler.partition.DecisionRule;
 import souther.compiler.partition.DomainPoint;
 import souther.compiler.partition.FarEnd;
 import souther.compiler.partition.Generator;
@@ -104,6 +106,7 @@ import souther.compiler.types.TypeSymbol;
 import souther.compiler.types.WrittenOwner;
 
 import tools.jackson.databind.node.ArrayNode;
+import tools.jackson.databind.node.JsonNodeFactory;
 import tools.jackson.databind.node.ObjectNode;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -2968,7 +2971,64 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                 into.put("axis", owed.at().toString());
                 into.put("class", owed.classId());
             }
+            case ObligationIdentity.OfADecisionRule(var behavior, var rule) ->
+                    ruleId(into, behavior, rule);
         }
+    }
+
+    /**
+     * What tells one rule of a decision from every other, which is not what a reader is shown.
+     *
+     * <p>The behavior and what the path consulted. The propositions are the canonical ones — a
+     * comparison and its denial are one column, so {@code n > 100} in a source is written here as
+     * {@code n <= 100} denied — which is what makes the table exclusive and is the reason nothing
+     * here goes into a sentence. What a person is shown is under {@code subject} and in the notes
+     * beside it, where the construct the author wrote is pointed at instead.
+     *
+     * <p>Sorted by what each condition is written as, and not in the order a walk met them. Two
+     * runs that read one body's ways in two orders state one rule, so an identity carrying the walk
+     * order would have a consumer joining on it land on nothing after a change that moved nothing.
+     * The order the author wrote them in is a thing a reader is shown and is in the notes.
+     *
+     * <p>A condition the path never consulted is absent, which is what a rule leaving it out means:
+     * a short-circuit that settled before reaching a condition states nothing about it, and an
+     * entry saying so would be a don't-care written as a value.
+     */
+    private static void ruleId(ObjectNode into, String behavior, DecisionRule rule) {
+        into.put("behavior", behavior);
+        ArrayNode conditions = into.putArray("conditions");
+        rule.consulted().values().stream()
+                .map(AdequacyReport::conditionId)
+                .sorted(java.util.Comparator.comparing(each -> each.get("condition").asString()
+                        + "/" + each.get("outcome").asString()))
+                .forEach(conditions::add);
+    }
+
+    /** One column of the rule and what the path came out as, as the identity keys it. */
+    private static ObjectNode conditionId(DecidedCondition decided) {
+        ObjectNode out = JsonNodeFactory.instance.objectNode();
+        switch (decided) {
+            case DecidedCondition.Compared(var condition, var held) -> {
+                out.put("kind", "comparison");
+                out.put("condition",
+                        condition.proposition() + " " + condition.form());
+                out.put("outcome", held ? "held" : "denied");
+            }
+            case DecidedCondition.Narrowed(var condition, var to) -> {
+                out.put("kind", "position");
+                out.put("condition", condition.at().toString());
+                out.put("outcome", to.spelled());
+            }
+            // A condition this compiler had no words for, named by the reading that met it. Two
+            // such conditions mean nothing to be told apart by, so the occurrence is the identity
+            // — which is what the reading already decided and is not a second answer here.
+            case DecidedCondition.Unread(var condition, var held) -> {
+                out.put("kind", "not_read");
+                out.put("condition", condition.met().toString());
+                out.put("outcome", held ? "held" : "denied");
+            }
+        }
+        return out;
     }
 
     private static void obligationId(ObjectNode into,
@@ -4269,6 +4329,10 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             // behavior's rows are as many as somebody wrote, and the one this is about is the one
             // at this place.
             case About.AnUnansweredRow _ -> true;
+            // A rule is a way through the whole body and stands at no one place in it. Where its
+            // conditions are is said under the finding, one note apiece, so a coordinate here
+            // would name whichever of them a walk reached first.
+            case About.ARuleNoRowTakes _ -> false;
             case About.ACaseNoRowExpects _, About.ACaseNothingWasSeenToProduce _,
                     About.ACaseNoRowAppliesItTo _, About.AClassNoRowIsIn _,
                     About.APointOfABorder _, About.APointOfADeclaredBorder _,
@@ -4317,6 +4381,12 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             // file. A row that wrote no name answers to nothing outside it and is shown as the
             // place it is written, which the entry carries beside this.
             case About.AnUnansweredRow(var _, var row, var _) -> words(row.shown());
+            // The behavior whose decision it is a rule of, and no more. What tells one rule from
+            // another is the proposition each condition is keyed on, written the one way round
+            // that makes a comparison and its denial one column — so a subject spelling it would
+            // show an author a comparison they did not write. Two rules of one behavior are shown
+            // alike here and are told apart by `obligationId`, which is what that field is for.
+            case About.ARuleNoRowTakes(var behavior, var _) -> words(behavior);
             case About.ACaseNoRowExpects(var missing) -> words(missing.name());
             case About.ACaseNothingWasSeenToProduce(var missing) -> words(missing.name());
             case About.AClassNoRowIsIn(var missing) ->

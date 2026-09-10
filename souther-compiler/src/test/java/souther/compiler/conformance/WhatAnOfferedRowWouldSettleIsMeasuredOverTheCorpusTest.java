@@ -122,6 +122,10 @@ class WhatAnOfferedRowWouldSettleIsMeasuredOverTheCorpusTest {
             case ObligationIdentity.OfAClass _ -> "class";
             case ObligationIdentity.OfAnArm _ -> "arm";
             case ObligationIdentity.OfALine _ -> "point";
+            // Nothing offers a row for a rule of a decision yet, so nothing puts one in the
+            // universe a run is asked about. Worded rather than refused, so that the day one is
+            // offered the count below says so instead of this failing somewhere else.
+            case ObligationIdentity.OfADecisionRule _ -> "rule";
         };
     }
 

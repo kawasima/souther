@@ -202,7 +202,20 @@ public sealed interface GenerationOutcome {
 
             /** The position the case belongs to is not one any axis was derived at. */
             NO_AXIS_AT_THIS_POSITION("no axis was derived at the position this case belongs to, so"
-                    + " no classes were derived there to compose a row from");
+                    + " no classes were derived there to compose a row from"),
+
+            /**
+             * Something was seen standing in the rule and nothing turns that into a row to write.
+             *
+             * <p>Not a fact about the model and not a measure that could not be made. The search
+             * that settled whether the rule is owed a row built a value and ran it, so a row exists;
+             * what it did not build is a row an author can complete — the stand-ins a run of it
+             * needs, and the answer left for the author to write.
+             */
+            NO_STRATEGY_FOR_A_DECISION_RULE(
+                    "something was seen standing in this rule while it was being settled, and"
+                            + " nothing turns what a search stood there into a row an author can"
+                            + " complete");
 
             private final String said;
 

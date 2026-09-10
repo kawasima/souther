@@ -12,7 +12,8 @@ import java.util.Objects;
  * at each of them as a case to decide about rather than as a value that falls through. What the
  * shapes have in common is what they are for and not what they hold — a line's point is a point of
  * an authored line at a level, an arm's is the fork and which of its ways, a class's is the axis and
- * which class of it — so there is nothing here to lift out of them.
+ * which class of it, a decision rule's is what the path consulted — so there is nothing here to lift
+ * out of them.
  *
  * <p><b>Not a handle a search steers by.</b> What a proposal targets is one of these; how a search
  * reaches it is the search's own — {@link Generator.ArmOwed} names an occurrence a run is recorded
@@ -53,6 +54,22 @@ public sealed interface ObligationIdentity {
 
         public OfAClass {
             Objects.requireNonNull(classOfAPosition, "an obligation is told apart by something");
+        }
+    }
+
+    /**
+     * A rule of the decision a body states, which is what the decision account is owed at.
+     *
+     * <p>The behavior beside the rule. A rule is told apart by the distinctions it consulted, and
+     * those are written in the terms of a body's own positions — so two behaviors comparing
+     * same-named positions the same way state equal rules, and an identity that left the behavior
+     * out would have one of them discharged by the other's row.
+     */
+    record OfADecisionRule(String behavior, DecisionRule rule) implements ObligationIdentity {
+
+        public OfADecisionRule {
+            Objects.requireNonNull(behavior, "a rule of a decision is some body's");
+            Objects.requireNonNull(rule, "an obligation is told apart by something");
         }
     }
 }
