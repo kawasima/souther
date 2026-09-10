@@ -663,7 +663,12 @@ public final class TypeOps {
             return Type.tuple(elements);
         }
         if (isDataLike(a) && isDataLike(b)) {
-            Set<TypeSymbol> names = new HashSet<>(namesOf(a));
+            // In the order the cases were met, because a report quotes this type back to the author
+            // and a set that hands its members over in the order their hashes fall would quote it
+            // in an order nothing about the program decides. Two unions holding alike are one value
+            // whatever order either walks in, so the order is the rendering's to read and nothing
+            // else's.
+            Set<TypeSymbol> names = new LinkedHashSet<>(namesOf(a));
             names.addAll(namesOf(b));
             return caseSetType(names);
         }

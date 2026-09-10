@@ -1,6 +1,7 @@
 package souther.compiler.values;
 
 import org.junit.jupiter.api.Test;
+import souther.compiler.hash.ValueHash;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;

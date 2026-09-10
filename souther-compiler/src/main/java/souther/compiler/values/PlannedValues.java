@@ -1,5 +1,7 @@
 package souther.compiler.values;
 
+import souther.compiler.hash.ValueHash;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;

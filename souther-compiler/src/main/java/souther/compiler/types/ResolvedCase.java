@@ -1,5 +1,7 @@
 package souther.compiler.types;
 
+import souther.compiler.hash.ValueHash;
+
 import java.util.List;
 
 /**
@@ -106,7 +108,7 @@ public final class ResolvedCase {
 
     @Override
     public int hashCode() {
-        return 31 * selector.hashCode() + atoms.hashCode();
+        return ValueHash.ofItsParts(ResolvedCase.class, selector.hashCode(), atoms.hashCode());
     }
 
     @Override

@@ -1,5 +1,6 @@
 package souther.compiler.check;
 
+import souther.compiler.hash.SaysWhatStandsForIt;
 import souther.compiler.types.BinOp;
 import souther.compiler.types.TypeSymbol;
 import souther.compiler.types.ValueName;
@@ -253,7 +254,7 @@ final class Term {
         ITS_ELEMENTS,
         /** Each of its elements, in no order — what a set's own equality reads. */
         ITS_UNORDERED_ELEMENTS,
-        /** The parts it says stand for it ({@link #STANDS_FOR}). */
+        /** The value it says stands for it ({@link SaysWhatStandsForIt}). */
         THE_PARTS_IT_NAMES,
         /** Nothing here takes a value of this class. */
         NONE_HERE
@@ -277,24 +278,6 @@ final class Term {
         return RULES.get(type);
     }
 
-    /**
-     * What stands for a value of a class that is neither a scalar nor a record given its equality.
-     *
-     * <p>Named parts and not a hash. A class answering "here is my hash" is a place the walk that
-     * proves a term is hashed from values has to stop, and what such a hash reads is then the one
-     * thing nothing checks — which is how a set of type symbols came to be hashed by the identity of
-     * an enum two levels under it. A class answering "here is what stands for me" is one the walk
-     * goes through, so what it reads is proved like everything else.
-     *
-     * <p>Both of these are told apart by less than what they hold. A type symbol is its address, and
-     * an evaluation is told apart from every other by which object it is — so what is named here is
-     * what may be hashed without giving two equal values two hashes, which for the second is
-     * anything that is a function of the value.
-     */
-    private static final Map<Class<?>, List<String>> STANDS_FOR = Map.of(
-            TypeSymbol.AtModule.class, List.of("key"),
-            EvaluationId.class, List.of("what", "occurrence"));
-
     private static Rule ruleOf(Class<?> type) {
         if (Enum.class.isAssignableFrom(type)) {
             return Rule.AN_ENUM_BY_NAME;
@@ -308,7 +291,11 @@ final class Term {
         if (java.util.Set.class.isAssignableFrom(type)) {
             return Rule.ITS_UNORDERED_ELEMENTS;
         }
-        if (STANDS_FOR.containsKey(type)) {
+        // Asked before the question about records, because a value that keeps the number it is
+        // asked for is a class here and may hold its parts in a record all the same: what it says
+        // stands for it is the answer either way, and its own components are the field it keeps
+        // them in and the number it worked out.
+        if (SaysWhatStandsForIt.class.isAssignableFrom(type)) {
             return Rule.THE_PARTS_IT_NAMES;
         }
         // A record given its equality holds it over everything it carries, so its components are
@@ -326,14 +313,16 @@ final class Term {
      * value is made of or to which object it is.
      *
      * <p>Read off the modifier, since the hash a record is given is final and one written by hand is
-     * not. What it decides is who is taken at their word. A record stating none is what it holds, and
-     * following its components is following its hash; a record stating one states it over some of
-     * what it holds, so following the rest would give two equal values two hashes.
+     * not. What it decides is what is left of a record that has not said what stands for it: one
+     * stating no hash is what it holds, and following its components is following its hash; one
+     * stating a hash states it over some of what it holds, so following the rest would give two
+     * equal values two hashes, and nothing here takes it.
      *
-     * <p>Taken at their word and no further: what such a hash is itself taken from is not walked, so
-     * a type saying what it hashes to answers for the whole of what it reads. Which is why what is
-     * said here is about the hash and not about the equality — {@link EvaluationId} tells two apart
-     * by which object each is and still says what it hashes to, and it is the hash this asks about.
+     * <p>Which is why a value that keeps the number it is asked for says what stands for it. A hash
+     * is not walked into — what such a number is taken from would be the one thing nothing here
+     * reads — and naming the value it is over puts that back inside the walk. Asked about the hash
+     * and not about the equality: {@link EvaluationId} tells two apart by which object each is, and
+     * it is the number a term is built from that this is about.
      */
     private static boolean statesAHashOfItsOwn(Class<?> type) {
         for (java.lang.reflect.Method method : type.getDeclaredMethods()) {
@@ -369,16 +358,19 @@ final class Term {
         }
     };
 
-    /** How each of what stands for a value of {@code type} is read: the parts it names, or its
-     *  record components where it names none. */
+    /**
+     * How each of what stands for a value of {@code type} is read: the one value it says stands for
+     * it, or its record components where it says nothing.
+     *
+     * <p>A value that names one is read through that one and not through what it holds beside it.
+     * Which is what the naming is for: a value keeping the number it is asked for holds that number
+     * too, and a number is the one thing a walk proving where numbers come from must not read.
+     */
     static List<java.lang.reflect.Method> readersOf(Class<?> type) {
-        List<String> named = STANDS_FOR.get(type);
         List<java.lang.reflect.Method> read = new ArrayList<>();
         try {
-            if (named != null) {
-                for (String part : named) {
-                    read.add(type.getDeclaredMethod(part));
-                }
+            if (SaysWhatStandsForIt.class.isAssignableFrom(type)) {
+                read.add(type.getMethod("standsFor"));
                 return read;
             }
             for (java.lang.reflect.RecordComponent component : type.getRecordComponents()) {

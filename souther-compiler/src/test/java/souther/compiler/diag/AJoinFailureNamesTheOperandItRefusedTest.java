@@ -23,6 +23,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *
  * <p>{@code ++} reaches the same join from two written operands, one level in from what it compares.
  * Both of them have their element type labelled, because both of them have one.
+ *
+ * <p><b>An accumulator naming several cases names them in the order the join met them</b>, which for
+ * an {@code else} is the {@code then} branch and then the arms as they are written, and for a
+ * {@code match} is the arms as they are written. What is quoted back to an author is then a function
+ * of what the author wrote; a set handing its members over in the order their numbers fall would
+ * quote an order nothing about the program decides, and moving any one of those numbers would move
+ * the report.
  */
 class AJoinFailureNamesTheOperandItRefusedTest {
 
@@ -132,7 +139,7 @@ class AJoinFailureNamesTheOperandItRefusedTest {
         Diagnostic report = only(source);
 
         assertEquals("1", underlined(source, report));
-        assertTrue(values(report).contains("Blue | Red"), values(report).toString());
+        assertTrue(values(report).contains("Red | Blue"), values(report).toString());
     }
 
     /**
@@ -177,7 +184,7 @@ class AJoinFailureNamesTheOperandItRefusedTest {
 
         assertEquals("| Guest -> 1", line(source, report).trim());
         assertEquals(List.of(), report.secondary());
-        assertTrue(values(report).contains("Blue | Red"), values(report).toString());
+        assertTrue(values(report).contains("Red | Blue"), values(report).toString());
     }
 
     private static final String BOUNDED = """
