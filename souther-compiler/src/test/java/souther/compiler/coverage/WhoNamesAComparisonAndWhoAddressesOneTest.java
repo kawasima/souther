@@ -4,8 +4,12 @@ import org.junit.jupiter.api.Test;
 import souther.compiler.WhatWasCompiled;
 
 import java.lang.classfile.ClassModel;
+import java.lang.classfile.CodeElement;
 import java.lang.classfile.MethodModel;
+import java.lang.classfile.instruction.InvokeDynamicInstruction;
 import java.lang.classfile.instruction.InvokeInstruction;
+import java.lang.constant.ConstantDesc;
+import java.lang.constant.DirectMethodHandleDesc;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,7 +33,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  *
  * <p>Read off the compiled classes, so what is counted is what a method does rather than what a
  * reading of the sources makes of it — a call written inside a lambda belongs to the lambda, and
- * this says so.
+ * this says so. A constructor handed over rather than called belongs to the method that hands it
+ * over, which is where the {@code invokedynamic} carrying it stands.
  *
  * <p><b>What it does not see, said rather than left to be found.</b> The tests are not in
  * {@code target/classes}: a fixture that writes a report about a comparison nothing compiled makes
@@ -161,15 +166,45 @@ class WhoNamesAComparisonAndWhoAddressesOneTest {
         for (ClassModel model : WhatWasCompiled.compiled().all()) {
             String from = model.thisClass().asInternalName().replace('/', '.').replace('$', '.');
             for (MethodModel method : model.methods()) {
+                String in = from + "." + method.methodName().stringValue();
                 method.code().ifPresent(code -> code.forEach(element -> {
-                    if (element instanceof InvokeInstruction call
-                            && call.owner().asInternalName().equals(owner)
-                            && call.name().stringValue().equals("<init>")) {
-                        calls.merge(from + "." + method.methodName().stringValue(), 1, Integer::sum);
+                    if (makesOne(element, owner)) {
+                        calls.merge(in, 1, Integer::sum);
                     }
                 }));
             }
         }
         return calls;
+    }
+
+    /**
+     * Whether {@code element} makes one of {@code owner}, by calling the constructor or by handing
+     * it to something that will.
+     *
+     * <p>A constructor reference calls nothing. What is written where the reference stands is an
+     * {@code invokedynamic} carrying the constructor as a handle among its bootstrap arguments, and
+     * what that hands out makes one as surely as making it here would — so a walk over the call
+     * instructions alone leaves a class the rows above do not name free to hold a maker of the
+     * places a run is recorded at.
+     *
+     * <p>Only the handle that makes one. What a reference to anything else says is that a method is
+     * named, and the rows above are about who may make one of these, which is what a constructor
+     * answers with and nothing else does.
+     */
+    private static boolean makesOne(CodeElement element, String owner) {
+        if (element instanceof InvokeInstruction call) {
+            return call.owner().asInternalName().equals(owner)
+                    && call.name().stringValue().equals("<init>");
+        }
+        if (element instanceof InvokeDynamicInstruction reference) {
+            for (ConstantDesc argument : reference.invokedynamic().asSymbol().bootstrapArgs()) {
+                if (argument instanceof DirectMethodHandleDesc handle
+                        && handle.kind() == DirectMethodHandleDesc.Kind.CONSTRUCTOR
+                        && handle.owner().descriptorString().equals("L" + owner + ";")) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 }
