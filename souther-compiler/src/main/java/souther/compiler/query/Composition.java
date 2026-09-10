@@ -1,6 +1,7 @@
 package souther.compiler.query;
 
 import souther.compiler.partition.Generator;
+import souther.compiler.partition.ObligationIdentity;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -141,7 +142,7 @@ public record Composition(OfferingRequest request,
      * constructor and leaving the one call that reaches it open would have left the same door with
      * a longer name on it.
      */
-    Offering keeping(java.util.Set<RowKey> kept, java.util.Set<OfferItem> answered) {
+    Offering keeping(java.util.Set<RowKey> kept, java.util.Set<ObligationIdentity> answered) {
         SequencedMap<String, List<OfferedRow>> out = new LinkedHashMap<>();
         rowsByBehavior.forEach((behavior, here) -> {
             List<OfferedRow> left = here.stream().filter(row -> kept.contains(row.key())).toList();

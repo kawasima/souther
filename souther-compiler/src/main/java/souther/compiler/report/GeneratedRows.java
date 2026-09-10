@@ -21,7 +21,7 @@ import souther.compiler.query.Compilation;
 import souther.compiler.query.Db;
 import souther.compiler.query.BorderAccount;
 import souther.compiler.query.GenerationScope;
-import souther.compiler.query.OfferItem;
+import souther.compiler.partition.ObligationIdentity;
 import souther.compiler.query.OfferedRow;
 import souther.compiler.query.Offering;
 import souther.compiler.query.OfferingRequest;
@@ -154,7 +154,7 @@ public final class GeneratedRows {
             // Nothing about a point one of the rows above stands at. What is left to write is what
             // this says, and a line telling a person no row was composed for something they are
             // being handed a row for is work that is not left.
-            if (offering.answered().contains(new OfferItem.APointOfALine(each.getKey()))) {
+            if (offering.answered().contains(new ObligationIdentity.OfALine(each.getKey()))) {
                 continue;
             }
             switch (each.getValue()) {

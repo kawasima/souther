@@ -3,7 +3,7 @@ package souther.compiler;
 import org.junit.jupiter.api.Test;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.Compilation;
-import souther.compiler.query.OfferItem;
+import souther.compiler.partition.ObligationIdentity;
 import souther.compiler.query.Composition;
 import souther.compiler.query.OfferingRequest;
 import souther.compiler.query.RowKey;
@@ -59,10 +59,10 @@ class ARowComposedForAnItemSettlesThatItemTest {
         assertFalse(table.composedFor().isEmpty(),
                 "the declarations draw lines and rows are composed at them: " + table.requested());
         assertTrue(table.composedFor().keySet().stream()
-                        .anyMatch(OfferItem.APointOfALine.class::isInstance),
+                        .anyMatch(ObligationIdentity.OfALine.class::isInstance),
                 "and at least one of them is a point of a line: " + table.composedFor().keySet());
         table.composedFor().forEach((item, row) -> {
-            Map<OfferItem, Settlement> here = table.byRow().get(row);
+            Map<ObligationIdentity, Settlement> here = table.byRow().get(row);
             assertNotNull(here, "the row composed for " + item + " is one this offers: " + row);
             assertInstanceOf(Settlement.Settles.class, here.get(item),
                     "a row composed for " + item + " settles it");
@@ -77,8 +77,8 @@ class ARowComposedForAnItemSettlesThatItemTest {
         Settlements table = Settlements.of(compilation.db(), composed(compilation));
 
         assertFalse(table.byRow().isEmpty(), "there are rows to answer for");
-        for (Map.Entry<RowKey, Map<OfferItem, Settlement>> row : table.byRow().entrySet()) {
-            for (OfferItem item : table.requested()) {
+        for (Map.Entry<RowKey, Map<ObligationIdentity, Settlement>> row : table.byRow().entrySet()) {
+            for (ObligationIdentity item : table.requested()) {
                 assertNotNull(row.getValue().get(item),
                         row.getKey() + " is answered for at " + item);
             }

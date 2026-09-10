@@ -49,6 +49,7 @@ import souther.compiler.observe.Stage;
 import souther.compiler.partition.Axis;
 import souther.compiler.partition.ClassOfAPosition;
 import souther.compiler.partition.DomainPoint;
+import souther.compiler.partition.ObligationIdentity;
 import souther.compiler.partition.PointRole;
 import souther.compiler.inputs.InputDomain;
 import souther.compiler.inputs.InputReads;
@@ -2215,8 +2216,8 @@ public final class Adequacy {
         // offers. A row composed for one thing standing where another asks is the whole of this,
         // and a note printed over it would send a person after work that is already in front of
         // them.
-        Set<OfferItem> answered = new LinkedHashSet<>();
-        for (OfferItem item : table.requested()) {
+        Set<ObligationIdentity> answered = new LinkedHashSet<>();
+        for (ObligationIdentity item : table.requested()) {
             if (kept.stream().anyMatch(row -> table.at(row, item).settles())) {
                 answered.add(item);
             }
@@ -3215,7 +3216,7 @@ public final class Adequacy {
      * finding: the two are separate readings of one set of findings, and a name that said gap kept
      * the older arrangement alive in every reader that met it.
      */
-    public record GenerationDisposition(Finding finding, java.util.Optional<OfferItem> item,
+    public record GenerationDisposition(Finding finding, java.util.Optional<ObligationIdentity> item,
                                         GenerationOutcome outcome) {
 
         public GenerationDisposition {
@@ -3452,20 +3453,20 @@ public final class Adequacy {
          * <p>Empty for the rest. A case whose position this run has no axis at is not something a
          * row is offered for, and neither is a measure this compiler could not make.
          */
-        private static java.util.Optional<OfferItem> itemOf(
+        private static java.util.Optional<ObligationIdentity> itemOf(
                 Finding finding, souther.compiler.partition.FillResult composed,
                 Hir.SpecBehavior spec) {
             return switch (finding.about()) {
                 case About.APointOfABorder(var point) -> java.util.Optional.of(
-                        new OfferItem.APointOfALine(point.point()));
+                        new ObligationIdentity.OfALine(point.point()));
                 case About.AnArmNoRowGoesThrough(var arm) -> java.util.Optional.of(
-                        new OfferItem.AnArm(new Generator.ArmOwed(arm.index())));
+                        new ObligationIdentity.OfAnArm(arm.obligation()));
                 case About.AClassNoRowIsIn(var missing) -> java.util.Optional.of(
-                        new OfferItem.AClass(new ClassOfAPosition(missing.axis().at(),
+                        new ObligationIdentity.OfAClass(new ClassOfAPosition(missing.axis().at(),
                                 missing.name())));
                 case About.ACaseNoRowAppliesItTo(var input, var missing) ->
                         classOfTheCase(input, missing, composed, spec)
-                                .map(OfferItem.AClass::new);
+                                .map(ObligationIdentity.OfAClass::new);
                 default -> java.util.Optional.empty();
             };
         }

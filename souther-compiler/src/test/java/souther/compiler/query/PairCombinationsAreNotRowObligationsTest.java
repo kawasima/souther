@@ -91,9 +91,9 @@ class PairCombinationsAreNotRowObligationsTest {
     @Test
     void nothingARowIsOfferedForIsACombination() {
         List<String> every = new ArrayList<>();
-        walk(OfferItem.class, every);
+        walk(souther.compiler.partition.ObligationIdentity.class, every);
 
-        assertEquals(List.of("AClass", "AnArm", "APointOfALine"), every,
+        assertEquals(List.of("OfALine", "OfAnArm", "OfAClass"), every,
                 "a thing a row can be offered for that this law says nothing about");
     }
 
