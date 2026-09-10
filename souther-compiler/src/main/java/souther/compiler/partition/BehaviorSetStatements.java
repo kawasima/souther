@@ -10,12 +10,14 @@ import souther.compiler.check.PredicateStatement;
 import souther.compiler.check.StatedContract;
 import souther.compiler.check.Symbols;
 import souther.compiler.check.StringPredicates;
+import souther.compiler.check.ValueOrigin;
 import souther.compiler.inputs.BlockReason;
 import souther.compiler.inputs.FilingCoordinate;
-import souther.compiler.inputs.RuleWithoutALine;
 import souther.compiler.inputs.InputReading;
 import souther.compiler.inputs.NumericTerm;
 import souther.compiler.inputs.PathResolution;
+import souther.compiler.inputs.StandingQuestion;
+import souther.compiler.inputs.TermPath;
 import souther.compiler.regex.PatternPlan;
 import souther.compiler.values.AdmittedPlan;
 import souther.compiler.values.Allowance;
@@ -89,18 +91,20 @@ public final class BehaviorSetStatements {
      *                   holds, which is settled where those are known and not here
      * @param blocked the distinctions of a position this compiler did not get, which is what keeps
      *                its classes from being composed out of the ones it did
-     * @param saying  the rules that reached here and divide no position, which a reader is owed and
-     *                which hold nothing open. A rule about a value an operation made from a
-     *                position is one of these: it is about that value, and a denominator held open
-     *                by it would be held open by a rule that never reached the position
+     * @param nothingClassifies the rules that reached here and whose subject this reading could not
+     *                place at a position, each as the question standing where it was filed. Nothing
+     *                works out what such a rule states of the values there — reading it back
+     *                through the operation that made them is a capability this has not — so what is
+     *                undecided is what the rule does at all, which is what the question says
      */
     public record Read(List<RuleEvidence> statements, List<ClassingBlocker> blocked,
-                       List<RuleWithoutALine> saying, List<ForkOfItsOwn> forks) {
+                       List<StandingQuestion.NothingClassifiesIt> nothingClassifies,
+                       List<ForkOfItsOwn> forks) {
 
         public Read {
             statements = List.copyOf(statements);
             blocked = List.copyOf(blocked);
-            saying = List.copyOf(saying);
+            nothingClassifies = List.copyOf(nothingClassifies);
             forks = List.copyOf(forks);
         }
     }
@@ -212,17 +216,22 @@ public final class BehaviorSetStatements {
                    RuleReachNumbering reaches) {
         List<Asked> asked = new ArrayList<>();
         List<ClassingBlocker> blocked = new ArrayList<>();
-        List<RuleWithoutALine> saying = new ArrayList<>();
+        List<StandingQuestion.NothingClassifiesIt> nothingClassifies = new ArrayList<>();
         for (PredicateReadings.Reading each : read.predicates()) {
             switch (ask(each, symbols)) {
                 case Outcome.OfADistinction(Asked it) -> asked.add(it);
                 case Outcome.NotGot(var at, var why) ->
                         blocked.add(new ClassingBlocker(at, each.origin(), why));
-                // At every place it may be about. A rule said to divide nothing is one sentence,
-                // and where the reading could not settle which position it was of, each of the
-                // places it may have been of is owed it.
+                // At every place it may be about. A rule this could not place is one sentence, and
+                // where the reading could not settle which position it was of, each of the places
+                // it may have been of is owed it.
+                //
+                // As a question and not as a finding. What such a rule states of the values there
+                // is what nothing worked out, so a measure that closed over it would be closing
+                // over a reading that stopped — while the report went on naming the rule.
                 case Outcome.SayingNothing(var at, var why) -> at.forEach(where ->
-                        saying.add(RuleWithoutALine.of(each.origin().cited(), where, why)));
+                        nothingClassifies.add(StandingQuestion.NothingClassifiesIt
+                                .of(each.origin().cited(), where, why)));
                 // Nothing places it, so there is nobody to say it to. Which is the answer the
                 // reading of a comparison gives the same shape, and not this walk being quiet.
                 case Outcome.Nowhere _ -> { }
@@ -244,7 +253,7 @@ public final class BehaviorSetStatements {
         for (Asked each : asked) {
             state(each, answers.get(each.term()), statements, blocked);
         }
-        return new Read(statements, blocked, saying,
+        return new Read(statements, blocked, nothingClassifies,
                 ofTheirOwn(behavior, read, symbols, forks, reaches));
     }
 
@@ -253,14 +262,13 @@ public final class BehaviorSetStatements {
      *
      * <p><b>Named outcomes and not what a walk had left over.</b> Three things can be true of such a
      * rule and they are not one another: it states a distinction of this position, it states one
-     * this compiler did not get, or it states nothing about this position at all. Only the second
-     * keeps a position's classes from being composed — the first is one of them, and the third is
-     * not about the position, so a denominator held open by it would be held open by a rule that
-     * never reached it.
+     * this compiler did not get, or its subject stands at no position this reading can place. Only
+     * the second keeps a position's classes from being composed — the first is one of them, and the
+     * third is a reading that stopped before it reached a position, so a denominator held open by
+     * it would be held open by a rule that never got there.
      *
      * <p>Filled from the branches a reading fell through, the three were one list: everything that
-     * did not become a statement kept the position's classes shut, and a rule read to the end that
-     * says nothing took its siblings down with it.
+     * did not become a statement kept the position's classes shut.
      */
     private sealed interface Outcome {
 
@@ -278,20 +286,25 @@ public final class BehaviorSetStatements {
                       BlockReason.RuleWithoutLineReason why) implements Outcome {}
 
         /**
-         * A rule of the model that divides no position here, and where to say so.
+         * A rule of the model whose subject this could not place at a position, and where to say
+         * so.
          *
-         * <p>A reader is owed the sentence and the classes are not held open by it: a rule about a
-         * value an operation made from a position is about that value, and a rule read to the end
-         * that tells nothing apart has been read. Neither is a distinction gone missing.
+         * <p>A reading that stopped, and the reason says which way. A value an operation made out
+         * of what stands somewhere is about that value, and what the rule says about the values it
+         * was made from would take reading the operation backwards; a value that is what stands at
+         * one of several places is about the input at whichever of them this run is. Neither is a
+         * distinction gone missing, and neither is a rule read to the end — so what stands where
+         * this is filed is a question, and what a measure there rests on is that nothing worked out
+         * what the rule states.
          */
         record SayingNothing(List<FilingCoordinate> at,
-                             BlockReason.RuleWithoutLineReason why) implements Outcome {
+                             BlockReason.RuleReadingStopped why) implements Outcome {
 
             public SayingNothing {
                 at = List.copyOf(at);
                 if (at.isEmpty()) {
                     throw new IllegalArgumentException(
-                            "a rule said to divide nothing is said somewhere: " + why);
+                            "a rule this could not place is said somewhere: " + why);
                 }
             }
         }
@@ -346,25 +359,93 @@ public final class BehaviorSetStatements {
     private static Outcome saidWithoutADenominator(PredicateReadings.Reading each,
                                                    PathResolution stands, Symbols symbols) {
         return switch (stands) {
-            case PathResolution.MayStandAt(var among) -> new Outcome.SayingNothing(
-                    among.stream().map(FilingCoordinate::at).toList(),
-                    new BlockReason.RuleAboutAnElementOfSeveralSequences());
-            case PathResolution.NotAPosition _ ->
-                    switch (each.reads().cameFrom(each.subject(), symbols)) {
-                        case PathResolution.At(var from) -> new Outcome.SayingNothing(
-                                List.of(FilingCoordinate.at(from)),
-                                new BlockReason.RuleAboutADerivedValue());
-                        case PathResolution.MayStandAt(var among) -> new Outcome.SayingNothing(
-                                among.stream().map(FilingCoordinate::at).toList(),
-                                new BlockReason.RuleAboutAnElementOfSeveralSequences());
-                        // And a rule about a value that came from no position the reading can name,
-                        // which has nowhere to be said.
-                        case PathResolution.NotAPosition _ -> new Outcome.Nowhere();
-                    };
+            case PathResolution.MayStandAt(var among) -> mayStandAt(among);
+            case PathResolution.NotAPosition _ -> whereItsValueCameFrom(each, symbols);
             // The caller asks this only where the subject stands at no one place.
             case PathResolution.At at -> throw new IllegalArgumentException(
                     "a rule whose subject stands at " + at.path() + " has a denominator");
         };
+    }
+
+    /**
+     * The same for a subject that is at no one position, read out of what its value is made of.
+     *
+     * <p>Asked of {@link ValueOrigin}, which is where what an expression is made of is worked out
+     * for every reader of a body, and read off the arms of it that say where a value came from
+     * ({@link #positionsItCameFrom}). A subject an operation answered names no position and came
+     * from the ones its arguments name; a walk that stopped at the operation reported a model
+     * stating nothing where an author wrote a rule.
+     *
+     * <p>At every position the value came from. {@code String.append(a, b)} is made out of both,
+     * and an author who wrote a rule about the joined string is owed the sentence at each — filed
+     * at one of them, the other comes back as a position the model says nothing about.
+     *
+     * <p>A subject that <em>is</em> what stands at more than one place is asked first, and of the
+     * reading rather than of what the value is made of. That is the other sentence — nothing was
+     * made out of it and there is no operation to read backwards — and what an expression is made
+     * of has no way to say it: a value that is one of several places is not one built out of all
+     * of them.
+     */
+    private static Outcome whereItsValueCameFrom(PredicateReadings.Reading each, Symbols symbols) {
+        if (each.reads().cameFrom(each.subject(), symbols)
+                instanceof PathResolution.MayStandAt(var among)) {
+            return mayStandAt(among);
+        }
+        Set<TermPath> from = positionsItCameFrom(
+                GuardThresholds.originOf(each.subject(), each.reads(), symbols));
+        // And a rule about a value that came from no position the reading can name, which has
+        // nowhere to be said.
+        return from.isEmpty() ? new Outcome.Nowhere()
+                : new Outcome.SayingNothing(from.stream().map(FilingCoordinate::at).toList(),
+                        new BlockReason.RuleAboutADerivedValue());
+    }
+
+    /**
+     * Every position {@code origin}'s value came from, out of the arms that say where a value came
+     * from.
+     *
+     * <p>Read here and not asked of what an expression is made of as a whole, because that answer
+     * does not hold the question. What is made out of several things and what is one of several
+     * things arrive in one arm: the parts of a choice are the values it chooses between and what it
+     * turns on, side by side. A union over that arm files a rule at what decided which value the
+     * subject is, and a reader sent there is sent to a position the rule says nothing about.
+     *
+     * <p>So the arms that do state where a value came from are read, and the one that does not is
+     * left. What that costs is a rule under a choice shown nowhere, which is what such a rule comes
+     * to already; what reading it would cost is a rule shown at the wrong position, which is worse
+     * and is the thing an author cannot tell from a rule their model states.
+     *
+     * <p>A switch with no default, so an arm added to what an expression is made of is one somebody
+     * says the provenance of before this compiles.
+     */
+    private static Set<TermPath> positionsItCameFrom(ValueOrigin<TermPath> origin) {
+        return switch (origin) {
+            case ValueOrigin.IsAPosition<TermPath> it -> Set.of(it.at());
+            case ValueOrigin.MadeFromAPosition<TermPath> it -> Set.of(it.at());
+            // What an operation answered came from whatever its arguments came from, each of them:
+            // a string joined out of two positions is made out of both, and an author who wrote a
+            // rule about the joined value is owed the sentence at each.
+            case ValueOrigin.Applied<TermPath> it -> across(it.arguments());
+            // A value written where it stands came from no position, and one nothing here can name
+            // came from none this can name.
+            case ValueOrigin.Written<TermPath> _, ValueOrigin.Unnameable<TermPath> _ -> Set.of();
+            case ValueOrigin.Composed<TermPath> _ -> Set.of();
+        };
+    }
+
+    /** The positions everything in {@code of} came from, in the order they were met. */
+    private static Set<TermPath> across(List<ValueOrigin<TermPath>> of) {
+        Set<TermPath> out = new LinkedHashSet<>();
+        for (ValueOrigin<TermPath> each : of) {
+            out.addAll(positionsItCameFrom(each));
+        }
+        return out;
+    }
+
+    /** A rule about a value that is what stands at one of {@code among}, said at each of them. */
+    private static Outcome mayStandAt(List<TermPath> among) {
+        return new Outcome.SayingNothing(among.stream().map(FilingCoordinate::at).toList(),
+                new BlockReason.RuleAboutAnElementOfSeveralSequences());
     }
 
     /**
