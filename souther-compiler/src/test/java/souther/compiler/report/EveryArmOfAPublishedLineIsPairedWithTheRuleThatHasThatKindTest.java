@@ -21,9 +21,10 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
  * Which line a document may say a line is, and which rule may stand in each of those.
  *
  * <p>The three kinds of rule are not decomposed alike, so the numbers under them are not
- * interchangeable: a part goes with a clause of a {@code data}, a part and a statement with a
- * clause of a behavior, and a body's comparison takes neither. This is what the document says about
- * that pairing, read off the schema rather than off the sentence in the description beside it.
+ * interchangeable: a part and which of its lines goes with a clause of a {@code data}, a part and
+ * which of its statements with a clause of a behavior, and a body's comparison takes neither. This
+ * is what the document says about that pairing, read off the schema rather than off the sentence in
+ * the description beside it.
  *
  * <p><b>Against the seal and not against a list written here.</b> What arms there are is
  * {@link WhichLine}'s answer, so an arm added to it is an arm this stops at until the document says
@@ -46,9 +47,17 @@ class EveryArmOfAPublishedLineIsPairedWithTheRuleThatHasThatKindTest {
             "statement_of_part", "ensures",
             "comparison", "comparison"));
 
-    /** And which numbers each of them carries beside the rule. */
+    /**
+     * And which numbers each of them carries beside the rule.
+     *
+     * <p>A declaration's clause carries which of its parts and which of that part's lines, because
+     * a part draws more than one: a conjunct written as a denied choice states one comparison per
+     * branch and places an end on each of the numbers they are about. Carrying the part alone, the
+     * document said the same of both — and the facts beside them do not tell them apart, since two
+     * lower bounds admitting their own value say the same thing about two numbers.
+     */
     private static final Map<String, String> CARRIES = new TreeMap<>(Map.of(
-            "part", "[kind, part, rule]",
+            "part", "[kind, line, part, rule]",
             "statement_of_part", "[kind, part, rule, statement]",
             "comparison", "[kind, rule]"));
 

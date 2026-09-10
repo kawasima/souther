@@ -187,7 +187,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
         };
     }
 
-    public static final int SCHEMA_VERSION = 17;
+    public static final int SCHEMA_VERSION = 18;
 
     /**
      * Where the schema this writes documents ships.
@@ -3015,6 +3015,13 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                 which.put("kind", "part");
                 ruleId(which.putObject("rule"), it.rule());
                 which.put("part", it.part().ordinal());
+                // And which of that part's lines, which the part does not say. A conjunct states as
+                // many comparisons as a reading arrives at inside it, so a document naming the
+                // conjunct alone says the same of the two ends of
+                // `Bool.not(String.length(name) < 1 || String.length(code) < 1)` — one line where
+                // the author drew two. Written from what the line already is rather than counted
+                // here: a number this assigned would be a second answer to which line a line is.
+                declaredLine(which.putObject("line"), it.drawnBy());
             }
             case souther.compiler.partition.WhichLine.OfAComparisonOfAPart it -> {
                 which.put("kind", "statement_of_part");
@@ -3044,6 +3051,37 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
         facts.put("singles", line.facts().singles());
         ArrayNode within = into.putArray("narrowedWithin");
         line.narrowedWithin().forEach(each -> typeId(within.addObject(), each));
+    }
+
+    /**
+     * Which line of a declaration's conjunct this is, as the reading that drew it named it.
+     *
+     * <p>Two shapes because a conjunct draws lines two ways, and a document that had one word for
+     * both would be saying which of them a reader is holding by leaving it out. A comparison inside
+     * the conjunct places its own end and the statement that read it names that line; what taking
+     * the conjunct away moves is the conjunct's line, paired with whichever of its statements are
+     * about the number so that the lines it draws on two numbers are two.
+     *
+     * <p>Translated and not counted. The statements are numbered where a conjunct is read for what
+     * it states, and a number assigned here would be a second answer to which line a line is —
+     * which is the mistake the conjunct alone already was.
+     */
+    private static void declaredLine(ObjectNode into,
+                                     souther.compiler.check.DeclaredLine line) {
+        switch (line) {
+            case souther.compiler.check.DeclaredLine.OfAStatement it -> {
+                into.put("kind", "statement");
+                into.put("statement", it.statement().ordinal());
+            }
+            case souther.compiler.check.DeclaredLine.OfAConjunct it -> {
+                into.put("kind", "conjunct");
+                ArrayNode paired = into.putArray("pairedWith");
+                it.pairedWith().stream()
+                        .map(souther.compiler.check.InvariantStatementId::ordinal)
+                        .sorted()
+                        .forEach(paired::add);
+            }
+        }
     }
 
     /** A level, as the thing it is a level of writes it: a place on a carrier, or a number. */

@@ -184,6 +184,40 @@ class OneConjunctStatesAsManyLinesAsItHasStatementsTest {
     }
 
     /**
+     * And the document says which of the conjunct's lines each of them is.
+     *
+     * <p>The end of it. What the readings tell apart is worth nothing to an author if the document
+     * that reaches them says the same of both: the two lines here come out of one conjunct, so a
+     * document naming the conjunct wrote one identity twice and a reader could not ask about either
+     * of them. Held on the document rather than on the schema, because a schema says a field is
+     * there and not that two lines get two answers in it.
+     */
+    @Test
+    void andTheDocumentTellsTheTwoLinesOfOneConjunctApart() {
+        String json = souther.compiler.report.AdequacyReport.of(compiled(DENIED))
+                .json(souther.compiler.diag.SourceNameResolver.identity())
+                .replaceAll("\\s+", "");
+        java.util.regex.Matcher found = java.util.regex.Pattern
+                .compile("\"which\":\\{.{0,240}?\\},\"facts\"").matcher(json);
+        java.util.Set<String> which = new java.util.LinkedHashSet<>();
+        while (found.find()) {
+            which.add(found.group());
+        }
+
+        assertEquals(bordersOf(DENIED).stream()
+                        .map(line -> drawnBy(line.border().origin()))
+                        .distinct().count(),
+                which.size(),
+                () -> "every line the readings tell apart is one the document can be asked about: "
+                        + which);
+        assertEquals(2, which.stream()
+                        .filter(each -> each.contains("\"Pair\",\"clause\":0},\"part\":0"))
+                        .count(),
+                () -> "two of them came out of one conjunct of one clause, and the document says"
+                        + " which line of it each is: " + which);
+    }
+
+    /**
      * A conjunct paired with one statement on a number still draws the conjunct's line there.
      *
      * <p>What the pairing counts and what the intervention removes are different things. {@code
