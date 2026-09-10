@@ -1,5 +1,7 @@
 package souther.compiler.values;
 
+import souther.compiler.hash.ValueHash;
+
 import java.util.function.Function;
 
 /**

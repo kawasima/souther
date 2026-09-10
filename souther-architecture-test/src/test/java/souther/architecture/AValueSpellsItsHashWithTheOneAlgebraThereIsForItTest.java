@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 
 import java.lang.classfile.Attributes;
 import java.lang.classfile.ClassModel;
+import java.lang.classfile.FieldModel;
 import java.lang.classfile.Instruction;
 import java.lang.classfile.MethodModel;
 import java.lang.classfile.Opcode;
@@ -13,11 +14,13 @@ import java.lang.classfile.instruction.InvokeDynamicInstruction;
 import java.lang.classfile.instruction.InvokeInstruction;
 import java.lang.classfile.instruction.LoadInstruction;
 import java.lang.classfile.instruction.ReturnInstruction;
+import java.lang.reflect.AccessFlag;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -32,9 +35,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * finishing happens matters as much as that it happens — finishing a total after the sum has been
  * taken finishes a number the pairing has already left.
  *
- * <p>Which is why this is asked of the package rather than left to each value. Every one of these
+ * <p>Which is why this is asked of the packages rather than left to each value. Every one of these
  * hashes was written by somebody deciding afresh how to gather two things symmetrically, and the
  * one that decided on the plainest answer — the ends added — was the one that lost the pairing.
+ *
+ * <p><b>And of more than one package, because where a value is written says nothing about how it is
+ * hashed.</b> A relation between positions and the identity of a binding are both handed to
+ * something that adds hashes up. A rule the values of one package keep and the values of the next
+ * do not would be two answers to one question, and the second of them is the one that has the
+ * defect. What is left outside is a value written somewhere else again, and this says nothing about
+ * one.
  *
  * <p><b>Asked of the number the hash hands back, and not of what the class mentions.</b> A class
  * that names the algebra somewhere and gathers its own parts in {@code hashCode} is the defect this
@@ -50,11 +60,15 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * what this is about, and never its own equality: the generated one is over every component it has
  * and over every component it is given.
  */
-class AValueSpellsItsHashWithTheAlgebraThePackageHasTest {
+class AValueSpellsItsHashWithTheOneAlgebraThereIsForItTest {
 
-    private static final String WHERE = "souther/compiler/values/";
+    private static final List<String> WHERE =
+            List.of("souther/compiler/values/", "souther/compiler/types/");
 
-    private static final String THE_ALGEBRA = WHERE + "ValueHash";
+    private static final String THE_ALGEBRA = "souther/compiler/hash/ValueHash";
+
+    /** What a value implements where it names the value standing for it. */
+    private static final String NAMES_ONE = "souther/compiler/hash/SaysWhatStandsForIt";
 
     /** What a record's own equality and hash are left to, which is nobody here deciding anything. */
     private static final String DERIVED = "java/lang/runtime/ObjectMethods";
@@ -68,7 +82,7 @@ class AValueSpellsItsHashWithTheAlgebraThePackageHasTest {
     @Test
     void everyValueThereThatWorksOutItsOwnHashTakesItFromTheAlgebra() {
         List<String> gatheringItThemselves = new ArrayList<>();
-        for (ClassModel read : COMPILED.inTheClassesOf(WHERE)) {
+        for (ClassModel read : theValues()) {
             Optional<MethodModel> spelled = spelledOut(read, "hashCode", "()I");
             if (spelled.isPresent() && !fromTheAlgebra(read, spelled.get())) {
                 gatheringItThemselves.add(read.thisClass().name().stringValue());
@@ -94,7 +108,7 @@ class AValueSpellsItsHashWithTheAlgebraThePackageHasTest {
     @Test
     void andARecordThereSpellsItsOwnEqualityWhereAndOnlyWhereTheGeneratedOneWouldSayAnother() {
         List<String> disagreeing = new ArrayList<>();
-        for (ClassModel read : COMPILED.inTheClassesOf(WHERE)) {
+        for (ClassModel read : theValues()) {
             if (read.findAttribute(Attributes.record()).isEmpty()) {
                 continue;
             }
@@ -122,7 +136,7 @@ class AValueSpellsItsHashWithTheAlgebraThePackageHasTest {
      */
     @Test
     void andTheValuesThoseRulesAreAboutWereRead() {
-        List<ClassModel> read = COMPILED.inTheClassesOf(WHERE);
+        List<ClassModel> read = theValues();
 
         assertTrue(read.size() > 1, "the classes about relations were not built here");
         assertTrue(read.stream().anyMatch(each -> spelledOut(each, "hashCode", "()I").isPresent()),
@@ -130,6 +144,183 @@ class AValueSpellsItsHashWithTheAlgebraThePackageHasTest {
         assertTrue(read.stream().anyMatch(
                         each -> each.findAttribute(Attributes.record()).isPresent()),
                 "no value there is a record, which is not what these hold either");
+    }
+
+    /**
+     * And a number a value keeps is over the value it says stands for it.
+     *
+     * <p>A value asked its number far more often than one is made works it out once and hands back
+     * what it kept, and the algebra is then in the making rather than in the answer. What that
+     * leaves open is which number was kept: a class can ask the algebra about anything at all and
+     * put that away, and every rule above reads a hash that hands back a field as settled.
+     *
+     * <p>So what is followed here is where the number handed to the algebra came from. Between the
+     * value putting away what stands for it and putting away its number, nothing of the value is
+     * read but that one thing, and what is put away is what the algebra answered. A number gathered
+     * from something else — a part held beside what stands for the value, a number handed in — is
+     * one the equality does not read, and two values equal by what stands for them would be two
+     * numbers.
+     */
+    @Test
+    void andANumberAValueKeepsIsOverWhatItSaysStandsForIt() {
+        List<String> read = new ArrayList<>();
+        List<String> gatheringElsewhere = new ArrayList<>();
+        for (ClassModel value : theValues()) {
+            if (!namesWhatStandsForIt(value)) {
+                continue;
+            }
+            Optional<MethodModel> hash = spelledOut(value, "hashCode", "()I");
+            Optional<String> kept = hash.flatMap(spelled -> handedBack(value, spelled));
+            if (kept.isEmpty()) {
+                continue;
+            }
+            read.add(value.thisClass().name().stringValue());
+            String named = fieldNamed(value).orElseThrow(() -> new AssertionError(
+                    value.thisClass().name().stringValue() + " says something stands for it and"
+                            + " does not hand back a value it holds, which is a shape this cannot"
+                            + " follow"));
+            if (!keptOverWhatStandsForIt(value, named, kept.get())) {
+                gatheringElsewhere.add(value.thisClass().name().stringValue());
+            }
+        }
+
+        assertEquals(List.of(), gatheringElsewhere,
+                "a number kept over anything but what stands for the value is one two values equal"
+                        + " by what stands for them can differ in");
+        assertFalse(read.isEmpty(), "no value here keeps a number it works out once, which is not"
+                + " what these hold");
+    }
+
+    /**
+     * And such a value holds what stands for it, the number it worked out, and nothing else.
+     *
+     * <p>What a record gave away when one of these stopped being one is the compiler's guarantee
+     * that a component it is given is part of what it is. Held in one value again, that guarantee
+     * is back — a component joins what stands for the value and the equality, the number and the
+     * walk all read it — but only for as long as what stands for the value is where a part is put.
+     * A field beside it is a part of the value that its equality does not read and its number is
+     * not over, and nothing about writing one would say so.
+     */
+    @Test
+    void andItHoldsWhatStandsForItAndTheNumberAndNothingElse() {
+        List<String> holdingMore = new ArrayList<>();
+        List<String> read = new ArrayList<>();
+        for (ClassModel value : theValues()) {
+            if (!namesWhatStandsForIt(value)) {
+                continue;
+            }
+            Optional<MethodModel> hash = spelledOut(value, "hashCode", "()I");
+            Optional<String> kept = hash.flatMap(spelled -> handedBack(value, spelled));
+            Optional<String> named = fieldNamed(value);
+            if (kept.isEmpty() || named.isEmpty()) {
+                continue;
+            }
+            read.add(value.thisClass().name().stringValue());
+            for (FieldModel field : value.fields()) {
+                String held = field.fieldName().stringValue();
+                if (!field.flags().has(AccessFlag.STATIC) && !held.equals(kept.get())
+                        && !held.equals(named.get())) {
+                    holdingMore.add(value.thisClass().name().stringValue() + " holds " + held);
+                }
+            }
+        }
+
+        assertEquals(List.of(), holdingMore,
+                "a part held beside what stands for the value is one the equality does not read,"
+                        + " which is what putting the parts in a value of their own is against");
+        assertFalse(read.isEmpty(), "no value here holds its parts in a value of their own, which"
+                + " is not what these hold");
+    }
+
+    /** Whether the value names what stands for it. */
+    private static boolean namesWhatStandsForIt(ClassModel value) {
+        return value.interfaces().stream()
+                .anyMatch(each -> NAMES_ONE.equals(each.name().stringValue()));
+    }
+
+    /** The value it hands back as standing for it, where that is something it holds. */
+    private static Optional<String> fieldNamed(ClassModel value) {
+        for (MethodModel method : value.methods()) {
+            if (!"standsFor".equals(method.methodName().stringValue())) {
+                continue;
+            }
+            List<Instruction> body = instructionsOf(method);
+            if (body.size() == 3 && body.get(0) instanceof LoadInstruction
+                    && body.get(1) instanceof FieldInstruction field
+                    && field.opcode() == Opcode.GETFIELD
+                    && value.thisClass().name().equals(field.owner().name())
+                    && body.get(2) instanceof ReturnInstruction) {
+                return Optional.of(field.name().stringValue());
+            }
+        }
+        return Optional.empty();
+    }
+
+    /**
+     * Whether every number put into {@code kept} was worked out from {@code named} and nothing
+     * else.
+     *
+     * <p>Read as the stretch between the two puts. What a value does before it has what stands for
+     * it is making that, and what it does after is not this; in between it reads one thing and
+     * hands what it read to the algebra. A read of anything else there is a part of the number that
+     * the equality does not read.
+     */
+    private static boolean keptOverWhatStandsForIt(ClassModel value, String named, String kept) {
+        boolean put = false;
+        for (MethodModel method : value.methods()) {
+            List<Instruction> body = instructionsOf(method);
+            int from = -1;
+            for (int at = 0; at < body.size(); at++) {
+                if (!(body.get(at) instanceof FieldInstruction field)
+                        || field.opcode() != Opcode.PUTFIELD
+                        || !value.thisClass().name().equals(field.owner().name())) {
+                    continue;
+                }
+                if (named.equals(field.name().stringValue())) {
+                    from = at;
+                } else if (kept.equals(field.name().stringValue())) {
+                    put = true;
+                    if (from < 0 || !overNothingElse(value, body.subList(from + 1, at), named)) {
+                        return false;
+                    }
+                }
+            }
+        }
+        return put;
+    }
+
+    /** Whether the stretch reads {@code named}, reads nothing else the value holds, and hands the
+     *  algebra's answer over. */
+    private static boolean overNothingElse(ClassModel value, List<Instruction> stretch,
+            String named) {
+        boolean readIt = false;
+        for (int at = 0; at < stretch.size(); at++) {
+            Instruction instruction = stretch.get(at);
+            if (instruction instanceof FieldInstruction field
+                    && value.thisClass().name().equals(field.owner().name())) {
+                if (!named.equals(field.name().stringValue())) {
+                    return false;
+                }
+                readIt = true;
+            }
+            if (instruction instanceof InvokeInstruction call
+                    && !"hashCode".equals(call.name().stringValue())
+                    && !THE_ALGEBRA.equals(call.owner().name().stringValue())) {
+                return false;
+            }
+        }
+        return readIt && !stretch.isEmpty()
+                && stretch.getLast() instanceof InvokeInstruction handing
+                && THE_ALGEBRA.equals(handing.owner().name().stringValue());
+    }
+
+    /** The values these rules are about, wherever they are written. */
+    private static List<ClassModel> theValues() {
+        List<ClassModel> found = new ArrayList<>();
+        for (String where : WHERE) {
+            found.addAll(COMPILED.inTheClassesOf(where));
+        }
+        return found;
     }
 
     /**
@@ -144,7 +335,7 @@ class AValueSpellsItsHashWithTheAlgebraThePackageHasTest {
             if (named.equals(method.methodName().stringValue())
                     && taking.equals(method.methodType().stringValue())) {
                 boolean handedOver = instructionsOf(method).stream().anyMatch(
-                        AValueSpellsItsHashWithTheAlgebraThePackageHasTest::handedOver);
+                        AValueSpellsItsHashWithTheOneAlgebraThereIsForItTest::handedOver);
                 return handedOver ? Optional.empty() : Optional.of(method);
             }
         }

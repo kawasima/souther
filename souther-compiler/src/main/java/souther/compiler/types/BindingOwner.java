@@ -1,5 +1,8 @@
 package souther.compiler.types;
 
+import souther.compiler.hash.SaysWhatStandsForIt;
+import souther.compiler.hash.ValueHash;
+
 /**
  * What a binding belongs to — the definition whose text introduced it, or the copy of a body that a
  * pass placed inside one.
@@ -111,29 +114,123 @@ public sealed interface BindingOwner {
      * <p>And {@code within}, which is what tells copies apart. One call written inside a helper
      * that is itself expanded twice is one site and two expansions, and the two are inside different
      * owners.
+     *
+     * <p><b>Its number is worked out when it is made and kept.</b> What it stands inside is one of
+     * these too, so working one out walks every copy above it and the call each was expanded at.
+     * That walk answers the same thing every time, and an owner is asked its number once for every
+     * name filed under a binding it owns.
      */
-    record Expansion(BindingOwner within, ValueName expanded, ApplicationOrigin.Identified at)
-            implements BindingOwner {
+    final class Expansion implements BindingOwner, SaysWhatStandsForIt {
 
-        public Expansion {
+        /** The whole of what one expansion is, read by its equality, by its number and by the walk
+         *  that proves the number is taken from values. */
+        record Parts(BindingOwner within, ValueName expanded, ApplicationOrigin.Identified at) {
+        }
+
+        private final Parts parts;
+
+        private final int hash;
+
+        public Expansion(BindingOwner within, ValueName expanded, ApplicationOrigin.Identified at) {
             if (within == null || expanded == null || at == null) {
                 throw new IllegalArgumentException(
                         "an expansion is of something, somewhere, at some call");
             }
+            this.parts = new Parts(within, expanded, at);
+            this.hash = ValueHash.ofOnePart(Expansion.class, parts.hashCode());
+        }
+
+        /** What this copy stands inside. */
+        public BindingOwner within() {
+            return parts.within();
+        }
+
+        /** What was expanded here. */
+        public ValueName expanded() {
+            return parts.expanded();
+        }
+
+        /** The call it was expanded at. */
+        public ApplicationOrigin.Identified at() {
+            return parts.at();
+        }
+
+        @Override
+        public Parts standsFor() {
+            return parts;
+        }
+
+        @Override
+        public boolean equals(Object other) {
+            return other instanceof Expansion that && hash == that.hash && parts.equals(that.parts);
+        }
+
+        @Override
+        public int hashCode() {
+            return hash;
         }
 
         @Override
         public String toString() {
-            return within + "/" + expanded + "@" + at;
+            return parts.within() + "/" + parts.expanded() + "@" + parts.at();
         }
     }
 
-    /** Bindings {@code pass} made inside {@code within}, which no source wrote. */
-    record Synthesized(BindingOwner within, Pass pass, int ordinal) implements BindingOwner {
+    /**
+     * Bindings {@code pass} made inside {@code within}, which no source wrote.
+     *
+     * <p>Its number is kept for the reason an expansion's is: what it stands inside is an owner,
+     * and asking it for a number walks whatever is above it.
+     */
+    final class Synthesized implements BindingOwner, SaysWhatStandsForIt {
+
+        /** The whole of what one pass's bindings inside one owner are. */
+        record Parts(BindingOwner within, Pass pass, int ordinal) {
+        }
+
+        private final Parts parts;
+
+        private final int hash;
+
+        public Synthesized(BindingOwner within, Pass pass, int ordinal) {
+            this.parts = new Parts(within, pass, ordinal);
+            this.hash = ValueHash.ofOnePart(Synthesized.class, parts.hashCode());
+        }
+
+        /** What these bindings stand inside. */
+        public BindingOwner within() {
+            return parts.within();
+        }
+
+        /** Which pass made them. */
+        public Pass pass() {
+            return parts.pass();
+        }
+
+        /** Which of that pass's bindings inside that owner this is. */
+        public int ordinal() {
+            return parts.ordinal();
+        }
+
+        @Override
+        public Parts standsFor() {
+            return parts;
+        }
+
+        @Override
+        public boolean equals(Object other) {
+            return other instanceof Synthesized that && hash == that.hash
+                    && parts.equals(that.parts);
+        }
+
+        @Override
+        public int hashCode() {
+            return hash;
+        }
 
         @Override
         public String toString() {
-            return within + "/" + pass + "#" + ordinal;
+            return parts.within() + "/" + parts.pass() + "#" + parts.ordinal();
         }
     }
 
