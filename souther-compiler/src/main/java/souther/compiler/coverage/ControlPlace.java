@@ -1,31 +1,41 @@
 package souther.compiler.coverage;
 
+import souther.compiler.types.ConstructOccurrence;
 import souther.compiler.types.SourceConstructOrigin;
 
 import java.util.Optional;
 
 /**
- * A place in a body that something can or cannot arrive at, with what is known about it.
+ * Which control alternative of the tree that runs this is, with what a plan has worked out for
+ * observing it and for reporting about it.
  *
- * <p>Not the probe number. A probe is made where a row can be recorded, which takes two things:
- * the place has to answer a value, and it has to stand where a row can get to. So the arms an
- * author writes and the arms a run can be observed in are different collections, and the ones with
- * no probe are exactly the ones a claim is about — an arm answering {@code unreachable} answers no
- * value, so it never had a number, and the reading that judges what the author declared there was
- * looking for it under one.
+ * <p>Which one it is is the tree's answer. An arm is {@link ArmOccurrence} and a comparison coming
+ * out one way is the comparison's own {@link ConstructOccurrence} beside the way it came out;
+ * neither is a number anything handed out. What this adds is the plan's part: where a run through
+ * the place is recorded, and which question locates a report about it. None of those addresses
+ * names the place, and a reading that took one for the place would be reading the emitter.
  *
- * <p>Which place it is is the tree's answer and not this. An arm is {@link ArmOccurrence} and a
- * comparison coming out one way is the address the emitter issued for it; what this adds is what a
- * plan worked out about the place — where a run through it is recorded, and what a report about it
- * points at. Two readers that need different halves of that read whichever they need, and neither
- * has to build the place again to ask.
+ * <p><b>Not the probe number.</b> A probe is made where a row can be recorded, which takes two
+ * things: the place has to answer a value, and it has to stand where a row can get to. So the arms
+ * an author writes and the arms a run can be observed in are different collections, and the ones
+ * with no probe are exactly the ones a claim is about — an arm answering {@code unreachable}
+ * answers no value, so it never had a number, and the reading that judges what the author declared
+ * there was looking for it under one.
  *
- * <p>Made together and here only. Derived apart, the halves would answer for different collections
- * of places: a claim is judged at the place, a branch denominator counts the arms that carry a
- * probe, and a line drawn on a comparison asks about the outcome that leads into an arm rather than
- * about the arm.
+ * <p>The two halves are made together and here only. Derived apart, they would answer for different
+ * collections of places: a claim is judged at the place, a branch denominator counts the arms that
+ * carry a probe, and a line drawn on a comparison asks about the outcome that leads into an arm
+ * rather than about the arm.
+ *
+ * <p><b>One of these is of one plan, and nothing in it says which.</b> An arm a run cannot be
+ * recorded in carries no numbering at all, so a place cannot be asked what plan it is of. What
+ * holds two readings apart is the pairing rather than the place: a reader that has both a plan and
+ * a reading of it says so once, at the seam where they meet
+ * ({@link souther.compiler.check.PathReachability.Answers#requireNumbering}). Asked of each place
+ * instead, the question would be one an unprobed arm has no answer to, and giving it one would put
+ * the plan's own address back inside the identity.
  */
-public sealed interface ControlPointId {
+public sealed interface ControlPlace {
 
     /**
      * One arm, as it stands in the tree that runs.
@@ -42,10 +52,10 @@ public sealed interface ControlPointId {
      *               the two a reader is shown turns on what the position the walk had in hand was
      *               in — and that is the last moment anything here has one
      */
-    record ArmPoint(ArmOccurrence arm, Optional<ArmProbe> probe, ArmReportAnchor anchor)
-            implements ControlPointId {
+    record Arm(ArmOccurrence arm, Optional<ArmProbe> probe, ArmReportAnchor anchor)
+            implements ControlPlace {
 
-        public ArmPoint {
+        public Arm {
             if (arm == null) {
                 throw new IllegalArgumentException("a place an arm is is some arm");
             }
@@ -104,25 +114,44 @@ public sealed interface ControlPointId {
      * reached both by a value that made {@code B} false and by one that never reached {@code B} —
      * the arm cannot say which comparison came out which way, and a line is drawn on the comparison.
      *
-     * <p>What a plan may claim, written in the plan's own vocabulary: the address this numbering
-     * issued for the comparison, and the way it came out. A running class records the number
-     * instead, having no numbering to ask what it addresses, and putting the two together is the
-     * boundary between a recording and a numbering rather than anything this holds.
+     * <p><b>Which comparison, and separately where a run through it is written down.</b> The
+     * comparison is a construct of the tree that runs and stands there whether anything instruments
+     * it or not; the site is an address the emitter issued, and its own account of itself is that it
+     * is an address and not an identity. Held by the site alone, this said which comparison it was
+     * about only for as long as every comparison anyone asked after was one the emitter had
+     * numbered — which is the reading the arm side stopped making when an arm came to name its fork
+     * rather than its probe.
      *
-     * <p>One place and one way, so there is nothing here for a caller to pair wrongly. Two halves
-     * carrying a place each — an address beside a recorded number — would be a control point saying
-     * where it is twice.
+     * <p>One place and one way, so there is nothing here for a caller to pair wrongly. What pairs
+     * the comparison with the site is {@link CoverageSites.Plan#outcomeOf}, which is the only maker
+     * of one of these and takes the site from the plan that holds the comparison.
      *
-     * @param at   where this numbering records a run through the comparison
-     * @param held the way it came out
+     * <p><b>Only where a run through the comparison could be recorded.</b> The plan numbers a
+     * comparison standing where a row can get to and where what it stands in answers a value, so a
+     * comparison with no site is one in a position no run reaches. There is no place here for it and
+     * no claim to make about it, which is the same rule an arm with no probe is refused a claim by.
+     *
+     * @param comparison which comparison of the tree that runs
+     * @param at         where this plan records a run through it
+     * @param held       the way it came out
      */
-    record ComparisonPoint(ComparisonEmissionSite at, boolean held) implements ControlPointId {
+    record Outcome(ConstructOccurrence comparison, ComparisonEmissionSite at, boolean held)
+            implements ControlPlace {
 
-        public ComparisonPoint {
+        public Outcome {
+            if (comparison == null) {
+                throw new IllegalArgumentException(
+                        "a comparison coming out one way is some comparison");
+            }
             if (at == null) {
                 throw new IllegalArgumentException(
                         "a place a comparison comes out one way is a place");
             }
+        }
+
+        @Override
+        public String toString() {
+            return comparison + (held ? " holds" : " fails");
         }
     }
 }

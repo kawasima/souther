@@ -1,6 +1,7 @@
 package souther.compiler.check;
 
 import souther.compiler.diag.SourcePos;
+import souther.compiler.hash.SaysWhatStandsForIt;
 
 /**
  * One evaluation the check reads, told apart from every other.
@@ -20,46 +21,57 @@ import souther.compiler.diag.SourcePos;
  *
  * <p>What a term carrying one of these is hashed from is not which object it is. {@code Object}'s
  * hash is drawn afresh each run, and a term filed under one would be filed somewhere else the next
- * time — so the term algebra reads what was written and which occurrence of the reading this is
- * ({@code Term.STANDS_FOR}), which agrees with equality the one way a hash has to: two that are one
- * hash alike.
+ * time — so what stands for one here is what was written and which occurrence of the reading it is,
+ * which agrees with equality the one way a hash has to: two that are one hash alike.
  *
- * <p>Named there rather than answered here. A type answering with a hash of its own is where the
- * walk that proves a term is hashed from values has to stop, and what that hash reads is then the
- * one thing nothing checks; a type naming what stands for it is walked through like everything
- * else. Which is why the position is not among what is named: it stands on a {@link
- * souther.compiler.diag.Placement}, and what that reads is a tree, not a value this can answer for.
+ * <p>Which is less than what tells two of these apart, and that is allowed of what stands for a
+ * value: two of them are one only when they are the same object, so any two that are equal name the
+ * same thing whatever else is true. The position is left out for a reason of its own. It stands on
+ * a {@link souther.compiler.diag.Placement}, and what that reads is a tree rather than a value this
+ * can answer for.
  */
-final class EvaluationId {
+final class EvaluationId implements SaysWhatStandsForIt {
+
+    /**
+     * What stands for an evaluation where a number is wanted of it.
+     *
+     * @param what       what was written where it stands
+     * @param occurrence which one it is of the evaluations its reading has named, in the order it
+     *                   named them
+     */
+    record Named(String what, int occurrence) {
+    }
 
     private final SourcePos where;
-    private final String what;
 
-    /** Which one this is of the evaluations its reading has named, in the order it named them. */
-    private final int occurrence;
+    private final Named named;
 
     EvaluationId(String what, SourcePos where, int occurrence) {
-        this.what = what;
+        this.named = new Named(what, occurrence);
         this.where = where;
-        this.occurrence = occurrence;
     }
 
     /** What was written where this stands. */
     String what() {
-        return what;
+        return named.what();
     }
 
     /** Which one this is of the evaluations its reading has named. */
     int occurrence() {
-        return occurrence;
+        return named.occurrence();
     }
 
     SourcePos where() {
         return where;
     }
 
+    @Override
+    public Named standsFor() {
+        return named;
+    }
+
     String rendered() {
-        return "<" + what + " at "
+        return "<" + named.what() + " at "
                 + (where == null ? "?" : where.line() + ":" + where.column()) + ">";
     }
 

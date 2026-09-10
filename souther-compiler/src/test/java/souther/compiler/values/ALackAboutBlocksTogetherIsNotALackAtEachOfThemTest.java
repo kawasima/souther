@@ -1,6 +1,7 @@
 package souther.compiler.values;
 
 import org.junit.jupiter.api.Test;
+import souther.compiler.hash.ValueHash;
 
 import java.util.List;
 import java.util.Set;

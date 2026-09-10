@@ -3,7 +3,7 @@ package souther.compiler.reading;
 import souther.compiler.core.Core;
 import souther.compiler.coverage.ArmProbe;
 import souther.compiler.coverage.ControlClaim;
-import souther.compiler.coverage.ControlPointId;
+import souther.compiler.coverage.ControlPlace;
 import souther.compiler.coverage.CoverageSites;
 
 import java.util.LinkedHashMap;
@@ -45,7 +45,7 @@ final class Arms {
      * row to.
      */
     void at(Core fork, int part, Reach reach) {
-        ControlPointId.ArmPoint[] arms = plan.armsOf(fork);
+        ControlPlace.Arm[] arms = plan.armsOf(fork);
         if (arms == null || part < 0 || part >= arms.length || arms[part] == null) {
             return;
         }

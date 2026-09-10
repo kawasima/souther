@@ -10,7 +10,7 @@ import souther.compiler.check.Prepared;
 import souther.compiler.core.Core;
 import souther.compiler.coverage.AlignedObservation;
 import souther.compiler.coverage.ControlClaim;
-import souther.compiler.coverage.ControlPointId;
+import souther.compiler.coverage.ControlPlace;
 import souther.compiler.coverage.CoverageSites;
 import souther.compiler.coverage.SiteNumbering;
 import souther.compiler.coverage.Runs;
@@ -73,7 +73,7 @@ class ARowIsAWitnessForAnArmOnlyByGoingThroughItTest {
             for (WayIn way : ((PathAccess.Ways) each.getValue()).ways()) {
                 assertTrue(way.claims().stream()
                                 .noneMatch(claim -> claim.at() instanceof
-                                        ControlPointId.ArmPoint),
+                                        ControlPlace.Arm),
                         "and nothing on the way names the arm it leads to: " + way.claims());
             }
         }
@@ -149,8 +149,8 @@ class ARowIsAWitnessForAnArmOnlyByGoingThroughItTest {
             for (WayIn way : found.ways()) {
                 for (ControlClaim claim : way.claims()) {
                     switch (claim.at()) {
-                        case ControlPointId.ArmPoint arm -> taken.add(arm.probe().get());
-                        case ControlPointId.ComparisonPoint point ->
+                        case ControlPlace.Arm arm -> taken.add(arm.probe().get());
+                        case ControlPlace.Outcome point ->
                                 ways.add(new SeenComparison(point.at(), point.held()));
                     }
                 }

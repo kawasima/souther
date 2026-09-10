@@ -637,44 +637,47 @@ public final class InvariantChecker {
         }
     }
 
-    /** {@link Seeded} for one declaration. A declaration this cannot read is one whose fields it says
-     * nothing about, which is the same answer as a declaration with no rules — so nothing about the
-     * declaration throws. {@link Terms.OneTermTwoKinds} is not about the declaration, and nothing
-     * below here catches it. */
-    static Seeded seedFields(TypeSymbol.AtModule named, RuleReadingSource source,
-                             ReadingPolicy policy) {
-        return seedFields(named, source, policy, Map.of());
-    }
-
-    /** The same, asking {@code machines} for what somebody has already made of the declaration's
-     *  string rules before building any of it. */
+    /** {@link Seeded} for one declaration, asking {@code machines} for what somebody has already
+     * made of its string rules before building any of it. A declaration this cannot read is one
+     * whose fields it says nothing about, which is the same answer as a declaration with no rules —
+     * so nothing about the declaration throws. {@link Terms.OneTermTwoKinds} is not about the
+     * declaration, and nothing below here catches it. */
     static Seeded seedFields(TypeSymbol.AtModule named, RuleReadingSource source,
                              ReadingPolicy policy, DeclarationReadings machines) {
         return seedFields(named, source, policy, Map.of(), Reach.EVERYTHING, machines);
     }
 
     /**
-     * {@link Seeded} with some of the fields already settled at a value.
+     * The same, borrowing nothing anybody else has made of the declaration.
      *
-     * <p>What is left for the others, given those. The same domain and the same closure — settling a
-     * field is one more assertion into it — so what comes back is the range each remaining field can
-     * still take, which is where a row completing that assignment has to look.
+     * <p><b>Where a reading cannot be reached rather than where none would help.</b> The caller
+     * here runs while a reading is being made, from a reader that is handed the terms of the
+     * reading in progress and nothing that says where another declaration's reading comes from — so
+     * borrowing would take a capability carried into the reading itself, and what such a borrower
+     * should be handed when the reading it asks for is the one under way is not settled. This keeps
+     * what that caller did before while saying that is what it is: named, so that what is unsettled
+     * can be found by looking for it, and separate from {@link DeclarationReadings#NONE}, which is
+     * what a reader with no store says.
      */
-    static Seeded seedFields(TypeSymbol.AtModule named, RuleReadingSource source,
-                             ReadingPolicy policy, Map<NumberAt<RuleKey>, Count> settled) {
-        return seedFields(named, source, policy, settled, Reach.EVERYTHING);
+    static Seeded seedFieldsUnshared(TypeSymbol.AtModule named, RuleReadingSource source,
+                                     ReadingPolicy policy) {
+        return seedFields(named, source, policy, DeclarationReadings.NONE);
     }
 
-    /**
-     * The same, reading only as far as {@code reach} says at each name it meets.
-     *
-     * <p>What a rule did is read by asking what happens without it. Which clause moved an edge is not
-     * something the closure records — it answers with a number and not with how it got there — and
-     * this is that question put to the same reader rather than answered by a second one: seed the
-     * value again without one declaration's clauses, and an end that moves is an end that
-     * declaration was holding. Supposing a declaration has values is the other thing {@code reach}
-     * says, and it is not that one — see {@link Reach}.
-     */
+    /** The same, reading for itself. */
+    static Seeded seedFields(TypeSymbol.AtModule named, RuleReadingSource source,
+                             ReadingPolicy policy) {
+        return seedFields(named, source, policy, DeclarationReadings.NONE);
+    }
+
+    /** The same, with some of the fields already settled at a value, reading for itself. */
+    static Seeded seedFields(TypeSymbol.AtModule named, RuleReadingSource source,
+                             ReadingPolicy policy, Map<NumberAt<RuleKey>, Count> settled) {
+        return seedFields(named, source, policy, settled, Reach.EVERYTHING,
+                DeclarationReadings.NONE);
+    }
+
+    /** The same, reading only as far as {@code reach} says, and reading for itself. */
     static Seeded seedFields(TypeSymbol.AtModule named, RuleReadingSource source,
                              ReadingPolicy policy, Map<NumberAt<RuleKey>, Count> settled,
                              Reach reach) {
@@ -682,8 +685,19 @@ public final class InvariantChecker {
     }
 
     /**
-     * The same, asking {@code readings} first — for the canonical reading of the declaration where
-     * this is one, and for its string machines in any case.
+     * The same, with some of the fields settled at a value and reading only as far as {@code reach}
+     * says at each name it meets.
+     *
+     * <p>What is left for the others, given those. The same domain and the same closure — settling
+     * a field is one more assertion into it — so what comes back is the range each remaining field
+     * can still take, which is where a row completing that assignment has to look.
+     *
+     * <p>What a rule did is read by asking what happens without it. Which clause moved an edge is
+     * not something the closure records — it answers with a number and not with how it got there —
+     * and this is that question put to the same reader rather than answered by a second one: seed
+     * the value again without one declaration's clauses, and an end that moves is an end that
+     * declaration was holding. Supposing a declaration has values is the other thing {@code reach}
+     * says, and it is not that one — see {@link Reach}.
      *
      * <p>The canonical reading is the declaration's rules read whole: nothing settled at a value,
      * nothing left out at any name it reaches. Every question that reaches the declaration and has
@@ -693,19 +707,40 @@ public final class InvariantChecker {
      * which is what {@code readings} is answering for.
      *
      * <p>A reading with something settled or something left out is not that reading and is made
-     * here every time. There is no lending to arrange: a counterfactual is asked for by one reader
-     * about one end, and the next reader's counterfactual is about another.
+     * here every time. It belongs to the question that asked for it: what it leaves out is that
+     * question's, and the next question leaves out something else.
      */
     static Seeded seedFields(TypeSymbol.AtModule named, RuleReadingSource source,
                              ReadingPolicy policy, Map<NumberAt<RuleKey>, Count> settled,
                              Reach reach, DeclarationReadings readings) {
+        return readFields(named, source, policy, settled, reach, readings).seeded();
+    }
+
+    /**
+     * The same, as the reading it is rather than as what the seeding left.
+     *
+     * <p>Which of the two a caller wants turns on whether it derives anything. What is worked out
+     * from a reading is worked out once and kept with it, so a caller that derives asks for the
+     * reading and is handed what the last of them made; one that only reads the seeding off has
+     * nothing to keep and takes {@link #seedFields}.
+     *
+     * <p><b>Whether the reading is the declaration's canonical one is decided here and nowhere
+     * else.</b> A reading with something settled or something left out is not that one: it belongs
+     * to the question that asked for it, and what it derives belongs there too. Both come back as
+     * the same kind of thing, so no reader downstream has to put the question again to know what it
+     * may keep.
+     */
+    static DeclarationReading readFields(TypeSymbol.AtModule named, RuleReadingSource source,
+                                         ReadingPolicy policy, Map<NumberAt<RuleKey>, Count> settled,
+                                         Reach reach, DeclarationReadings readings) {
         // What the declaration's string rules came to, asked for before anything else. Where a store
         // is answering, making that answer is what makes the declaration's canonical reading — so a
         // borrower asks for the machines and then looks for the reading, rather than reading for
         // itself and standing a second reading beside the answer's.
         StringMachineAnswers answers = readings.of(named.key());
         if (!settled.isEmpty() || !reach.everything()) {
-            return seedFieldsFresh(named, source, policy, settled, reach, readings, answers);
+            return DeclarationReading.of(
+                    seedFieldsFresh(named, source, policy, settled, reach, readings, answers));
         }
         return readings.reading(named.key(), source, policy,
                 () -> seedFieldsFresh(named, source, policy, settled, reach, readings, answers));

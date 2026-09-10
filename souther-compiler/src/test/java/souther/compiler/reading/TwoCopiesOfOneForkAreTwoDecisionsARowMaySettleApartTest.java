@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import souther.compiler.core.Core;
 import souther.compiler.coverage.ControlClaim;
-import souther.compiler.coverage.ControlPointId;
+import souther.compiler.coverage.ControlPlace;
 import souther.compiler.coverage.CoverageSites;
 import souther.compiler.query.Bodies;
 import souther.compiler.query.Compilation;
@@ -60,8 +60,8 @@ class TwoCopiesOfOneForkAreTwoDecisionsARowMaySettleApartTest {
 
         List<Core> copies = theForkTheOperationCopies(checked.behaviorBodies().get("pick"));
 
-        ControlPointId.ArmPoint[] first = plan.armsOf(copies.get(0));
-        ControlPointId.ArmPoint[] second = plan.armsOf(copies.get(1));
+        ControlPlace.Arm[] first = plan.armsOf(copies.get(0));
+        ControlPlace.Arm[] second = plan.armsOf(copies.get(1));
         assertTrue(first[0].isMeasured() && first[1].isMeasured() && second[1].isMeasured(),
                 "a run through any arm of this fork can be recorded");
 
@@ -73,7 +73,7 @@ class TwoCopiesOfOneForkAreTwoDecisionsARowMaySettleApartTest {
                 "and one copy going both ways is one decision settled twice");
     }
 
-    private static Decision decision(ControlPointId.ArmPoint arm) {
+    private static Decision decision(ControlPlace.Arm arm) {
         return new Decision(new Condition.Arm(arm.arm()),
                 ControlClaim.of(arm).orElseThrow(
                         () -> new AssertionError("an arm with a probe can be claimed")));

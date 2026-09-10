@@ -5,7 +5,7 @@ import souther.compiler.coverage.ArmProbe;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.coverage.ControlClaim;
-import souther.compiler.coverage.ControlPointId;
+import souther.compiler.coverage.ControlPlace;
 import souther.compiler.coverage.Numberings;
 import souther.compiler.coverage.Runs;
 import souther.compiler.coverage.SiteNumbering;
@@ -55,7 +55,7 @@ class ASelectionsClassesAndClaimsAreOfTheSameChoiceTest {
 
     /** A place a run can be recorded at, told from its neighbours by the probe it carries. */
     private static ControlClaim at(int probe) {
-        return ControlClaim.of(new ControlPointId.ArmPoint(Numberings.armOfForkAt(probe),
+        return ControlClaim.of(new ControlPlace.Arm(Numberings.armOfForkAt(probe),
                         java.util.Optional.of(probe(probe)), null))
                 .orElseThrow(() -> new AssertionError("an arm with a probe can be claimed"));
     }

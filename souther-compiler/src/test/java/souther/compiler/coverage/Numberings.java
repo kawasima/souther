@@ -56,9 +56,9 @@ public final class Numberings {
      * tree's answer and a probe number is the emitter's, so a fixture that let one stand for the
      * other would be writing down a correspondence nothing makes.
      */
-    public static ControlPointId.ArmPoint armPlace(ArmOccurrence arm, ArmProbe probe,
+    public static ControlPlace.Arm armPlace(ArmOccurrence arm, ArmProbe probe,
                                                    ArmReportAnchor anchor) {
-        return new ControlPointId.ArmPoint(arm, Optional.of(probe), anchor);
+        return new ControlPlace.Arm(arm, Optional.of(probe), anchor);
     }
 
     /**

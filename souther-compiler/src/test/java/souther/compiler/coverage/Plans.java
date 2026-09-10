@@ -63,11 +63,11 @@ public final class Plans {
      * ones.
      */
     public static CoverageSites.Plan withArmRenamed(CoverageSites.Plan plan,
-                                                    ControlPointId.ArmPoint was,
-                                                    ControlPointId.ArmPoint now) {
-        IdentityHashMap<Core, ControlPointId.ArmPoint[]> arms = new IdentityHashMap<>();
+                                                    ControlPlace.Arm was,
+                                                    ControlPlace.Arm now) {
+        IdentityHashMap<Core, ControlPlace.Arm[]> arms = new IdentityHashMap<>();
         plan.armsByNode().forEach((node, held) -> {
-            ControlPointId.ArmPoint[] out = held.clone();
+            ControlPlace.Arm[] out = held.clone();
             for (int at = 0; at < out.length; at++) {
                 if (out[at].equals(was)) {
                     out[at] = now;

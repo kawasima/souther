@@ -1227,8 +1227,8 @@ public final class Elaborator {
                 // The same settling the call itself does — this walk is reading that call's own
                 // question one position early, and an answer that differed from the one the call
                 // reaches would be a parameter type nothing later agrees with.
-                bind = CallElaborator.settledByValues(call, kept.params(), kept.result(), null,
-                        j -> typeOf(call.args().get(j), env, ctx), ctx);
+                bind = SignatureApplication.settledByValues(kept.params(), kept.result(), null,
+                        j -> typeOf(call.args().get(j), env, ctx), ctx.symbols());
             } catch (CompileException _) {
                 return;   // this call decides nothing here; what is wrong with it is reported there
             }

@@ -1,6 +1,8 @@
 package souther.compiler.types;
 
 import souther.compiler.Reserved;
+import souther.compiler.hash.SaysWhatStandsForIt;
+import souther.compiler.hash.ValueHash;
 
 /**
  * A data type's identity: which declaration this is, told apart by who declared it.
@@ -33,7 +35,7 @@ public sealed interface TypeSymbol extends Comparable<TypeSymbol> {
      * where it stands for the declaration in the compiler's own reasoning, and one is minted from
      * the other only in {@link TypeSymbols}.
      */
-    final class AtModule implements TypeSymbol {
+    final class AtModule implements TypeSymbol, SaysWhatStandsForIt {
 
         private final TypeKey key;
 
@@ -69,6 +71,12 @@ public sealed interface TypeSymbol extends Comparable<TypeSymbol> {
             return key.name();
         }
 
+        /** The address, which is the whole of what tells one of these from another. */
+        @Override
+        public TypeKey standsFor() {
+            return key;
+        }
+
         @Override
         public boolean equals(Object other) {
             return other instanceof AtModule at && key.equals(at.key);
@@ -76,7 +84,7 @@ public sealed interface TypeSymbol extends Comparable<TypeSymbol> {
 
         @Override
         public int hashCode() {
-            return key.hashCode();
+            return ValueHash.ofOnePart(AtModule.class, key.hashCode());
         }
 
         @Override

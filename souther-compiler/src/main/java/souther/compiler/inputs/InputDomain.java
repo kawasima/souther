@@ -160,10 +160,26 @@ public final class InputDomain {
      */
     private final List<CasesRead> cases;
 
+    /**
+     * Where the declarations this walk read get what somebody has already made of them.
+     *
+     * <p>Kept because a later reader of the same declarations is a later reader of the same
+     * declarations. What a position is offered and why it was offered no more are asked of the
+     * rules of the record a parameter is, long after the walk that read them — asked with nothing
+     * to borrow, that reader reads every one of them again.
+     *
+     * <p>No part of what makes two readings one. It is a capability rather than a value: two of
+     * them built from one store answer alike and compare unlike, so a reading that took this into
+     * the comparison would say a walk taken again came to something else.
+     */
+    private final DeclarationReadings machines;
+
     private InputDomain(List<Position> positions, Map<BindingId, String> read,
                         List<Parameter> parameters, List<RuleRoot> roots, ReadingPolicy policy,
                         NameReach reach, List<PlacementSeed> placed,
-                        List<ClauseWithoutAnEnd> clauses, List<CasesRead> cases) {
+                        List<ClauseWithoutAnEnd> clauses, List<CasesRead> cases,
+                        DeclarationReadings machines) {
+        this.machines = Objects.requireNonNull(machines, "a reading says where it borrows from");
         this.cases = List.copyOf(cases);
         this.placed = List.copyOf(placed);
         this.clauses = List.copyOf(clauses);
@@ -232,8 +248,20 @@ public final class InputDomain {
 
     /** Every position of an input, in the order the parameters are declared and descended into. */
     public static InputDomain of(List<Parameter> parameters, RuleReadingSource source,
+                                 ReadingPolicy policy, DeclarationReadings machines) {
+        return of(parameters, source, policy, InputDemand.NONE, machines);
+    }
+
+    /** The same, reading for itself. */
+    public static InputDomain of(List<Parameter> parameters, RuleReadingSource source,
                                  ReadingPolicy policy) {
-        return of(parameters, source, policy, InputDemand.NONE);
+        return of(parameters, source, policy, InputDemand.NONE, DeclarationReadings.NONE);
+    }
+
+    /** The same, closed over the finite paths a behavior's measurement names, reading for itself. */
+    public static InputDomain of(List<Parameter> parameters, RuleReadingSource source,
+                                 ReadingPolicy policy, InputDemand demand) {
+        return of(parameters, source, policy, demand, DeclarationReadings.NONE);
     }
 
     /**
@@ -250,18 +278,11 @@ public final class InputDomain {
      * everything derived from it — what a report counts, what a quantity is left, what a row is
      * asked for — is taken from it once. So a path nobody demanded is a path this has no position
      * for, whoever asks and whenever.
-     */
-    public static InputDomain of(List<Parameter> parameters, RuleReadingSource source,
-                                 ReadingPolicy policy, InputDemand demand) {
-        return of(parameters, source, policy, demand, DeclarationReadings.NONE);
-    }
-
-    /**
-     * The same, asking {@code machines} for what somebody has already made of each declaration's
-     * string rules before building any of it.
      *
-     * <p>A capability and not a part of the reading: handed to every reading this walk opens,
-     * and kept by nothing the walk answers with.
+     * <p>{@code machines} is where each declaration this opens borrows what somebody has already
+     * made of it. A capability and not a part of the reading: handed to every reading this walk
+     * opens, kept by nothing the walk answers with, and kept here for the readers of those same
+     * declarations that come after the walk ({@link #machines}).
      */
     public static InputDomain of(List<Parameter> parameters, RuleReadingSource source,
                                  ReadingPolicy policy, InputDemand demand,
@@ -310,7 +331,7 @@ public final class InputDomain {
         // it reached. Answered with a value standing for no reading at all, an input nobody could
         // read would be the same value as an input there was nothing to read.
         return new InputDomain(settled, read, parameters, roots, policy, observed.reach(),
-                account.placed(), account.clauses(), observed.cases());
+                account.placed(), account.clauses(), observed.cases(), machines);
     }
 
     /**
@@ -353,15 +374,9 @@ public final class InputDomain {
      */
     public static InputDomain of(DeclaredSig declared,
                                  List<SpecImplementation.ParameterBinding.AnInput> arriving,
-                                 RuleReadingSource source, ReadingPolicy policy) {
-        return of(declared, arriving, source, policy, InputDemand.NONE);
-    }
-
-    /** The same, closed over the finite paths this behavior's measurement names as well. */
-    public static InputDomain of(DeclaredSig declared,
-                                 List<SpecImplementation.ParameterBinding.AnInput> arriving,
-                                 RuleReadingSource source, ReadingPolicy policy, InputDemand demand) {
-        return of(declared, arriving, source, policy, demand, DeclarationReadings.NONE);
+                                 RuleReadingSource source, ReadingPolicy policy,
+                                 DeclarationReadings machines) {
+        return of(declared, arriving, source, policy, InputDemand.NONE, machines);
     }
 
     /**
@@ -403,8 +418,31 @@ public final class InputDomain {
      * that used it would find every claim and every comparison naming nothing.
      */
     public static InputDomain of(DeclaredSig declared, RuleReadingSource source,
+                                 ReadingPolicy policy, DeclarationReadings machines) {
+        return of(declared, List.of(), source, policy, machines);
+    }
+
+    /** The same, reading for itself. */
+    public static InputDomain of(DeclaredSig declared, RuleReadingSource source,
                                  ReadingPolicy policy) {
-        return of(declared, List.of(), source, policy);
+        return of(declared, List.of(), source, policy, DeclarationReadings.NONE);
+    }
+
+    /** The same, of an input nothing reads a body against, reading for itself. */
+    public static InputDomain of(DeclaredSig declared,
+                                 List<SpecImplementation.ParameterBinding.AnInput> arriving,
+                                 RuleReadingSource source, ReadingPolicy policy) {
+        return of(declared, arriving, source, policy, InputDemand.NONE,
+                DeclarationReadings.NONE);
+    }
+
+    /** The same, closed over the finite paths this behavior's measurement names, reading for
+     *  itself. */
+    public static InputDomain of(DeclaredSig declared,
+                                 List<SpecImplementation.ParameterBinding.AnInput> arriving,
+                                 RuleReadingSource source, ReadingPolicy policy,
+                                 InputDemand demand) {
+        return of(declared, arriving, source, policy, demand, DeclarationReadings.NONE);
     }
 
     /** The positions, in the order they were read. */
@@ -426,6 +464,12 @@ public final class InputDomain {
     /** How the names in it are read, which is the policy this reading was made under. */
     public ReadingPolicy policy() {
         return policy;
+    }
+
+    /** Where this reading borrowed what had already been made of the declarations it read, for a
+     *  reader of those same declarations that comes after it. */
+    public DeclarationReadings machines() {
+        return machines;
     }
 
     /**
@@ -803,7 +847,8 @@ public final class InputDomain {
             // are about. Read without it, the cases of a sum are rules about every row and refuse
             // an input between them.
             byRoot.computeIfAbsent(root.at(),
-                    at -> new OpenedRules(PlacedRules.of(at, root.type(), source, policy),
+                    at -> new OpenedRules(
+                            PlacedRules.of(at, root.type(), source, policy, machines),
                             root.opening()));
         }
         // Where a term's subject stands, handed over already answered. What comes back asks a

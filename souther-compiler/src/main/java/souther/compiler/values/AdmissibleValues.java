@@ -1,5 +1,6 @@
 package souther.compiler.values;
 
+import souther.compiler.hash.ValueHash;
 import souther.compiler.reading.StateOfAReading;
 
 import java.util.ArrayList;

@@ -73,7 +73,7 @@ class AnArmsSiteAndItsPlaceAreOneValueTest {
     @Test
     void aSiteHoldsThePlaceOfTheArmItIsASiteOf() {
         CoverageSites.Plan plan = planOf(MODEL);
-        ControlPointId.ArmPoint[] arms = plan.armsByNode().values().stream().findFirst()
+        ControlPlace.Arm[] arms = plan.armsByNode().values().stream().findFirst()
                 .orElseThrow(() -> new AssertionError("the model writes a fork"));
         assertEquals(1, plan.armsByNode().size(),
                 "one fork, so which arms a site is to be found among is not in question");
@@ -129,9 +129,9 @@ class AnArmsSiteAndItsPlaceAreOneValueTest {
     @Test
     void aRealPlaceWithNoProbeCarriesTheProofAboutIt() {
         PathReachability.Answers answers = arrivalsOf(SILENT_REFUSED_ARM);
-        List<ControlPointId.ArmPoint> silent = answers.found().keySet().stream()
-                .filter(ControlPointId.ArmPoint.class::isInstance)
-                .map(ControlPointId.ArmPoint.class::cast)
+        List<ControlPlace.Arm> silent = answers.found().keySet().stream()
+                .filter(ControlPlace.Arm.class::isInstance)
+                .map(ControlPlace.Arm.class::cast)
                 .filter(arm -> arm.probe().isEmpty()).toList();
 
         assertEquals(1, silent.size(),
@@ -152,11 +152,11 @@ class AnArmsSiteAndItsPlaceAreOneValueTest {
     @Test
     void aPlaceTheWalkDidNotReachIsUnsettledRatherThanAbsent() {
         PathReachability.Answers answers = arrivalsOf(MODEL);
-        ControlPointId.ArmPoint any = answers.found().keySet().stream()
-                .filter(ControlPointId.ArmPoint.class::isInstance)
-                .map(ControlPointId.ArmPoint.class::cast)
+        ControlPlace.Arm any = answers.found().keySet().stream()
+                .filter(ControlPlace.Arm.class::isInstance)
+                .map(ControlPlace.Arm.class::cast)
                 .findFirst().orElseThrow();
-        ControlPointId.ArmPoint never = new ControlPointId.ArmPoint(
+        ControlPlace.Arm never = new ControlPlace.Arm(
                 new ArmOccurrence(any.arm().fork(), Integer.MAX_VALUE),
                 Optional.empty(), any.anchor());
 

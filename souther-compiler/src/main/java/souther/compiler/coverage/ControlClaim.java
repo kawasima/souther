@@ -11,13 +11,12 @@ import java.util.Optional;
  * The reading's own vocabulary changes as the reading gets better; that a comparison came out false
  * does not.
  *
- * <p>Not every place is one of these. An arm no row that stands can be in carries no probe, so a run
- * through it is not something any recording could hold — and a claim on it would be one nothing could
- * ever satisfy, which is worse than no claim at all: it reads as a combination that was tried and
+ * <p>Not every place is one of these. A place no run could be recorded at is one a claim could never
+ * be satisfied at, which is worse than no claim at all: it reads as a combination that was tried and
  * missed. {@link #of} is where that is decided, so a claim that exists is one an observation can
  * answer.
  */
-public record ControlClaim(ControlPointId at) {
+public record ControlClaim(ControlPlace at) {
 
     public ControlClaim {
         if (at == null) {
@@ -31,14 +30,19 @@ public record ControlClaim(ControlPointId at) {
      * <p>Empty is an ordinary answer and the safe direction: what cannot be witnessed cannot be
      * claimed, so whatever was going to be built on it is left unbuilt rather than built and never
      * satisfiable.
+     *
+     * <p>One rule, read off whichever half of the place answers it. An arm carries its probe and
+     * says outright whether it has one. A comparison coming out one way exists only where the plan
+     * numbered the comparison — which the plan does for a comparison standing where a row can get to
+     * and where what it stands in answers a value — so a {@link ControlPlace.Outcome} that exists is
+     * one a run can be recorded at, and one in a position no run reaches is a place the plan makes
+     * no outcome for at all.
      */
-    public static Optional<ControlClaim> of(ControlPointId at) {
+    public static Optional<ControlClaim> of(ControlPlace at) {
         return switch (at) {
-            case ControlPointId.ArmPoint arm ->
+            case ControlPlace.Arm arm ->
                     arm.isMeasured() ? Optional.of(new ControlClaim(arm)) : Optional.empty();
-            // A comparison is numbered only where the fork it belongs to has an arm a run can be
-            // recorded in, so one that exists is one a run can be recorded at.
-            case ControlPointId.ComparisonPoint point -> Optional.of(new ControlClaim(point));
+            case ControlPlace.Outcome outcome -> Optional.of(new ControlClaim(outcome));
         };
     }
 
@@ -51,18 +55,17 @@ public record ControlClaim(ControlPointId at) {
      */
     public boolean satisfiedBy(AlignedObservation seen) {
         return switch (at) {
-            case ControlPointId.ArmPoint arm ->
+            case ControlPlace.Arm arm ->
                     arm.probe().isPresent() && seen.lit(arm.probe().get());
-            case ControlPointId.ComparisonPoint point -> seen.saw(point.at(), point.held());
+            case ControlPlace.Outcome outcome -> seen.saw(outcome.at(), outcome.held());
         };
     }
 
     @Override
     public String toString() {
         return switch (at) {
-            case ControlPointId.ArmPoint arm -> "arm " + arm.arm();
-            case ControlPointId.ComparisonPoint point ->
-                    point.at() + (point.held() ? " held" : " failed");
+            case ControlPlace.Arm arm -> "arm " + arm.arm();
+            case ControlPlace.Outcome outcome -> outcome.toString();
         };
     }
 }

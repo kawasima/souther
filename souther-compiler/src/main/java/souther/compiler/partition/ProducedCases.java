@@ -2,7 +2,7 @@ package souther.compiler.partition;
 
 import souther.compiler.core.Core;
 import souther.compiler.check.PathReachability;
-import souther.compiler.coverage.ControlPointId;
+import souther.compiler.coverage.ControlPlace;
 import souther.compiler.coverage.CoverageSites;
 import souther.compiler.types.SourceConstructOrigin;
 import souther.compiler.types.TypeSymbol;
@@ -51,6 +51,11 @@ public final class ProducedCases {
      */
     public static Set<TypeSymbol> of(Core body, CoverageSites.Plan plan, PathReachability.Answers arrives,
                                    Set<TypeSymbol> declared) {
+        // The arms this walks are the plan's and the reading is asked about them by place, so the
+        // two are held to being one another's before either is read. Asked before the shortcut
+        // below, because a reading of another module's plan proves nothing unreached and would take
+        // that way out rather than be found.
+        arrives.requireNumbering(plan.identity());
         // Nothing proven is nothing to take away: what this returns is `declared` less the cases whose
         // every producer is behind a proven arm, and with no such arm there are none. Skipped rather
         // than walked to the same answer.
@@ -90,7 +95,7 @@ public final class ProducedCases {
      * value a {@code let} binds — is not what the behavior answers with, and counting it would keep a
      * case owed because the body happened to build one on its way past.
      */
-    private static void walk(Core e, List<ControlPointId.ArmPoint> under,
+    private static void walk(Core e, List<ControlPlace.Arm> under,
                              CoverageSites.Plan plan,
                              PathReachability.Answers arrives, Set<TypeSymbol> declared, Seen seen) {
         if (seen.anythingUnreadable) {
@@ -100,19 +105,19 @@ public final class ProducedCases {
             case Core.Unreachable _ -> { }   // answers nothing, so it produces nothing
             case Core.LetIn li -> walk(li.body(), under, plan, arrives, declared, seen);
             case Core.If iff -> {
-                ControlPointId.ArmPoint[] arms = plan.armsOf(iff);
+                ControlPlace.Arm[] arms = plan.armsOf(iff);
                 walk(iff.then(), beneath(under, arms, 0), plan, arrives, declared, seen);
                 walk(iff.els(), beneath(under, arms, 1), plan, arrives, declared, seen);
             }
             case Core.Match m -> {
-                ControlPointId.ArmPoint[] arms = plan.armsOf(m);
+                ControlPlace.Arm[] arms = plan.armsOf(m);
                 for (int i = 0; i < m.cases().size(); i++) {
                     walk(m.cases().get(i).body(), beneath(under, arms, i), plan, arrives, declared,
                             seen);
                 }
             }
             case Core.IfConstructed ic -> {
-                ControlPointId.ArmPoint[] arms = plan.armsOf(ic);
+                ControlPlace.Arm[] arms = plan.armsOf(ic);
                 walk(ic.then(), beneath(under, arms, 0), plan, arrives, declared, seen);
                 for (int i = 0; i < ic.els().size(); i++) {
                     walk(ic.els().get(i).body(), beneath(under, arms, i + 1), plan, arrives,
@@ -128,7 +133,7 @@ public final class ProducedCases {
     }
 
     /** Where one producer puts the case it answers with. */
-    private static void produce(TypeSymbol built, List<ControlPointId.ArmPoint> under,
+    private static void produce(TypeSymbol built, List<ControlPlace.Arm> under,
                                 PathReachability.Answers arrives,
                                 Set<TypeSymbol> declared, Seen seen) {
         boolean proven = under.stream().anyMatch(arm ->
@@ -153,14 +158,14 @@ public final class ProducedCases {
      * is instrumented for, and what this asks is whether anything arrives — a place with no probe
      * is a place all the same, and the reading answers about it like any other.
      */
-    private static List<ControlPointId.ArmPoint> beneath(
-            List<ControlPointId.ArmPoint> under,
-            ControlPointId.ArmPoint[] arms, int index) {
+    private static List<ControlPlace.Arm> beneath(
+            List<ControlPlace.Arm> under,
+            ControlPlace.Arm[] arms, int index) {
         if (arms == null || index >= arms.length || arms[index] == null
                 || !takesAProducerAway(arms[index])) {
             return under;
         }
-        List<ControlPointId.ArmPoint> out = new ArrayList<>(under);
+        List<ControlPlace.Arm> out = new ArrayList<>(under);
         out.add(arms[index]);
         return List.copyOf(out);
     }
@@ -179,7 +184,7 @@ public final class ProducedCases {
      * for, this would hold a place to more than what makes one: an occurrence names an origin where
      * it has one, and a reader wanting a construct is a reader that can be told there is none.
      */
-    private static boolean takesAProducerAway(ControlPointId.ArmPoint arm) {
+    private static boolean takesAProducerAway(ControlPlace.Arm arm) {
         SourceConstructOrigin origin = arm.origin();
         if (origin == null) {
             return false;   // nothing here says what wrote it, which is not a construct either

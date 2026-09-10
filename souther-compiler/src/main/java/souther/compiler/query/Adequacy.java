@@ -8,6 +8,7 @@ import souther.compiler.inputs.TermPath;
 
 
 import souther.compiler.coverage.ArmProbe;
+import souther.compiler.coverage.ControlPlace;
 import souther.compiler.coverage.CoverageSites;
 import souther.compiler.coverage.SiteNumbering;
 import souther.compiler.reach.Reachability;
@@ -23,6 +24,7 @@ import souther.compiler.examples.FixtureReader;
 import souther.compiler.ast.Hir;
 import souther.compiler.check.AtomSpace;
 import souther.compiler.check.DeclarationCitations;
+import souther.compiler.check.DeclarationReadings;
 import souther.compiler.check.DeclaredSig;
 import souther.compiler.check.PublishedDeclarations;
 import souther.compiler.check.RuleRef;
@@ -1007,7 +1009,7 @@ public final class Adequacy {
                         // one: it is the author saying what this reading proves, and telling them
                         // to take it out is telling them off for being right. The denominator
                         // counts the probed arms, and this reports the probed arms.
-                        if (where instanceof souther.compiler.coverage.ControlPointId.ArmPoint
+                        if (where instanceof ControlPlace.Arm
                                 arm && arm.isMeasured() && arm.writtenBy(name)
                                 && said instanceof souther.compiler.reach.Reachability.Unreachable
                                         unreachable) {
@@ -1035,7 +1037,7 @@ public final class Adequacy {
          * answers and never this.
          */
         private static Report warning(
-                Db db, souther.compiler.coverage.ControlPointId.ArmPoint arm,
+                Db db, ControlPlace.Arm arm,
                 souther.compiler.reach.Proof proof) {
             return Report.of(new DeadBranchProofWords(
                     Warnings.pointedAt(Sites.placeOf(db, arm.anchor()))
@@ -1110,12 +1112,12 @@ public final class Adequacy {
         }
 
         /** One dead branch and how it was shown, before either is turned into words. */
-        private record Dead(souther.compiler.coverage.ControlPointId.ArmPoint arm,
+        private record Dead(ControlPlace.Arm arm,
                             souther.compiler.reach.Proof proof) {}
 
         /** Where a report about an arm points, read the way {@link Warnings#pointedAt} reads it. */
         private static souther.compiler.diag.SourcePos at(
-                Db db, souther.compiler.coverage.ControlPointId.ArmPoint arm) {
+                Db db, ControlPlace.Arm arm) {
             return switch (Sites.placeOf(db, arm.anchor())) {
                 case Citation.Written written -> written.at();
                 case Citation.Unplaced unplaced -> unplaced.at();
@@ -1891,7 +1893,8 @@ public final class Adequacy {
             resolved.put(debt.point(), new BorderAccount.Answer(debt,
                     debt.id().owedToTheDeclaration().isPresent()
                             ? axisOf(debt.id(), declarations, Shapes.publishedDeclarations(db),
-                                    Shapes.declarationCitations(db), ruleReading, policy) : null,
+                                    Shapes.declarationCitations(db), ruleReading, policy,
+                                    db.readings()) : null,
                     PointResolver.resolveAt(debt.owed(), List.copyOf(debt.met().keySet()),
                             reading -> readingOf(db, module, scope, debt, debt.at(), reading))));
         }
@@ -4418,7 +4421,8 @@ public final class Adequacy {
                 }
                 out.add(new DeclaredDebt(debt,
                         axisOf(debt.id(), declarations, Shapes.publishedDeclarations(db),
-                                Shapes.declarationCitations(db), reading, policy), owners));
+                                Shapes.declarationCitations(db), reading, policy, db.readings()),
+                        owners));
             }
             return Answer.of(new DeclaredBoundaries(out, went));
         }
@@ -4442,11 +4446,13 @@ public final class Adequacy {
                                  Map<TypeSymbol, souther.compiler.check.DeclaredBorders> read,
                                  PublishedDeclarations published, DeclarationCitations citations,
                                  RuleReadingSource reading,
-                                 souther.compiler.check.ReadingPolicy policy) {
+                                 souther.compiler.check.ReadingPolicy policy,
+                                 DeclarationReadings machines) {
         TypeSymbol declaredOn = id.owedToTheDeclaration().orElseThrow(
                 () -> new IllegalStateException("what a line with no declaration is on is not"
                         + " something anybody wrote: " + id));
-        String named = declarationRead(read, declaredOn, published, citations, reading, policy)
+        String named = declarationRead(read, declaredOn, published, citations, reading, policy,
+                        machines)
                 // Which line of the declaration this is, asked of the rule. Taken apart
                 // here, a reader would be deciding which rules have a clause and a
                 // conjunct, which is the rule's own answer.
@@ -4461,9 +4467,10 @@ public final class Adequacy {
     private static souther.compiler.check.DeclaredBorders declarationRead(
             Map<TypeSymbol, souther.compiler.check.DeclaredBorders> kept, TypeSymbol declaredOn,
             PublishedDeclarations published, DeclarationCitations citations,
-            RuleReadingSource reading, souther.compiler.check.ReadingPolicy policy) {
+            RuleReadingSource reading, souther.compiler.check.ReadingPolicy policy,
+            DeclarationReadings machines) {
         return kept.computeIfAbsent(declaredOn, each -> souther.compiler.check.DeclaredBorders
-                .of(each, published, citations, reading, policy));
+                .of(each, published, citations, reading, policy, machines));
     }
 
 

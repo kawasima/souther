@@ -1,7 +1,7 @@
-package souther.compiler.values;
+package souther.compiler.hash;
 
 /**
- * How a value here is hashed from what it holds.
+ * How a value is hashed from what it holds.
  *
  * <p>A value whose hash is worked out from its parts is nearly always handed to something that adds
  * hashes up: a set of them sums what it holds, a map sums its entries, and a record built over one
@@ -32,10 +32,20 @@ package souther.compiler.values;
  * from itself and a block left no value name the same block and claim different things.
  *
  * <p><b>How many parts a value has is not asked here.</b> There are as many of these as there are
- * values here to write, and a value of five parts is a fifth one written when there is one. What
+ * values to write, and a value of five parts is a fifth one written when there is one. What
  * they are for is the shape of an equality, and the shapes are what the shapes are.
+ *
+ * <p><b>A package holding this and nothing else, which the packages of values depend on.</b> Where
+ * a value is written says nothing about how it is hashed: a relation between positions and the
+ * identity of a binding are both handed to something that adds hashes up, and the sum above
+ * cancels an affine number either way. A discipline one package keeps and the next does not is two
+ * answers to one question, and the second of them is the one carrying the defect.
+ *
+ * <p>Which is what the members being public says, and the whole of it. Crossing a package boundary
+ * in Java is what the word is for here; nothing outside this compiler is offered a hash of a value
+ * of its own.
  */
-final class ValueHash {
+public final class ValueHash {
 
     /** What a part already gathered is multiplied by before the next joins it, so that the parts
      *  keep their places. Odd, so no bit of what is already there is lost in the multiplication. */
@@ -58,7 +68,7 @@ final class ValueHash {
      * is that one, and what that one is made of is that one's own question. So this is where such
      * a value comes, and not because it is simple.
      */
-    static int ofOnePart(Class<?> kind, int part) {
+    public static int ofOnePart(Class<?> kind, int part) {
         return finished(GATHER * seed(kind) + part);
     }
 
@@ -72,17 +82,17 @@ final class ValueHash {
      * it. Where a value <em>is</em> a collection, how many it holds is part of the number
      * ({@link #ofWhatItHolds}), because there is nothing else there to tell two of them apart.
      */
-    static int ofItsParts(Class<?> kind, int first, int second) {
+    public static int ofItsParts(Class<?> kind, int first, int second) {
         return finished(GATHER * (GATHER * seed(kind) + first) + second);
     }
 
     /** A value of {@code kind} holding three, each in its own place. */
-    static int ofItsParts(Class<?> kind, int first, int second, int third) {
+    public static int ofItsParts(Class<?> kind, int first, int second, int third) {
         return finished(GATHER * (GATHER * (GATHER * seed(kind) + first) + second) + third);
     }
 
     /** A value of {@code kind} holding four, each in its own place. */
-    static int ofItsParts(Class<?> kind, int first, int second, int third, int fourth) {
+    public static int ofItsParts(Class<?> kind, int first, int second, int third, int fourth) {
         int gathered = GATHER * (GATHER * (GATHER * seed(kind) + first) + second) + third;
         return finished(GATHER * gathered + fourth);
     }
@@ -99,7 +109,7 @@ final class ValueHash {
      * {@code 4} and {@code 1} with {@code 3} add to one number and exclusive-or to two, and a
      * relation's pairs are drawn from few blocks, so pairs adding alike is what it has.
      */
-    static int ofAnUnorderedPair(Class<?> kind, int one, int other) {
+    public static int ofAnUnorderedPair(Class<?> kind, int one, int other) {
         return finished(GATHER * (GATHER * seed(kind) + (one + other)) + (one ^ other));
     }
 
@@ -112,7 +122,7 @@ final class ValueHash {
      * one value and have to be one number. The count joins it so that two of them whose contents
      * sum alike are still told apart where they hold different numbers of things.
      */
-    static int ofWhatItHolds(Class<?> kind, int summed, int size) {
+    public static int ofWhatItHolds(Class<?> kind, int summed, int size) {
         return finished(GATHER * (GATHER * seed(kind) + summed) + size);
     }
 

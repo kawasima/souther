@@ -5,7 +5,7 @@ import souther.compiler.coverage.Numberings;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.coverage.ControlClaim;
-import souther.compiler.coverage.ControlPointId;
+import souther.compiler.coverage.ControlPlace;
 
 import java.util.List;
 import java.util.Map;
@@ -44,7 +44,7 @@ class WhatACombinationAsksIsItsOwnToSayTest {
 
     private static CellSelection over(boolean[]... positions) {
         return new CellSelection(new InteractionCells.Cell(positions),
-                List.of(ControlClaim.of(new ControlPointId.ArmPoint(Numberings.armOfForkAt(1),
+                List.of(ControlClaim.of(new ControlPlace.Arm(Numberings.armOfForkAt(1),
                                 Optional.of(Numberings.arm(2, 1)), null))
                         .orElseThrow(() -> new AssertionError("an arm with a probe can be claimed"))));
     }

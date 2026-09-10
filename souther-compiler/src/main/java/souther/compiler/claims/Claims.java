@@ -63,6 +63,11 @@ public final class Claims {
         if (claims.isEmpty()) {
             return NONE;
         }
+        // The claims name arms of one plan and the reading answers about the places of one plan, so
+        // the two are held to being the same plan's here, where they are put together. Read against
+        // another module's, every arm would be one the reading has nothing filed under — which is
+        // the sentence below, and would be untrue of both bodies.
+        arrives.requireNumbering(claims.numbering().orElseThrow());
         List<Judged> out = new ArrayList<>();
         for (Claim claim : claims.all()) {
             out.add(new Judged(claim, verdictOf(arrives.at(claim.where()))));
