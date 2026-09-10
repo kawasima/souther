@@ -733,6 +733,16 @@ public final class InvariantChecker {
     static DeclarationReading readFields(TypeSymbol.AtModule named, RuleReadingSource source,
                                          ReadingPolicy policy, Map<NumberAt<RuleKey>, Count> settled,
                                          Reach reach, DeclarationReadings readings) {
+        DeclarationReading made = readingOf(named, source, policy, settled, reach, readings);
+        ObservationProbe.sawReading(named, made.seeded());
+        return made;
+    }
+
+    /** The same, before the probe sees it. */
+    private static DeclarationReading readingOf(
+            TypeSymbol.AtModule named, RuleReadingSource source,
+            ReadingPolicy policy, Map<NumberAt<RuleKey>, Count> settled,
+            Reach reach, DeclarationReadings readings) {
         // What the declaration's string rules came to, asked for before anything else. Where a store
         // is answering, making that answer is what makes the declaration's canonical reading — so a
         // borrower asks for the machines and then looks for the reading, rather than reading for

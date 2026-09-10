@@ -69,18 +69,28 @@ public final class TypeCardinality {
         // would leave out exactly the rules that arrive from somewhere else.
         Asked asked = new Asked(source.invariants());
         source = new RuleReadingSource(symbols, asked, source.states(), source.written());
-        Map<TypeSymbol, Hir.Def> declared = reached(declarations, symbols);
-        Map<TypeSymbol, Set<TypeSymbol>> edges = new LinkedHashMap<>();
-        declared.forEach((name, def) -> edges.put(name, read(def, symbols, declared.keySet())));
-        // Fixed before the rising starts. What makes it stop is that there are finitely many answers
-        // to rise through, and a count discovered part way would give it somewhere new to go.
-        CardinalityCuts cuts = CardinalityCuts.keeping(asked(declared, source, policy, machines));
-        List<List<TypeSymbol>> components = TypeComponents.of(edges);
-        return new Cardinalities(
-                Map.copyOf(pass(components, declared, edges, cuts, source, policy, Set.of(),
-                        machines)),
-                components, declared, edges, cuts, source, policy, machines,
-                asked.everyRuleReached());
+        ObservationProbe.Run probe = ObservationProbe.begin();
+        Cardinalities counted;
+        try {
+            Map<TypeSymbol, Hir.Def> declared = reached(declarations, symbols);
+            Map<TypeSymbol, Set<TypeSymbol>> edges = new LinkedHashMap<>();
+            declared.forEach((name, def) -> edges.put(name, read(def, symbols, declared.keySet())));
+            // Fixed before the rising starts. What makes it stop is that there are finitely many
+            // answers to rise through, and a count discovered part way would give it somewhere new
+            // to go.
+            CardinalityCuts cuts =
+                    CardinalityCuts.keeping(asked(declared, source, policy, machines));
+            List<List<TypeSymbol>> components = TypeComponents.of(edges);
+            counted = new Cardinalities(
+                    Map.copyOf(pass(components, declared, edges, cuts, source, policy, Set.of(),
+                            machines)),
+                    components, declared, edges, cuts, source, policy, machines,
+                    asked.everyRuleReached());
+        } finally {
+            ObservationProbe.end(probe);
+        }
+        ObservationProbe.compare(probe, counted.everyRuleReached());
+        return counted;
     }
 
     /**
@@ -108,6 +118,7 @@ public final class TypeCardinality {
             ExpandedClauseResult result = reading.of(declaration);
             if (result instanceof ExpandedClauseResult.Unavailable) {
                 everyRuleReached = false;
+                ObservationProbe.sawUnavailable(declaration);
             }
             return result;
         }
