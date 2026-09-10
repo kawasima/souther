@@ -78,6 +78,18 @@ public record FixtureTemplate(String text, Hir.Expr value) {
      * the line the row is on as well.
      */
     public static FixtureTemplate string(String value) {
+        return new FixtureTemplate(quoted(value), new Hir.StringLit(value, NOWHERE, NO_SOURCE));
+    }
+
+    /**
+     * {@code value} as the language writes a string literal, quotes and escapes and all.
+     *
+     * <p>Here and not at each place that writes one. Every writer of a literal wants the same
+     * escapes for the same reason — what it writes is pasted back and read as the value it was made
+     * from — and a second spelling of the rule is a place where a value with a quote in it comes
+     * out as source that says something else, or does not parse at all.
+     */
+    public static String quoted(String value) {
         StringBuilder written = new StringBuilder("\"");
         for (int i = 0; i < value.length(); i++) {
             char c = value.charAt(i);
@@ -90,7 +102,7 @@ public record FixtureTemplate(String text, Hir.Expr value) {
                 default -> written.append(c);
             }
         }
-        return new FixtureTemplate(written.append('"').toString(), new Hir.StringLit(value, NOWHERE, NO_SOURCE));
+        return written.append('"').toString();
     }
 
     public static FixtureTemplate bool(boolean value) {
