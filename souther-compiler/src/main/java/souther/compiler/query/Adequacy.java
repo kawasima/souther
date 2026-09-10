@@ -914,20 +914,22 @@ public final class Adequacy {
             if (!prepared.present() || !scope.present() || !reading.present()) {
                 return Answer.absent();
             }
-            souther.compiler.query.Bodies.Elaborated checked =
-                    db.ask(new Bodies.Checked(name)).value();
-            Map<String, souther.compiler.core.Core> bodies =
-                    checked == null ? Map.of() : checked.behaviorBodies();
+            Answer<Bodies.Elaborated> checked = db.ask(new Bodies.Checked(name));
+            if (!checked.present()) {
+                // The bodies this would be about were not elaborated, so there is nothing here to
+                // read them off. Answered rather than absent, the places nobody could look for read
+                // as places the model does not have — a fact about this compile having stopped,
+                // said in the words of a fact about the model.
+                return Answer.absent();
+            }
+            Map<String, souther.compiler.core.Core> bodies = checked.value().behaviorBodies();
             if (bodies.isEmpty()) {
-                // Nothing checked, so there are no places to be about. Asked further, the reading
-                // of the input is derived over types that did not check — which is a position the
-                // partition refuses outright, and rightly: what would be answered there is about
-                // this compile having stopped and not about the model.
+                // Elaborated, and holding no body: there are no places to be about, and that is
+                // what the model says. Which is why this stays a present answer and the one above
+                // does not.
                 return Answer.of(Ordered.map(Map.of()));
             }
-            souther.compiler.coverage.CoverageSites.Plan plan =
-                    checked == null
-                            ? souther.compiler.coverage.CoverageSites.Plan.NONE : checked.plan();
+            souther.compiler.coverage.CoverageSites.Plan plan = checked.value().plan();
             // Asked here and not above, because this is where one is needed: what a behavior's
             // boundary came to is asked of the signatures and the readings together, and the
             // answer above is about there being no places to ask it of. Asked at the way in, a
