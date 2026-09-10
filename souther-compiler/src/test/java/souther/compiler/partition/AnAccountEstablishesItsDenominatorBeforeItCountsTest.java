@@ -2,7 +2,6 @@ package souther.compiler.partition;
 
 import souther.compiler.coverage.ComparisonEmissionSite;
 import souther.compiler.coverage.Numberings;
-import souther.compiler.diag.SourcePos;
 import souther.compiler.types.ExpansionLineage;
 import souther.compiler.types.ModelOccurrence;
 import souther.compiler.types.SourceConstruct;
@@ -13,7 +12,7 @@ import org.junit.jupiter.api.Test;
 
 import souther.compiler.check.Carrier;
 import souther.compiler.check.RuleRef;
-import souther.compiler.diag.Citation;
+import souther.compiler.check.RuleReportAnchor;
 import souther.compiler.inputs.NumericTerm;
 import souther.compiler.inputs.TermPath;
 import souther.compiler.numeric.Count;
@@ -113,7 +112,7 @@ class AnAccountEstablishesItsDenominatorBeforeItCountsTest {
                 new LineOrigin.ComparisonOrigin.Read(
                         new RuleRef.Comparison("f", wrote),
                         new ModelOccurrence(wrote, ExpansionLineage.ORIGINAL),
-                        Citation.of(new SourcePos(1, 1)),
+                        new RuleReportAnchor.ByTheModuleThatWroteIt(),
                         List.of(WHERE)),
                 new LineFacts(new souther.compiler.check.ComparisonClaim.Cut(Towards.BELOW, true)));
     }

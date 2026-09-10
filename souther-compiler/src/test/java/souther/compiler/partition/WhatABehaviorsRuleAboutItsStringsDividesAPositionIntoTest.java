@@ -336,9 +336,10 @@ class WhatABehaviorsRuleAboutItsStringsDividesAPositionIntoTest {
         StatedContract stated =
                 compilation.db().ask(new Bodies.StatedContracts(module)).value().get("f");
         PredicateReadings read = PredicateReadings.of("f", body, stated, inputs.reading(rules),
-                inputs.parameterReads(), checked.elementBindings().get("f"));
+                inputs.parameterReads(), checked.elementBindings().get("f"),
+                new RuleReachNumbering(module, "f"));
         Allowance<NumericTerm.FromOnePosition> allowance = Allowance.of(budget);
         return BehaviorSetStatements.of("f", read, rules.symbols(), allowance,
-                List.of());
+                List.of(), new RuleReachNumbering(rules.symbols().module(), "f"));
     }
 }

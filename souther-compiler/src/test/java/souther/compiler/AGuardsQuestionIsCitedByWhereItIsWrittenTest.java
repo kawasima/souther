@@ -3,6 +3,7 @@ package souther.compiler;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.check.RuleCitation;
+import souther.compiler.check.RuleReportAnchor;
 import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.Compilation;

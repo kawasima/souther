@@ -2,8 +2,6 @@ package souther.compiler.partition;
 
 import souther.compiler.coverage.ComparisonEmissionSite;
 import souther.compiler.coverage.Numberings;
-import souther.compiler.diag.Citation;
-import souther.compiler.diag.SourcePos;
 import souther.compiler.types.ExpansionLineage;
 import souther.compiler.types.ModelOccurrence;
 import souther.compiler.types.SourceConstruct;
@@ -15,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import souther.compiler.check.AReadingOfAPosition;
 import souther.compiler.check.Carrier;
 import souther.compiler.check.Clause;
+import souther.compiler.check.RuleReportAnchor;
 import souther.compiler.check.ClauseName;
 import souther.compiler.check.MatchedEndAttribution;
 import souther.compiler.check.RuleRef;
@@ -207,7 +206,7 @@ class AClauseOfATypeDoesNotPartItsValuesTest {
                 new LineOrigin.ComparisonOrigin.Read(
                         new RuleRef.Comparison("weigh", wrote),
                         new ModelOccurrence(wrote, ExpansionLineage.ORIGINAL),
-                        Citation.of(new SourcePos(3, 5)),
+                        new RuleReportAnchor.ByTheModuleThatWroteIt(),
                         List.of(WHERE)),
                 new LineFacts(new souther.compiler.check.ComparisonClaim.Cut(Towards.BELOW, true)));
     }
