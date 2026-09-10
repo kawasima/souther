@@ -14,7 +14,12 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * A model written to be compiled here, and what this compiler answers about it.
@@ -26,39 +31,148 @@ import java.util.List;
  * of those it does not reach yet.
  *
  * <p>A corpus is a directory of {@code .sou} files plus a {@code sources.txt} naming them in the
- * order they are handed over, and {@code corpora.txt} names the directories. Both are written out
- * rather than discovered because a jar has no directory to list, and because the order is part of
- * what is compiled: a file of {@code examples for} a module is read after the module it is
- * attached to.
+ * order they are handed over, and {@code corpora.txt} names the directories and what each was
+ * written for. Both are written out rather than discovered because a jar has no directory to list,
+ * and because the order is part of what is compiled: a file of {@code examples for} a module is read
+ * after the module it is attached to.
+ *
+ * <p><b>The models and the answers about them are kept apart.</b> The sources are the repository's,
+ * owned by {@code souther-test-support} so that every module reaches the same ones whichever side of
+ * the compiler it sits on; what this compiler answers about them is this module's and is checked in
+ * here. Which corpora are conformance corpora is read off the manifest below and stated nowhere
+ * else.
  */
 public record ConformanceCorpus(String name, List<String> files, List<String> sources) {
 
+    /** Where the models are, which is every model this repository carries and not only these. */
+    private static final String MODELS = "/souther/corpus/";
+
+    /**
+     * The purpose this module consumes, which is this module's own business.
+     *
+     * <p>Not a copy of what the manifest declares. What the words are is the manifest's to say, and
+     * a word added there is nothing here that has to be taught: what is said here is which of them
+     * has its answers checked in, and every other corpus is a model of this repository like any
+     * other. It is held to the manifest all the same — a manifest that stopped declaring it would
+     * leave this asking for something no corpus can be written for.
+     */
+    static final String CONFORMANCE = "conformance";
+
+    /** What a line of the manifest begins with where it declares a purpose rather than uses one. */
+    private static final String DECLARES = "purpose";
+
+    /** Where the answers about them are, which is this module's own resources. */
     static final String ROOT = "/souther/compiler/conformance/";
 
-    /** Where these resources are written, for the one caller that writes rather than reads them. */
+    /** Where those are written, for the one caller that writes rather than reads them. */
     static final Path SOURCE_DIR = Path.of("src", "test", "resources", "souther", "compiler",
             "conformance");
 
     public static List<ConformanceCorpus> all() {
         List<ConformanceCorpus> out = new ArrayList<>();
-        for (String name : read(ROOT + "corpora.txt").lines().toList()) {
-            if (!name.isBlank()) {
-                out.add(load(name.strip()));
+        manifest().forEach((name, writtenFor) -> {
+            if (writtenFor.equals(CONFORMANCE)) {
+                out.add(load(name));
             }
+        });
+        if (out.isEmpty()) {
+            throw new IllegalStateException("the manifest names no conformance corpus");
         }
         return out;
     }
 
     public static ConformanceCorpus load(String name) {
-        List<String> files = new ArrayList<>();
+        if (!manifest().containsKey(name)) {
+            throw new IllegalStateException("the manifest names no corpus `" + name + "`");
+        }
+        List<String> files = filesOf(name);
         List<String> sources = new ArrayList<>();
-        for (String file : read(ROOT + name + "/sources.txt").lines().toList()) {
-            if (!file.isBlank()) {
-                files.add(file.strip());
-                sources.add(read(ROOT + name + "/" + file.strip()));
+        files.forEach(file -> sources.add(read(MODELS + name + "/" + file)));
+        return new ConformanceCorpus(name, files, sources);
+    }
+
+    /**
+     * The files one corpus is made of, in the order they are handed over.
+     *
+     * <p>Any corpus the manifest names and not only a conformance one, because what a reader over
+     * every model this repository carries needs is the same reading. Written a second time for the
+     * others, the two would part over a file added to one corpus and nothing would say so.
+     */
+    public static List<String> filesOf(String name) {
+        List<String> out = new ArrayList<>();
+        for (String line : read(MODELS + name + "/sources.txt").lines().toList()) {
+            String file = line.strip();
+            if (!file.isEmpty()) {
+                out.add(file);
             }
         }
-        return new ConformanceCorpus(name, files, sources);
+        if (out.isEmpty()) {
+            throw new IllegalStateException("the `" + name + "` corpus names no source");
+        }
+        return List.copyOf(out);
+    }
+
+    /** The text of each of them. */
+    public static List<String> sourcesOf(String name) {
+        List<String> out = new ArrayList<>();
+        filesOf(name).forEach(file -> out.add(read(MODELS + name + "/" + file)));
+        return List.copyOf(out);
+    }
+
+    /**
+     * Every corpus this repository carries, by name, with what each was written for.
+     *
+     * <p>Read rather than restated. What a corpus is for is what decides whether an answer about it
+     * is checked in, and a list of names written here would answer that a second time — going on
+     * answering after the manifest had changed, with nothing to say that it had.
+     *
+     * <p>Refused where it does not say one thing. A purpose is only what the manifest declares:
+     * taken as whatever word a line happens to carry, a corpus written for a word misspelt is one
+     * this treats as an ordinary model of the repository while the measurements pass over it, and
+     * neither says anything. A name is only ever one corpus for the same reason — keyed without
+     * looking, a repeated name is a corpus the last line silently replaces.
+     */
+    public static Map<String, String> manifest() {
+        Set<String> purposes = new LinkedHashSet<>();
+        Map<String, String> byCorpus = new LinkedHashMap<>();
+        List<String[]> entries = new ArrayList<>();
+        for (String line : read(MODELS + "corpora.txt").lines().toList()) {
+            String entry = line.strip();
+            if (entry.isEmpty() || entry.startsWith("#")) {
+                continue;
+            }
+            String[] parts = entry.split("\\s+");
+            if (parts.length != 2) {
+                throw new IllegalStateException(
+                        "a line declares a purpose or names a corpus and its purpose: " + entry);
+            }
+            if (parts[0].equals(DECLARES) && !purposes.add(parts[1])) {
+                throw new IllegalStateException("the manifest declares `" + parts[1] + "` twice");
+            }
+            if (!parts[0].equals(DECLARES)) {
+                entries.add(parts);
+            }
+        }
+        for (String[] entry : entries) {
+            if (!purposes.contains(entry[1])) {
+                throw new IllegalStateException("the `" + entry[0] + "` corpus is written for `"
+                        + entry[1] + "`, which the manifest does not declare. It declares "
+                        + purposes);
+            }
+            if (byCorpus.put(entry[0], entry[1]) != null) {
+                throw new IllegalStateException("the manifest names `" + entry[0] + "` twice");
+            }
+        }
+        if (byCorpus.isEmpty()) {
+            throw new IllegalStateException("the manifest names no corpus at all");
+        }
+        if (!purposes.contains(CONFORMANCE)) {
+            throw new IllegalStateException("the manifest declares no `" + CONFORMANCE
+                    + "`, which is what an answer is checked in for. It declares " + purposes);
+        }
+        // Kept in the order the manifest writes them: a file of `examples for` a module is read
+        // after the module it is attached to, and the same holds of the corpora among themselves.
+        return Collections.unmodifiableMap(byCorpus);
     }
 
     /**

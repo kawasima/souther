@@ -76,15 +76,17 @@ class EveryTestAboutTheRepositorysPopulationSaysSoTest {
     /**
      * The tests that reach a corpus and are asked anyway, with what each of them is.
      *
-     * <p>Reaching a corpus is not the whole of what the tag is about. What it defers is a question
-     * about the language, asked by sweeping the models; what these ask is whether a change broke
-     * something, and the corpus is where they ask it. Deferred, each would pass on the change that
-     * breaks it and fail after the merge, on a branch nobody is waiting to fix — and the first of
-     * them is fixed by regenerating files that are checked in, which is worse to discover there.
+     * <p>Reaching a corpus is not the whole of what the tag is about. What the tag defers is a
+     * question whose subjects are the population: its work grows with what the corpora hold, because
+     * it is the same question asked of each of them. These reach a corpus to answer one bounded
+     * question instead — a model added to a corpus gives them nothing more to do — and that question
+     * belongs in the run a change waits on. Deferred, each would pass on the change that breaks it
+     * and fail after the merge, on a branch nobody is waiting to fix.
      *
-     * <p>Sweeping is what a population test costs, and neither of these sweeps: both are answered
-     * over a corpus already analysed, so leaving them in costs the run they are left in almost
-     * nothing.
+     * <p>So this is not a list of the cheap ones. What decides it is whether the corpus is being
+     * quantified over or drawn from: a check that compiles one model of its own accord is here, and
+     * one that reads every model already analysed would not be if it read them all to answer about
+     * them all.
      */
     private static final Map<String, String> ASKED_ANYWAY = Map.of(
             "souther/compiler/conformance/TheAnswersAboutEachConformanceCorpusAreTheOnesCheckedInTest",
@@ -92,7 +94,11 @@ class EveryTestAboutTheRepositorysPopulationSaysSoTest {
                     + " checked in",
             "souther/compiler/conformance/AConformanceCorpusReachesEveryConstructTheLanguageDeclaresTest",
             "a construct added to the language is one the corpus does not reach yet, and the change"
-                    + " that added it is the one to say so");
+                    + " that added it is the one to say so",
+            "souther/compiler/report/AMeasurementIsNeverStrongerThanWhatItIsAssembledFromTest",
+            "the human report is held to one model the repository carries rather than to what the"
+                    + " corpora hold, and a change to what that report says is one the editing run"
+                    + " is the place to catch");
 
     @Test
     void everyTestReachingACorpusCarriesTheTag() {

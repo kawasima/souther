@@ -1,31 +1,19 @@
 package souther.compiler.query;
 
-import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import souther.compiler.coverage.CoverageSites;
-import souther.compiler.meta.ModulePath;
-import souther.test.RepositoryLayout;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.lang.reflect.WildcardType;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Deque;
-import java.util.IdentityHashMap;
-import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
@@ -54,10 +42,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * So the walk starts where the answer is.
  *
  * <p><b>The reading is checked, not asserted.</b> Written as a sentence, a reason is whatever
- * whoever added the line believed when they added it — and two of the ones first written here were
- * wrong about a census this same change had taken, while the census itself could not see a place
- * held in a collection. So each reading is a thing the models either show or do not, and a carrier
- * that is none of the three fails.
+ * whoever added the line believed when they added it. So each reading is a thing the models either
+ * show or do not, and a carrier that is none of the three fails. That check is
+ * {@link WhatStillHoldsAPlaceUnderAFindingIsWhatTheModelsShowTest}: its subjects are the models this
+ * repository carries and sweeping them is what it costs, so it is asked in the run those are asked
+ * in. What is asked in every run is here — that each place under a finding is registered at all,
+ * that the cut waits on every one nobody has shown does not cross, and that each says what it says
+ * it for — and it reads this compiler's own classes, which costs nothing.
  */
 class WhatStillHoldsAPlaceUnderAFindingIsReadOnTwoAxesTest {
 
@@ -151,8 +142,15 @@ class WhatStillHoldsAPlaceUnderAFindingIsReadOnTwoAxesTest {
     /** What a place still under a finding was seen to be, and what the cut makes of it. */
     record Standing(Because observed, AcrossTheCut across) {}
 
-    /** Every place still under a finding, and where each stands on both axes. */
-    private static final Map<String, Standing> WHAT_STILL_HOLDS_A_PLACE = whatStillHoldsAPlace();
+    /**
+     * Every place still under a finding, and where each stands on both axes.
+     *
+     * <p>Read from beside it as well as here. What a reading says is checked against the models by
+     * {@link WhatStillHoldsAPlaceUnderAFindingIsWhatTheModelsShowTest}, which is a class of its own
+     * because sweeping them is what decides which run it lands in; the registry is one all the same,
+     * and a carrier is entered in it once.
+     */
+    static final Map<String, Standing> WHAT_STILL_HOLDS_A_PLACE = whatStillHoldsAPlace();
 
     private static Map<String, Standing> whatStillHoldsAPlace() {
         Map<String, Standing> out = new TreeMap<>();
@@ -249,186 +247,6 @@ class WhatStillHoldsAPlaceUnderAFindingIsReadOnTwoAxesTest {
         assertEquals(Set.of(), saidNothing,
                 "what the cut waits on is work somebody named, and what it does not wait on is"
                         + " something somebody showed");
-    }
-
-    /**
-     * And each reading is what a compile shows, rather than what somebody wrote down.
-     *
-     * <p>The readings are about what the models reach, so a carrier this says nothing reaches is
-     * one nothing reaches <em>in them</em>. That is the whole of the claim: it is why the word is
-     * "nothing has been observed" and not "there are none".
-     *
-     * <p>Its subjects are the models this repository carries, so it runs where those are run, and
-     * a build that does not run them does not check these readings. What a build does check is
-     * everything above: that each place under a finding is registered at all, that the cut waits on
-     * every one nobody has shown does not cross, and that each says what it says it for. A carrier
-     * added without a reading fails a build; a reading that has gone out of date with the models
-     * fails the run that reads them.
-     */
-    @Tag("population")
-    @Test
-    void andEachReadingIsWhatACompileShows() {
-        Map<String, List<Object>> byCarrier = carriersInTheModels();
-        Map<String, String> wrong = new TreeMap<>();
-        WHAT_STILL_HOLDS_A_PLACE.forEach((carrier, standing) -> {
-            List<Object> held = byCarrier.getOrDefault(carrier, List.of());
-            String said = says(standing.observed(), held, carrier);
-            if (said != null) {
-                wrong.put(carrier, said);
-            }
-        });
-        assertEquals(Map.of(), wrong,
-                "each place left under a finding is here under a reading the compile shows");
-    }
-
-    /** What is wrong with {@code because} as a reading of {@code held}, or null where nothing is. */
-    private static String says(Because because, List<Object> held, String carrier) {
-        boolean apart = tellsThemApart(held, carrier);
-        return switch (because) {
-            case Because.NothingReachesOne _ -> held.isEmpty() ? null
-                    : "something reaches one: " + held.size() + " of them";
-            case Because.TwoOfThemDifferOnlyThere _ -> held.isEmpty()
-                    ? "nothing reaches one, so no pair was seen at all"
-                    : apart ? null : "no two of them were seen differing only in the place";
-            case Because.ReachedAndNotObservedToDiscriminate _ -> held.isEmpty()
-                    ? "nothing reaches one, so nothing was observed"
-                    : apart ? "two of them differ only in the place, which is the other reading"
-                            : null;
-        };
-    }
-
-    /** Whether two of {@code held} agree on everything but where they are. */
-    private static boolean tellsThemApart(List<Object> held, String carrier) {
-        Map<List<Object>, Set<List<Object>>> byRest = new LinkedHashMap<>();
-        for (Object each : held) {
-            List<Object> rest = new ArrayList<>();
-            List<Object> place = new ArrayList<>();
-            for (Field field : each.getClass().getDeclaredFields()) {
-                if (Modifier.isStatic(field.getModifiers())) {
-                    continue;
-                }
-                field.setAccessible(true);
-                try {
-                    (carrier.endsWith("." + field.getName()) ? place : rest).add(field.get(each));
-                } catch (IllegalAccessException unreadable) {
-                    throw new IllegalStateException(unreadable);
-                }
-            }
-            byRest.computeIfAbsent(rest, _ -> new LinkedHashSet<>()).add(place);
-        }
-        return byRest.values().stream().anyMatch(places -> places.size() > 1);
-    }
-
-    /** Every instance of a registered carrier this compile holds, by carrier. */
-    private static Map<String, List<Object>> carriersIn(Db db) {
-        Set<String> wanted = new LinkedHashSet<>();
-        WHAT_STILL_HOLDS_A_PLACE.keySet().forEach(each -> wanted.add(each.substring(0, each.lastIndexOf('.'))));
-        Map<String, List<Object>> out = new LinkedHashMap<>();
-        Set<Object> seen = java.util.Collections.newSetFromMap(new IdentityHashMap<>());
-        Deque<Object> queue = new ArrayDeque<>();
-        db.everyAnswer().values().forEach(queue::add);
-        while (!queue.isEmpty()) {
-            Object at = queue.poll();
-            if (at == null || !seen.add(at)) {
-                continue;
-            }
-            switch (at) {
-                case Collection<?> many -> {
-                    many.forEach(each -> push(queue, each));
-                    continue;
-                }
-                case Map<?, ?> map -> {
-                    map.forEach((key, value) -> {
-                        push(queue, key);
-                        push(queue, value);
-                    });
-                    continue;
-                }
-                case Optional<?> maybe -> {
-                    maybe.ifPresent(each -> push(queue, each));
-                    continue;
-                }
-                default -> { }
-            }
-            Class<?> of = at.getClass();
-            if (of.getName().startsWith("java.") || of.isEnum()) {
-                continue;
-            }
-            if (wanted.contains(of.getName())) {
-                out.computeIfAbsent(carrierOf(of), _ -> new ArrayList<>()).add(at);
-            }
-            for (Field field : of.getDeclaredFields()) {
-                if (Modifier.isStatic(field.getModifiers()) || field.getType().isPrimitive()) {
-                    continue;
-                }
-                field.setAccessible(true);
-                try {
-                    push(queue, field.get(at));
-                } catch (IllegalAccessException unreadable) {
-                    throw new IllegalStateException(unreadable);
-                }
-            }
-        }
-        return out;
-    }
-
-    /** The registered carrier {@code of} is the class of. */
-    private static String carrierOf(Class<?> of) {
-        return WHAT_STILL_HOLDS_A_PLACE.keySet().stream()
-                .filter(each -> each.startsWith(of.getName() + "."))
-                .findFirst().orElseThrow();
-    }
-
-    private static void push(Deque<Object> queue, Object each) {
-        if (each != null) {
-            queue.add(each);
-        }
-    }
-
-    /**
-     * The models this repository carries, which is what the readings above are readings of.
-     *
-     * <p>Every one of them and not the nearest. The readings are about what a compile reaches, so a
-     * corpus left out is a carrier this would say nothing reaches — and the census these were taken
-     * from was taken over these, so a check over fewer would be answering about a different set
-     * than the one somebody measured.
-     */
-    private static final RepositoryLayout REPOSITORY = RepositoryLayout.ofWorkingDirectory();
-
-    private static final List<Path> THE_MODELS = List.of(
-            REPOSITORY.moduleNamed("souther-compiler")
-                    .resolve("src/test/resources/souther/compiler/conformance/catalog"),
-            REPOSITORY.moduleNamed("souther-compiler")
-                    .resolve("src/test/resources/souther/compiler/conformance/staffing"),
-            REPOSITORY.moduleNamed("souther-bench")
-                    .resolve("src/main/resources/souther/bench/corpus/crm"),
-            REPOSITORY.moduleNamed("souther-bench")
-                    .resolve("src/main/resources/souther/bench/corpus/issuetracker"));
-
-    /** Every instance of a registered carrier the models reach, by carrier. */
-    private static Map<String, List<Object>> carriersInTheModels() {
-        Map<String, List<Object>> out = new LinkedHashMap<>();
-        for (Path model : THE_MODELS) {
-            carriersIn(compiled(model)).forEach((carrier, held) ->
-                    out.computeIfAbsent(carrier, _ -> new ArrayList<>()).addAll(held));
-        }
-        return out;
-    }
-
-    /** A compile of one model, with its findings asked for. */
-    private static Db compiled(Path model) {
-        Map<String, String> byId = new LinkedHashMap<>();
-        try (Stream<Path> files = Files.walk(model)) {
-            for (Path each : files.filter(p -> p.toString().endsWith(".sou")).sorted().toList()) {
-                byId.put(each.getFileName().toString(), Files.readString(each));
-            }
-        } catch (IOException unreadable) {
-            throw new UncheckedIOException(unreadable);
-        }
-        Compilation c = Compilation.ofDocuments(byId, Set.of(), ModulePath.EMPTY);
-        c.answerEverything();
-        c.modules().forEach(module -> c.db().ask(new Adequacy.Findings(module)));
-        return c.db();
     }
 
     /**

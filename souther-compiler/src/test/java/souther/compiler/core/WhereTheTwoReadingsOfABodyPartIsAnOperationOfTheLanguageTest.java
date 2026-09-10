@@ -3,7 +3,7 @@ package souther.compiler.core;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
-import souther.compiler.conformance.ConformanceCorpus;
+import souther.compiler.conformance.RepositoryModels;
 import souther.compiler.meta.ModulePath;
 import souther.compiler.query.Bodies;
 import souther.compiler.query.Compilation;
@@ -19,6 +19,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -193,6 +194,149 @@ class WhereTheTwoReadingsOfABodyPartIsAnOperationOfTheLanguageTest {
                         + " readings: " + owners);
     }
 
+    /**
+     * What the emitted tree has between the copies both readings hold is one an operation brought.
+     *
+     * <p>What a reader wanting both readings of one position has to recognise, measured. A
+     * comparison the analysis reads through one of the language's operations is under the copies the
+     * caller made, and the emitted tree has the operation's own copies threaded between them — so
+     * what a projection has to drop is a copy the operation brought, and the thing to know it by is
+     * what a reader can see without looking anything up.
+     *
+     * <p>Nothing here is a projection. Where such a run begins, where it ends, and what the block it
+     * ends at belongs to are the three the models are asked, and a projection would be written from
+     * the answers rather than beside them.
+     */
+    @Test
+    void everyCopyOnlyTheEmittedTreeHasIsOneAnOperationBrought() {
+        Map<String, Integer> gapLengths = new TreeMap<>();
+        Map<String, Integer> heads = new TreeMap<>();
+        Map<String, Integer> tails = new TreeMap<>();
+        Map<String, Integer> tailOwners = new TreeMap<>();
+        int[] aligned = new int[1];
+        List<String> notASubsequence = new ArrayList<>();
+        Set<String> longGaps = new LinkedHashSet<>();
+
+        for (BothReadings both : everyBodyBothWays()) {
+            for (ConstructOccurrence read : both.analysis()) {
+                List<ConstructOccurrence> matching = both.emitted().stream()
+                        .filter(each -> each.origin().equals(read.origin()))
+                        .filter(each -> gapsBetween(stepsOf(read.lineage()),
+                                stepsOf(each.lineage())) != null)
+                        .toList();
+                if (matching.size() != 1) {
+                    if (matching.isEmpty()) {
+                        notASubsequence.add(both.behavior() + " " + read);
+                    }
+                    continue;
+                }
+                aligned[0]++;
+                List<List<ExpansionLineage.Expansion>> gaps =
+                        gapsBetween(stepsOf(read.lineage()),
+                                stepsOf(matching.get(0).lineage()));
+                for (List<ExpansionLineage.Expansion> gap : gaps) {
+                    gapLengths.merge(String.valueOf(gap.size()), 1, Integer::sum);
+                    if (gap.size() > 2) {
+                        longGaps.add(gap.stream()
+                                .map(step -> armOf(step.expanded()) + " " + step.expanded()
+                                        + " @ " + step.at())
+                                .toList().toString());
+                    }
+                    heads.merge(armOf(gap.get(0).expanded()), 1, Integer::sum);
+                    ExpansionLineage.Expansion tail = gap.get(gap.size() - 1);
+                    tails.merge(armOf(tail.expanded()), 1, Integer::sum);
+                    tailOwners.merge(ownerOf(tail, gap.get(0)), 1, Integer::sum);
+                }
+            }
+        }
+
+        assertTrue(aligned[0] > 0, "nothing was aligned at all, so this says nothing");
+        assertEquals(List.of(), notASubsequence,
+                () -> "what the analysis reads is not what the emitted tree reads with copies"
+                        + " inserted, so the two are not one reading with an envelope in it");
+        assertTrue(!heads.isEmpty(),
+                "the two readings held every comparison alike, so nothing here says what parts them");
+        assertEquals(List.of("Stdlib.Operation"), List.copyOf(heads.keySet()),
+                () -> "a run of copies only the emitted tree has begins at something other than an"
+                        + " operation of the language: " + heads);
+        assertEquals(List.of("Local"), List.copyOf(tails.keySet()),
+                () -> "such a run ends at something other than a block: " + tails);
+        assertEquals(List.of("the copy the run begins with"), List.copyOf(tailOwners.keySet()),
+                () -> "the block such a run ends at belongs to something other than the copy the"
+                        + " run begins with: " + tailOwners);
+        // The lengths are the models' and not the rule's: a run is as long as the operation's own
+        // body is deep, and pinning it would make this a test of the models. What it must not become
+        // is a run of one, because then the block that closes it is the operation itself and there
+        // is nothing here about where a run ends.
+        assertTrue(gapLengths.keySet().stream().anyMatch(each -> Integer.parseInt(each) > 2),
+                () -> "no operation's copies nest, so nothing here says a run ends at the block the"
+                        + " caller handed the outermost of them: " + gapLengths + " " + longGaps);
+    }
+
+    /**
+     * Where {@code inside} sits in {@code outside} as a subsequence, as the runs of steps between
+     * the ones they share — or null where it does not sit in it at all.
+     *
+     * <p>Matched on what a step is on its own — what was expanded and where — and not on the step as
+     * a value, which carries the chain above it and so is equal only where the whole chain is. The
+     * chains are what differ; that is the thing being measured. Matched on the callee alone, a body
+     * calling one helper twice would let the walk take either, and the runs between would be
+     * whatever that choice left.
+     */
+    private static List<List<ExpansionLineage.Expansion>> gapsBetween(
+            List<ExpansionLineage.Expansion> inside, List<ExpansionLineage.Expansion> outside) {
+        List<List<ExpansionLineage.Expansion>> gaps = new ArrayList<>();
+        List<ExpansionLineage.Expansion> gap = new ArrayList<>();
+        int at = 0;
+        for (ExpansionLineage.Expansion step : outside) {
+            if (at < inside.size() && sameStep(step, inside.get(at))) {
+                if (!gap.isEmpty()) {
+                    gaps.add(List.copyOf(gap));
+                    gap.clear();
+                }
+                at++;
+            } else {
+                gap.add(step);
+            }
+        }
+        if (!gap.isEmpty()) {
+            gaps.add(List.copyOf(gap));
+        }
+        return at == inside.size() ? gaps : null;
+    }
+
+    /** Whether two steps are the same copy of the same thing at the same call, chains aside. */
+    private static boolean sameStep(ExpansionLineage.Expansion one,
+                                    ExpansionLineage.Expansion other) {
+        return one.expanded().equals(other.expanded()) && one.at().equals(other.at());
+    }
+
+    /** What the block at the end of a gap belongs to, said against the copy the gap begins with. */
+    private static String ownerOf(ExpansionLineage.Expansion tail,
+                                  ExpansionLineage.Expansion head) {
+        if (!(tail.expanded() instanceof ValueName.Local local)) {
+            return "not a block: " + armOf(tail.expanded());
+        }
+        if (!(local.id().owner() instanceof BindingOwner.Expansion owner)) {
+            return "owned by " + local.id().owner().getClass().getSimpleName();
+        }
+        return owner.expanded().equals(head.expanded())
+                ? "the copy the run begins with"
+                : "another copy: " + owner.expanded();
+    }
+
+    private static String armOf(ValueName expanded) {
+        return switch (expanded) {
+            case ValueName.Stdlib.Operation _ -> "Stdlib.Operation";
+            case ValueName.Stdlib.Namespace _ -> "Stdlib.Namespace";
+            case ValueName.Helper _ -> "Helper";
+            case ValueName.Behavior _ -> "Behavior";
+            case ValueName.Local _ -> "Local";
+            case ValueName.OfType _ -> "OfType";
+            case ValueName.Builtin _ -> "Builtin";
+        };
+    }
+
     /** The copies of {@code lineage}, outermost first. */
     private static List<ExpansionLineage.Expansion> stepsOf(ExpansionLineage lineage) {
         List<ExpansionLineage.Expansion> out = new ArrayList<>();
@@ -203,14 +347,33 @@ class WhereTheTwoReadingsOfABodyPartIsAnOperationOfTheLanguageTest {
         return out;
     }
 
+    /**
+     * Every body of every model this repository carries, plus the ones written above.
+     *
+     * <p>All of the models and not the corpus written against what the language declares. That one
+     * reaches a construct about as often as it takes to declare it, and what a rule read through one
+     * of the language's operations does under conditions nobody wrote it for is what the models
+     * written to be worked with have. Neither is the other's fixture: the written ones above hold
+     * shapes no corpus has, and no corpus is asked to grow one.
+     */
     private static List<BothReadings> everyBodyBothWays() {
-        List<List<String>> sources = new ArrayList<>();
-        ConformanceCorpus.all().forEach(corpus -> sources.add(corpus.sources()));
-        sources.add(List.of(COMBINATOR));
-        sources.add(List.of(SPLICED));
-        sources.add(List.of(BLOCKS));
-        sources.add(List.of(THROUGH_A_BLOCK));
-        return bodiesBothWays(sources);
+        List<BothReadings> out = new ArrayList<>(bodiesOfTheRepositorysModels());
+        for (String written : List.of(COMBINATOR, SPLICED, BLOCKS, THROUGH_A_BLOCK)) {
+            out.addAll(bodiesBothWays(List.of(List.of(written))));
+        }
+        return out;
+    }
+
+    private static List<BothReadings> bodiesOfTheRepositorysModels() {
+        List<BothReadings> out = new ArrayList<>();
+        for (Compilation compilation : RepositoryModels.all()) {
+            int before = out.size();
+            bothWaysOf(compilation, out);
+            assertTrue(out.size() > before,
+                    () -> "a model this repository carries has no body read both ways: "
+                            + compilation.errors());
+        }
+        return out;
     }
 
     private static List<BothReadings> bodiesBothWays(List<List<String>> sources) {
@@ -219,24 +382,28 @@ class WhereTheTwoReadingsOfABodyPartIsAnOperationOfTheLanguageTest {
             Compilation compilation = Compilation.ofSources(each, ModulePath.EMPTY);
             compilation.answerEverything();
             int before = out.size();
-            for (String module : compilation.modules()) {
-                Bodies.Elaborated checked =
-                        compilation.db().ask(new Bodies.Checked(module)).value();
-                if (checked == null) {
-                    continue;
-                }
-                checked.behaviorBodies().forEach((behavior, emitted) -> {
-                    var read = checked.analysisBodies().get(behavior);
-                    if (read != null) {
-                        out.add(new BothReadings(module + "." + behavior,
-                                comparisonsIn(emitted), comparisonsIn(read.core())));
-                    }
-                });
-            }
+            bothWaysOf(compilation, out);
             assertTrue(out.size() > before,
                     () -> "a source set compiled to no body read both ways: " + compilation.errors());
         }
         return out;
+    }
+
+    private static void bothWaysOf(Compilation compilation, List<BothReadings> out) {
+        for (String module : compilation.modules()) {
+            Bodies.Elaborated checked =
+                    compilation.db().ask(new Bodies.Checked(module)).value();
+            if (checked == null) {
+                continue;
+            }
+            checked.behaviorBodies().forEach((behavior, emitted) -> {
+                var read = checked.analysisBodies().get(behavior);
+                if (read != null) {
+                    out.add(new BothReadings(module + "." + behavior,
+                            comparisonsIn(emitted), comparisonsIn(read.core())));
+                }
+            });
+        }
     }
 
     private static Set<ConstructOccurrence> comparisonsIn(Core body) {

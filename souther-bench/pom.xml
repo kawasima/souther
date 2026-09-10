@@ -83,6 +83,40 @@
              what comparing two revisions asks for. -->
         <finalName>souther-bench</finalName>
         <plugins>
+            <!-- The models a measurement is taken against ride inside the jar, so a number means the
+                 same thing on any machine and a jar kept from an earlier revision still carries the
+                 corpus of that revision. They are owned by souther-test-support, which is where
+                 every module can reach them from whichever side of the compiler it sits on; what
+                 crosses to here are the bytes and not a dependency, because this module uses none
+                 of that module's classes.
+
+                 The whole tree rather than the corpora this one compiles. Naming those here would
+                 be a second list of which corpus is which, and the manifest is where that is
+                 said. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>bundle-corpus</id>
+                        <phase>generate-resources</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.outputDirectory}</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${project.basedir}/../souther-test-support/src/main/resources</directory>
+                                    <includes>
+                                        <include>souther/corpus/**</include>
+                                    </includes>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>

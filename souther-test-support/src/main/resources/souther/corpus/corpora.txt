@@ -1,0 +1,37 @@
+# Every model this repository carries, and what each was written for.
+#
+# Two kinds of line. A `purpose` line declares a word a corpus may be written for; every other line
+# names a corpus directory and one of those words. Together they are the whole of what says a corpus
+# exists and what it is; each corpus's sources.txt is the whole of what says which files it is made
+# of and in what order. Anything wanting a set of models reads these and names no member of its own.
+#
+# The vocabulary is declared here rather than known by whoever reads this. A reader that knew the
+# words would be a second account of them, and a corpus written for a word misspelt — `measurment`
+# — would be a corpus one reader passes over and another takes for something else, with nothing
+# said either way. Declared, such a line is a manifest that does not parse.
+#
+# What a reader does know is which of these it consumes, which is that reader's own business and not
+# a copy of anything here: the measurements ask for the corpora written for measurement, and a word
+# added below is nothing they have to be taught.
+#
+#   conformance   Written against what the language declares. What this compiler answers about it
+#                 is checked in beside the compiler, and it grows whenever a rule is tightened.
+#   measurement   Written as somebody would write a model of this size, and a number is compared
+#                 against it. It must not move: a corpus that grew between two revisions makes the
+#                 second one look slower.
+#   running       There to be run rather than to be compiled. Timing its compile would say nothing;
+#                 what it is for is that the classes it generates are loaded and called.
+
+purpose conformance
+purpose measurement
+purpose running
+
+# The order is the order they are handed out in. The measurement corpora are largest first, which is
+# the order a run reports them in.
+
+booking      conformance
+catalog      conformance
+staffing     conformance
+crm          measurement
+issuetracker measurement
+runtime      running
