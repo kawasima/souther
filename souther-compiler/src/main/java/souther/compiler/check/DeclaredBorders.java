@@ -1,9 +1,12 @@
 package souther.compiler.check;
 
 import souther.compiler.diag.Citation;
+import souther.compiler.numeric.Endpoint;
 import souther.compiler.types.TypeSymbol;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -30,8 +33,8 @@ import java.util.Map;
  * comes back for a name nothing declares is then one answer and not two, because there was one
  * lookup.
  *
- * <p>Nothing here is an identity. What tells one authored line from another is the clause and which
- * of its conjuncts drew the end ({@link souther.compiler.partition.AuthoredLine}), and that is what
+ * <p>Nothing here is an identity. What tells one authored line from another is which line of the
+ * clause it is ({@link souther.compiler.partition.AuthoredLine}), and that is what
  * this is keyed by; what it hands back is what to call the line. Held as part of the identity,
  * the frames above would make one line two.
  */
@@ -39,15 +42,34 @@ public record DeclaredBorders(souther.compiler.diag.Citation at,
                               Map<Key, NumberAt<RuleKey>> forms) {
 
     /**
-     * Which authored line: the part of the clause that placed the end.
+     * Which authored line: what the reading knows about the clause that placed the end.
      *
      * <p>A part of a {@code data}'s clause and of nothing else. These are the lines a declaration
      * wrote in its own terms, and a behavior's {@code ensures} writes none of them — so the kind of
      * clause is in the type rather than asked of a part that arrives. Written over parts of any
      * clause, this would take a behavior's and answer null, which is the word it has for a
      * declaration that drew no such line.
+     *
+     * <p>The line and not the conjunct alone, because this is a pairing key and a conjunct does not
+     * name one line. A conjunct written under a denial places an end on each of two numbers, and
+     * keyed by the conjunct the second overwrites the first — leaving one of the two lines named
+     * after the other's number.
      */
-    public record Key(PartId<RuleRef.Invariant> part) {}
+    public record Key(DeclaredLine line) {}
+
+    /**
+     * One end of one of a declaration's numbers, which is what the evidence about it is gathered
+     * under.
+     *
+     * <p>All three, because an end is where a number stops on one side: two rules stopping one
+     * number at one value are evidence about one end, and the same rules stopping it at two values
+     * are not.
+     *
+     * @param on    which number of the declaration
+     * @param lower whether this is where its values start; otherwise where they stop
+     * @param at    the value the end sits at
+     */
+    private record AnEnd(NumberAt<RuleKey> on, boolean lower, Endpoint at) {}
 
     public DeclaredBorders {
         if (at == null) {
@@ -86,16 +108,25 @@ public record DeclaredBorders(souther.compiler.diag.Citation at,
                     "there is no declaration of " + declaredOn.name() + " to read");
         }
         Citation at = citations.of(named.key());
-        Map<Key, NumberAt<RuleKey>> forms = new LinkedHashMap<>();
+        // The evidence gathered by the end it is about, because which lines an end is owed to is a
+        // question about the end and not about one piece of what was established there
+        // ({@link DeclaredBounds.End#drawn}). Asked of each piece as it arrives, this named lines
+        // the reading of cuts does not draw, and a report would hold words for one of them.
+        Map<AnEnd, List<LineProvenance>> byEnd = new LinkedHashMap<>();
         for (FieldDomains.Placed placed
                 : Rules.of(declaredOn, source, policy, machines).bounds().placed()) {
             // A clause reaching this declaration through a spread is written on another one and is
             // that one's to name, the way a line is named by the rule that drew it (ADR-0090). Its
             // own reading answers for it.
-            if (placed.part().rule().clause().id().declaredOn().equals(declaredOn)) {
-                forms.put(new Key(placed.part()), placed.at());
+            if (!placed.part().rule().clause().id().declaredOn().equals(declaredOn)) {
+                continue;
             }
+            byEnd.computeIfAbsent(new AnEnd(placed.at(), placed.lower(), placed.end()),
+                    _ -> new ArrayList<>()).add(placed.from());
         }
+        Map<Key, NumberAt<RuleKey>> forms = new LinkedHashMap<>();
+        byEnd.forEach((end, found) -> new DeclaredBounds.End(end.at(), found).drawn()
+                .forEach(line -> forms.put(new Key(line), end.on())));
         return new DeclaredBorders(at, forms);
     }
 
@@ -106,8 +137,8 @@ public record DeclaredBorders(souther.compiler.diag.Citation at,
      * not read is a clause with no form to print, and a caller handed one has nothing to call the
      * line but the rule's own name.
      */
-    public NumberAt<RuleKey> at(PartId<RuleRef.Invariant> part) {
-        return at(new Key(part));
+    public NumberAt<RuleKey> at(DeclaredLine line) {
+        return at(new Key(line));
     }
 
     /** The same, for a caller holding the key the rule handed it
@@ -137,8 +168,8 @@ public record DeclaredBorders(souther.compiler.diag.Citation at,
                 ? taken.operation() + "(" + where + ")" : where;
     }
 
-    /** The same, for a caller holding the part that drew the line. */
-    public String nameOf(PartId<RuleRef.Invariant> part) {
-        return nameOf(new Key(part));
+    /** The same, for a caller holding the line as the clause drew it. */
+    public String nameOf(DeclaredLine line) {
+        return nameOf(new Key(line));
     }
 }

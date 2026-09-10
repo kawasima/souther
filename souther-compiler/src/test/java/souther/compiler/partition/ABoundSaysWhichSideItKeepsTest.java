@@ -5,6 +5,9 @@ import org.junit.jupiter.api.Test;
 import souther.compiler.check.Carrier;
 import souther.compiler.check.Clause;
 import souther.compiler.check.ClauseName;
+import souther.compiler.check.DeclaredLine;
+import souther.compiler.check.InvariantStatementId;
+import souther.compiler.check.PartId;
 import souther.compiler.check.RuleRef;
 import souther.compiler.numeric.Count;
 import souther.compiler.numeric.Endpoint;
@@ -173,9 +176,10 @@ class ABoundSaysWhichSideItKeepsTest {
                 Optional.of(new ClauseName("within"))));
     }
 
-    /** The one part that clause was written in. */
-    private static souther.compiler.check.PartId<RuleRef.Invariant> aPart() {
-        return new souther.compiler.check.PartId<>(aClause(), 0);
+    /** The one statement of the one part that clause was written in. */
+    private static DeclaredLine aPart() {
+        return new DeclaredLine.OfAStatement(
+                new InvariantStatementId(new PartId<>(aClause(), 0), 0));
     }
 
     /** A clause whose two conjuncts leave the position one value. */

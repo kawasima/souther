@@ -37,7 +37,7 @@ class ALineIsNamedInTheTermsItWasWrittenInTest {
     void aNewtypesClauseIsAboutTheValueItWraps() {
         var line = lineAt("String.length(u) = 1");
         assertEquals("String.length(value)",
-                declaredBy("UserId").nameOf(line.part()));
+                declaredBy("UserId").nameOf(line.drawnBy()));
     }
 
     /**
@@ -52,8 +52,8 @@ class ALineIsNamedInTheTermsItWasWrittenInTest {
         DeclaredBorders lines = declaredBy("Pair");
         var name = lineAt("String.length(p.name) = 1");
         var code = lineAt("String.length(p.code) = 1");
-        assertEquals("String.length(name)", lines.nameOf(name.part()));
-        assertEquals("String.length(code)", lines.nameOf(code.part()));
+        assertEquals("String.length(name)", lines.nameOf(name.drawnBy()));
+        assertEquals("String.length(code)", lines.nameOf(code.drawnBy()));
     }
 
     /** Both ends of a range are the one number, which is what tells this from the case above. */
@@ -62,8 +62,8 @@ class ALineIsNamedInTheTermsItWasWrittenInTest {
         DeclaredBorders lines = declaredBy("Range");
         var bottom = lineAt("r = 1");
         var top = lineAt("r = 10");
-        assertEquals("value", lines.nameOf(bottom.part()));
-        assertEquals("value", lines.nameOf(top.part()));
+        assertEquals("value", lines.nameOf(bottom.drawnBy()));
+        assertEquals("value", lines.nameOf(top.drawnBy()));
         org.junit.jupiter.api.Assertions.assertNotEquals(bottom.part(), top.part(),
                 "the two ends are the one number and different lines");
     }
@@ -78,9 +78,9 @@ class ALineIsNamedInTheTermsItWasWrittenInTest {
     @Test
     void aDeclarationAnswersForTheClausesItWrote() {
         var line = lineAt("s.d = 0");
-        assertNotNull(declaredBy("Day").at(line.part()),
+        assertNotNull(declaredBy("Day").at(line.drawnBy()),
                 "Day wrote the clause, so Day names the line");
-        assertNull(declaredBy("Span").at(line.part()),
+        assertNull(declaredBy("Span").at(line.drawnBy()),
                 "and Span holds a value that is held to it, which is not the same thing");
     }
 

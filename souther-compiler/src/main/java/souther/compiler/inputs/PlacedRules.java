@@ -656,7 +656,8 @@ record PlacedRules(TermPath root, TypeSymbol value, Rules rules, Reaching alsoRe
      */
     List<ClauseWithoutAnEnd> clausesWithoutAnEnd() {
         return bounds().withoutAnEnd().stream()
-                .map(each -> new ClauseWithoutAnEnd(each.part(), each.states(), each.wrote(), root,
+                .map(each -> new ClauseWithoutAnEnd(each.statement(), each.states(), each.wrote(),
+                        root,
                         bounds().named()))
                 .toList();
     }

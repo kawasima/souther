@@ -550,18 +550,26 @@ public final class FieldDomains {
      * @param at    which number at which name the end is on. The number and not a name beside a
      *              flag: one name carries more than one, and which of them an end is on is what
      *              the operation beside the name says
-     * @param part  which part of which rule placed the end, which is what names the line. A part
-     *              of a declaration's clause: these are the ends the clauses of a declaration
-     *              place, and no other kind of rule reaches this reading
+     * @param from  what this reading established about what put the end here. The evidence and not
+     *              the line it comes to: which lines an end is owed to is a question about the end,
+     *              and this is one piece of what was found there
+     *              ({@link DeclaredBounds.End#drawn})
      * @param lower whether this bounds the coordinate below; otherwise above
      */
-    public record Placed(NumberAt<RuleKey> at, PartId<RuleRef.Invariant> part, boolean lower,
+    public record Placed(NumberAt<RuleKey> at, LineProvenance from, boolean lower,
                          Endpoint end) {
 
         /** What the value's rules call where the end sits. Never which number it is on: that is
          *  {@link #at}, and reading one off the other is what the pair exists to stop. */
         public RuleKey path() {
             return at.position();
+        }
+
+        /** Which conjunct is behind the end, which is what a rule is named by. Both answers have
+         *  one, and which of the two this is is what says how much is known about the statements
+         *  under it. */
+        public PartId<RuleRef.Invariant> part() {
+            return from.part();
         }
     }
 
@@ -586,20 +594,28 @@ public final class FieldDomains {
      * again — which, for a rule written under a denial, is the comparison that holds exactly where
      * the rule does not.
      *
-     * @param part   which part of which rule it is, as the split that wrote the parts down named it
-     * @param states what the conjunct compares and what it claims of the two sides
-     * @param wrote  where the author wrote it, for whoever reports about the clause. A position and
-     *               not the expression, so there is nothing here to read a meaning off a second
-     *               time
+     * @param statement which statement of which conjunct it is, as the reading that arrived at it
+     *                  names it. The statement and not the conjunct: a conjunct written under a
+     *                  denial states one comparison per leaf, and named by the conjunct the second
+     *                  of them is the first handed on again
+     * @param states    what the conjunct compares and what it claims of the two sides
+     * @param wrote     where the author wrote it, for whoever reports about the clause. A position
+     *                  and not the expression, so there is nothing here to read a meaning off a
+     *                  second time
      */
-    public record WithoutAnEnd(PartId<RuleRef.Invariant> part, StatedComparison states,
+    public record WithoutAnEnd(InvariantStatementId statement, StatedComparison states,
                                SourcePos wrote) {
 
         public WithoutAnEnd {
-            if (part == null || states == null || wrote == null) {
+            if (statement == null || states == null || wrote == null) {
                 throw new IllegalArgumentException(
                         "a conjunct handed on is some clause's comparison, written somewhere");
             }
+        }
+
+        /** Which conjunct the statement is of, which is what a rule is named by. */
+        public PartId<RuleRef.Invariant> part() {
+            return statement.part();
         }
     }
 
@@ -635,26 +651,41 @@ public final class FieldDomains {
      * and a reading asked without either of them was asked without the part they share, which named
      * the same part twice as holding an end it holds once.
      *
-     * @param at   the number its quantity is over
-     * @param part which part of which rule it is
+     * <p><b>And the statements of it that reached this number, kept beside the part.</b> They are
+     * not what the counterfactual intervenes on and they are what an answer about this number is
+     * told apart by: a conjunct reaching two numbers is one candidate at each of them, and the two
+     * are one thing said twice unless each says which of the conjunct's statements it is about.
+     *
+     * <p>Which part it is is read off them rather than held beside them, so that a candidate has one
+     * way to the rule it is about and cannot be built naming two.
+     *
+     * @param at         the number its quantity is over
+     * @param statements the statements of one part which reached this number
      */
-    public record AboutOneCoordinate(NumberAt<RuleKey> at, PartId<RuleRef.Invariant> part) {
+    public record AboutOneCoordinate(NumberAt<RuleKey> at,
+                                     Set<InvariantStatementId> statements) {
 
         public AboutOneCoordinate {
-            if (at == null || part == null) {
+            if (at == null) {
                 throw new IllegalArgumentException("a quantity over one number is some rule's");
+            }
+            statements = Set.copyOf(statements);
+            if (statements.isEmpty()) {
+                throw new IllegalArgumentException(
+                        "a candidate is something one part of a rule states");
+            }
+            if (statements.stream().map(InvariantStatementId::part).distinct().count() != 1) {
+                throw new IllegalArgumentException(
+                        "a candidate is the statements of one part: " + statements);
             }
         }
 
-        /** Which authored line this is a part of, which is what tells a candidate from an end
-         *  the reading of comparisons already placed. */
-        Line line() {
-            return new Line(part);
+        /** Which part of which rule it is, which every one of its statements is of. */
+        public PartId<RuleRef.Invariant> part() {
+            return statements.iterator().next().part();
         }
-    }
 
-    /** One authored line: which part of which rule drew it. */
-    record Line(PartId<RuleRef.Invariant> part) {}
+    }
 
     /**
      * A rule about where one coordinate's values stop that this reading placed no end from, and
@@ -1320,7 +1351,8 @@ public final class FieldDomains {
      */
     public List<Placed> stated() {
         return directs.stream()
-                .map(each -> new Placed(each.at(), each.part(),
+                .map(each -> new Placed(each.at(),
+                        new LineProvenance.Direct(each.statement()),
                         each.bound().lower(), each.bound().end()))
                 .toList();
     }
@@ -1392,10 +1424,15 @@ public final class FieldDomains {
      * answer for themselves is left with them.
      */
     private boolean needsAttributing(List<AboutOneCoordinate> candidates) {
-        Set<Line> ends = directs.stream()
-                .map(each -> new Line(each.part()))
+        // The statements the reading of comparisons placed an end from, and not the conjuncts they
+        // are of. A conjunct written under a denial states one comparison per leaf, so a leaf that
+        // placed an end says nothing about the leaf beside it — asked of the conjunct, a statement
+        // whose sibling placed an end reads as already accounted for and is never attributed at
+        // all, which is a candidate dropped where the two ends of one conjunct are on two numbers.
+        Set<InvariantStatementId> ends = directs.stream()
+                .map(InvariantChecker.Direct::statement)
                 .collect(java.util.stream.Collectors.toSet());
-        return candidates.stream().anyMatch(each -> !ends.contains(each.line()));
+        return candidates.stream().anyMatch(each -> !ends.containsAll(each.statements()));
     }
 
     /**
@@ -1421,7 +1458,8 @@ public final class FieldDomains {
         }
         for (AboutOneCoordinate each : EndNarrowing.read(end, candidates,
                 removed -> sideWithout(removed, at, lower), inWrittenOrder()).names()) {
-            out.add(new Placed(at, each.part(), lower, end));
+            out.add(new Placed(at, new LineProvenance.Counterfactual(each.statements()),
+                    lower, end));
         }
     }
 
@@ -2197,7 +2235,7 @@ public final class FieldDomains {
             RuleRef.Invariant rule = reading.from();
             // Where in the clause this reading recorded a shape, which is what a conjunction below
             // asks about its two halves.
-            Set<ClauseExpr.Occurrence> recorded = new LinkedHashSet<>();
+            Set<ClauseOccurrence> recorded = new LinkedHashSet<>();
             reading.constrained().values().forEach(byOccurrence ->
                     byOccurrence.values().forEach(one -> recorded.add(one.of().at())));
             // A part at a time, and any one of them is enough. A conjunct the bounds hold nothing of

@@ -2,6 +2,7 @@ package souther.compiler.partition;
 
 import souther.compiler.check.Carrier;
 import souther.compiler.check.DeclaredBounds;
+import souther.compiler.check.DeclaredLine;
 import souther.compiler.check.MatchedEndAttribution;
 import souther.compiler.check.NarrowedBounds;
 import souther.compiler.check.RuleReadingSource;
@@ -110,10 +111,10 @@ final class LocalInspection {
         return new DeclaredBounds.Bounds(
                 own.min() == null ? null
                         : new DeclaredBounds.End(Endpoint.lower(own.min().at(), left.min()),
-                                own.min().from()),
+                                own.min().found()),
                 own.max() == null ? null
                         : new DeclaredBounds.End(Endpoint.upper(own.max().at(), left.max()),
-                                own.max().from()),
+                                own.max().found()),
                 own.carrier());
     }
 
@@ -193,9 +194,9 @@ final class LocalInspection {
         // was settled where the clause was read and arrives as it was. What is added is a
         // boundary's own answer about that rule — that a reading of it drew this cut, taken in by
         // these declarations — which is nothing the rule says about itself.
-        for (DeclaredBounds.Drawn from : end.from()) {
+        for (DeclaredLine drawn : end.drawn()) {
             put(into, carrier, end.value(),
-                    new LineOrigin.InvariantOrigin(from.part(), side, end.at().inclusive()),
+                    new LineOrigin.InvariantOrigin(drawn, side, end.at().inclusive()),
                     end.at(), took);
         }
     }

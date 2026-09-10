@@ -1591,7 +1591,7 @@ public final class Partitions {
     private static List<FixtureTemplate> whereTheRulesLeaveTheValue(TypeView view,
                                                                     RuleReadingSource ruleSource,
                                                                     NumericDomain.Bounds within) {
-        DeclaredBounds.Bounds own = DeclaredBounds.of(view, ruleSource);
+        DeclaredBounds.Range own = DeclaredBounds.of(view, ruleSource);
         if (own == null) {
             return List.of();   // nothing here reads a number of this position at all
         }
@@ -2156,7 +2156,7 @@ public final class Partitions {
         if (!view.isWrapped()) {
             return List.of();
         }
-        DeclaredBounds.Bounds own = DeclaredBounds.of(view, ruleSource);
+        DeclaredBounds.Range own = DeclaredBounds.of(view, ruleSource);
         NumericDomain.Bounds bounds = TypeBounds.admissible(own, within);
         // The far end has to be a value the position holds. Where the range stops short of it there
         // is nothing there to hold back, and a dense order has no value beside it to hold back

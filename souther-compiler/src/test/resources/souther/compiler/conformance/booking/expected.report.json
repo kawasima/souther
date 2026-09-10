@@ -1,5 +1,5 @@
 {
-  "schemaVersion" : 17,
+  "schemaVersion" : 18,
   "compilerVersion" : "<version>",
   "status" : "partial",
   "weakening" : [ "bodies_not_elaborated", "rule_unread" ],
@@ -27,7 +27,11 @@
                 "declaredOn" : "Seat",
                 "clause" : 0
               },
-              "part" : 0
+              "part" : 0,
+              "line" : {
+                "kind" : "statement",
+                "statement" : 0
+              }
             },
             "facts" : {
               "valueBelongsBelow" : false,
@@ -82,7 +86,11 @@
                 "declaredOn" : "Seat",
                 "clause" : 0
               },
-              "part" : 0
+              "part" : 0,
+              "line" : {
+                "kind" : "statement",
+                "statement" : 0
+              }
             },
             "facts" : {
               "valueBelongsBelow" : false,
@@ -150,7 +158,11 @@
                 "declaredOn" : "Seat",
                 "clause" : 0
               },
-              "part" : 1
+              "part" : 1,
+              "line" : {
+                "kind" : "statement",
+                "statement" : 0
+              }
             },
             "facts" : {
               "valueBelongsBelow" : true,
@@ -205,7 +217,11 @@
                 "declaredOn" : "Seat",
                 "clause" : 0
               },
-              "part" : 1
+              "part" : 1,
+              "line" : {
+                "kind" : "statement",
+                "statement" : 0
+              }
             },
             "facts" : {
               "valueBelongsBelow" : true,
@@ -277,7 +293,11 @@
                 "declaredOn" : "Seat",
                 "clause" : 0
               },
-              "part" : 0
+              "part" : 0,
+              "line" : {
+                "kind" : "statement",
+                "statement" : 0
+              }
             },
             "facts" : {
               "valueBelongsBelow" : false,
@@ -312,7 +332,11 @@
                 "declaredOn" : "Seat",
                 "clause" : 0
               },
-              "part" : 1
+              "part" : 1,
+              "line" : {
+                "kind" : "statement",
+                "statement" : 0
+              }
             },
             "facts" : {
               "valueBelongsBelow" : true,
@@ -352,7 +376,11 @@
                 "declaredOn" : "Party",
                 "clause" : 0
               },
-              "part" : 0
+              "part" : 0,
+              "line" : {
+                "kind" : "statement",
+                "statement" : 0
+              }
             },
             "facts" : {
               "valueBelongsBelow" : false,
@@ -407,7 +435,11 @@
                 "declaredOn" : "Party",
                 "clause" : 0
               },
-              "part" : 0
+              "part" : 0,
+              "line" : {
+                "kind" : "statement",
+                "statement" : 0
+              }
             },
             "facts" : {
               "valueBelongsBelow" : false,
@@ -475,7 +507,11 @@
                 "declaredOn" : "Party",
                 "clause" : 0
               },
-              "part" : 1
+              "part" : 1,
+              "line" : {
+                "kind" : "statement",
+                "statement" : 0
+              }
             },
             "facts" : {
               "valueBelongsBelow" : true,
@@ -530,7 +566,11 @@
                 "declaredOn" : "Party",
                 "clause" : 0
               },
-              "part" : 1
+              "part" : 1,
+              "line" : {
+                "kind" : "statement",
+                "statement" : 0
+              }
             },
             "facts" : {
               "valueBelongsBelow" : true,
@@ -602,7 +642,11 @@
                 "declaredOn" : "Party",
                 "clause" : 0
               },
-              "part" : 0
+              "part" : 0,
+              "line" : {
+                "kind" : "statement",
+                "statement" : 0
+              }
             },
             "facts" : {
               "valueBelongsBelow" : false,
@@ -637,7 +681,11 @@
                 "declaredOn" : "Party",
                 "clause" : 0
               },
-              "part" : 1
+              "part" : 1,
+              "line" : {
+                "kind" : "statement",
+                "statement" : 0
+              }
             },
             "facts" : {
               "valueBelongsBelow" : true,
@@ -908,7 +956,11 @@
                 "declaredOn" : "Voucher",
                 "clause" : 0
               },
-              "part" : 0
+              "part" : 0,
+              "line" : {
+                "kind" : "statement",
+                "statement" : 0
+              }
             },
             "facts" : {
               "valueBelongsBelow" : false,
@@ -964,7 +1016,11 @@
                 "declaredOn" : "Voucher",
                 "clause" : 0
               },
-              "part" : 0
+              "part" : 0,
+              "line" : {
+                "kind" : "statement",
+                "statement" : 0
+              }
             },
             "facts" : {
               "valueBelongsBelow" : false,
@@ -1034,7 +1090,11 @@
                 "declaredOn" : "Party",
                 "clause" : 0
               },
-              "part" : 0
+              "part" : 0,
+              "line" : {
+                "kind" : "statement",
+                "statement" : 0
+              }
             },
             "facts" : {
               "valueBelongsBelow" : false,
@@ -1090,7 +1150,11 @@
                 "declaredOn" : "Party",
                 "clause" : 0
               },
-              "part" : 1
+              "part" : 1,
+              "line" : {
+                "kind" : "statement",
+                "statement" : 0
+              }
             },
             "facts" : {
               "valueBelongsBelow" : true,
@@ -1622,7 +1686,11 @@
                   "declaredOn" : "Party",
                   "clause" : 0
                 },
-                "part" : 0
+                "part" : 0,
+                "line" : {
+                  "kind" : "statement",
+                  "statement" : 0
+                }
               },
               "facts" : {
                 "valueBelongsBelow" : false,
@@ -1700,7 +1768,11 @@
                   "declaredOn" : "Party",
                   "clause" : 0
                 },
-                "part" : 1
+                "part" : 1,
+                "line" : {
+                  "kind" : "statement",
+                  "statement" : 0
+                }
               },
               "facts" : {
                 "valueBelongsBelow" : true,
@@ -2064,7 +2136,11 @@
                 "declaredOn" : "Ticket",
                 "clause" : 0
               },
-              "part" : 0
+              "part" : 0,
+              "line" : {
+                "kind" : "statement",
+                "statement" : 0
+              }
             },
             "facts" : {
               "valueBelongsBelow" : false,
@@ -2120,7 +2196,11 @@
                 "declaredOn" : "Ticket",
                 "clause" : 0
               },
-              "part" : 0
+              "part" : 0,
+              "line" : {
+                "kind" : "statement",
+                "statement" : 0
+              }
             },
             "facts" : {
               "valueBelongsBelow" : false,
@@ -2190,7 +2270,11 @@
                 "declaredOn" : "Party",
                 "clause" : 0
               },
-              "part" : 0
+              "part" : 0,
+              "line" : {
+                "kind" : "statement",
+                "statement" : 0
+              }
             },
             "facts" : {
               "valueBelongsBelow" : false,
@@ -2246,7 +2330,11 @@
                 "declaredOn" : "Party",
                 "clause" : 0
               },
-              "part" : 1
+              "part" : 1,
+              "line" : {
+                "kind" : "statement",
+                "statement" : 0
+              }
             },
             "facts" : {
               "valueBelongsBelow" : true,
@@ -2545,7 +2633,11 @@
                   "declaredOn" : "Party",
                   "clause" : 0
                 },
-                "part" : 0
+                "part" : 0,
+                "line" : {
+                  "kind" : "statement",
+                  "statement" : 0
+                }
               },
               "facts" : {
                 "valueBelongsBelow" : false,
@@ -2623,7 +2715,11 @@
                   "declaredOn" : "Party",
                   "clause" : 0
                 },
-                "part" : 1
+                "part" : 1,
+                "line" : {
+                  "kind" : "statement",
+                  "statement" : 0
+                }
               },
               "facts" : {
                 "valueBelongsBelow" : true,

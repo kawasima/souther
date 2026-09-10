@@ -4,6 +4,9 @@ import org.junit.jupiter.api.Test;
 
 import souther.compiler.check.Clause;
 import souther.compiler.check.ClauseName;
+import souther.compiler.check.DeclaredLine;
+import souther.compiler.check.InvariantStatementId;
+import souther.compiler.check.PartId;
 import souther.compiler.check.ComparisonClaim;
 import souther.compiler.check.RuleRef;
 import souther.compiler.numeric.EndSide;
@@ -83,7 +86,8 @@ class WhichEndABoundPlacedSurvivesBeingReadBackTest {
     void aBoundBuiltFromThatEndReadsBackAsThePairItCameFrom() {
         for (Row row : THE_LAW) {
             LineOrigin.InvariantOrigin origin = new LineOrigin.InvariantOrigin(
-                    new souther.compiler.check.PartId<>(aClause(), 0),
+                    new DeclaredLine.OfAStatement(new InvariantStatementId(
+                            new PartId<>(aClause(), 0), 0)),
                     DeclaredThresholds.endKept(row.cut()), row.holdsAtTheValue());
 
             assertEquals(row.cut(), origin.lineFacts().claim(),

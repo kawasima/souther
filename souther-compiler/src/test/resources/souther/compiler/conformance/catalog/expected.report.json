@@ -1,5 +1,5 @@
 {
-  "schemaVersion" : 17,
+  "schemaVersion" : 18,
   "compilerVersion" : "<version>",
   "status" : "partial",
   "weakening" : [ "rule_unread" ],
@@ -28,7 +28,11 @@
                 "declaredOn" : "Sku",
                 "clause" : 0
               },
-              "part" : 0
+              "part" : 0,
+              "line" : {
+                "kind" : "statement",
+                "statement" : 0
+              }
             },
             "facts" : {
               "valueBelongsBelow" : false,
@@ -90,7 +94,11 @@
                 "declaredOn" : "Sku",
                 "clause" : 0
               },
-              "part" : 0
+              "part" : 0,
+              "line" : {
+                "kind" : "statement",
+                "statement" : 0
+              }
             },
             "facts" : {
               "valueBelongsBelow" : false,
@@ -166,7 +174,11 @@
                 "declaredOn" : "Price",
                 "clause" : 0
               },
-              "part" : 0
+              "part" : 0,
+              "line" : {
+                "kind" : "statement",
+                "statement" : 0
+              }
             },
             "facts" : {
               "valueBelongsBelow" : false,
@@ -221,7 +233,11 @@
                 "declaredOn" : "Price",
                 "clause" : 0
               },
-              "part" : 0
+              "part" : 0,
+              "line" : {
+                "kind" : "statement",
+                "statement" : 0
+              }
             },
             "facts" : {
               "valueBelongsBelow" : false,
@@ -290,7 +306,11 @@
                 "declaredOn" : "Weight",
                 "clause" : 0
               },
-              "part" : 0
+              "part" : 0,
+              "line" : {
+                "kind" : "statement",
+                "statement" : 0
+              }
             },
             "facts" : {
               "valueBelongsBelow" : false,
@@ -345,7 +365,11 @@
                 "declaredOn" : "Weight",
                 "clause" : 0
               },
-              "part" : 0
+              "part" : 0,
+              "line" : {
+                "kind" : "statement",
+                "statement" : 0
+              }
             },
             "facts" : {
               "valueBelongsBelow" : false,
@@ -414,7 +438,11 @@
                 "declaredOn" : "Rate",
                 "clause" : 0
               },
-              "part" : 0
+              "part" : 0,
+              "line" : {
+                "kind" : "statement",
+                "statement" : 0
+              }
             },
             "facts" : {
               "valueBelongsBelow" : true,
@@ -482,7 +510,11 @@
                 "declaredOn" : "Rate",
                 "clause" : 0
               },
-              "part" : 1
+              "part" : 1,
+              "line" : {
+                "kind" : "statement",
+                "statement" : 0
+              }
             },
             "facts" : {
               "valueBelongsBelow" : false,
@@ -1095,7 +1127,11 @@
                 "declaredOn" : "送り状番号",
                 "clause" : 0
               },
-              "part" : 0
+              "part" : 0,
+              "line" : {
+                "kind" : "statement",
+                "statement" : 0
+              }
             },
             "facts" : {
               "valueBelongsBelow" : false,
@@ -1157,7 +1193,11 @@
                 "declaredOn" : "送り状番号",
                 "clause" : 0
               },
-              "part" : 0
+              "part" : 0,
+              "line" : {
+                "kind" : "statement",
+                "statement" : 0
+              }
             },
             "facts" : {
               "valueBelongsBelow" : false,
@@ -1802,7 +1842,11 @@
                   "declaredOn" : "Weight",
                   "clause" : 0
                 },
-                "part" : 0
+                "part" : 0,
+                "line" : {
+                  "kind" : "statement",
+                  "statement" : 0
+                }
               },
               "facts" : {
                 "valueBelongsBelow" : false,

@@ -1,6 +1,7 @@
 package souther.compiler.partition;
 
 import souther.compiler.check.ComparisonClaim;
+import souther.compiler.check.DeclaredLine;
 import souther.compiler.check.Location;
 import souther.compiler.check.Symbols;
 import souther.compiler.check.TypeOps;
@@ -110,8 +111,8 @@ public final class DeclaredThresholds {
             throw new IllegalStateException("which end a clause keeps, asked of one that names a"
                     + " value: " + clause.rule());
         }
-        return new LineOrigin.InvariantOrigin(clause.part(), endKept(order),
-                order.holdsAtTheValue());
+        return new LineOrigin.InvariantOrigin(new DeclaredLine.OfAStatement(clause.statement()),
+                endKept(order), order.holdsAtTheValue());
     }
 
     /**

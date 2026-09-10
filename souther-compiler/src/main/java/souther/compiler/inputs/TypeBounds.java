@@ -33,7 +33,7 @@ public final class TypeBounds {
      * them, so that a guard at zero is refused its neighbour below by the same intersection that
      * refuses one outside an invariant.
      */
-    public static NumericDomain.Bounds admissible(DeclaredBounds.Bounds own, NumericDomain.Bounds projected,
+    public static NumericDomain.Bounds admissible(DeclaredBounds.Range own, NumericDomain.Bounds projected,
                                            NumericTerm term) {
         // A term with nothing to guarantee and no term at all are one answer here. What this returns
         // is read by callers that take a null for a position they know nothing about, which is not
@@ -45,8 +45,8 @@ public final class TypeBounds {
         if (own == null) {
             return intrinsic;   // not a number of its own, so only what the term guarantees
         }
-        Endpoint min = own.min() == null ? null : own.min().at();
-        Endpoint max = own.max() == null ? null : own.max().at();
+        Endpoint min = own.min();
+        Endpoint max = own.max();
         NumericDomain.Bounds read = projected == null ? new NumericDomain.Bounds(min, max)
                 : new NumericDomain.Bounds(Endpoint.lower(min, projected.min()),
                         Endpoint.upper(max, projected.max()));
@@ -56,7 +56,7 @@ public final class TypeBounds {
     }
 
     /** The same, of a position no term of its own is measured at. */
-    public static NumericDomain.Bounds admissible(DeclaredBounds.Bounds own, NumericDomain.Bounds projected) {
+    public static NumericDomain.Bounds admissible(DeclaredBounds.Range own, NumericDomain.Bounds projected) {
         return admissible(own, projected, null);
     }
 

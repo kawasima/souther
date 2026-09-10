@@ -1421,7 +1421,7 @@ public final class InputDomain {
                 placed.admits(path, souther.compiler.check.TypeOps.base(type, source.symbols()));
         List<PositionBounds> bounds = new ArrayList<>();
         for (NumberAt.OfWhatNumber kind : kinds) {
-            bounds.add(boundsOn(kind, path, type, taken, view, source, carried, placed,
+            bounds.add(boundsOn(kind, path, type, taken, source, carried, placed,
                     movedHere, stated, nothingExists));
         }
         rulesWithoutALineAt(placed, path, type, source, found);
@@ -1557,25 +1557,22 @@ public final class InputDomain {
     /**
      * What the rules leave one number of one position.
      *
-     * <p>Every answer here is about {@code kind} and about no other number of the place. Three
-     * sources of ends and not one: what the type's own clauses wrote, what its conjuncts state or
-     * moved that no comparison says — a rule about the strings at a position leaves them running
-     * between two places and orders nothing — and what the value this position sits in placed. Each
-     * list holds ends of every number, and each is asked for this one's; they are intersected, and
-     * every rule that put an end where it is kept.
+     * <p>Every answer here is about {@code kind} and about no other number of the place. What its
+     * conjuncts state, and what they moved that no comparison says — a rule about the strings at a
+     * position leaves them running between two places and orders nothing. Each list holds ends of
+     * every number, and each is asked for this one's; they are intersected, and every rule that put
+     * an end where it is kept.
      *
-     * <p><b>One reading of the type's own clauses, and it is {@link #ofTheType}.</b> There is a
-     * second — the one that turns those clauses into constraints, which {@code read} holds for its
-     * own question — and it answers about more of them: it reaches the end under
-     * {@code String.length(value) * 2 >= 4}, under a disequality that moves a floor and under an
-     * equality that states both ends, where reading the comparison as written finds none. Handed
-     * both and intersected, this would take whichever answer is tighter and there would be nothing
-     * to say which of the two the position is bounded by — one clause read two ways, with the
-     * difference kept out of sight by the intersection rather than settled. So the second reading
-     * is not a parameter here.
+     * <p><b>One reading of the type's own clauses, and it is the one that reaches the statements
+     * inside them.</b> Reading each authored conjunct as one comparison answers about fewer of them
+     * — it makes nothing of a conjunction written under a denial, and nothing of
+     * {@code String.length(value) * 2 >= 4}, of a disequality that moves a floor or of an equality
+     * stating both ends — and it names its ends by the conjunct, because the statements are where
+     * it never went. Intersected with this one, its ends met these at the same value under a name
+     * of a different grain, and the model owed two rows for one line.
      */
     private static PositionBounds boundsOn(NumberAt.OfWhatNumber kind, TermPath path, Type type,
-                                           ValueName.Stdlib taken, TypeView view,
+                                           ValueName.Stdlib taken,
                                            RuleReadingSource source, Carrier carried,
                                            PlacedRules placed,
                                            List<FieldDomains.Placed> movedHere,
@@ -1593,10 +1590,9 @@ public final class InputDomain {
         }
         Carrier on = carrierOn(kind, carried);
         DeclaredBounds.Bounds own = on == null ? null
-                : DeclaredBounds.and(ofTheType(kind, on, view, source),
-                        DeclaredBounds.and(
-                                DeclaredBounds.placed(movedHere, kind, on),
-                                DeclaredBounds.placed(stated, kind, on)));
+                : DeclaredBounds.and(
+                        DeclaredBounds.placed(movedHere, kind, on),
+                        DeclaredBounds.placed(stated, kind, on));
         // A record's rule relates the numbers its fields hold, so it reaches the term that is one of
         // them and no other: a cap on a field says nothing about how long the string beside it is.
         //
@@ -1612,7 +1608,9 @@ public final class InputDomain {
                 // term's values can be is every rule about it intersected; where it is divided is
                 // only where its own type draws a line, because a clause relating two fields is not
                 // a partition of one.
-                nothingExists ? null : TypeBounds.admissible(own, projected.bounds(), term),
+                nothingExists ? null
+                        : TypeBounds.admissible(own == null ? null : own.range(),
+                                projected.bounds(), term),
                 own, projected,
                 // Where the number actually stops, which the ends as written do not say: a clause
                 // placing one at 0 beside a clause that takes the 0 away leaves a number whose
@@ -1631,17 +1629,6 @@ public final class InputDomain {
         return switch (kind) {
             case NumberAt.OfWhatNumber.OfItsOwnValue _ -> carried;
             case NumberAt.OfWhatNumber.OfWhatAnOperationAnswers _ -> Carrier.WHOLE;
-        };
-    }
-
-    /** What the names this position wears leave {@code kind}, which each of them is read for on its
-     *  own: a name bounding the length of what it wraps says nothing about the order of it. */
-    private static DeclaredBounds.Bounds ofTheType(NumberAt.OfWhatNumber kind, Carrier on,
-                                                   TypeView view, RuleReadingSource source) {
-        return switch (kind) {
-            case NumberAt.OfWhatNumber.OfItsOwnValue _ -> DeclaredBounds.of(view, source, on, null);
-            case NumberAt.OfWhatNumber.OfWhatAnOperationAnswers it ->
-                    DeclaredBounds.of(view, source, on, it.operation());
         };
     }
 

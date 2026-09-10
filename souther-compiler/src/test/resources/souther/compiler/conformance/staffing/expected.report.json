@@ -1,5 +1,5 @@
 {
-  "schemaVersion" : 17,
+  "schemaVersion" : 18,
   "compilerVersion" : "<version>",
   "status" : "complete",
   "adequacy" : "undetermined",
@@ -716,7 +716,11 @@
               "declaredOn" : "Hours",
               "clause" : 0
             },
-            "part" : 0
+            "part" : 0,
+            "line" : {
+              "kind" : "statement",
+              "statement" : 0
+            }
           },
           "facts" : {
             "valueBelongsBelow" : false,
@@ -753,7 +757,11 @@
               "declaredOn" : "Hours",
               "clause" : 0
             },
-            "part" : 0
+            "part" : 0,
+            "line" : {
+              "kind" : "statement",
+              "statement" : 0
+            }
           },
           "facts" : {
             "valueBelongsBelow" : false,
@@ -814,7 +822,11 @@
               "declaredOn" : "Hours",
               "clause" : 0
             },
-            "part" : 1
+            "part" : 1,
+            "line" : {
+              "kind" : "statement",
+              "statement" : 0
+            }
           },
           "facts" : {
             "valueBelongsBelow" : true,
@@ -851,7 +863,11 @@
               "declaredOn" : "Hours",
               "clause" : 0
             },
-            "part" : 1
+            "part" : 1,
+            "line" : {
+              "kind" : "statement",
+              "statement" : 0
+            }
           },
           "facts" : {
             "valueBelongsBelow" : true,
@@ -912,7 +928,11 @@
               "declaredOn" : "Rate",
               "clause" : 0
             },
-            "part" : 0
+            "part" : 0,
+            "line" : {
+              "kind" : "statement",
+              "statement" : 0
+            }
           },
           "facts" : {
             "valueBelongsBelow" : false,
@@ -949,7 +969,11 @@
               "declaredOn" : "Rate",
               "clause" : 0
             },
-            "part" : 0
+            "part" : 0,
+            "line" : {
+              "kind" : "statement",
+              "statement" : 0
+            }
           },
           "facts" : {
             "valueBelongsBelow" : false,
@@ -1010,7 +1034,11 @@
               "declaredOn" : "Rate",
               "clause" : 0
             },
-            "part" : 1
+            "part" : 1,
+            "line" : {
+              "kind" : "statement",
+              "statement" : 0
+            }
           },
           "facts" : {
             "valueBelongsBelow" : true,
@@ -1047,7 +1075,11 @@
               "declaredOn" : "Rate",
               "clause" : 0
             },
-            "part" : 1
+            "part" : 1,
+            "line" : {
+              "kind" : "statement",
+              "statement" : 0
+            }
           },
           "facts" : {
             "valueBelongsBelow" : true,
@@ -1108,7 +1140,11 @@
               "declaredOn" : "WorkDays",
               "clause" : 0
             },
-            "part" : 0
+            "part" : 0,
+            "line" : {
+              "kind" : "statement",
+              "statement" : 0
+            }
           },
           "facts" : {
             "valueBelongsBelow" : false,
@@ -1145,7 +1181,11 @@
               "declaredOn" : "WorkDays",
               "clause" : 0
             },
-            "part" : 0
+            "part" : 0,
+            "line" : {
+              "kind" : "statement",
+              "statement" : 0
+            }
           },
           "facts" : {
             "valueBelongsBelow" : false,
@@ -1206,7 +1246,11 @@
               "declaredOn" : "WorkDays",
               "clause" : 0
             },
-            "part" : 1
+            "part" : 1,
+            "line" : {
+              "kind" : "statement",
+              "statement" : 0
+            }
           },
           "facts" : {
             "valueBelongsBelow" : true,
@@ -1243,7 +1287,11 @@
               "declaredOn" : "WorkDays",
               "clause" : 0
             },
-            "part" : 1
+            "part" : 1,
+            "line" : {
+              "kind" : "statement",
+              "statement" : 0
+            }
           },
           "facts" : {
             "valueBelongsBelow" : true,
@@ -1353,7 +1401,11 @@
                 "declaredOn" : "WorkDays",
                 "clause" : 0
               },
-              "part" : 0
+              "part" : 0,
+              "line" : {
+                "kind" : "statement",
+                "statement" : 0
+              }
             },
             "facts" : {
               "valueBelongsBelow" : false,
@@ -1409,7 +1461,11 @@
                 "declaredOn" : "WorkDays",
                 "clause" : 0
               },
-              "part" : 1
+              "part" : 1,
+              "line" : {
+                "kind" : "statement",
+                "statement" : 0
+              }
             },
             "facts" : {
               "valueBelongsBelow" : true,
@@ -1474,7 +1530,11 @@
                 "declaredOn" : "Rate",
                 "clause" : 0
               },
-              "part" : 0
+              "part" : 0,
+              "line" : {
+                "kind" : "statement",
+                "statement" : 0
+              }
             },
             "facts" : {
               "valueBelongsBelow" : false,
@@ -1530,7 +1590,11 @@
                 "declaredOn" : "Rate",
                 "clause" : 0
               },
-              "part" : 1
+              "part" : 1,
+              "line" : {
+                "kind" : "statement",
+                "statement" : 0
+              }
             },
             "facts" : {
               "valueBelongsBelow" : true,
@@ -1595,7 +1659,11 @@
                 "declaredOn" : "Hours",
                 "clause" : 0
               },
-              "part" : 0
+              "part" : 0,
+              "line" : {
+                "kind" : "statement",
+                "statement" : 0
+              }
             },
             "facts" : {
               "valueBelongsBelow" : false,
@@ -1651,7 +1719,11 @@
                 "declaredOn" : "Hours",
                 "clause" : 0
               },
-              "part" : 1
+              "part" : 1,
+              "line" : {
+                "kind" : "statement",
+                "statement" : 0
+              }
             },
             "facts" : {
               "valueBelongsBelow" : true,
@@ -2041,7 +2113,11 @@
                   "declaredOn" : "WorkDays",
                   "clause" : 0
                 },
-                "part" : 0
+                "part" : 0,
+                "line" : {
+                  "kind" : "statement",
+                  "statement" : 0
+                }
               },
               "facts" : {
                 "valueBelongsBelow" : false,
@@ -2119,7 +2195,11 @@
                   "declaredOn" : "WorkDays",
                   "clause" : 0
                 },
-                "part" : 1
+                "part" : 1,
+                "line" : {
+                  "kind" : "statement",
+                  "statement" : 0
+                }
               },
               "facts" : {
                 "valueBelongsBelow" : true,
@@ -2452,7 +2532,11 @@
                   "declaredOn" : "Rate",
                   "clause" : 0
                 },
-                "part" : 0
+                "part" : 0,
+                "line" : {
+                  "kind" : "statement",
+                  "statement" : 0
+                }
               },
               "facts" : {
                 "valueBelongsBelow" : false,
@@ -2530,7 +2614,11 @@
                   "declaredOn" : "Rate",
                   "clause" : 0
                 },
-                "part" : 1
+                "part" : 1,
+                "line" : {
+                  "kind" : "statement",
+                  "statement" : 0
+                }
               },
               "facts" : {
                 "valueBelongsBelow" : true,
@@ -3074,7 +3162,11 @@
                   "declaredOn" : "Hours",
                   "clause" : 0
                 },
-                "part" : 0
+                "part" : 0,
+                "line" : {
+                  "kind" : "statement",
+                  "statement" : 0
+                }
               },
               "facts" : {
                 "valueBelongsBelow" : false,
@@ -3152,7 +3244,11 @@
                   "declaredOn" : "Hours",
                   "clause" : 0
                 },
-                "part" : 1
+                "part" : 1,
+                "line" : {
+                  "kind" : "statement",
+                  "statement" : 0
+                }
               },
               "facts" : {
                 "valueBelongsBelow" : true,

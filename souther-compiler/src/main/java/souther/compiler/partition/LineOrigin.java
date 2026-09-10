@@ -3,6 +3,8 @@ package souther.compiler.partition;
 
 import souther.compiler.check.ComparisonClaim;
 import souther.compiler.check.DeclaredBorders;
+import souther.compiler.check.DeclaredLine;
+import souther.compiler.check.PartId;
 import souther.compiler.check.RuleCitation;
 import souther.compiler.check.RuleRef;
 import souther.compiler.check.RuleReportAnchor;
@@ -56,13 +58,13 @@ public sealed interface LineOrigin extends RuleEvidenceOrigin {
      * value are two rules, and a cut keeps every rule that drew it; named by the declaration and the
      * word, they are one.
      *
-     * @param part            which part of which clause drew this end. What tells one line of a
+     * @param drawnBy         which line of which clause this end is. What tells one line of a
      *                        clause from another where the clause drew several: {@code
      *                        String.length(name) >= 1 && String.length(code) >= 1} is one clause and
      *                        two lines at one value, and a row at either says nothing about the
      *                        other. The clause's own text and not the number it was written about,
      *                        which is spelled differently by every reading that reaches it
-     *                        ({@link souther.compiler.check.DeclaredBounds.Drawn})
+     *                        ({@link DeclaredLine})
      * @param keeps           which of the two ends the bound placed. Read where the end is read,
      *                        and carried for the same reason the inclusivity beside it is — a bound
      *                        orders nothing across its line, so there is no side to read off the
@@ -87,24 +89,29 @@ public sealed interface LineOrigin extends RuleEvidenceOrigin {
      *                        derivation gets and not one about the end, and reading the end is what
      *                        keeps the two from being confused if it ever does get further
      */
-    record InvariantOrigin(souther.compiler.check.PartId<RuleRef.Invariant> part,
+    record InvariantOrigin(DeclaredLine drawnBy,
                            souther.compiler.numeric.EndSide keeps, boolean holdsAtTheValue)
             implements LineOrigin {
 
         public InvariantOrigin {
-            if (part == null) {
+            if (drawnBy == null) {
                 throw new IllegalArgumentException("a bound drawn by no clause");
             }
             if (keeps == null) {
                 throw new IllegalArgumentException(
-                        "a bound places one of a range's two ends: " + part);
+                        "a bound places one of a range's two ends: " + drawnBy);
             }
+        }
+
+        /** Which conjunct of the clause drew it, which is what a rule is named by. */
+        public PartId<RuleRef.Invariant> part() {
+            return drawnBy.part();
         }
 
         /** Which clause of which declaration drew it. */
         @Override
         public RuleRef.Invariant rule() {
-            return part.rule();
+            return part().rule();
         }
     }
 
@@ -474,7 +481,8 @@ public sealed interface LineOrigin extends RuleEvidenceOrigin {
         return switch (this) {
             // The part that drew it, which is what named the line where a declaration wrote it.
             case InvariantOrigin i ->
-                    new AuthoredLine(new WhichLine.OfAPart(i.part()), lineFacts(), List.of());
+                    new AuthoredLine(new WhichLine.OfADeclarationsLine(i.drawnBy()),
+                            lineFacts(), List.of());
             // The rule and nothing under it. A comparison is a rule apiece — a condition holding
             // three comparisons is three rules — so there is no second line of it to tell this one
             // from, and a number here would be one this reading made up to fill a field.
