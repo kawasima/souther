@@ -914,7 +914,12 @@ public sealed interface Carrier extends ValueOrder {
                     yield null;
                 }
                 Language strings = TextExtents.stringsIn(it, held, meter);
-                Language left = strings == null ? null : strings.without(textsAt(apart), meter);
+                // Only the words the run leaves in, which the language answers about for nothing.
+                // A word it does not hold is one the machine built to take it out would be built
+                // to change nothing.
+                Language left = strings == null ? null
+                        : strings.without(textsAt(apart).stream().filter(strings::has).toList(),
+                                meter);
                 String some = left == null ? null : left.someWritten();
                 yield some == null ? null : souther.compiler.numeric.Text.of(some);
             }
@@ -932,23 +937,16 @@ public sealed interface Carrier extends ValueOrder {
      * way — a run holding every number between two of them is not walked through by counting — so
      * what is looked at there is the stretches the named values leave, each of which the order can
      * already give up a value from.
+     *
+     * <p><b>One value is what is wanted, so one is what is made.</b> Each candidate is composed and
+     * put to the run at once. Written as a list of them all and read afterwards, the walk composes
+     * every value it might have needed before it looks at the first — and the first is the answer
+     * almost always, while the walk is as long as the values ruled out. A position singling out a
+     * great many strings would have a string of every length up to that many written out to answer
+     * with the shortest.
      */
     private Place firstHeldIn(OrderedInterval range, Place from, Set<Value> excluded,
                               List<Place> apart) {
-        for (Place candidate : lookedAt(range, from, excluded, apart)) {
-            Place at = candidate == null ? null : onTheGrid(candidate);
-            Value wrote = at == null ? null : valueAt(at);
-            if (wrote != null && range.admits(at) && !excluded.contains(wrote)
-                    && away(apart, at)) {
-                return at;
-            }
-        }
-        return null;
-    }
-
-    /** The places a search of this order over {@code range} looks at. */
-    private List<Place> lookedAt(OrderedInterval range, Place from, Set<Value> excluded,
-                                 List<Place> apart) {
         int named = excluded.size() + apart.size();
         // A string has no step and nothing between two others that this language names — the string
         // above one is a character nobody wrote. What it has is a least value with every longer one
@@ -957,23 +955,48 @@ public sealed interface Carrier extends ValueOrder {
         // holds none of them, and what covers that is the ends of the run — among the candidates
         // before this is reached.
         if (this instanceof Text) {
-            List<Place> out = new ArrayList<>();
             for (int step = 0; step <= named; step++) {
-                out.add(souther.compiler.numeric.Text.of("a".repeat(step)));
+                Place at = heldAt(souther.compiler.numeric.Text.of("a".repeat(step)),
+                        range, excluded, apart);
+                if (at != null) {
+                    return at;
+                }
             }
-            return out;
+            return null;
         }
         if (spacing() == Granularity.DENSE) {
-            return betweenTheNamed(range, ruledOutIn(range, excluded, apart));
+            return betweenTheNamed(range, ruledOutIn(range, excluded, apart), excluded, apart);
         }
-        List<Place> out = new ArrayList<>();
-        if (from instanceof Count at) {
-            for (int step = 0; step <= named; step++) {
-                out.add(at.plus(step));
-                out.add(at.minus(step));
+        if (!(from instanceof Count start)) {
+            return null;
+        }
+        for (int step = 0; step <= named; step++) {
+            Place above = heldAt(start.plus(step), range, excluded, apart);
+            if (above != null) {
+                return above;
+            }
+            Place below = heldAt(start.minus(step), range, excluded, apart);
+            if (below != null) {
+                return below;
             }
         }
-        return out;
+        return null;
+    }
+
+    /**
+     * {@code candidate} where this order holds it inside {@code range} and neither list names it,
+     * or null.
+     *
+     * <p>One place a candidate is decided, whichever of the searches composed it. Each of them
+     * deciding for itself is three readings of what a value away from the ones ruled out is, and
+     * the day one of them learns about a fourth way of being refused the other two do not.
+     */
+    private Place heldAt(Place candidate, OrderedInterval range, Set<Value> excluded,
+                         List<Place> apart) {
+        Place at = candidate == null ? null : onTheGrid(candidate);
+        Value wrote = at == null ? null : valueAt(at);
+        return wrote != null && range.admits(at) && !excluded.contains(wrote) && away(apart, at)
+                ? at : null;
     }
 
     /** The places inside {@code range} that {@code excluded} or {@code apart} names, in the order
@@ -996,22 +1019,25 @@ public sealed interface Carrier extends ValueOrder {
     }
 
     /**
-     * A value out of each stretch {@code named} leaves inside {@code range}.
+     * A value out of the first stretch {@code named} leaves inside {@code range} that holds one.
      *
      * <p>What a run with no step has instead of a walk. The values named are finitely many and the
      * run between two of them holds values without end, so a run holding anything the two lists do
      * not name holds it in one of these stretches — and which value a stretch gives up is the
      * order's own answer ({@link #somethingInside}) rather than a second way of writing a number.
      */
-    private List<Place> betweenTheNamed(OrderedInterval range, List<Place> named) {
-        List<Place> out = new ArrayList<>();
+    private Place betweenTheNamed(OrderedInterval range, List<Place> named, Set<Value> excluded,
+                                  List<Place> apart) {
         Endpoint from = range.low();
         for (Place at : named) {
-            out.add(somethingInside(from, Endpoint.exclusive(at)));
+            Place found = heldAt(somethingInside(from, Endpoint.exclusive(at)),
+                    range, excluded, apart);
+            if (found != null) {
+                return found;
+            }
             from = Endpoint.exclusive(at);
         }
-        out.add(somethingInside(from, range.high()));
-        return out;
+        return heldAt(somethingInside(from, range.high()), range, excluded, apart);
     }
 
     /**

@@ -218,15 +218,44 @@ class AValueStandingForEverythingElseIsOneThePositionAdmitsTest {
                         + Carrier.DENSE.written(at));
     }
 
-    /** And the same order with nothing bounding it, where the stretches the named values leave run
-     *  to the ends of the order. */
+    /**
+     * The same order with nothing bounding it, where the stretches run to the ends of the order.
+     *
+     * <p>Every value ruled out is inside the run here, so the stretch below the least of them and
+     * the stretch above the greatest are the ones with no end of their own. What the case is about
+     * is that those are runs the order gives a value up from like any other.
+     */
     @Test
-    void anOrderWithNoStepAndNothingBoundingItIsLookedThroughTheSameWay() {
+    void theStretchesWithNoEndOfTheirOwnGiveUpAValueToo() {
         Place at = otherThan(Carrier.DENSE, List.of(Count.of(new BigDecimal("0.5"))), null,
-                ValueSet.ANY);
+                new ValueSet.Cofinite(Set.of(Value.number(new BigDecimal("1.5")),
+                        Value.number(new BigDecimal("-0.5")))));
 
-        assertNotNull(at, "the numbers away from a half are without end");
-        assertNotEquals("0.5", Carrier.DENSE.written(at));
+        assertNotNull(at, "the numbers away from those three are without end");
+        assertFalse(List.of("-0.5", "0.5", "1.5").contains(Carrier.DENSE.written(at)),
+                () -> "and none of the three: " + Carrier.DENSE.written(at));
+    }
+
+    /**
+     * A language, a run of the order and a value singled out, met before the string is taken.
+     *
+     * <p>The three come from three readings and none of them has a word for what the others hold:
+     * a rule about how many a value holds names no ends, a bound on the order names no set, and a
+     * value a body singled out is neither. This is where they are put together, and the string that
+     * comes back has to satisfy all three at once.
+     */
+    @Test
+    void aLanguageAndARunOfTheOrderAndAValueSingledOutAreMetBeforeTheStringIsTaken() {
+        Place at = otherThan(Carrier.TEXT, List.of(Text.of("m")),
+                new NumericDomain.Bounds(Endpoint.inclusive(Text.of("m")),
+                        Endpoint.exclusive(Text.of("n"))),
+                lengths(1, PatternSyntax.Repeated.NO_CEILING));
+
+        assertNotNull(at, "the strings from `m` up to `n` that are not `m` itself are without end");
+        String some = Carrier.TEXT.written(at);
+        assertTrue(some.compareTo("m") > 0 && some.compareTo("n") < 0,
+                () -> "inside the run: " + some);
+        assertFalse(some.isEmpty(), () -> "and of a length the rule allows: " + some);
     }
 
     /** And both vocabularies together, so neither is answering for the other. */
