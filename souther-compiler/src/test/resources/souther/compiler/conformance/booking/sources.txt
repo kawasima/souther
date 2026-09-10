@@ -3,3 +3,4 @@ vouchers.sou
 waitlist.sou
 holds.sou
 deposits.sou
+codes.sou

@@ -1,0 +1,15 @@
+// A rule about the strings of a value an operation made out of a position.
+//
+// The author wrote a rule about the code, and what it is applied to is what `String.uppercase`
+// answered rather than what stands at the position. Reading the rule back through the operation is
+// a capability this compiler has not, so no line is drawn here — and the position is not one the
+// model says nothing about. What a reader is owed is that a rule was written, that it is about
+// something made from here, and where it is written.
+module conformance.codes exposing ( Origin, originOf )
+
+data Origin = Domestic | Overseas
+
+behavior originOf : (code: String) -> Origin
+
+let originOf (code) =
+    if String.startsWith("JP", String.uppercase(code)) then Domestic else Overseas

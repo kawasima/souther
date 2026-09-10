@@ -2,7 +2,7 @@
   "schemaVersion" : 17,
   "compilerVersion" : "<version>",
   "status" : "partial",
-  "weakening" : [ "bodies_not_elaborated" ],
+  "weakening" : [ "bodies_not_elaborated", "rule_unread" ],
   "adequacy" : "not_satisfied",
   "keptOpenBy" : [ ],
   "modules" : [ {
@@ -3033,9 +3033,130 @@
     "incompleteness" : [ ],
     "declarations" : [ ],
     "behaviors" : [ ]
+  }, {
+    "module" : "conformance.codes",
+    "status" : "partial",
+    "weakening" : [ "rule_unread" ],
+    "incompleteness" : [ ],
+    "declarations" : [ ],
+    "behaviors" : [ {
+      "name" : "originOf",
+      "implementation" : "implemented",
+      "rows" : 0,
+      "pending" : 0,
+      "status" : "partial",
+      "weakening" : [ "rule_unread" ],
+      "signature" : {
+        "status" : "unavailable",
+        "reason" : "no_rows",
+        "output" : {
+          "declared" : [ "Domestic", "Overseas" ],
+          "status" : "unavailable",
+          "reason" : "no_rows"
+        },
+        "inputs" : [ {
+          "declared" : [ ],
+          "excluded" : [ ],
+          "status" : "unavailable",
+          "reason" : "not_a_sum"
+        } ]
+      },
+      "partition" : {
+        "axesMeasure" : {
+          "status" : "unavailable",
+          "reason" : "the_reading_did_not_run_out",
+          "weakening" : [ "rule_unread" ]
+        },
+        "boundariesMeasure" : {
+          "status" : "unavailable",
+          "reason" : "the_reading_did_not_run_out",
+          "weakening" : [ "rule_unread" ]
+        },
+        "axes" : [ ],
+        "unanswered" : [ {
+          "at" : "code",
+          "rule" : "predicate@5:15:8",
+          "ruleId" : {
+            "kind" : "predicate",
+            "declaredIn" : "conformance.codes",
+            "writtenIn" : "body",
+            "definition" : "originOf",
+            "behavior" : "originOf",
+            "ordinal" : 2,
+            "lowered" : 0
+          },
+          "question" : "notDetermined",
+          "subject" : {
+            "kind" : "filedAt",
+            "path" : "code"
+          },
+          "stopped" : [ {
+            "reason" : "rule_about_a_derived_value"
+          } ]
+        } ],
+        "claimsOffAxis" : [ ],
+        "boundaries" : [ ],
+        "obligations" : [ ],
+        "pairs" : {
+          "total" : 0,
+          "between" : [ ],
+          "status" : "complete",
+          "covered" : 0,
+          "unknown" : 0
+        },
+        "notDerivable" : [ ],
+        "notRead" : [ {
+          "position" : "code",
+          "reason" : "rule_about_a_derived_value",
+          "rule" : "predicate@5:15:8",
+          "ruleId" : {
+            "kind" : "predicate",
+            "declaredIn" : "conformance.codes",
+            "writtenIn" : "body",
+            "definition" : "originOf",
+            "behavior" : "originOf",
+            "ordinal" : 2,
+            "lowered" : 0
+          }
+        } ]
+      },
+      "branch" : {
+        "status" : "unavailable",
+        "reason" : "no_rows"
+      },
+      "findings" : [ {
+        "kind" : "partition_not_read",
+        "disposition" : "reported",
+        "subject" : "code",
+        "ruleId" : {
+          "kind" : "predicate",
+          "declaredIn" : "conformance.codes",
+          "writtenIn" : "body",
+          "definition" : "originOf",
+          "behavior" : "originOf",
+          "ordinal" : 2,
+          "lowered" : 0
+        },
+        "reason" : "rule_about_a_derived_value"
+      }, {
+        "kind" : "rule_unaccounted",
+        "disposition" : "reported",
+        "subject" : "predicate@5:15:8 — what this rule states about code",
+        "ruleId" : {
+          "kind" : "predicate",
+          "declaredIn" : "conformance.codes",
+          "writtenIn" : "body",
+          "definition" : "originOf",
+          "behavior" : "originOf",
+          "ordinal" : 2,
+          "lowered" : 0
+        }
+      } ]
+    } ]
   } ],
   "sources" : {
     "1" : "vouchers.sou",
-    "2" : "waitlist.sou"
+    "2" : "waitlist.sou",
+    "5" : "codes.sou"
   }
 }

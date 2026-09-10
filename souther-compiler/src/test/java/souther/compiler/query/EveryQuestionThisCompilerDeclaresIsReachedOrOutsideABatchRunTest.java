@@ -100,13 +100,6 @@ class EveryQuestionThisCompilerDeclaresIsReachedOrOutsideABatchRunTest {
      * the line saying nothing does is the thing that has to go.
      */
     private static final Map<String, String> NO_BATCH_CONSUMER = Map.of(
-            Sites.ApplicationsWrittenIn.class.getName(),
-            "where a module wrote each of its applications, which is what places a rule about the"
-                    + " strings at a position. A batch run reads the rule — the walk of a body makes"
-                    + " one and says what it comes to — and the answer stops there: what such a rule"
-                    + " came to is lost on the way to the array a document writes rules under, so no"
-                    + " result of a run holds a handle for one and nothing asks where it is. The"
-                    + " question is answerable and the dependency does not reach it",
             Sites.Authored.class.getName(),
             "where a module's source was written, occurrence by occurrence — a projection for a"
                     + " reader outside the compiler, and no answer of a batch compilation reads it");

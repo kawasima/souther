@@ -10,12 +10,14 @@ import souther.compiler.check.PredicateStatement;
 import souther.compiler.check.StatedContract;
 import souther.compiler.check.Symbols;
 import souther.compiler.check.StringPredicates;
+import souther.compiler.check.ValueOrigin;
 import souther.compiler.inputs.BlockReason;
 import souther.compiler.inputs.FilingCoordinate;
 import souther.compiler.inputs.InputReading;
 import souther.compiler.inputs.NumericTerm;
 import souther.compiler.inputs.PathResolution;
 import souther.compiler.inputs.StandingQuestion;
+import souther.compiler.inputs.TermPath;
 import souther.compiler.regex.PatternPlan;
 import souther.compiler.values.AdmittedPlan;
 import souther.compiler.values.Allowance;
@@ -357,25 +359,93 @@ public final class BehaviorSetStatements {
     private static Outcome saidWithoutADenominator(PredicateReadings.Reading each,
                                                    PathResolution stands, Symbols symbols) {
         return switch (stands) {
-            case PathResolution.MayStandAt(var among) -> new Outcome.SayingNothing(
-                    among.stream().map(FilingCoordinate::at).toList(),
-                    new BlockReason.RuleAboutAnElementOfSeveralSequences());
-            case PathResolution.NotAPosition _ ->
-                    switch (each.reads().cameFrom(each.subject(), symbols)) {
-                        case PathResolution.At(var from) -> new Outcome.SayingNothing(
-                                List.of(FilingCoordinate.at(from)),
-                                new BlockReason.RuleAboutADerivedValue());
-                        case PathResolution.MayStandAt(var among) -> new Outcome.SayingNothing(
-                                among.stream().map(FilingCoordinate::at).toList(),
-                                new BlockReason.RuleAboutAnElementOfSeveralSequences());
-                        // And a rule about a value that came from no position the reading can name,
-                        // which has nowhere to be said.
-                        case PathResolution.NotAPosition _ -> new Outcome.Nowhere();
-                    };
+            case PathResolution.MayStandAt(var among) -> mayStandAt(among);
+            case PathResolution.NotAPosition _ -> whereItsValueCameFrom(each, symbols);
             // The caller asks this only where the subject stands at no one place.
             case PathResolution.At at -> throw new IllegalArgumentException(
                     "a rule whose subject stands at " + at.path() + " has a denominator");
         };
+    }
+
+    /**
+     * The same for a subject that is at no one position, read out of what its value is made of.
+     *
+     * <p>Asked of {@link ValueOrigin}, which is where what an expression is made of is worked out
+     * for every reader of a body, and read off the arms of it that say where a value came from
+     * ({@link #positionsItCameFrom}). A subject an operation answered names no position and came
+     * from the ones its arguments name; a walk that stopped at the operation reported a model
+     * stating nothing where an author wrote a rule.
+     *
+     * <p>At every position the value came from. {@code String.append(a, b)} is made out of both,
+     * and an author who wrote a rule about the joined string is owed the sentence at each — filed
+     * at one of them, the other comes back as a position the model says nothing about.
+     *
+     * <p>A subject that <em>is</em> what stands at more than one place is asked first, and of the
+     * reading rather than of what the value is made of. That is the other sentence — nothing was
+     * made out of it and there is no operation to read backwards — and what an expression is made
+     * of has no way to say it: a value that is one of several places is not one built out of all
+     * of them.
+     */
+    private static Outcome whereItsValueCameFrom(PredicateReadings.Reading each, Symbols symbols) {
+        if (each.reads().cameFrom(each.subject(), symbols)
+                instanceof PathResolution.MayStandAt(var among)) {
+            return mayStandAt(among);
+        }
+        Set<TermPath> from = positionsItCameFrom(
+                GuardThresholds.originOf(each.subject(), each.reads(), symbols));
+        // And a rule about a value that came from no position the reading can name, which has
+        // nowhere to be said.
+        return from.isEmpty() ? new Outcome.Nowhere()
+                : new Outcome.SayingNothing(from.stream().map(FilingCoordinate::at).toList(),
+                        new BlockReason.RuleAboutADerivedValue());
+    }
+
+    /**
+     * Every position {@code origin}'s value came from, out of the arms that say where a value came
+     * from.
+     *
+     * <p>Read here and not asked of what an expression is made of as a whole, because that answer
+     * does not hold the question. What is made out of several things and what is one of several
+     * things arrive in one arm: the parts of a choice are the values it chooses between and what it
+     * turns on, side by side. A union over that arm files a rule at what decided which value the
+     * subject is, and a reader sent there is sent to a position the rule says nothing about.
+     *
+     * <p>So the arms that do state where a value came from are read, and the one that does not is
+     * left. What that costs is a rule under a choice shown nowhere, which is what such a rule comes
+     * to already; what reading it would cost is a rule shown at the wrong position, which is worse
+     * and is the thing an author cannot tell from a rule their model states.
+     *
+     * <p>A switch with no default, so an arm added to what an expression is made of is one somebody
+     * says the provenance of before this compiles.
+     */
+    private static Set<TermPath> positionsItCameFrom(ValueOrigin<TermPath> origin) {
+        return switch (origin) {
+            case ValueOrigin.IsAPosition<TermPath> it -> Set.of(it.at());
+            case ValueOrigin.MadeFromAPosition<TermPath> it -> Set.of(it.at());
+            // What an operation answered came from whatever its arguments came from, each of them:
+            // a string joined out of two positions is made out of both, and an author who wrote a
+            // rule about the joined value is owed the sentence at each.
+            case ValueOrigin.Applied<TermPath> it -> across(it.arguments());
+            // A value written where it stands came from no position, and one nothing here can name
+            // came from none this can name.
+            case ValueOrigin.Written<TermPath> _, ValueOrigin.Unnameable<TermPath> _ -> Set.of();
+            case ValueOrigin.Composed<TermPath> _ -> Set.of();
+        };
+    }
+
+    /** The positions everything in {@code of} came from, in the order they were met. */
+    private static Set<TermPath> across(List<ValueOrigin<TermPath>> of) {
+        Set<TermPath> out = new LinkedHashSet<>();
+        for (ValueOrigin<TermPath> each : of) {
+            out.addAll(positionsItCameFrom(each));
+        }
+        return out;
+    }
+
+    /** A rule about a value that is what stands at one of {@code among}, said at each of them. */
+    private static Outcome mayStandAt(List<TermPath> among) {
+        return new Outcome.SayingNothing(among.stream().map(FilingCoordinate::at).toList(),
+                new BlockReason.RuleAboutAnElementOfSeveralSequences());
     }
 
     /**
