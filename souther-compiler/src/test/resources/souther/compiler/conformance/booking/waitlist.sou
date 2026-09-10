@@ -1,0 +1,26 @@
+// A condition the source wrote no construct of, which is placed by the reading that met it.
+//
+// The second guard draws the line here too, and what stands on the way to it is a call rather than
+// a comparison. Nothing was written that a place could be asked of by name: the reading meets a
+// truth it has no words for, and where it met it is the only place there is to show. So the rows
+// for the line are composed without it in the same way, and a report about the condition points at
+// this reading rather than at whoever wrote it.
+module conformance.waitlist exposing ( Ticket, Party, Seated, seat )
+
+data Ticket = String
+    invariant String.length(value) >= 1
+
+data Party = Int
+    invariant value >= 1 && value <= 8
+
+data Seated = { ticket: Ticket, party: Party }
+
+behavior seat : (ticket: Ticket, party: Party)
+    -> Seated | NotOnTheList | TooManyForOneTicket
+    constructs Seated
+
+let seat (ticket, party) = {
+    guard String.startsWith("w-", ticket.value) else NotOnTheList
+    guard party.value <= 4 else TooManyForOneTicket
+    Seated { ticket = ticket, party = party }
+}
