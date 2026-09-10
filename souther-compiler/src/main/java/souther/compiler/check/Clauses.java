@@ -31,6 +31,7 @@ import java.util.function.Supplier;
  */
 final class Clauses {
 
+    private final RuleReadingSource source;
     private final Symbols symbols;
     private final ExpandedClauseLookup expandedClauses;
     private final ClauseLocations written;
@@ -50,26 +51,29 @@ final class Clauses {
     private final Map<Core, Set<String>> readsFields = new IdentityHashMap<>();
 
     /**
-     * @param expandedClauses where a declaration's clauses are answered from, in the
-     *        representation the discharge rules are written at ({@link InliningPolicy#DISCHARGE}).
-     *        Asked by the declaration's address and answered by the module that wrote it, wherever
-     *        that was: a type this module declares and one it imports are read alike, because what
-     *        a clause is read as is what its own module expanded (spec
-     *        §invariant-discharge-representation).
-     * @param written where a clause of a declaration is written, handed on to the readers that
-     *        publish a sentence pointing at one and read by nothing here. Beside the clauses and
-     *        not among them, for the reason {@link ClauseLocations} gives.
+     * @param source where this reads: the scope its names mean something in, where a declaration's
+     *        clauses are answered from in the representation the discharge rules are written at
+     *        ({@link InliningPolicy#DISCHARGE}), where what one states is answered from, where one
+     *        is written, and which source that is. Taken whole rather than in parts, so that what
+     *        is read here and what a reading made here is filed under are the one source
+     *        ({@link RuleReadingSource#origin}); handed the parts, a reader below could be given a
+     *        scope from one and an origin from another.
      * @param machines where the answers about a declaration's string machines are asked for,
      *        handed on to every reading of a declaration made through here and kept by none of
      *        what those readings answer with.
      */
-    Clauses(Symbols symbols, ExpandedClauseLookup expandedClauses, ClauseLocations written,
-            DeclarationReadings machines, ClauseMeanings meanings) {
-        this.symbols = symbols;
-        this.expandedClauses = expandedClauses;
-        this.written = written;
+    Clauses(RuleReadingSource source, DeclarationReadings machines) {
+        this.source = source;
+        this.symbols = source.symbols();
+        this.expandedClauses = source.invariants();
+        this.written = source.written();
         this.machines = machines;
-        this.meanings = meanings;
+        this.meanings = source.states();
+    }
+
+    /** Where this reads, for a reader that has to hand it on rather than ask for one of its own. */
+    RuleReadingSource source() {
+        return source;
     }
 
     /** The representation this reads a declaration's clauses in, for a reader that has to hand it

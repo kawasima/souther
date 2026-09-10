@@ -51,8 +51,13 @@ public sealed interface DeclarationMeaning {
      */
     public static DeclarationMeaning of(Hir.Def declared, RuleReadingSource source,
                                         DeclarationReadings machines) {
-        return of(declared, new Clauses(source.symbols(), source.invariants(), source.written(),
-                machines, ClauseMeanings.THE_ONE_THAT_MAKES_THEM));
+        // A source of its own, because what a clause states is read from somewhere else here: this
+        // is where the meanings are made rather than where they are looked up, so a reading under
+        // it is not a reading under the one the caller handed over and does not say it is.
+        return of(declared, new Clauses(
+                new RuleReadingSource(source.symbols(), source.invariants(),
+                        ClauseMeanings.THE_ONE_THAT_MAKES_THEM, source.written()),
+                machines));
     }
 
     /**

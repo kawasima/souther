@@ -211,22 +211,22 @@ public final class InvariantChecker {
      * the representation the rules are written at ({@link InliningPolicy#DISCHARGE}) rather than the
      * one the backend emits from.
      *
-     * <p>{@code invariants} is where a declaration's clauses are answered from, asked by its
-     * address. Where the declaration was written decides nothing about what is read of it: one this
-     * module wrote, one a module compiled beside it wrote, and one published as classes and read
-     * back by this front end (spec §published-modules) all come back as what their own module
-     * expanded, and a construction of any of them comes to the same verdict (spec
+     * <p>{@code rules} says where the declarations' clauses are answered from, asked by a
+     * declaration's address. Where the declaration was written decides nothing about what is read
+     * of it: one this module wrote, one a module compiled beside it wrote, and one published as
+     * classes and read back by this front end (spec §published-modules) all come back as what their
+     * own module expanded, and a construction of any of them comes to the same verdict (spec
      * §invariant-discharge-representation).
      *
      * <p>What it may answer instead is that a declaration's clauses could not be worked out at all.
      * That is a rule this check did not reach and is recorded as one; it is never read as a
      * declaration with no rules, which is the same empty list and the opposite fact.
      *
-     * <p>{@code written} is where a clause this check reports about is written, asked separately for
-     * the reason {@link ClauseLocations} gives.
+     * <p>The scope those clauses mean something in is the source's, and is what this check reads
+     * every name in. One value and not a scope beside a lookup, so that what is read and what a
+     * reading made here is filed under cannot come from two places.
      */
-    public record Source(Hir.Expr body, ElementProvenance elements, ExpandedClauseLookup invariants,
-                         ClauseMeanings states, ClauseLocations written,
+    public record Source(Hir.Expr body, ElementProvenance elements, RuleReadingSource rules,
                          DeclarationReadings machines,
                          Map<ValueName.Behavior, AssumedContract> contracts) {
 
@@ -276,24 +276,19 @@ public final class InvariantChecker {
     private final List<CompileException> errors = new ArrayList<>();
     private final List<Diagnostic> warnings = new ArrayList<>();
 
-    private InvariantChecker(Symbols symbols,
-                             ExpandedClauseLookup dischargeInvariants, ClauseMeanings states,
-                             ClauseLocations written,
+    private InvariantChecker(RuleReadingSource source,
                              DeclarationReadings machines, ReadingPolicy policy) {
-        this(symbols, dischargeInvariants, states, written, machines, Map.of(), policy);
+        this(source, machines, Map.of(), policy);
     }
 
-    private InvariantChecker(Symbols symbols,
-                             ExpandedClauseLookup dischargeInvariants, ClauseMeanings states,
-                             ClauseLocations written,
+    private InvariantChecker(RuleReadingSource source,
                              DeclarationReadings machines,
                              Map<ValueName.Behavior, AssumedContract> contracts,
                              ReadingPolicy policy) {
         // Where the answers about a declaration's string machines are asked for, for every
         // declaration this check reads: a capability handed on to the engine, which hands it to
         // every reading made through it, and kept by nothing any of them answers with.
-        this.engine = new PathEngine(symbols, dischargeInvariants, states, written, machines,
-                contracts, policy);
+        this.engine = new PathEngine(source, machines, contracts, policy);
         // Borrowing nothing, since no declaration is being seeded yet, and knowing what the
         // revision knows: where a set stops is the same answer whoever met it.
         this.answers = StringMachineAnswers.unborrowed(machines.extents());
@@ -315,8 +310,7 @@ public final class InvariantChecker {
     public static ClauseDischarge capabilityOf(ClausesForDischarge.ClauseReading clause,
                                                TypeSymbol.AtModule named,
                                                RuleReadingSource source, ReadingPolicy policy) {
-        InvariantChecker c = new InvariantChecker(source.symbols(), source.invariants(),
-                source.states(), source.written(), DeclarationReadings.NONE, policy);
+        InvariantChecker c = new InvariantChecker(source, DeclarationReadings.NONE, policy);
         // Read over the declaration's own fields, each standing for itself: a construction hands one
         // value per field, so a clause naming a field names something wherever it is built. These
         // stand for a value rather than holding one, so they are entered as locations and nothing is
@@ -364,8 +358,7 @@ public final class InvariantChecker {
     static ClauseDischarge capabilityOf(StatedContract.Conjunct conjunct,
                                         Denotations locations, RuleReadingSource source,
                                         ReadingPolicy policy, String describing) {
-        return new InvariantChecker(source.symbols(), source.invariants(), source.states(),
-                source.written(), DeclarationReadings.NONE, policy)
+        return new InvariantChecker(source, DeclarationReadings.NONE, policy)
                 .capabilityOf(conjunct.stated(), conjunct.at(), locations, describing);
     }
 
@@ -799,9 +792,7 @@ public final class InvariantChecker {
                              StringMachineAnswers answers) {
         READINGS.incrementAndGet();
         Symbols symbols = source.symbols();
-        InvariantChecker c =
-                new InvariantChecker(symbols, source.invariants(), source.states(),
-                        source.written(), machines, policy);
+        InvariantChecker c = new InvariantChecker(source, machines, policy);
         c.answers = answers;
         // A newtype's value is the same location as the newtype, so it is at no name of its own and
         // its fields are the first step there is. Read from the world rather than off a node handed
@@ -3377,14 +3368,11 @@ public final class InvariantChecker {
      * analysis representation could not be built or typed for, and is not analyzed at all, which is
      * the {@code ABANDONED} this answers with.
      */
-    static Findings analyze(Core body, ExpandedClauseLookup invariants, ClauseMeanings states,
-                            ClauseLocations written,
+    static Findings analyze(Core body, RuleReadingSource source,
                             DeclarationReadings machines,
                             Map<ValueName.Behavior, AssumedContract> contracts,
-                            Scope params, Symbols symbols, ReadingPolicy policy) {
-        InvariantChecker c =
-                new InvariantChecker(symbols, invariants, states, written, machines, contracts,
-                        policy);
+                            Scope params, ReadingPolicy policy) {
+        InvariantChecker c = new InvariantChecker(source, machines, contracts, policy);
         if (body == null) {
             return new Findings(c.errors, c.warnings, Status.ABANDONED);
         }

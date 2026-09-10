@@ -61,8 +61,9 @@ final class ClauseReadings {
      */
     static Read readBy(Db db, String module, TypeSymbol.AtModule named) {
         Symbols symbols = Scopes.derived(db, module).value();
-        Clauses clauses = new Clauses(symbols, RuleReadings.declaredBy(db, module),
-                ClauseLocations.NONE, DeclarationReadings.NONE, ClauseMeanings.NONE);
+        Clauses clauses = new Clauses(
+                new RuleReadingSource(symbols, RuleReadings.declaredBy(db, module),
+                        ClauseMeanings.NONE, ClauseLocations.NONE), DeclarationReadings.NONE);
         Map<Clause.Ref, TermMeaning> stated = new LinkedHashMap<>();
         List<Clause.Ref> stopped = new ArrayList<>();
         for (TypeOps.Declared each : clauses.of(named).reached()) {
@@ -85,8 +86,8 @@ final class ClauseReadings {
     static DeclarationMeaning meaningOf(Db db, String module, TypeSymbol.AtModule named) {
         Symbols symbols = Scopes.derived(db, module).value();
         return DeclarationMeaning.of(symbols.declaredNode(named),
-                new Clauses(symbols, RuleReadings.declaredBy(db, module),
-                        ClauseLocations.NONE, DeclarationReadings.NONE, ClauseMeanings.NONE));
+                new Clauses(new RuleReadingSource(symbols, RuleReadings.declaredBy(db, module),
+                        ClauseMeanings.NONE, ClauseLocations.NONE), DeclarationReadings.NONE));
     }
 
     /** One declaration, the module that wrote it, and a module that reads it without having. */
