@@ -1,5 +1,6 @@
 package souther.compiler.query;
 
+import souther.compiler.WhereItSits;
 import souther.compiler.source.SourceId;
 
 import org.junit.jupiter.api.Test;
@@ -106,7 +107,8 @@ class ADeclarationTheModuleDoesNotHaveGetsNoIdentityTest {
         List<Hir.Def> resolved = resolvedDefs(TWICE);
 
         assertEquals(List.of("Amount", "D"), namesOf(resolved));
-        assertEquals(4, resolved.get(1).pos().line(), "the declaration the module has is the first");
+        assertEquals(4, WhereItSits.in(TWICE, resolved.get(1).pos()).line(),
+                "the declaration the module has is the first");
     }
 
     @Test

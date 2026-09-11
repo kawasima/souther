@@ -1,8 +1,9 @@
 package souther.compiler.report;
 
+import souther.compiler.diag.SourceLayouts;
+import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 
-import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.meta.ModulePath;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.Compilation;
@@ -153,6 +154,6 @@ class TwoFactsCalledOneThingAreTwoEntriesInTheDocumentsOrderTest {
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
         return JSON.readTree(
-                AdequacyReport.of(compilation).json(SourceNameResolver.identity()));
+                AdequacyReport.of(compilation).json(SourceRendering.namedByIdentity(SourceLayouts.NONE)));
     }
 }

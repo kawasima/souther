@@ -1,5 +1,6 @@
 package souther.compiler.diag;
 
+import souther.compiler.WhereItSits;
 import souther.compiler.Compiler;
 
 import org.junit.jupiter.api.Test;
@@ -219,8 +220,8 @@ class AnExpressionIsUnderlinedOverWhatWasWrittenTest {
                 if x > 0
                         then 1
                         else 2""", underlined(source, region));
-        assertEquals(7, region.start().line());
-        assertEquals(9, region.end().line());
+        assertEquals(7, WhereItSits.in(source, region).start().line());
+        assertEquals(9, WhereItSits.in(source, region).end().line());
     }
 
     /** The primary region of the one report compiling {@code source} produces. */
@@ -247,13 +248,13 @@ class AnExpressionIsUnderlinedOverWhatWasWrittenTest {
         List<String> lines = List.of(source.split("\n", -1));
         SourcePos start = region.start();
         SourcePos end = region.end();
-        if (start.line() == end.line()) {
-            return lines.get(start.line() - 1).substring(start.column() - 1, end.column() - 1);
+        if (WhereItSits.in(source, start).line() == WhereItSits.in(source, end).line()) {
+            return lines.get(WhereItSits.in(source, start).line() - 1).substring(WhereItSits.in(source, start).column() - 1, WhereItSits.in(source, end).column() - 1);
         }
-        StringBuilder out = new StringBuilder(lines.get(start.line() - 1).substring(start.column() - 1));
-        for (int line = start.line() + 1; line < end.line(); line++) {
+        StringBuilder out = new StringBuilder(lines.get(WhereItSits.in(source, start).line() - 1).substring(WhereItSits.in(source, start).column() - 1));
+        for (int line = WhereItSits.in(source, start).line() + 1; line < WhereItSits.in(source, end).line(); line++) {
             out.append('\n').append(lines.get(line - 1));
         }
-        return out.append('\n').append(lines.get(end.line() - 1), 0, end.column() - 1).toString();
+        return out.append('\n').append(lines.get(WhereItSits.in(source, end).line() - 1), 0, WhereItSits.in(source, end).column() - 1).toString();
     }
 }

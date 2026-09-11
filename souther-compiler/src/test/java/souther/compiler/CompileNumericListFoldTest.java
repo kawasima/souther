@@ -1,5 +1,6 @@
 package souther.compiler;
 
+import souther.compiler.cst.SourceLayout;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.diag.CompileException;
@@ -291,7 +292,7 @@ class CompileNumericListFoldTest {
      * telling the author of `product` to sum something sends them to a different operation. */
     private static void assertProductIsNotCalledSum(CompileException e, String module) {
         String rendered = new HumanRenderer(false)
-                .render(e.diagnostic(), new SourceContext("demo.sou", module), Locale.ENGLISH);
+                .render(e.diagnostic(), new SourceContext("demo.sou", module, SourceLayout.of(module)), Locale.ENGLISH);
         assertTrue(rendered.contains("product"), rendered);
         assertFalse(rendered.contains("sum"), "the report is about `product`: " + rendered);
         assertFalse(e.getMessage().contains("sum"), e.getMessage());

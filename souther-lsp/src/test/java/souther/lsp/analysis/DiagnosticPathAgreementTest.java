@@ -1,5 +1,7 @@
 package souther.lsp.analysis;
 
+import souther.compiler.diag.PhysicalPos;
+import souther.compiler.cst.SourceLayout;
 import souther.compiler.Compiler;
 import souther.compiler.diag.CompileException;
 import souther.compiler.diag.Diagnostic;
@@ -168,8 +170,9 @@ class DiagnosticPathAgreementTest {
                 souther.compiler.diag.Primary.InSource.class, compiled.primary(),
                 "a report from a compile of a source points into that source")
                 .place().region().start();
-        assertEquals(at.line() - 1, seen.range().start().line(), "line");
-        assertEquals(at.column() - 1, seen.range().start().character(), "column");
+        PhysicalPos sits = SourceLayout.of(source).resolve(at);
+        assertEquals(sits.line() - 1, seen.range().start().line(), "line");
+        assertEquals(sits.column() - 1, seen.range().start().character(), "column");
     }
 
     @ParameterizedTest(name = "{0}")

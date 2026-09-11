@@ -1,5 +1,7 @@
 package souther.compiler.check;
 
+import souther.compiler.WhereItSits;
+import souther.compiler.cst.SourceLayout;
 import souther.compiler.diag.Primary;
 
 import souther.compiler.source.SourceId;
@@ -10,7 +12,6 @@ import souther.compiler.diag.CompileException;
 import souther.compiler.diag.Diagnostic;
 import souther.compiler.diag.LabeledRegion;
 import souther.compiler.diag.HumanRenderer;
-import souther.compiler.diag.Region;
 import souther.compiler.diag.SourceContext;
 import souther.compiler.diag.msg.InvariantMessage;
 import souther.compiler.meta.ModulePath;
@@ -96,7 +97,7 @@ class AWarningAboutAClauseSendsAReaderToItTest {
     /** Both kinds of clause the guards did not establish, whether or not either was named. */
     @Test
     void aWarningPointsAtEveryClauseTheGuardsDidNotEstablish() {
-        assertEquals(List.of(7, 8), lines(warning(TWO_UNSETTLED)),
+        assertEquals(List.of(7, 8), lines(TWO_UNSETTLED, warning(TWO_UNSETTLED)),
                 "the named clause and the unnamed one, both left standing");
         assertTrue(warning(TWO_UNSETTLED).secondary().stream().allMatch(
                         one -> one.said() instanceof InvariantMessage.ThisClauseIsNotEstablishedHere),
@@ -114,7 +115,7 @@ class AWarningAboutAClauseSendsAReaderToItTest {
 
         assertInstanceOf(InvariantMessage.NothingKnownHereEstablishesTheInvariant.class, warning.said(),
                 "the clause has no name, so the sentence has none to write");
-        assertEquals(List.of(7), lines(warning),
+        assertEquals(List.of(7), lines(NEITHER_NAMED, warning),
                 "and the reader is sent to it anyway");
     }
 
@@ -140,7 +141,7 @@ class AWarningAboutAClauseSendsAReaderToItTest {
     void anErrorPointsAtWhatTheValueFailsAndNotAtWhatMerelyStands() {
         Diagnostic error = error(REFUTED_AND_UNKNOWN);
 
-        assertEquals(List.of(7), lines(error),
+        assertEquals(List.of(7), lines(REFUTED_AND_UNKNOWN, error),
                 "`lowNonNegative` on line 7 is failed; `ordered` on line 8 is not decided");
         assertTrue(error.secondary().stream().allMatch(
                         one -> one.said() instanceof InvariantMessage.ThisClauseRejectsThisValue),
@@ -152,7 +153,7 @@ class AWarningAboutAClauseSendsAReaderToItTest {
     /** Naming a clause does not decide whether a reader is sent to it. */
     @Test
     void aNamedClauseIsPointedAtLikeAnyOther() {
-        assertEquals(lines(warning(NEITHER_NAMED)).size(), lines(warning(ONE_NAMED)).size());
+        assertEquals(lines(NEITHER_NAMED, warning(NEITHER_NAMED)).size(), lines(ONE_NAMED, warning(ONE_NAMED)).size());
         assertInstanceOf(InvariantMessage.NothingKnownHereEstablishes.class, warning(ONE_NAMED).said(),
                 "the sentence names it, and the region points at it too");
     }
@@ -181,7 +182,7 @@ class AWarningAboutAClauseSendsAReaderToItTest {
      */
     @Test
     void everyClauseIsPointedAtInTheOrderItWasDeclared() {
-        assertEquals(List.of(7, 8, 9), lines(warning(THREE_UNNAMED)));
+        assertEquals(List.of(7, 8, 9), lines(THREE_UNNAMED, warning(THREE_UNNAMED)));
     }
 
     // --- where the clause is written ----------------------------------------------------------
@@ -266,7 +267,7 @@ class AWarningAboutAClauseSendsAReaderToItTest {
         assertInstanceOf(InvariantMessage.NothingKnownHereEstablishesTheInvariant.class,
                 warnings.get(0).said(), "the clause was written without a name");
         assertTrue(new HumanRenderer(false)
-                        .render(warnings.get(0), new SourceContext("app.sou", USING),
+                        .render(warnings.get(0), new SourceContext("app.sou", USING, SourceLayout.of(USING)),
                                 java.util.Locale.ENGLISH)
                         .contains("`model`"),
                 "and a reader is told which module the clause is written in");
@@ -275,10 +276,10 @@ class AWarningAboutAClauseSendsAReaderToItTest {
     // --- reading the diagnostics --------------------------------------------------------------
 
     /** The lines the secondary regions point at, in the order they were written. */
-    private static List<Integer> lines(Diagnostic d) {
+    private static List<Integer> lines(String source, Diagnostic d) {
         return d.secondary().stream().map(l -> l.place()).filter(pl -> pl instanceof souther.compiler.diag.DiagnosticPlace.InSource)
                 .map(pl -> ((souther.compiler.diag.DiagnosticPlace.InSource) pl).region())
-                .map(Region::start).map(pos -> pos.line()).toList();
+                .map(region -> WhereItSits.in(source, region).start().line()).toList();
     }
 
     private static Diagnostic warning(String source) {

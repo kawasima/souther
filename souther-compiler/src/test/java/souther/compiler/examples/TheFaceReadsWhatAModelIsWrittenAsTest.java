@@ -1,5 +1,6 @@
 package souther.compiler.examples;
 
+import souther.compiler.WhereItSits;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.diag.CompileException;
@@ -105,17 +106,18 @@ class TheFaceReadsWhatAModelIsWrittenAsTest {
     /** A source that does not compile is refused with what the compiler says about it. */
     @Test
     void aModelThatDoesNotCompileIsRefusedWithItsDiagnostics() {
-        CompileException refused = assertThrows(CompileException.class,
-                () -> SoutherExamples.ofSource("""
-                        module example.broken
+        String source = """
+                module example.broken
 
-                        data Todo = { id: NoSuchType }
-                        """));
+                data Todo = { id: NoSuchType }
+                """;
+        CompileException refused = assertThrows(CompileException.class,
+                () -> SoutherExamples.ofSource(source));
 
         assertFalse(refused.diagnostics().isEmpty(), "the diagnostics are kept, not their codes");
         assertEquals(refused.diagnostics().size(), refused.locatedDiagnostics().size(),
                 "and each is still located in the source it is about");
-        assertTrue(refused.pos().line() > 0, "with the position the compiler found it at");
+        assertTrue(WhereItSits.in(source, refused.pos()).line() > 0, "with the position the compiler found it at");
     }
 
     /**

@@ -1,5 +1,6 @@
 package souther.compiler.frontend;
 
+import souther.compiler.WhereItSits;
 import souther.compiler.source.SourceId;
 
 import org.junit.jupiter.api.Test;
@@ -119,7 +120,7 @@ class ANameIsWhereItIsWrittenTest {
 
     /** The identifier written at {@code at}, or null where no identifier starts there. */
     private static SyntaxToken identAt(SyntaxNode node, LineIndex lines, SourcePos at) {
-        int offset = lines.offsetOf(at.line() - 1, at.column() - 1);
+        int offset = lines.offsetOf(WhereItSits.in(EVERY_BINDING_FORM, at).line() - 1, WhereItSits.in(EVERY_BINDING_FORM, at).column() - 1);
         for (SyntaxElement e : node.children()) {
             if (e instanceof SyntaxNode child) {
                 if (child.start() <= offset && offset < child.end()) {

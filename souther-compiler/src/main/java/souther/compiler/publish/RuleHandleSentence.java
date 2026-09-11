@@ -1,6 +1,6 @@
 package souther.compiler.publish;
 
-import souther.compiler.diag.SourceNameResolver;
+import souther.compiler.diag.SourceRendering;
 import souther.compiler.source.SourceId;
 
 /**
@@ -28,16 +28,15 @@ final class RuleHandleSentence {
      * <p>No {@code default} arm, so a form added to the grammar is one somebody spells rather than
      * one that arrives at a reader as a sentence about something else.
      */
-    static String of(PublishedSentence sentence, SourceNameResolver names,
-                     SourceId sectionSource) {
+    static String of(PublishedSentence sentence, SourceRendering sources, SourceId sectionSource) {
         return switch (sentence) {
             case PublishedSentence.Words it -> it.said();
             case PublishedSentence.AroundAHandle it ->
-                    it.before() + said(it.handle(), names, sectionSource) + it.after();
+                    it.before() + said(it.handle(), sources, sectionSource) + it.after();
         };
     }
 
-    static String said(PublishedRuleHandle handle, SourceNameResolver names,
+    static String said(PublishedRuleHandle handle, SourceRendering sources,
                        SourceId sectionSource) {
         return switch (handle) {
             case PublishedRuleHandle.NamedInvariant it ->
@@ -49,11 +48,11 @@ final class RuleHandleSentence {
                     "ensures " + it.behavior() + " (" + it.clause() + ")";
             case PublishedRuleHandle.WholeEnsures it -> "ensures " + it.behavior();
             case PublishedRuleHandle.Written it ->
-                    it.kind().word() + "@" + place(it.at(), names, sectionSource);
+                    it.kind().word() + "@" + place(it.at(), sources, sectionSource);
             // Written somewhere else and reached from here: the rule is one and the reader is sent
             // to two places, which the sentence keeps apart.
             case PublishedRuleHandle.Reached it -> it.kind().word() + " in `" + it.reachedBy() + "`"
-                    + ", reached at " + place(it.at(), names, sectionSource);
+                    + ", reached at " + place(it.at(), sources, sectionSource);
             // And with no position to send them to, the declaration is the whole of it.
             case PublishedRuleHandle.ReachedOutOfSight it ->
                     it.kind().word() + " in `" + it.reachedBy() + "`";
@@ -67,12 +66,13 @@ final class RuleHandleSentence {
      * beside one read alike. What is left here is the arm with no file to name, whose numbers are
      * the reader's to place.
      */
-    private static String place(PublishedRuleHandle.Place at, SourceNameResolver names,
+    private static String place(PublishedRuleHandle.Place at, SourceRendering sources,
                                 SourceId sectionSource) {
         return switch (at) {
             case PublishedRuleHandle.Place.InSource it ->
-                    PlaceProse.said(it.at(), names, sectionSource);
-            case PublishedRuleHandle.Place.Unplaced it -> it.line() + ":" + it.column();
+                    PlaceProse.said(it.at(), sources, sectionSource);
+            case PublishedRuleHandle.Place.Unplaced it ->
+                    String.valueOf(sources.layouts().resolve(it.at()));
         };
     }
 }

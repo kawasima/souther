@@ -1,11 +1,12 @@
 package souther.compiler;
 
+import souther.compiler.diag.SourceLayouts;
+import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
-import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.Compilation;
 import souther.compiler.report.AdequacyReport;
@@ -59,12 +60,12 @@ class BothSurfacesSayWhatWasFoundAboutAPositionTest {
     }
 
     private static String humanOf(String source) {
-        return reportOf(source).human(SourceNameResolver.identity());
+        return reportOf(source).human(SourceRendering.namedByIdentity(SourceLayouts.NONE));
     }
 
     private static JsonNode partitionOf(String source) {
         JsonNode document = JsonMapper.builder().build()
-                .readTree(reportOf(source).json(SourceNameResolver.identity()));
+                .readTree(reportOf(source).json(SourceRendering.namedByIdentity(SourceLayouts.NONE)));
         return document.get("modules").get(0).get("behaviors").get(0).get("partition");
     }
 

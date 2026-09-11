@@ -46,7 +46,7 @@ public final class JsonRenderer implements DiagnosticRenderer {
         // Numbers only where there is a place, which is not the same as only where there is a
         // region: a report in a text the caller did not name has a region and nowhere to read it.
         if (view.anchor().isPresent()) {
-            obj.put("region", region(view.anchor().get().spot().region()));
+            obj.put("region", region(view.anchor().get().spot().region(), anchorSource));
         }
         // A report with nowhere to point says where the code is written, in the words a document
         // already uses for it. Beside the diagnostic rather than inside a region, there being no
@@ -65,14 +65,14 @@ public final class JsonRenderer implements DiagnosticRenderer {
                 // written before this existed carries, and reading it as "nowhere to point" would
                 // put those under the same answer as a clause nobody holds a file for.
                 s.put("place", "inSource");
+                SourceContext src = sources.quotedFrom(other.spot());
                 if (view.anchor().isEmpty()
                         || !Spot.knownToBeOneText(other.spot(), view.anchor().get().spot())) {
-                    SourceContext src = sources.quotedFrom(other.spot());
                     if (src != null && src.fileName() != null) {
                         s.put("file", src.fileName());
                     }
                 }
-                s.put("region", region(other.spot().region()));
+                s.put("region", region(other.spot().region(), src));
                 souther.compiler.diag.msg.Message note =
                         other instanceof Shown.ALabel(Spot _, souther.compiler.diag.msg.Message said)
                                 ? said : d.said();
@@ -147,7 +147,7 @@ public final class JsonRenderer implements DiagnosticRenderer {
             obj.put("suggestion", d.repair().with());
             if (d.repair() instanceof Repair.AnEdit edit) {
                 Map<String, Object> repair = new LinkedHashMap<>();
-                repair.put("region", region(edit.target()));
+                repair.put("region", region(edit.target(), anchorSource));
                 repair.put("with", edit.with());
                 obj.put("repair", repair);
             }
@@ -170,14 +170,16 @@ public final class JsonRenderer implements DiagnosticRenderer {
      * <p>Both regions go through here, the one under the caret and every secondary. A secondary
      * pointing into a copied body makes the same claim the primary would.
      */
-    private Map<String, Object> region(Region region) {
+    private Map<String, Object> region(Region region, SourceContext in) {
         SourcePos s = region.start();
-        SourcePos e = region.end();
         Map<String, Object> r = new LinkedHashMap<>();
-        r.put("startLine", s.line());
-        r.put("startCol", s.column());
-        r.put("endLine", e.line());
-        r.put("endCol", e.column());
+        PhysicalRegion sits = in == null ? null : in.resolve(region);
+        if (sits != null) {
+            r.put("startLine", sits.start().line());
+            r.put("startCol", sits.start().column());
+            r.put("endLine", sits.end().line());
+            r.put("endCol", sits.end().column());
+        }
         r.put("writtenAt", new LinkedHashMap<String, String>(Citation.of(s).writtenAtFields()));
         return r;
     }

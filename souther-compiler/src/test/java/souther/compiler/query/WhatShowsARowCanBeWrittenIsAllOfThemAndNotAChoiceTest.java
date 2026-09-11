@@ -1,5 +1,6 @@
 package souther.compiler.query;
 
+import souther.compiler.diag.SourceLayouts;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.partition.PointRole;
@@ -266,6 +267,6 @@ class WhatShowsARowCanBeWrittenIsAllOfThemAndNotAChoiceTest {
         compilation.answerEverything();
         return tools.jackson.databind.json.JsonMapper.builder().build().readTree(
                 AdequacyReport.of(compilation).json(
-                        souther.compiler.diag.SourceNameResolver.identity()));
+                        souther.compiler.diag.SourceRendering.namedByIdentity(SourceLayouts.NONE)));
     }
 }

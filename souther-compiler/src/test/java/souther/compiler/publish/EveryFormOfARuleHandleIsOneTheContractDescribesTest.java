@@ -1,5 +1,8 @@
 package souther.compiler.publish;
 
+import souther.compiler.diag.SourcePos;
+import souther.compiler.diag.SourceLayouts;
+import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.check.RuleRef;
@@ -50,6 +53,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class EveryFormOfARuleHandleIsOneTheContractDescribesTest {
 
+    /** Sources named by their own identities and no texts to lay out: what a handle reads
+     *  as is what this test is about, and none of these handles is anywhere a line could be
+     *  asked of. */
+    private static final SourceRendering NO_TEXTS =
+            new SourceRendering(SourceId::value, SourceLayouts.NONE);
+
     private static final JsonMapper JSON = JsonMapper.builder().build();
 
     /** Where the handle's forms are described, once, for every field that carries one. */
@@ -91,11 +100,11 @@ class EveryFormOfARuleHandleIsOneTheContractDescribesTest {
 
     private static PublishedRuleHandle.Place inASourceThisCompileHolds() {
         return new PublishedRuleHandle.Place.InSource(
-                new PublishedAt(IN, 14, 22, new PublishedAt.Where.Here()));
+                new PublishedAt(IN, new SourcePos(14, 22, IN), new PublishedAt.Where.Here()));
     }
 
     private static PublishedRuleHandle.Place inATextWithNoName() {
-        return new PublishedRuleHandle.Place.Unplaced(7, 3);
+        return new PublishedRuleHandle.Place.Unplaced(new SourcePos(7, 3));
     }
 
     /**
@@ -207,7 +216,7 @@ class EveryFormOfARuleHandleIsOneTheContractDescribesTest {
     /** The sentences this compiler writes, one per form. */
     private static Set<String> rendered() {
         return everyForm().stream()
-                .map(each -> RuleHandleProse.said(each, SourceId::value, null))
+                .map(each -> RuleHandleProse.said(each, NO_TEXTS, null))
                 .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
@@ -256,15 +265,15 @@ class EveryFormOfARuleHandleIsOneTheContractDescribesTest {
             DocumentItem into = whereItBelongs(each);
             switch (each.carries()) {
                 case THE_HANDLE_ALONE -> {
-                    each.put(into, handle, SourceId::value, null);
+                    each.put(into, handle, NO_TEXTS, null);
                     assertThrows(IllegalStateException.class,
-                            () -> each.put(whereItBelongs(each), sentence, SourceId::value, null),
+                            () -> each.put(whereItBelongs(each), sentence, NO_TEXTS, null),
                             () -> "a field that is the handle is not told a sentence: " + each);
                 }
                 case A_SENTENCE_AROUND_IT -> {
-                    each.put(into, sentence, SourceId::value, null);
+                    each.put(into, sentence, NO_TEXTS, null);
                     assertThrows(IllegalStateException.class,
-                            () -> each.put(whereItBelongs(each), handle, SourceId::value, null),
+                            () -> each.put(whereItBelongs(each), handle, NO_TEXTS, null),
                             () -> "a field with words of its own is not handed a handle: " + each);
                 }
             }
@@ -375,9 +384,9 @@ class EveryFormOfARuleHandleIsOneTheContractDescribesTest {
                     () -> {
                         switch (each.carries()) {
                             case THE_HANDLE_ALONE ->
-                                    each.put(elsewhere, handle, SourceId::value, null);
+                                    each.put(elsewhere, handle, NO_TEXTS, null);
                             case A_SENTENCE_AROUND_IT ->
-                                    each.put(elsewhere, sentence, SourceId::value, null);
+                                    each.put(elsewhere, sentence, NO_TEXTS, null);
                         }
                     },
                     () -> "a handle written into an object the schema does not declare this field"

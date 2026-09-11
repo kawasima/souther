@@ -2,7 +2,8 @@ package souther.compiler.report;
 
 import souther.compiler.source.SourceId;
 
-import souther.compiler.diag.SourceNameResolver;
+import souther.compiler.diag.SourceLayouts;
+import souther.compiler.diag.SourceRendering;
 
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -36,11 +37,33 @@ import java.util.Set;
  */
 public final class DocumentSources {
 
-    private final SourceNameResolver names;
+    private final SourceRendering rendering;
+    /** The texts, for the fields that write a line and a column. Here beside the names for the
+     *  reason the names are here: what a place is at is what its file is laid out as at the moment,
+     *  which is the document's to ask as it writes and not the result's to have carried. */
+    private final SourceLayouts layouts;
     private final Set<SourceId> referenced = new LinkedHashSet<>();
 
-    public DocumentSources(SourceNameResolver names) {
-        this.names = names;
+    public DocumentSources(SourceRendering rendering) {
+        this.rendering = rendering;
+        this.layouts = rendering.layouts();
+    }
+
+    /** The texts this document is written against. */
+    public SourceLayouts layouts() {
+        return layouts;
+    }
+
+    /**
+     * What this document writes a place against: the identities it writes for sources, and the
+     * texts they are laid out in.
+     *
+     * <p>Its own naming and not the one a person reads. A document for a machine writes what
+     * identifies a source, and a sentence inside such a document names it the same way — which is
+     * what {@link #written} answers and what a reader of the document resolves against its table.
+     */
+    public SourceRendering rendering() {
+        return new SourceRendering(this::written, layouts);
     }
 
     /** The identity to write, recorded as one this document has to explain — or nothing, for a
@@ -65,7 +88,7 @@ public final class DocumentSources {
     public Map<String, String> table() {
         Map<String, String> table = new LinkedHashMap<>();
         for (SourceId sourceId : referenced) {
-            table.put(sourceId.value(), names.nameOf(sourceId));
+            table.put(sourceId.value(), rendering.names().nameOf(sourceId));
         }
         return table;
     }

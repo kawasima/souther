@@ -92,7 +92,8 @@ public final class Output {
                         in.typePackages(), in.sigs(), in.imported(),
                         in.injected(),
                         in.callees(), in.requirements(), in.checked(), in.compositions(),
-                        in.dischargeClauses(), in.shapes(), in.checks(), in.standingCalls());
+                        in.dischargeClauses(), in.shapes(), in.checks(), in.standingCalls(),
+                        new TheTextsThisCompileHolds(db));
                 publishDeclarations(db, emitted);
                 return Answer.of(emitted.seal());
             } catch (CompileException e) {
@@ -391,7 +392,7 @@ public final class Output {
                         in.injected(),
                         in.callees(), in.requirements(), in.checked(), in.compositions(),
                         in.dischargeClauses(), in.shapes(), in.checks(), in.standingCalls(),
-                        instrumentation);
+                        new TheTextsThisCompileHolds(db), instrumentation);
                 // The classes, what they implement and whose numbers a run through them leaves,
                 // from the one emission that decided all three.
                 return Answer.of(new EvaluationArtifact(emitted.seal(), emitted.implemented(),

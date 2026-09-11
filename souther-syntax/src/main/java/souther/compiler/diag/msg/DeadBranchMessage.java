@@ -18,9 +18,21 @@ public sealed interface DeadBranchMessage extends Message {
     @Code(DiagnosticCode.E1327)
     record NothingReachesThisBranch() implements DeadBranchMessage, Reported {}
 
-    /** The conditions on the way here cannot all hold. */
-    record TheConditionsOnTheWayHereCannotAllHold(String conditions) implements DeadBranchMessage,
-            Supporting {}
+    /**
+     * The conditions on the way here cannot all hold.
+     *
+     * <p>Which ones, and which way each of them goes, are marked where they are written rather than
+     * listed here as line numbers. A condition is somewhere in the body, and where that is is what
+     * the file is laid out as at the moment — so it is a caret for a renderer to place and not a
+     * number for a report to carry.
+     */
+    record TheConditionsOnTheWayHereCannotAllHold() implements DeadBranchMessage, Supporting {}
+
+    /** One of those conditions, on a way here that needs it to hold. */
+    record ThisOneHoldsOnTheWayHere() implements DeadBranchMessage, Supporting {}
+
+    /** One of those conditions, on a way here that needs it to fail. */
+    record ThisOneFailsOnTheWayHere() implements DeadBranchMessage, Supporting {}
 
     /** The values it is written for are not values the position can hold. */
     record ThePositionStopsShortOfIt(String position, String admits) implements DeadBranchMessage,

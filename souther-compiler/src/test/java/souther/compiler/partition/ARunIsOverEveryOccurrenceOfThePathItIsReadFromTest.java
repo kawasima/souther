@@ -1,8 +1,9 @@
 package souther.compiler.partition;
 
+import souther.compiler.diag.SourceLayouts;
+import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 
-import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.inputs.RunSource;
 import souther.compiler.inputs.TermPath;
 import souther.compiler.query.Adequacy;
@@ -155,7 +156,7 @@ class ARunIsOverEveryOccurrenceOfThePathItIsReadFromTest {
     }
 
     private static String report() {
-        return AdequacyReport.of(measured()).human(SourceNameResolver.identity());
+        return AdequacyReport.of(measured()).human(SourceRendering.namedByIdentity(SourceLayouts.NONE));
     }
 
     private static Compilation measured() {

@@ -1,8 +1,9 @@
 package souther.compiler;
 
+import souther.compiler.diag.SourceLayouts;
+import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 
-import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.Compilation;
 import souther.compiler.report.AdequacyReport;
@@ -84,7 +85,7 @@ class FindingDispositionFollowsTheBarTest {
     @Test
     void theMarkedLinesAreTheGapsABuildRefusesOver() {
         AdequacyReport report = report();
-        String human = report.human(SourceNameResolver.identity());
+        String human = report.human(SourceRendering.namedByIdentity(SourceLayouts.NONE));
 
         assertEquals(report.adequacyGaps().size(), marked(human).size(), human);
         assertFalse(report.adequacyGaps().isEmpty(), "the model has gaps to mark:\n" + human);
@@ -93,7 +94,7 @@ class FindingDispositionFollowsTheBarTest {
     /** The pair the issue is about: one class, two findings, one of them refused over. */
     @Test
     void twoFindingsAboutOneClassAreMarkedApart() {
-        String human = report().human(SourceNameResolver.identity());
+        String human = report().human(SourceRendering.namedByIdentity(SourceLayouts.NONE));
 
         assertTrue(human.contains("      ! no row uses `C`"), human);
         assertTrue(human.contains("      · no row is in `C` at grade"), human);
@@ -112,7 +113,7 @@ class FindingDispositionFollowsTheBarTest {
     @Test
     void theReportSaysHowManyItMarkedAndWhatTheMarkMeans() {
         AdequacyReport report = report();
-        String human = report.human(SourceNameResolver.identity());
+        String human = report.human(SourceRendering.namedByIdentity(SourceLayouts.NONE));
 
         assertTrue(human.contains(report.adequacyGaps().size()
                 + " gaps marked `!`: what a strict build refuses over."), human);
@@ -141,7 +142,7 @@ class FindingDispositionFollowsTheBarTest {
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
         AdequacyReport report = AdequacyReport.of(compilation);
-        String human = report.human(SourceNameResolver.identity());
+        String human = report.human(SourceRendering.namedByIdentity(SourceLayouts.NONE));
 
         assertTrue(report.adequacyGaps().isEmpty(), human);
         assertFalse(human.contains("marked `!`"), human);
@@ -155,7 +156,7 @@ class FindingDispositionFollowsTheBarTest {
     @Test
     void theJsonCarriesEveryFindingAndWhatABuildDoesAboutIt() {
         AdequacyReport report = report();
-        JsonNode module = JSON.readTree(report.json(SourceNameResolver.identity()))
+        JsonNode module = JSON.readTree(report.json(SourceRendering.namedByIdentity(SourceLayouts.NONE)))
                 .get("modules").get(0);
         JsonNode ship = module.get("behaviors").get(0);
         JsonNode findings = ship.get("findings");
@@ -195,7 +196,7 @@ class FindingDispositionFollowsTheBarTest {
     @Test
     void theClassesBarRefusesOverTheClassTheDefaultBarOnlyReports() {
         JsonNode findings = JSON.readTree(
-                        report(Adequacy.AdequacyBar.CLASSES).json(SourceNameResolver.identity()))
+                        report(Adequacy.AdequacyBar.CLASSES).json(SourceRendering.namedByIdentity(SourceLayouts.NONE)))
                 .get("modules").get(0).get("behaviors").get(0).get("findings");
 
         assertEquals("refused", disposition(findings, "input_case_unspecified"));
@@ -239,7 +240,7 @@ class FindingDispositionFollowsTheBarTest {
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
         JsonNode check = JSON.readTree(
-                        AdequacyReport.of(compilation).json(SourceNameResolver.identity()))
+                        AdequacyReport.of(compilation).json(SourceRendering.namedByIdentity(SourceLayouts.NONE)))
                 .get("modules").get(0).get("behaviors").get(0);
 
         List<JsonNode> arms = new ArrayList<>();
@@ -268,7 +269,7 @@ class FindingDispositionFollowsTheBarTest {
     /** The eight whose place is the declaration the entry already names do not write it again. */
     @Test
     void aFindingCitedAtItsDeclarationWritesNoPlace() {
-        JsonNode findings = JSON.readTree(report().json(SourceNameResolver.identity()))
+        JsonNode findings = JSON.readTree(report().json(SourceRendering.namedByIdentity(SourceLayouts.NONE)))
                 .get("modules").get(0).get("behaviors").get(0).get("findings");
 
         for (JsonNode each : findings) {

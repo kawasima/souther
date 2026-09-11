@@ -186,8 +186,8 @@ class AnArtifactThisCompilerCannotReadIsSaidWhereItWasReachedTest {
         Located said = compilation.diagnostics().get(new SourceId("0")).stream()
                 .filter(d -> d.diagnostic().code().equals("E1509")).findFirst().orElseThrow();
 
-        assertEquals(6, ((Primary.InSource) said.diagnostic().primary()).place().region().start().line(), "the import line naming the module");
-        assertEquals(1, ((Primary.InSource) said.diagnostic().primary()).place().region().start().column());
+        assertEquals(6, WhereItSits.in(APP, ((Primary.InSource) said.diagnostic().primary()).place().region()).start().line(), "the import line naming the module");
+        assertEquals(1, WhereItSits.in(APP, ((Primary.InSource) said.diagnostic().primary()).place().region()).start().column());
     }
 
     /** The boundary revision does not agree. */

@@ -80,7 +80,7 @@ class OnePlaceIsComparedOneWayWhereverItIsComparedTest {
         Optional<RuleCitation> handle = PublicationOrders.handleFor(List.of(
                 writtenAt(LATER), writtenAt(EARLIER)), PLACES);
 
-        assertEquals(Optional.of(9), place.map(PublishedAt::line),
+        assertEquals(Optional.of(pos(9, 1)), place.map(PublishedAt::at),
                 "the place nearest the top of the file is the one a fact is written at");
         assertEquals(Optional.of(writtenAt(EARLIER)), handle,
                 "and the handle at that same place is the one a rule is reached by");

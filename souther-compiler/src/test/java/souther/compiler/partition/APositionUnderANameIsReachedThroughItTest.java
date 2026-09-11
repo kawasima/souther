@@ -1,9 +1,10 @@
 package souther.compiler.partition;
 
+import souther.compiler.diag.SourceLayouts;
+import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.WhatTheRowsReached;
-import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.Compilation;
 import souther.compiler.query.PartitionEvidence;
@@ -122,7 +123,7 @@ class APositionUnderANameIsReachedThroughItTest {
     @Test
     void aRowOfferedForThePositionIsWrittenUnderTheName() {
         String rows = GeneratedRows.of(measured(FLAGS), "demo", "wrapped", true,
-                SourceNameResolver.identity()).text();
+                SourceRendering.namedByIdentity(SourceLayouts.NONE)).text();
 
         assertTrue(rows.contains("(SlotN(Slot { flag = false }))"), rows);
     }
@@ -145,7 +146,7 @@ class APositionUnderANameIsReachedThroughItTest {
         assertTrue(lines(compilation, "wrapped").size() >= 4);
 
         String rows = GeneratedRows.of(compilation, "demo", "wrapped", true,
-                SourceNameResolver.identity()).text();
+                SourceRendering.namedByIdentity(SourceLayouts.NONE)).text();
         assertTrue(rows.contains("(PairN(Pair { low = N(9), high = N(10) }))"), rows);
     }
 }

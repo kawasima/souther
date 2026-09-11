@@ -1,5 +1,6 @@
 package souther.compiler.diag;
 
+import souther.compiler.cst.SourceLayout;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.diag.msg.ModuleMessage;
@@ -186,7 +187,7 @@ class AReportWithNowhereToPointStillSaysWhereItsCodeIsTest {
         assertEquals(1, view.others().size(), "and the label is still a label");
 
         String out = new HumanRenderer(false).render(located,
-                _ -> new SourceContext("app.sou", "line one\nline two here\n"), Locale.ENGLISH);
+                _ -> new SourceContext("app.sou", "line one\nline two here\n", SourceLayout.of("line one\nline two here\n")), Locale.ENGLISH);
 
         assertFalse(out.lines().findFirst().orElseThrow().contains("2:3"),
                 () -> "the report is not at the guard's line: " + out);

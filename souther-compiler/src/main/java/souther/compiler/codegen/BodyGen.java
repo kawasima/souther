@@ -633,7 +633,8 @@ final class BodyGen {
          * the same line (a subexpression tree, or a tail node re-lined by {@code genExpr}) collapse to
          * one entry. */
         private void emitLine(Core e) {
-            int line = e.pos() != null ? e.pos().line() : 0;
+            souther.compiler.diag.PhysicalPos sits = ctx.sits(e.pos());
+            int line = sits == null ? 0 : sits.line();
             if (line > 0 && line != lastEmittedLine) {
                 code.lineNumber(line);
                 lastEmittedLine = line;

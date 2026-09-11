@@ -1,8 +1,9 @@
 package souther.compiler.report;
 
+import souther.compiler.diag.SourceLayouts;
+import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 
-import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.meta.ModulePath;
 import souther.compiler.publish.PublishedIncompleteness;
 import souther.compiler.query.Adequacy;
@@ -80,7 +81,7 @@ class WhatIsSaidTwiceAboutOneModelIsSaidTheSameWayTest {
         List<String> written = report().modules().get(0).incompleteness().written().stream()
                 .map(each -> each.fact().subject()).toList();
 
-        assertEquals(written, namedOnThePage(report().human(SourceNameResolver.identity())),
+        assertEquals(written, namedOnThePage(report().human(SourceRendering.namedByIdentity(SourceLayouts.NONE))),
                 "the page a person reads and the document a build reads say what a module could"
                         + " not read in two orders, so one of them is not the order this compiler"
                         + " decided");

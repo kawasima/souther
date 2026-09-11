@@ -150,7 +150,7 @@ class WhereAnArmIsShownIsAskedOfTheModuleThatWroteItTest {
         Citation shown = Sites.placeOf(c.db(), importedArms(c).get(0).anchor());
         Citation.Written written = assertInstanceOf(Citation.Written.class, shown,
                 "the helper is in a file the reader holds");
-        assertEquals(4, written.at().line(),
+        assertEquals(4, c.texts().resolve(written.at()).line(),
                 "which is the line the `if` is on in limits.sou, not the call in orders.sou");
     }
 }

@@ -1,5 +1,6 @@
 package souther.compiler.query;
 
+import souther.compiler.WhereItSits;
 import souther.compiler.diag.Primary;
 
 import souther.compiler.source.SourceId;
@@ -99,7 +100,8 @@ class ACompileAnswersWithEveryErrorItFoundTest {
 
         List<Integer> lines = new ArrayList<>();
         for (Diagnostic d : e.diagnostics()) {
-            lines.add(((Primary.InSource) d.primary()).place().region().start().line());
+            lines.add(WhereItSits.in(THREE_UNDER_DECLARED,
+                    ((Primary.InSource) d.primary()).place().region()).start().line());
         }
         List<Integer> ascending = new ArrayList<>(lines);
         ascending.sort(Integer::compareTo);

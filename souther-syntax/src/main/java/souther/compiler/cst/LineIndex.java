@@ -1,51 +1,29 @@
 package souther.compiler.cst;
 
-import souther.compiler.source.SourceId;
-
-import souther.compiler.diag.SourcePos;
-import souther.compiler.diag.Placement;
-
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Maps an absolute character offset to a line/column and back. The CST works in offsets (what
- * green widths accumulate to); diagnostics and the LSP need line/column. This is the one place
- * the two coordinate systems meet.
+ * Maps an absolute character offset to a line and a column and back. The CST works in offsets (what
+ * green widths accumulate to); a renderer and the LSP work in lines and columns. This is the one
+ * place the two meet.
  *
- * <p>Lines and columns are 1-based for {@link SourcePos} (the compiler's convention); the LSP
- * accessors return 0-based positions. Columns count UTF-16 code units, which matches both Java
- * {@code char} offsets and the LSP's default position encoding.
+ * <p>Lines and columns are 1-based here (the compiler's convention); the LSP accessors return
+ * 0-based ones. Columns count UTF-16 code units, which matches both Java {@code char} offsets and
+ * the LSP's default position encoding.
  *
- * <p>An index made for a named source gives every {@link SourcePos} that source. This is the one
- * place a position is made from a text, so it is the one place that has both halves to hand — which
- * is why nothing downstream has to work the file out again from what it is looking at.
+ * <p>It knows nothing of syntax, and where a place in a program is — which of the things written in
+ * a text it is — is not a question it can answer. That is {@link SourceLayout}'s, which holds one of
+ * these for the half of its work that is arithmetic over a string.
  */
 public final class LineIndex {
 
     private final String source;
-    /** What this is an index of, so that every position it makes says which source it is in and
-     * whether that is where the code is. Both come from here because this is the one place a
-     * position is made from a text, and neither is worked out again downstream. */
-    private final Placement read;
     /** {@code lineStart[i]} is the offset at which line {@code i} (0-based) begins. */
     private final int[] lineStart;
 
-    /** An index of a text this caller has no name for — a reader that only wants offsets
-     *  converted. Its positions name no source. */
     public LineIndex(String source) {
-        this(source, Placement.aTextWithNoIdentity());
-    }
-
-    /** An index of a file this compile holds, or of no named file when {@code sourceId} is null. */
-    public LineIndex(String source, SourceId sourceId) {
-        this(source, sourceId == null ? Placement.aTextWithNoIdentity()
-                : Placement.aFileOfThisCompile(sourceId));
-    }
-
-    public LineIndex(String source, Placement read) {
         this.source = source;
-        this.read = read;
         List<Integer> starts = new ArrayList<>();
         starts.add(0);
         for (int i = 0; i < source.length(); i++) {
@@ -67,12 +45,6 @@ public final class LineIndex {
     /** The 1-based column of {@code offset} within its line. */
     public int columnOf(int offset) {
         return offset - lineStart[lineIndex(offset)] + 1;
-    }
-
-    /** The compiler's 1-based line/column position for {@code offset}. */
-    public SourcePos posOf(int offset) {
-        int line = lineIndex(offset);
-        return read.at(line + 1, offset - lineStart[line] + 1);
     }
 
     /** The 0-based line of {@code offset} (LSP). */

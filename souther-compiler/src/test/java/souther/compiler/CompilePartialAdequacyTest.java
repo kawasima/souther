@@ -1,12 +1,13 @@
 package souther.compiler;
 
+import souther.compiler.diag.SourceLayouts;
+import souther.compiler.diag.SourceRendering;
 import souther.compiler.source.SourceId;
 
 import souther.compiler.execute.jvm.JvmExampleDeadlines;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.diag.Diagnostic;
-import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.observe.Disposition;
 import souther.compiler.observe.Incompleteness;
 import souther.compiler.publish.PublishedIncompleteness;
@@ -344,7 +345,7 @@ class CompilePartialAdequacyTest {
         String written = GeneratedRows.of(Adequacy.offeredFor(compilation.db(),
                         souther.compiler.query.OfferingRequest.overTheModule(
                                 "example.budget", true)),
-                Map.of(), SourceNameResolver.identity(), compilation.db()).text();
+                Map.of(), SourceRendering.namedByIdentity(SourceLayouts.NONE), compilation.db()).text();
         assertFalse(written.contains("example take"), "no row is offered: " + written);
         assertTrue(written.contains("no rows offered at"),
                 "the position it could not read is what there is to say: " + written);
@@ -542,7 +543,7 @@ class CompilePartialAdequacyTest {
         String written = GeneratedRows.of(Adequacy.offeredFor(compilation.db(),
                         souther.compiler.query.OfferingRequest.overTheModule(
                                 "example.split", true)),
-                Map.of(), SourceNameResolver.identity(), compilation.db()).text();
+                Map.of(), SourceRendering.namedByIdentity(SourceLayouts.NONE), compilation.db()).text();
         assertFalse(written.contains("example take"),
                 "the row may be sitting in the file that could not be read: " + written);
         assertTrue(written.contains("generation stopped"),
@@ -574,7 +575,7 @@ class CompilePartialAdequacyTest {
      */
     @Test
     void aSignatureLineUnderPartialDoesNotAssert() {
-        String human = AdequacyReport.of(split()).human(SourceNameResolver.identity());
+        String human = AdequacyReport.of(split()).human(SourceRendering.namedByIdentity(SourceLayouts.NONE));
 
         assertTrue(human.contains("undecided whether a row expects `Refused`"), human);
         assertFalse(human.contains("· no row expects"), human);
@@ -612,7 +613,7 @@ class CompilePartialAdequacyTest {
         assertEquals(Incompleteness.Code.VALUE_TRUNCATED, why.get(0).fact().code());
         assertEquals(Optional.of("take"), why.get(0).fact().behavior(),
                 "a position is inside one behavior");
-        String human = report.human(SourceNameResolver.identity());
+        String human = report.human(SourceRendering.namedByIdentity(SourceLayouts.NONE));
         assertTrue(human.contains("the observation at"), human);
     }
 
@@ -629,7 +630,7 @@ class CompilePartialAdequacyTest {
     void theJsonSaysOfEachArmWhatBecameOfItUnderPartial() throws Exception {
         JsonNode branch = JsonMapper.builder().build().readTree(
                 AdequacyReport.of(measured("loop", TIMES_OUT, DoesNotComeBack.overrunningOn(DoesNotComeBack.everythingAboutRowsOf("go"))))
-                        .json(souther.compiler.diag.SourceNameResolver.identity()))
+                        .json(souther.compiler.diag.SourceRendering.namedByIdentity(SourceLayouts.NONE)))
                 .get("modules").get(0).get("behaviors").get(0).get("branch");
 
         assertEquals("partial", branch.get("status").asString());
@@ -659,7 +660,7 @@ class CompilePartialAdequacyTest {
     void theHumanReportNamesTheArmsNobodyCouldDecideUnderPartial() {
         String human = AdequacyReport.of(measured("loop", TIMES_OUT,
                         DoesNotComeBack.overrunningOn(DoesNotComeBack.everythingAboutRowsOf("go"))))
-                .human(SourceNameResolver.identity());
+                .human(SourceRendering.namedByIdentity(SourceLayouts.NONE));
 
         assertTrue(human.contains("branch      0/2"), () -> "the counts are printed: " + human);
         assertEquals(2, human.lines()
@@ -703,7 +704,7 @@ class CompilePartialAdequacyTest {
         assertEquals(4, partition.pairs().total());
         assertEquals(MeasurementStatus.PARTIAL, AdequacyReport.statusOf(partition.pairs().counted()),
                 "the one row could not be placed at either position");
-        String human = AdequacyReport.of(compilation).human(SourceNameResolver.identity());
+        String human = AdequacyReport.of(compilation).human(SourceRendering.namedByIdentity(SourceLayouts.NONE));
         assertTrue(human.contains("unknown of the rows that were read"),
                 () -> "the count is over the rows that came back, and the line says so: " + human);
     }
@@ -782,7 +783,7 @@ class CompilePartialAdequacyTest {
      */
     @Test
     void anArmARowWentThroughIsToldFromOneNobodyCouldDecide() {
-        String human = AdequacyReport.of(oneRowOfTwoStops()).human(SourceNameResolver.identity());
+        String human = AdequacyReport.of(oneRowOfTwoStops()).human(SourceRendering.namedByIdentity(SourceLayouts.NONE));
 
         assertTrue(human.contains("branch      1/2"),
                 () -> "one of the two arms was gone through: " + human);
@@ -850,7 +851,7 @@ class CompilePartialAdequacyTest {
                 () -> "the arm of the behavior every row of was read: " + refused);
         assertEquals(AdequacyReport.AdequacyStatus.NOT_SATISFIED, report.adequacy(),
                 () -> "and one gap settles the verdict, whatever is undecided beside it: "
-                        + report.human(SourceNameResolver.identity()));
+                        + report.human(SourceRendering.namedByIdentity(SourceLayouts.NONE)));
     }
 
     /** The points a row is owed at against a line, which is what a value names. */

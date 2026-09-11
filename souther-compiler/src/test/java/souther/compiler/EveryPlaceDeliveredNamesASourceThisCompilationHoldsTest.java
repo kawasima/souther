@@ -1,5 +1,6 @@
 package souther.compiler;
 
+import souther.compiler.diag.SourceLayouts;
 import souther.compiler.diag.Primary;
 
 import org.junit.jupiter.api.Test;
@@ -222,7 +223,7 @@ class EveryPlaceDeliveredNamesASourceThisCompilationHoldsTest {
         Compilation compilation = measured();
         JsonNode document = JsonMapper.builder().build()
                 .readTree(AdequacyReport.of(compilation)
-                        .json(souther.compiler.diag.SourceNameResolver.identity()));
+                        .json(souther.compiler.diag.SourceRendering.namedByIdentity(SourceLayouts.NONE)));
 
         Set<String> named = new LinkedHashSet<>();
         document.get("sources").propertyNames().forEach(named::add);

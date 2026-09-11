@@ -1,5 +1,6 @@
 package souther.compiler.diag;
 
+import souther.compiler.cst.SourceLayout;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.diag.msg.DataMessage;
@@ -32,7 +33,10 @@ class ACaretIsDrawnInColumnsNotCharactersTest {
             "module demo\n"
             + "    免責金額以下 { 請求額 = 診療内容.請求額, 免責金額 = 契約.自己負担割合 }\n"
             + "a\tb\n"
-            + "let f (n) = null\n");
+            + "let f (n) = null\n", SourceLayout.of("module demo\n"
+            + "    免責金額以下 { 請求額 = 診療内容.請求額, 免責金額 = 契約.自己負担割合 }\n"
+            + "a\tb\n"
+            + "let f (n) = null\n"));
 
     private static String caretUnder(int line, int column, int width) {
         Diagnostic d = Diagnostic.at(new SourcePos(line, column), width)

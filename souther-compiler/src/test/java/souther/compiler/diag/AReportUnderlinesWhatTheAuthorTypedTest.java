@@ -1,5 +1,7 @@
 package souther.compiler.diag;
 
+import souther.compiler.diag.PhysicalRegion;
+import souther.compiler.WhereItSits;
 import souther.compiler.Compiler;
 
 import org.junit.jupiter.api.Test;
@@ -42,15 +44,16 @@ class AReportUnderlinesWhatTheAuthorTypedTest {
 
     @Test
     void anUnknownNameIsQuotedAsItWasWrittenAndUnderlinedThatWide() {
-        Diagnostic report = only("""
+        String source = """
                 module demo
 
                 data Box = { v: %s }
-                """.formatted(NFD));
+                """.formatted(NFD);
+        Diagnostic report = only(source);
 
         assertTrue(List.copyOf(report.values().values()).contains(NFD),
                 "a reader is told about the name they wrote: " + List.copyOf(report.values().values()));
-        assertEquals(NFD.length(), width(report),
+        assertEquals(NFD.length(), width(source, report),
                 "the underline stops inside the name it is about");
     }
 
@@ -62,13 +65,14 @@ class AReportUnderlinesWhatTheAuthorTypedTest {
     @Test
     void aQualifiedUnknownNameIsUnderlinedOverTheWholeSpelling() {
         String written = NFD + ".Missing";
-        Diagnostic report = only("""
+        String source = """
                 module demo
 
                 data Box = { v: %s }
-                """.formatted(written));
+                """.formatted(written);
+        Diagnostic report = only(source);
 
-        assertEquals(written.length(), width(report));
+        assertEquals(written.length(), width(source, report));
     }
 
     /**
@@ -81,16 +85,17 @@ class AReportUnderlinesWhatTheAuthorTypedTest {
      */
     @Test
     void aQualifiedNameIsUnderlinedFromItsQualifierToItsEndHoweverFarApartTheyAre() {
-        Diagnostic report = only("""
+        String source = """
                 module demo
 
                 data Box = { v: %s . Missing }
-                """.formatted(NFD));
+                """;
+        Diagnostic report = only(source.formatted(NFD));
 
         Region region = ((Primary.InSource) report.primary()).place().region();
-        assertEquals(region.start().line(), region.end().line());
+        assertEquals(WhereItSits.in(source, region).start().line(), WhereItSits.in(source, region).end().line());
         assertEquals((NFD + " . Missing").length(),
-                region.end().column() - region.start().column(),
+                WhereItSits.in(source, region).end().column() - WhereItSits.in(source, region).start().column(),
                 "the underline stops short of the name it is about");
     }
 
@@ -104,8 +109,9 @@ class AReportUnderlinesWhatTheAuthorTypedTest {
     }
 
     /** How many columns a report's primary region covers. */
-    private static int width(Diagnostic report) {
-        Region region = ((Primary.InSource) report.primary()).place().region();
+    private static int width(String source, Diagnostic report) {
+        PhysicalRegion region = WhereItSits.in(source,
+                ((Primary.InSource) report.primary()).place().region());
         assertEquals(region.start().line(), region.end().line(), "a name is one line's worth");
         return region.end().column() - region.start().column();
     }

@@ -1,12 +1,13 @@
 package souther.compiler.partition;
 
+import souther.compiler.diag.SourceLayouts;
+import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.RuleReadings;
 import souther.compiler.check.Shape;
 import souther.compiler.check.TypeView;
-import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.Compilation;
 import souther.compiler.report.GeneratedRows;
@@ -108,7 +109,7 @@ class AWrappedRecordTakesItsFieldsFromWhatItWrapsTest {
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
         return GeneratedRows.of(compilation, "demo", "run", true,
-                SourceNameResolver.identity()).text();
+                SourceRendering.namedByIdentity(SourceLayouts.NONE)).text();
     }
 
     /**

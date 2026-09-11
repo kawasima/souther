@@ -1,11 +1,12 @@
 package souther.compiler;
 
+import souther.compiler.diag.SourceLayouts;
+import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
-import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.jvm.ClassFileImage;
 import souther.compiler.meta.ModulePath;
 import souther.compiler.query.Adequacy;
@@ -104,7 +105,7 @@ class ADeclarationReadBackFromClassesStatesWhatItsAuthorWroteTest {
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
         JsonNode document = JSON.readTree(
-                AdequacyReport.of(compilation).json(SourceNameResolver.identity()));
+                AdequacyReport.of(compilation).json(SourceRendering.namedByIdentity(SourceLayouts.NONE)));
         Map<String, JsonNode> out = new LinkedHashMap<>();
         for (JsonNode module : document.get("modules")) {
             for (JsonNode behavior : module.path("behaviors")) {
@@ -174,7 +175,7 @@ class ADeclarationReadBackFromClassesStatesWhatItsAuthorWroteTest {
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
         JsonNode document = JSON.readTree(
-                AdequacyReport.of(compilation).json(SourceNameResolver.identity()));
+                AdequacyReport.of(compilation).json(SourceRendering.namedByIdentity(SourceLayouts.NONE)));
         for (JsonNode module : document.get("modules")) {
             for (JsonNode each : module.path("behaviors")) {
                 if (behavior.equals(each.path("name").asString())) {

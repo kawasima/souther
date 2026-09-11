@@ -1,5 +1,6 @@
 package souther.compiler.codegen;
 
+import souther.compiler.diag.SourceLayouts;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.check.DerivedSymbols;
@@ -66,7 +67,8 @@ class APlannedArmNothingEmittedIsNamedTest {
     private CodegenContext counting(CoverageSites.Plan plan) {
         DerivedSymbols symbols = Scopes.derived(compilation.db(), MODULE).value();
         CodegenContext ctx = new CodegenContext(MODULE, symbols,
-                symbols.library().kernelSignatures(), Map.of(), Map.of(), true, Set.of(), Map.of());
+                symbols.library().kernelSignatures(), Map.of(), Map.of(), true, Set.of(), Map.of(),
+                SourceLayouts.NONE);
         ctx.setCoveragePlan(plan);
         return ctx;
     }

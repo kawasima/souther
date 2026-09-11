@@ -1,5 +1,6 @@
 package souther.compiler.diag;
 
+import souther.compiler.cst.SourceLayout;
 import souther.compiler.source.SourceId;
 
 
@@ -36,11 +37,11 @@ class ASecondaryRegionNamesItsFileTest {
             """;
 
     private static SourceContext rows() {
-        return new SourceContext("rows.sou", ROW_FILE);
+        return new SourceContext("rows.sou", ROW_FILE, SourceLayout.of(ROW_FILE));
     }
 
     private static SourceContext fakes() {
-        return new SourceContext("fakes.sou", FAKE_FILE);
+        return new SourceContext("fakes.sou", FAKE_FILE, SourceLayout.of(FAKE_FILE));
     }
 
     /** A resolver over named sources, recording what it was asked for. */
@@ -241,8 +242,9 @@ class ASecondaryRegionNamesItsFileTest {
 
         DiagnosticView view = DiagnosticView.of(d, ReportContext.of(new SourceId("rows"), new SourceId("fakes")));
 
-        assertEquals(3, view.anchor().orElseThrow().spot().region().start().line(),
-                "declaration order, not the earlier line");
+        assertEquals(new SourcePos(3, 1, new SourceId("rows")),
+                view.anchor().orElseThrow().spot().region().start(),
+                "declaration order, not the earlier place");
         assertEquals(2, view.others().size());
     }
 

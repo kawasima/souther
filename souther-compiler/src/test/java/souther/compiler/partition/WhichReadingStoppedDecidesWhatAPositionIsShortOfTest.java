@@ -1,5 +1,6 @@
 package souther.compiler.partition;
 
+import souther.compiler.diag.SourceLayouts;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.check.RuleReadingSource;
@@ -125,7 +126,7 @@ class WhichReadingStoppedDecidesWhatAPositionIsShortOfTest {
         compilation.measure(souther.compiler.query.Adequacy.Asked.fullReport());
         compilation.answerEverything();
         return souther.compiler.report.AdequacyReport.of(compilation)
-                .human(souther.compiler.diag.SourceNameResolver.identity()).lines()
+                .human(souther.compiler.diag.SourceRendering.namedByIdentity(SourceLayouts.NONE)).lines()
                 .map(String::strip)
                 .filter(each -> each.startsWith("border"))
                 .toList();

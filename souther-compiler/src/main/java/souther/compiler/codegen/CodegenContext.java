@@ -10,6 +10,7 @@ import souther.compiler.core.KernelSignatures;
 import souther.compiler.core.ValueShape;
 import souther.compiler.check.DerivedSymbols;
 import souther.compiler.ast.Hir;
+import souther.compiler.diag.SourceLayouts;
 import souther.compiler.types.Type;
 import souther.compiler.types.TypeSymbol;
 import souther.compiler.check.TypeOps;
@@ -72,6 +73,21 @@ final class CodegenContext {
      * for the names a call can hold, which is a narrower question and not the one being asked.
      */
     final Map<String, Type> standingCalls;
+
+    /**
+     * The texts this module's code was read from, for the debug table.
+     *
+     * <p>Handed in for the run and not asked for. What line an instruction's code is at is what its
+     * file is laid out as at the moment, and a backend that could go and find that out would be a
+     * backend that reads the workspace; what it has business knowing is the texts the compilation
+     * it is emitting for was given.
+     */
+    private final SourceLayouts layouts;
+
+    /** Where a place sits in the text it is in, or null where this compilation holds no such text. */
+    souther.compiler.diag.PhysicalPos sits(souther.compiler.diag.SourcePos place) {
+        return layouts.resolve(place);
+    }
 
     /** Synthetic {@code Fn} classes generated for escaping lambdas (spec §blocks), merged into the
      * module output once every behavior is generated. */
@@ -379,7 +395,8 @@ final class CodegenContext {
     CodegenContext(String pkg, DerivedSymbols symbols, KernelSignatures kernels,
                    Map<String, List<GeneratedClass>> caseToSums,
                    Map<String, String> typePackage, boolean exposeAll, Set<String> exposed,
-                   Map<String, Type> standingCalls) {
+                   Map<String, Type> standingCalls, SourceLayouts layouts) {
+        this.layouts = layouts;
         this.pkg = pkg;
         this.symbols = symbols;
         this.kernels = kernels;

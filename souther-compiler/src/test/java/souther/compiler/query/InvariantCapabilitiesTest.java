@@ -1,5 +1,6 @@
 package souther.compiler.query;
 
+import souther.compiler.WhereItSits;
 import souther.compiler.check.CapabilityResult;
 import souther.compiler.check.ClauseDischarge;
 import souther.compiler.check.StaticRoute;
@@ -222,28 +223,30 @@ class InvariantCapabilitiesTest {
 
     @Test
     void aClauseIsAnsweredAtItsOwnPosition() {
-        List<ClauseDischarge> clauses = of("""
+        String source = """
                 module m.a
                 data Row = { product: String }
                 data Lines = List<Row>
                     invariant List.length(value) >= 1 && List.allDistinctBy(.product, value)
-                """, "Lines");
-        assertEquals(4, clauses.get(0).owed().clause().line(), "both clauses are on the invariant's line");
-        assertEquals(4, clauses.get(1).owed().clause().line());
-        assertTrue(clauses.get(0).owed().clause().column() < clauses.get(1).owed().clause().column(),
+                """;
+        List<ClauseDischarge> clauses = of(source, "Lines");
+        assertEquals(4, WhereItSits.in(source, clauses.get(0).owed().clause()).line(), "both clauses are on the invariant's line");
+        assertEquals(4, WhereItSits.in(source, clauses.get(1).owed().clause()).line());
+        assertTrue(WhereItSits.in(source, clauses.get(0).owed().clause()).column() < WhereItSits.in(source, clauses.get(1).owed().clause()).column(),
                 "in the order they are written, so a position picks one out");
     }
 
     @Test
     void aClauseThroughAHelperIsAnsweredAsWhatTheHelperSays() {
         // the helper is expanded before the clause is read, so `twice(value) >= 0` is arithmetic
-        List<ClauseDischarge> clauses = of("""
+        String source = """
                 module m.a
                 let twice (n: Int): Int = n * 2
                 data Even = Int
                     invariant twice(value) >= 0
-                """, "Even");
+                """;
+        List<ClauseDischarge> clauses = of(source, "Even");
         assertEquals(aBound(), read(clauses, 0));
-        assertEquals(4, clauses.get(0).owed().clause().line(), "reported where it is written, not where it expands");
+        assertEquals(4, WhereItSits.in(source, clauses.get(0).owed().clause()).line(), "reported where it is written, not where it expands");
     }
 }

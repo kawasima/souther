@@ -1,8 +1,9 @@
 package souther.compiler.query;
 
+import souther.compiler.diag.SourceLayouts;
+import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 
-import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.report.AdequacyReport;
 
 import java.util.LinkedHashMap;
@@ -134,7 +135,7 @@ class AnObservationThisCompilerStoppedIsNotAPointNothingWritesTest {
 
     private static String report(int names) {
         return AdequacyReport.of(compiled(names)).only("example.through", "判定する")
-                .human(SourceNameResolver.identity());
+                .human(SourceRendering.namedByIdentity(SourceLayouts.NONE));
     }
 
     private static Compilation compiled(int names) {

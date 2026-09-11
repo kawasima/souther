@@ -1,6 +1,6 @@
 package souther.compiler.report;
 
-import souther.compiler.diag.SourceNameResolver;
+import souther.compiler.diag.SourceRendering;
 import souther.compiler.observe.Incompleteness;
 
 /**
@@ -66,8 +66,8 @@ final class Reasons {
      * the block that prints it: a position it left out and a search that ended are things it did,
      * not things a measurement could not read.
      */
-    static String said(Incompleteness.Fact gap, SourceNameResolver names) {
-        String subject = gap.shown(names);
+    static String said(Incompleteness.Fact gap, SourceRendering rendering) {
+        String subject = gap.shown(rendering);
         return switch (gap.code()) {
             case OBSERVATION_ABSENT -> String.format(
                     "no rows were read from `%s`, so what they cover is unknown", subject);

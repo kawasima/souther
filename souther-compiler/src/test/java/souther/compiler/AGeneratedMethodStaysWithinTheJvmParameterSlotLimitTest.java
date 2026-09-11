@@ -1,10 +1,11 @@
 package souther.compiler;
 
+import souther.compiler.diag.PhysicalRegion;
+import souther.compiler.cst.SourceLayout;
 import souther.compiler.diag.Primary;
 
 import souther.compiler.diag.CompileException;
 import souther.compiler.diag.HumanRenderer;
-import souther.compiler.diag.Region;
 import souther.compiler.diag.SourceContext;
 import souther.compiler.jvm.ClassFileImage;
 
@@ -104,13 +105,13 @@ class AGeneratedMethodStaysWithinTheJvmParameterSlotLimitTest {
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
 
         String said = new HumanRenderer(false).render(e.diagnostic(),
-                new SourceContext("demo.sou", src), Locale.ENGLISH);
+                new SourceContext("demo.sou", src, SourceLayout.of(src)), Locale.ENGLISH);
         assertTrue(said.contains("256"), "the slots it needs: " + said);
         assertTrue(said.contains("254"), "the slots it may take: " + said);
         assertTrue(said.contains("Split"), "what to do about it: " + said);
 
         String ja = new HumanRenderer(false).render(e.diagnostic(),
-                new SourceContext("demo.sou", src), Locale.JAPANESE);
+                new SourceContext("demo.sou", src, SourceLayout.of(src)), Locale.JAPANESE);
         assertTrue(ja.contains("256"), ja);
         assertTrue(ja.contains("data"), ja);
     }
@@ -125,10 +126,12 @@ class AGeneratedMethodStaysWithinTheJvmParameterSlotLimitTest {
      */
     @Test
     void theRefusalUnderlinesTheNameAndNotTheKeywordInFrontOfIt() {
+        String source = dataOf(128, "Int");
         CompileException e = assertThrows(CompileException.class,
-                () -> Compiler.compile(dataOf(128, "Int")));
+                () -> Compiler.compile(source));
 
-        Region region = ((Primary.InSource) e.diagnostic().primary()).place().region();
+        PhysicalRegion region = WhereItSits.in(source,
+                ((Primary.InSource) e.diagnostic().primary()).place().region());
         assertEquals(3, region.start().line(), "the `data Wide` line");
         assertEquals("module demo\n\ndata ".length()
                 - "module demo\n\n".length() + 1, region.start().column(),

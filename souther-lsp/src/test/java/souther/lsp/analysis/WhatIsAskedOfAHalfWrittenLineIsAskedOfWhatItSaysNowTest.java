@@ -1,8 +1,8 @@
 package souther.lsp.analysis;
 
+import souther.compiler.cst.SourceLayout;
 import org.junit.jupiter.api.Test;
 import souther.compiler.ast.Hir;
-import souther.compiler.cst.LineIndex;
 import souther.compiler.meta.ModulePath;
 import souther.compiler.query.Abandonment;
 import souther.compiler.query.Names;
@@ -125,7 +125,7 @@ class WhatIsAskedOfAHalfWrittenLineIsAskedOfWhatItSaysNowTest {
                 .orElseThrow(() -> new AssertionError("the repaired source has a snapshot"));
         int cursor = text.lastIndexOf(".\n") + 1;
         MemberReceiver receiver = snapshot
-                .memberReceiverAround(new LineIndex(text, new SourceId(URI)).posOf(cursor))
+                .memberReceiverAround(SourceLayout.of(text, new SourceId(URI)).placeAt(cursor))
                 .orElseThrow(() -> new AssertionError("nothing is written at the cursor"));
         return List.copyOf(snapshot
                 .fieldsOf(assertInstanceOf(MemberReceiver.Value.class, receiver).type()).keySet());

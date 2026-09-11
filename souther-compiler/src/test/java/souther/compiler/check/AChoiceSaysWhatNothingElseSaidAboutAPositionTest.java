@@ -1,5 +1,6 @@
 package souther.compiler.check;
 
+import souther.compiler.WhereItSits;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.query.Compilation;
@@ -243,7 +244,7 @@ class AChoiceSaysWhatNothingElseSaidAboutAPositionTest {
         List<Integer> columns = new java.util.ArrayList<>();
         shortfallsAt(EIGHT_FORMS_NOTHING_READS, "a").forEach(each -> {
             if (each.site() instanceof RuleShortfall.Site.AtALeaf leaf) {
-                columns.add(leaf.writtenAt().column());
+                columns.add(WhereItSits.in(EIGHT_FORMS_NOTHING_READS, leaf.writtenAt()).column());
             }
         });
 

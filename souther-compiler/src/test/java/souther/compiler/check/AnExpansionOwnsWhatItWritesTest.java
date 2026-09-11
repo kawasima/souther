@@ -1,5 +1,6 @@
 package souther.compiler.check;
 
+import souther.compiler.WhereItSits;
 import souther.compiler.DefaultStdlib;
 import souther.compiler.diag.Primary;
 
@@ -124,21 +125,22 @@ class AnExpansionOwnsWhatItWritesTest {
      */
     @Test
     void aReportAboutALambdaNamesTheLambdaItIsAbout() {
+        String source = """
+                module demo
+                data X = Int
+                behavior go : (x: X) -> X
+                let go (x) = x
+                let counts (ms: List<Map<String, Int>>) =
+                    List.map((m) -> Map.size(Map.mapValues((k) -> k, m)), ms)
+                """;
         // `Map.mapValues` takes a two-argument step and `List.map` a one-argument one, and both call the
         // parameter `f`. The inner one is written with one, and the report is about the inner one.
         souther.compiler.diag.CompileException e = org.junit.jupiter.api.Assertions.assertThrows(
                 souther.compiler.diag.CompileException.class,
-                () -> souther.compiler.Compiler.compile("""
-                        module demo
-                        data X = Int
-                        behavior go : (x: X) -> X
-                        let go (x) = x
-                        let counts (ms: List<Map<String, Int>>) =
-                            List.map((m) -> Map.size(Map.mapValues((k) -> k, m)), ms)
-                        """));
+                () -> souther.compiler.Compiler.compile(source));
         assertTrue(e.getMessage().contains("takes 2 argument(s), but is written with 1"),
                 e.getMessage());
-        assertEquals(6, ((Primary.InSource) e.diagnostic().primary()).place().region().start().line(),
+        assertEquals(6, WhereItSits.in(source, ((Primary.InSource) e.diagnostic().primary()).place().region()).start().line(),
                 "the inner lambda's line, not the outer one's: " + e.getMessage());
     }
 

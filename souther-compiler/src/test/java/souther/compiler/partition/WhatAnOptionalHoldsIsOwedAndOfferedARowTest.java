@@ -1,8 +1,9 @@
 package souther.compiler.partition;
 
+import souther.compiler.diag.SourceLayouts;
+import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 
-import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.Compilation;
 import souther.compiler.report.AdequacyReport;
@@ -111,7 +112,7 @@ class WhatAnOptionalHoldsIsOwedAndOfferedARowTest {
     }
 
     private static String human(String source) {
-        return AdequacyReport.of(measured(source)).human(SourceNameResolver.identity());
+        return AdequacyReport.of(measured(source)).human(SourceRendering.namedByIdentity(SourceLayouts.NONE));
     }
 
     private static List<String> offeredFor(String point, String source) {

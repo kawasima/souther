@@ -1,5 +1,6 @@
 package souther.compiler.check;
 
+import souther.compiler.diag.SourceLayouts;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.partition.LineOrigin;
@@ -195,7 +196,7 @@ class OneConjunctStatesAsManyLinesAsItHasStatementsTest {
     @Test
     void andTheDocumentTellsTheTwoLinesOfOneConjunctApart() {
         String json = souther.compiler.report.AdequacyReport.of(compiled(DENIED))
-                .json(souther.compiler.diag.SourceNameResolver.identity())
+                .json(souther.compiler.diag.SourceRendering.namedByIdentity(SourceLayouts.NONE))
                 .replaceAll("\\s+", "");
         java.util.regex.Matcher found = java.util.regex.Pattern
                 .compile("\"which\":\\{.{0,240}?\\},\"facts\"").matcher(json);

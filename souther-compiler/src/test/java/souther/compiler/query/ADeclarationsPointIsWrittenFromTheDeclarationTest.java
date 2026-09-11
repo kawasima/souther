@@ -1,8 +1,9 @@
 package souther.compiler.query;
 
+import souther.compiler.diag.SourceLayouts;
+import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 
-import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.report.AdequacyReport;
 
 import java.util.List;
@@ -84,7 +85,7 @@ class ADeclarationsPointIsWrittenFromTheDeclarationTest {
     @Test
     void theReportIsProduced() {
         assertNotNull(report());
-        assertNotNull(measured().json(SourceNameResolver.identity()));
+        assertNotNull(measured().json(SourceRendering.namedByIdentity(SourceLayouts.NONE)));
     }
 
     /**
@@ -124,6 +125,6 @@ class ADeclarationsPointIsWrittenFromTheDeclarationTest {
     }
 
     private static String report() {
-        return measured().human(SourceNameResolver.identity());
+        return measured().human(SourceRendering.namedByIdentity(SourceLayouts.NONE));
     }
 }

@@ -1184,11 +1184,14 @@ public final class Adequacy {
             @Override
             public souther.compiler.diag.Diagnostic.Builder conditionsThatCannotAllHold(
                     List<souther.compiler.reach.PathDecision> decisions) {
-                return said.hint(new DeadBranchMessage.TheConditionsOnTheWayHereCannotAllHold(
-                        decisions.stream()
-                                .map(each -> "line " + each.at().line()
-                                        + (each.held() ? " holding" : " failing"))
-                                .collect(java.util.stream.Collectors.joining(", "))));
+                souther.compiler.diag.Diagnostic.Builder out =
+                        said.hint(new DeadBranchMessage.TheConditionsOnTheWayHereCannotAllHold());
+                for (souther.compiler.reach.PathDecision each : decisions) {
+                    out = out.secondary(souther.compiler.diag.Region.point(each.at()),
+                            each.held() ? new DeadBranchMessage.ThisOneHoldsOnTheWayHere()
+                                    : new DeadBranchMessage.ThisOneFailsOnTheWayHere());
+                }
+                return out;
             }
 
             @Override

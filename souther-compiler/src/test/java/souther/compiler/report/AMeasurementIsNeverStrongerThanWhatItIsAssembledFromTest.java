@@ -1,5 +1,7 @@
 package souther.compiler.report;
 
+import souther.compiler.diag.SourceLayouts;
+import souther.compiler.diag.SourceRendering;
 import souther.compiler.report.AdequacyReport;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
@@ -7,7 +9,6 @@ import tools.jackson.databind.json.JsonMapper;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.conformance.ConformanceCorpus;
-import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.meta.ModulePath;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.Compilation;
@@ -187,7 +188,7 @@ class AMeasurementIsNeverStrongerThanWhatItIsAssembledFromTest {
     }
 
     private static JsonNode documentOf(String source) {
-        return JSON.readTree(reportOf(source).json(SourceNameResolver.identity()));
+        return JSON.readTree(reportOf(source).json(SourceRendering.namedByIdentity(SourceLayouts.NONE)));
     }
 
     private static String statusOfTheOneBehaviorIn(String source) {
@@ -207,11 +208,11 @@ class AMeasurementIsNeverStrongerThanWhatItIsAssembledFromTest {
         Compilation compilation = Compilation.ofSources(sources, ModulePath.EMPTY);
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
-        return AdequacyReport.of(compilation).human(SourceNameResolver.identity());
+        return AdequacyReport.of(compilation).human(SourceRendering.namedByIdentity(SourceLayouts.NONE));
     }
 
     private static String humanOf(String source) {
-        return reportOf(source).human(SourceNameResolver.identity());
+        return reportOf(source).human(SourceRendering.namedByIdentity(SourceLayouts.NONE));
     }
 
     private static AdequacyReport reportOf(String source) {

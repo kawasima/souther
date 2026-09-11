@@ -1,5 +1,6 @@
 package souther.compiler.query;
 
+import souther.compiler.WhereItSits;
 import souther.compiler.check.CapabilityResult;
 import souther.compiler.check.StaticRoute;
 import souther.compiler.check.ContractDischarge;
@@ -182,7 +183,7 @@ class HowMuchOfARuleTheCheckReadsIsAskedPerCaseTest {
 
         assertEquals(1, discharge.rules().size(),
                 "one rule, because the author wrote one — the `&&` is the helper's, not theirs");
-        assertEquals(10, discharge.rules().get(0).capability().owed().clause().line(),
+        assertEquals(10, WhereItSits.in(FINDS, discharge.rules().get(0).capability().owed().clause()).line(),
                 "the `ensures` line, not the `let` on line 3");
     }
 

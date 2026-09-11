@@ -102,8 +102,9 @@ class ABoundaryIsAValueTheRecordCanHoldTest {
                 // no row could stand at, and the plain measure does not compose one.
                 souther.compiler.query.Adequacy.searchedBoundariesOf(compilation.db(), module);
         assertNotNull(borders, "the model under test compiles");
-        souther.compiler.diag.SourceNameResolver names =
-                souther.compiler.diag.SourceNameResolver.identity();
+        souther.compiler.diag.SourceRendering names = new souther.compiler.diag.SourceRendering(
+                souther.compiler.diag.SourceNameResolver.identity(),
+                souther.compiler.diag.SourceLayouts.NONE);
         // Where each rule a line names is shown, asked of the compile that read it — which is what
         // a sentence about a rule with no name is written from.
         souther.compiler.publish.PublishedRuleHandle.WhereARuleIs places =

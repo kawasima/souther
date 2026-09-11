@@ -8,6 +8,7 @@ import souther.compiler.check.Scoping;
 import souther.compiler.check.Registry;
 import souther.compiler.codegen.Backend;
 import souther.compiler.diag.CompileException;
+import souther.compiler.diag.LaidOutText;
 import souther.compiler.diag.SourceProvenance;
 import souther.compiler.frontend.CstFrontend;
 import souther.compiler.check.BehaviorImplementation;
@@ -182,12 +183,12 @@ public final class ModuleReadback {
             source.append(line).append('\n');
         }
         source.append(declarations);
-        Ast.Module parsed;
+        CstFrontend.ReadBack readBack;
         try {
             // Read back, not read: the text was put together here out of what the module carries, so
             // its lines are lines of nothing anybody holds. Every position it makes says so from the
             // start, and a reader here reaches the module by its name.
-            parsed = CstFrontend.parseWhatAModulePublished(source.toString(),
+            readBack = CstFrontend.readBackWhatAModulePublished(source.toString(),
                     provenanceOf(moduleName));
         } catch (CompileException _) {
             // Around the parse and nothing else. A pass raises, so this is the one place a raise has
@@ -195,6 +196,7 @@ public final class ModuleReadback {
             // else's raise arrive as a statement about this artifact.
             return unreadable(moduleName, new Readback.Failure.InvalidPublishedSyntax());
         }
+        Ast.Module parsed = readBack.module();
         if (!parsed.name().equals(moduleName)) {
             // A reading answers about the module it was asked for. The class was found by that name
             // and the module is named by the header on it; where the two differ there is no reading
@@ -225,7 +227,7 @@ public final class ModuleReadback {
         }
         return new Readback.Ready<>(
                 new AsRead(checked.module(), declared.declarations(), implementations,
-                        checked.claims()));
+                        checked.claims(), readBack.laidOut()));
     }
 
     /**
@@ -237,7 +239,8 @@ public final class ModuleReadback {
      */
     record AsRead(Ast.Module module, Map<String, Ast.Def> declarations,
                   Map<String, BehaviorImplementation> behaviorImplementations,
-                  java.util.List<Scoping.Claim> libraryClaims) implements ReadableModule {
+                  java.util.List<Scoping.Claim> libraryClaims,
+                  LaidOutText laidOutText) implements ReadableModule {
 
         /** Copied, because this is an answer a compilation remembers and an answer it remembers is
          *  a value. */

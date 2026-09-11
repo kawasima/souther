@@ -11,9 +11,14 @@ import java.util.SequencedMap;
 /**
  * A place a document sends a reader to, as the document writes it.
  *
- * <p>The projection of a {@link Citation} onto the four things the shipped schema has room for: a
- * source identity, a line, a column, and what the code at that place is to the module the document
- * is about. Everything else a citation carries is how this compiler came to be holding it.
+ * <p>The projection of a {@link Citation} onto the three things the shipped schema has room for: a
+ * source identity, the place in it, and what the code at that place is to the module the document is
+ * about. Everything else a citation carries is how this compiler came to be holding it.
+ *
+ * <p>The place and not a line and a column. One of these travels in what a compilation answers — a
+ * rule handle is one — and a line number is what a file is laid out as at the moment rather than
+ * anything about the rule. The numbers are worked out where the document is written, by whoever
+ * holds the text.
  *
  * <p><b>Made before anything is put in order.</b> A citation is a sum whose arms are not all places
  * — a position in a text no reader holds is not one, and neither is code out of sight with no
@@ -28,10 +33,10 @@ import java.util.SequencedMap;
  * renderer's, recorded as the document writes it; asked here, the choosing of one place out of
  * several would decide which sources a document explains by the order it compared them in.
  */
-public record PublishedAt(SourceId source, int line, int column, Where writtenAt) {
+public record PublishedAt(SourceId source, SourcePos at, Where writtenAt) {
 
     public PublishedAt {
-        if (source == null || writtenAt == null) {
+        if (source == null || at == null || writtenAt == null) {
             throw new IllegalArgumentException("a place a reader is sent to is in some source");
         }
     }
@@ -88,6 +93,6 @@ public record PublishedAt(SourceId source, int line, int column, Where writtenAt
             case Citation.Elsewhere it -> new Where.OutOfSight(it.provenance().reachedBy());
             case Citation.Written _, Citation.Unplaced _ -> new Where.Here();
         };
-        return Optional.of(new PublishedAt(in, pos.line(), pos.column(), written));
+        return Optional.of(new PublishedAt(in, pos, written));
     }
 }

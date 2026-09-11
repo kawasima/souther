@@ -62,7 +62,7 @@ class CompileSignatureApplicationTest {
      *  used to live only on the in-scope side. */
     @Test
     void anEmptySeedFailureInAKernelStepIsRepointedAtTheSeed() {
-        Diagnostic d = diagnosticOf("""
+        String source = """
                 module demo
                 data Out = { xs: List<Int> }
                 behavior run : (i: Int) -> Out constructs Out
@@ -70,8 +70,9 @@ class CompileSignatureApplicationTest {
                     let sorted = List.sortBy(x -> x + 1, [])
                     Out { xs = sorted }
                 }
-                """);
+                """;
+        Diagnostic d = diagnosticOf(source);
         assertEquals("check.fold.seed.title", d.titleKey());
-        assertEquals(5, ((Primary.InSource) d.primary()).place().region().start().line());
+        assertEquals(5, WhereItSits.in(source, ((Primary.InSource) d.primary()).place().region()).start().line());
     }
 }

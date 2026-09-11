@@ -1,5 +1,6 @@
 package souther.compiler.diag;
 
+import souther.compiler.cst.SourceLayout;
 import souther.compiler.Compiler;
 
 import souther.compiler.diag.msg.DeclarationMessage;
@@ -17,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class DiagnosticRenderTest {
 
     private static final SourceContext SRC =
-            new SourceContext("demo.sou", "module demo\nlet f (n) = null\n");
+            new SourceContext("demo.sou", "module demo\nlet f (n) = null\n", SourceLayout.of("module demo\nlet f (n) = null\n"));
 
     /**
      * The JSON form carries the values the message is about, under the names its entry writes them

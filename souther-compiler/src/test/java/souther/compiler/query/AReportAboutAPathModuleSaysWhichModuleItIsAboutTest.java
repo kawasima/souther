@@ -72,7 +72,7 @@ class AReportAboutAPathModuleSaysWhichModuleItIsAboutTest {
 
         Citation.Reached reached = assertInstanceOf(Citation.Reached.class,
                 Citation.of(((Primary.InSource) moved.primary()).place().region().start()), "moved, it points at a file the reader holds");
-        assertEquals(2, reached.at().line());
+        assertEquals(AN_IMPORT_LINE.get(0), reached.at());
         assertEquals("lib.held", reached.provenance().reachedBy(),
                 "and is still about the code it was about");
     }

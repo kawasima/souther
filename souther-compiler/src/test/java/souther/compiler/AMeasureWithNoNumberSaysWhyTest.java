@@ -1,11 +1,12 @@
 package souther.compiler;
 
+import souther.compiler.diag.SourceLayouts;
+import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.coverage.CoverageSites;
 import souther.compiler.coverage.DecidedBy;
 import souther.compiler.types.WrittenOwner;
-import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.observe.Incompleteness;
 import souther.compiler.observe.MeasurementStatus;
 import souther.compiler.query.Adequacy;
@@ -136,7 +137,7 @@ class AMeasureWithNoNumberSaysWhyTest {
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
         String judge = behaviorBlock(
-                AdequacyReport.of(compilation).human(SourceNameResolver.identity()), "judge");
+                AdequacyReport.of(compilation).human(SourceRendering.namedByIdentity(SourceLayouts.NONE)), "judge");
 
         assertTrue(judge.contains("signature   not measured (no row names this behavior)"), judge);
     }
@@ -164,7 +165,7 @@ class AMeasureWithNoNumberSaysWhyTest {
 
     private static String human() {
         if (rendered == null) {
-            rendered = AdequacyReport.of(compiled()).human(SourceNameResolver.identity());
+            rendered = AdequacyReport.of(compiled()).human(SourceRendering.namedByIdentity(SourceLayouts.NONE));
         }
         return rendered;
     }
@@ -420,7 +421,7 @@ class AMeasureWithNoNumberSaysWhyTest {
     }
 
     private static String humanAt(Adequacy.Level level) {
-        return AdequacyReport.of(compiledAt(level)).human(SourceNameResolver.identity());
+        return AdequacyReport.of(compiledAt(level)).human(SourceRendering.namedByIdentity(SourceLayouts.NONE));
     }
 
     private static Map<String, Adequacy.BranchEvidence> branchesAt(Adequacy.Level level) {
@@ -615,7 +616,7 @@ class AMeasureWithNoNumberSaysWhyTest {
     void aMeasureThatWasNotMadeHoldsTheVerdictOpenAndAnInapplicableOneDoesNot() {
         AdequacyReport report = AdequacyReport.of(compiled());
         assertEquals(AdequacyReport.AdequacyStatus.UNDETERMINED, report.adequacy(),
-                report.human(SourceNameResolver.identity()));
+                report.human(SourceRendering.namedByIdentity(SourceLayouts.NONE)));
 
         List<Object[]> measures = allMeasures();
         assertTrue(measures.stream().anyMatch(m -> m[1] instanceof Measure.NotApplicable<?>),

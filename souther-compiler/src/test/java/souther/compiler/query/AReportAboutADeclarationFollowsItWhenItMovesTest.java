@@ -1,5 +1,6 @@
 package souther.compiler.query;
 
+import souther.compiler.WhereItSits;
 import souther.compiler.diag.Located;
 import souther.compiler.diag.Primary;
 import souther.compiler.meta.ModulePath;
@@ -64,7 +65,7 @@ class AReportAboutADeclarationFollowsItWhenItMovesTest {
         assertEquals(1, errors.size(),
                 "this workspace is supposed to be refused for exactly one thing: " + errors);
         if (errors.getFirst().diagnostic().primary() instanceof Primary.InSource in) {
-            return in.place().region().start().line();
+            return WhereItSits.in(EMPTY, in.place().region()).start().line();
         }
         throw new AssertionError("the report is supposed to point at the declaration, and points "
                 + errors.getFirst().diagnostic().primary() + " instead");

@@ -6,58 +6,112 @@ import java.util.Comparator;
 import java.util.Objects;
 
 /**
- * Where a node is placed in this compile: a 1-based line and column, and the text they are in
- * ({@link Placement}). Every AST node and token carries one so that compile errors can point at the
- * source (spec §non-functional).
+ * Which of the things written in a text a node is at, and which text that is ({@link Placement}).
+ * Every AST node and token carries one so that compile errors can point at the source
+ * (spec §non-functional).
  *
- * <p>The line and the column are <b>where this compile placed the node</b>, which is where the code
- * is written for everything a source was read for and is not for a copy that could not keep its own
- * positions. So this answers where to send a reader and never, on its own, where the code is
- * written. What answers that is a {@link Citation}, which a report holds instead of a position; a
- * pass that wants only to know whether the position was borrowed asks {@link #wasCopiedHere()}.
- * Neither is inferred from the line: inferring it is what {@code BottomInfer} did, by comparing an
- * argument's position with its call's, and what {@code HelperInliner} did, by comparing the
- * declaring module with its own.
+ * <p>Not a line and a column. What a place is in a text is one of the things written in it, and a
+ * line number is where that thing happens to sit — press return above it and every number below
+ * moves while nothing written there says anything different. Held as numbers, a position made every
+ * answer that carried one a different answer after an edit that changed nothing, so the whole of
+ * what a module means was worked out again to arrive at what it already was.
  *
- * <p>A line and a column are enough while one file is being read and not enough afterwards. A
- * module's {@code example} rows, fake tables and values are written in the module's own source and
- * in any number of attached {@code examples for} files, and once they are gathered under one name a
- * line and a column on their own no longer say which file they came from — so what is quoted is
- * whatever happens to sit at those numbers in the file the reader guessed at.
+ * <p>So a place is the meaningful token it is at or after, counted from the start of its text, and
+ * how far past that token's start it sits. Whitespace, a line break and a comment move nothing: a
+ * token that was the ninth is the ninth still. Writing a tenth token before it does move it, and
+ * that is the whole of what is conservative here — <b>this is not an identity for what is written
+ * at it</b>, and nothing may file anything under one and look it up against another text. What it is
+ * is a coordinate whose equality survives the edits that say nothing, and which changes when the
+ * syntax before it changes, so that the answers holding one are worked out again exactly then.
+ *
+ * <p>What sends a reader somewhere is a {@link PhysicalPos}, which is this place resolved against
+ * the text as it now stands. Resolving is somebody's to do who holds that text, and what comes back
+ * is never kept.
+ *
+ * <p>These places are <b>where this compile placed the node</b>, which is where the code is written
+ * for everything a source was read for and is not for a copy that could not keep its own positions.
+ * So this answers where to send a reader and never, on its own, where the code is written. What
+ * answers that is a {@link Citation}, which a report holds instead of a position; a pass that wants
+ * only to know whether the position was borrowed asks {@link #wasCopiedHere()}. Neither is inferred
+ * from where it sits: inferring it is what {@code BottomInfer} did, by comparing an argument's
+ * position with its call's, and what {@code HelperInliner} did, by comparing the declaring module
+ * with its own.
+ *
+ * <p>A place in a text is enough while one file is being read and not enough afterwards. A module's
+ * {@code example} rows, fake tables and values are written in the module's own source and in any
+ * number of attached {@code examples for} files, and once they are gathered under one name a
+ * token count on its own no longer says which file it came from — so what is quoted is whatever
+ * happens to sit there in the file the reader guessed at.
  *
  * <p>Which is why the text is part of the position and part of what makes two positions the same
- * one. Line 25 of two files is the same pair of numbers and is not the same place; a value whose
+ * one. The ninth token of two files is the same count and is not the same place; a value whose
  * identity denied one of its components would leave "the same position" meaning something different
- * in every container that held one. Where a caller wants the numbers compared without the text — an
- * editor asking what is under a cursor — it compares the numbers, which is what {@code Names.spans}
- * does.
+ * in every container that held one.
  *
  * <p>One component and not two. This used to be a source identity that could be null beside a
  * separate answer about the code, which is nine combinations for the places this compiler makes, and
  * every reader worked the classification out again from whichever half it had: a null source meant
  * "out of sight" to one of them, "the diagnostic's own file" to another and "drop this" to two more.
  * What a {@link Placement} holds is which text and whose code, and every pair of those is legal.
- *
- * @param line the 1-based line this node is placed at
- * @param column the 1-based column this node is placed at, in UTF-16 code units
- * @param placement the text these numbers are in, and what this compilation knows about it
  */
-public record SourcePos(int line, int column, Placement placement) {
+public final class SourcePos {
 
-    public SourcePos {
-        Objects.requireNonNull(placement, "a position is in some text and says which");
+    private final int token;
+
+    private final int within;
+
+    private final Placement placement;
+
+    /**
+     * The place {@code within} UTF-16 code units past the start of the {@code token}-th meaningful
+     * token of {@code placement}'s text, counting from zero.
+     *
+     * <p>Made where a text becomes places and nowhere else, which is {@code SourceLayout}. A caller
+     * spelling one out of two numbers it worked out for itself has counted the tokens of that text a
+     * second time, and the two go on counting separately.
+     */
+    public SourcePos(int token, int within, Placement placement) {
+        this.token = token;
+        this.within = within;
+        this.placement = Objects.requireNonNull(placement,
+                "a position is in some text and says which");
+    }
+
+    /** Which meaningful token of its text this is at or after, counting from zero. */
+    public int token() {
+        return token;
+    }
+
+    /** How far past that token's start this sits, in UTF-16 code units. */
+    public int within() {
+        return within;
+    }
+
+    public Placement placement() {
+        return placement;
+    }
+
+    @Override
+    public boolean equals(Object other) {
+        return other instanceof SourcePos it && token == it.token && within == it.within
+                && placement.equals(it.placement);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(token, within, placement);
     }
 
     /** A place a source was read for, where the code it names is written — or a text with no
      *  identity where {@code sourceId} is none. */
-    public SourcePos(int line, int column, SourceId sourceId) {
-        this(line, column, sourceId == null ? Placement.aTextWithNoIdentity()
+    public SourcePos(int token, int within, SourceId sourceId) {
+        this(token, within, sourceId == null ? Placement.aTextWithNoIdentity()
                 : Placement.aFileOfThisCompile(sourceId));
     }
 
     /** A position read from no source. */
-    public SourcePos(int line, int column) {
-        this(line, column, Placement.aTextWithNoIdentity());
+    public SourcePos(int token, int within) {
+        this(token, within, Placement.aTextWithNoIdentity());
     }
 
     /**
@@ -105,12 +159,12 @@ public record SourcePos(int line, int column, Placement placement) {
      *
      * <p>Here rather than in each reader that has to know. A region asking whether a place falls
      * inside it, a walk asking which occurrence is the narrowest one written over a cursor, a
-     * reading asking how far into a source an answer reaches — all of them are asking what a line
-     * and a column mean in order, and three accounts of that are three chances for one of them to be
-     * written the other way round.
+     * reading asking how far into a source an answer reaches — all of them are asking what two
+     * places in one text mean in order, and three accounts of that are three chances for one of them
+     * to be written the other way round.
      */
     public boolean isBefore(SourcePos other) {
-        return line != other.line ? line < other.line : column < other.column;
+        return token != other.token ? token < other.token : within < other.within;
     }
 
     /**
@@ -153,7 +207,7 @@ public record SourcePos(int line, int column, Placement placement) {
      *
      */
     public SourcePos standingInFor(DeclaringCode declaring) {
-        return new SourcePos(line, column, placement.standingInFor(declaring));
+        return new SourcePos(token, within, placement.standingInFor(declaring));
     }
 
     /**
@@ -189,14 +243,16 @@ public record SourcePos(int line, int column, Placement placement) {
         }
     }
 
-    /** The same place, {@code units} along the same line — the other end of a region of that width.
+    /** The same place, {@code units} of text further on — the other end of a region of that width.
      *  It stands in for whatever this stands in for: the two ends are one place. */
     public SourcePos along(int units) {
-        return new SourcePos(line, column + units, placement);
+        return new SourcePos(token, within + units, placement);
     }
 
+    /** What this is, for a reader of a stack trace or a message about the compiler itself. Not
+     *  something to show an author: where they would be sent is a {@link PhysicalPos}. */
     @Override
     public String toString() {
-        return line + ":" + column;
+        return "token " + token + (within == 0 ? "" : "+" + within);
     }
 }

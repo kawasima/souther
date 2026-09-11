@@ -1,5 +1,7 @@
 package souther.compiler.publish;
 
+import souther.compiler.diag.SourceLayouts;
+import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.check.BehaviorContract;
@@ -265,9 +267,9 @@ class TwoHandlesADocumentWritesApartAreTwoValuesTest {
     @Test
     void eachPartOfSuchASentenceTellsTwoHandlesApart() {
         PublishedRuleHandle.Place here =
-                new PublishedRuleHandle.Place.Unplaced(1, 1);
+                new PublishedRuleHandle.Place.Unplaced(new SourcePos(1, 1));
         PublishedRuleHandle.Place there =
-                new PublishedRuleHandle.Place.Unplaced(2, 1);
+                new PublishedRuleHandle.Place.Unplaced(new SourcePos(2, 1));
         PublishedRuleHandle.Reached said = new PublishedRuleHandle.Reached(
                 PublishedRuleKind.COMPARISON, here, "Int.clamp");
 
@@ -396,7 +398,7 @@ class TwoHandlesADocumentWritesApartAreTwoValuesTest {
     }
 
     private static String said(PublishedRuleHandle handle) {
-        return RuleHandleProse.said(handle, SourceNameResolver.identity(), null);
+        return RuleHandleProse.said(handle, new SourceRendering(SourceNameResolver.identity(), SourceLayouts.NONE), null);
     }
 
     /**

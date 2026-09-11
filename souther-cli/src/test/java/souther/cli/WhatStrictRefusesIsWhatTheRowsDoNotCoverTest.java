@@ -1,9 +1,10 @@
 package souther.cli;
 
 
+import souther.compiler.diag.SourceLayouts;
+import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 
-import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.Compilation;
 import souther.compiler.query.BorderAssessment;
@@ -371,10 +372,10 @@ class WhatStrictRefusesIsWhatTheRowsDoNotCoverTest {
         AdequacyReport unmeasured = reportOf(ONE_CLASS_OF_TWO, Adequacy.Level.OFF);
 
         assertEquals(AdequacyReport.AdequacyStatus.SATISFIED, byDefault.adequacy(),
-                byDefault.human(SourceNameResolver.identity()));
+                byDefault.human(SourceRendering.namedByIdentity(SourceLayouts.NONE)));
         assertEquals(byDefault.adequacy(), unmeasured.adequacy(),
                 "the default bar refuses nothing this model can be measured for, so measuring it"
-                        + " changes no verdict: " + unmeasured.human(SourceNameResolver.identity()));
+                        + " changes no verdict: " + unmeasured.human(SourceRendering.namedByIdentity(SourceLayouts.NONE)));
     }
 
     /**
@@ -400,7 +401,7 @@ class WhatStrictRefusesIsWhatTheRowsDoNotCoverTest {
 
         assertEquals(AdequacyReport.AdequacyStatus.UNDETERMINED, report.adequacy(),
                 () -> "the classes bar asks what the rows reach of this position and nothing read"
-                        + " them: " + report.human(SourceNameResolver.identity()));
+                        + " them: " + report.human(SourceRendering.namedByIdentity(SourceLayouts.NONE)));
     }
 
     /**
@@ -417,7 +418,7 @@ class WhatStrictRefusesIsWhatTheRowsDoNotCoverTest {
         for (Adequacy.Level level : List.of(Adequacy.Level.WITNESS, Adequacy.Level.ALL)) {
             AdequacyReport report = reportOf(A_BODY_THAT_FORKS_NOWHERE, level);
 
-            String human = report.human(SourceNameResolver.identity());
+            String human = report.human(SourceRendering.namedByIdentity(SourceLayouts.NONE));
             assertEquals(AdequacyReport.AdequacyStatus.SATISFIED, report.adequacy(),
                     "at " + level + ": " + human);
             assertTrue(human.contains("branch      not applicable (this body owes no arm)"), human);
@@ -437,7 +438,7 @@ class WhatStrictRefusesIsWhatTheRowsDoNotCoverTest {
         AdequacyReport witness = reportOf(AN_ARM_AND_A_COVERED_SIGNATURE, Adequacy.Level.WITNESS);
 
         assertEquals(AdequacyReport.AdequacyStatus.UNDETERMINED, witness.adequacy(),
-                witness.human(SourceNameResolver.identity()));
+                witness.human(SourceRendering.namedByIdentity(SourceLayouts.NONE)));
         assertEquals(List.of(), witness.adequacyGaps().stream()
                         .filter(f -> f.kind() == Adequacy.Kind.ARM_UNREACHED).toList(),
                 "and not by naming a gap in a measure nobody made");
@@ -459,7 +460,7 @@ class WhatStrictRefusesIsWhatTheRowsDoNotCoverTest {
         AdequacyReport witness = reportOf(ONLY_WAITING, Adequacy.Level.WITNESS);
 
         assertEquals(AdequacyReport.AdequacyStatus.SATISFIED, witness.adequacy(),
-                witness.human(SourceNameResolver.identity()));
+                witness.human(SourceRendering.namedByIdentity(SourceLayouts.NONE)));
     }
 
     /** A line an invariant drew is measured wherever the rows ran, so a row missing at it is a gap
@@ -469,7 +470,7 @@ class WhatStrictRefusesIsWhatTheRowsDoNotCoverTest {
         for (Adequacy.Level level : List.of(Adequacy.Level.WITNESS, Adequacy.Level.ALL)) {
             AdequacyReport report = reportOf(WAITING_AND_UNCOVERED, level);
             assertEquals(AdequacyReport.AdequacyStatus.NOT_SATISFIED, report.adequacy(),
-                    report.human(SourceNameResolver.identity()));
+                    report.human(SourceRendering.namedByIdentity(SourceLayouts.NONE)));
             assertEquals(List.of(Adequacy.Kind.BOUNDARY_UNMET),
                     report.adequacyGaps().stream().map(Adequacy.Finding::kind).toList(),
                     "at " + level);
@@ -491,10 +492,10 @@ class WhatStrictRefusesIsWhatTheRowsDoNotCoverTest {
 
         assertTrue(armsNotAsked.adequacyGaps().stream()
                         .noneMatch(f -> f.kind() == Adequacy.Kind.ARM_UNREACHED),
-                armsNotAsked.human(SourceNameResolver.identity()));
+                armsNotAsked.human(SourceRendering.namedByIdentity(SourceLayouts.NONE)));
         assertTrue(armsAsked.adequacyGaps().stream()
                         .anyMatch(f -> f.kind() == Adequacy.Kind.ARM_UNREACHED),
-                armsAsked.human(SourceNameResolver.identity()));
+                armsAsked.human(SourceRendering.namedByIdentity(SourceLayouts.NONE)));
     }
 
     /**
@@ -512,7 +513,7 @@ class WhatStrictRefusesIsWhatTheRowsDoNotCoverTest {
         for (Adequacy.Level level : List.of(Adequacy.Level.WITNESS, Adequacy.Level.ALL)) {
             AdequacyReport report = reportOf(COMPOSED, level);
 
-            String human = report.human(SourceNameResolver.identity());
+            String human = report.human(SourceRendering.namedByIdentity(SourceLayouts.NONE));
             assertEquals(AdequacyReport.AdequacyStatus.SATISFIED, report.adequacy(), human);
             assertFalse(human.contains("the arms were not measured"), human);
         }
@@ -652,11 +653,11 @@ class WhatStrictRefusesIsWhatTheRowsDoNotCoverTest {
         AdequacyReport uncovered = whole.only(null, "submit");
 
         assertEquals(AdequacyReport.AdequacyStatus.NOT_SATISFIED, whole.adequacy(),
-                whole.human(SourceNameResolver.identity()));
+                whole.human(SourceRendering.namedByIdentity(SourceLayouts.NONE)));
         assertEquals(AdequacyReport.AdequacyStatus.SATISFIED, covered.adequacy(),
-                covered.human(SourceNameResolver.identity()));
+                covered.human(SourceRendering.namedByIdentity(SourceLayouts.NONE)));
         assertEquals(AdequacyReport.AdequacyStatus.NOT_SATISFIED, uncovered.adequacy(),
-                uncovered.human(SourceNameResolver.identity()));
+                uncovered.human(SourceRendering.namedByIdentity(SourceLayouts.NONE)));
         assertEquals(whole.held(), covered.held(), "filtering leaves the bar alone");
     }
 

@@ -3,7 +3,7 @@ package souther.compiler.observe;
 import souther.compiler.source.SourceId;
 
 import souther.compiler.diag.Citation;
-import souther.compiler.diag.SourceNameResolver;
+import souther.compiler.diag.SourceRendering;
 import souther.compiler.diag.SourcePos;
 
 import java.util.HashSet;
@@ -186,9 +186,9 @@ public record Incompleteness(Code code, Target target, Optional<Citation> at) {
         return target.subject();
     }
 
-    /** The same, as a person is shown it — a source under the name {@code names} gives it. */
-    public String shown(SourceNameResolver names) {
-        return target.shown(names);
+    /** The same, as a person is shown it — a source under the name {@code rendering} gives it. */
+    public String shown(SourceRendering rendering) {
+        return target.shown(rendering);
     }
 
     /** The source this is about, where what it names is one. Empty otherwise. */
@@ -290,8 +290,8 @@ public record Incompleteness(Code code, Target target, Optional<Citation> at) {
         }
 
         /** The same, as a person is shown it. */
-        public String shown(SourceNameResolver names) {
-            return target.shown(names);
+        public String shown(SourceRendering rendering) {
+            return target.shown(rendering);
         }
 
         /** The source this is about, where what it names is one. */

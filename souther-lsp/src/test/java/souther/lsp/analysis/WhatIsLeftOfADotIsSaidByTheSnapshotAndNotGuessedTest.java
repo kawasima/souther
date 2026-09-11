@@ -1,7 +1,7 @@
 package souther.lsp.analysis;
 
+import souther.compiler.cst.SourceLayout;
 import org.junit.jupiter.api.Test;
-import souther.compiler.cst.LineIndex;
 import souther.compiler.meta.ModulePath;
 import souther.compiler.query.Abandonment;
 import souther.compiler.sites.Evidence;
@@ -330,9 +330,9 @@ class WhatIsLeftOfADotIsSaidByTheSnapshotAndNotGuessedTest {
     void aCursorOnNoAccessIsToldSo() {
         String text = model("request\n");
         Probed probed = probe(model("request.plannedCost.\n"));
-        LineIndex lines = new LineIndex(text, new SourceId(MODEL_URI));
+        SourceLayout lines = SourceLayout.of(text, new SourceId(MODEL_URI));
 
-        assertTrue(probed.snapshot().memberReceiverAround(lines.posOf(0)).isEmpty(),
+        assertTrue(probed.snapshot().memberReceiverAround(lines.placeAt(0)).isEmpty(),
                 "the first character of `module m` is in no field read");
     }
 
@@ -373,8 +373,8 @@ class WhatIsLeftOfADotIsSaidByTheSnapshotAndNotGuessedTest {
         }
         SemanticSnapshot snapshot = SemanticSnapshot.of(reading.compilation().db(), "m")
                 .orElseThrow(() -> new AssertionError("the repaired source has a snapshot"));
-        LineIndex lines = new LineIndex(text, new SourceId(MODEL_URI));
-        MemberReceiver receiver = snapshot.memberReceiverAround(lines.posOf(cursor))
+        SourceLayout lines = SourceLayout.of(text, new SourceId(MODEL_URI));
+        MemberReceiver receiver = snapshot.memberReceiverAround(lines.placeAt(cursor))
                 .orElseThrow(() -> new AssertionError("nothing is written at the cursor"));
         return new Probed(reading, snapshot, receiver);
     }

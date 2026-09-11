@@ -1,9 +1,9 @@
 package souther.lsp.analysis;
 
+import souther.compiler.cst.SourceLayout;
 import souther.compiler.cst.CstLexer;
 import souther.compiler.cst.CstParser;
 import souther.compiler.cst.GreenToken;
-import souther.compiler.cst.LineIndex;
 import souther.compiler.cst.SyntaxKind;
 import souther.compiler.diag.Region;
 import souther.compiler.diag.SourcePos;
@@ -254,7 +254,7 @@ final class SemanticProbe {
         // same text as nothing, and every extent would compare as being somewhere else — which
         // reads as "the author wrote this" about all of them.
         return new Reading(compile, uri, repair.text(),
-                new LineIndex(text, new SourceId(uri)).posOf(repair.firstInserted()));
+                SourceLayout.of(text, new SourceId(uri)).placeAt(repair.firstInserted()));
     }
 
     private static boolean parses(String text) {

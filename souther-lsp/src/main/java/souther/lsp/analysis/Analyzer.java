@@ -1,5 +1,8 @@
 package souther.lsp.analysis;
 
+import souther.compiler.diag.SourceLayouts;
+import souther.compiler.diag.PhysicalPos;
+import souther.compiler.cst.SourceLayout;
 import souther.compiler.source.SourceId;
 
 import souther.compiler.Compiler;
@@ -211,13 +214,13 @@ public final class Analyzer {
     /** All diagnostics for a document: every syntax error, or — when there are none — the first
      * semantic error a compile turns up, or the warnings a clean compile found. */
     public List<LspDiagnostic> diagnostics(String text) {
-        LineIndex lines = new LineIndex(text);
+        SourceLayout lines = SourceLayout.of(text);
         List<LspDiagnostic> out = new ArrayList<>();
 
         try {
-            out.addAll(syntaxOf(text, lines));
+            out.addAll(syntaxOf(text, lines.lines()));
         } catch (RuntimeException | StackOverflowError e) {
-            return List.of(internalError(lines, e));   // the parse itself did not finish
+            return List.of(internalError(lines.lines(), e));   // the parse itself did not finish
         }
         if (!out.isEmpty()) {
             return out;   // don't chase semantics through a broken parse
@@ -239,7 +242,7 @@ public final class Analyzer {
         } catch (CompileException e) {
             out.addAll(fromCompile(text, lines, e));
         } catch (RuntimeException | StackOverflowError e) {
-            out.add(internalError(lines, e));
+            out.add(internalError(lines.lines(), e));
         }
         return out;
     }
@@ -298,13 +301,13 @@ public final class Analyzer {
         for (String uri : graph.uris()) {
             abandonment.stopIfAsked();   // between two files, before this one is parsed
             String text = graph.text(uri);
-            LineIndex lines = new LineIndex(text);
+            SourceLayout lines = SourceLayout.of(text, new SourceId(uri));
             List<LspDiagnostic> syntax = new ArrayList<>();
             boolean readable = true;
             try {
-                syntax.addAll(syntaxOf(text, lines));
+                syntax.addAll(syntaxOf(text, lines.lines()));
             } catch (RuntimeException | StackOverflowError e) {
-                syntax.add(internalError(lines, e));   // the parse itself did not finish
+                syntax.add(internalError(lines.lines(), e));   // the parse itself did not finish
                 readable = false;
             }
             out.put(uri, syntax);
@@ -329,14 +332,14 @@ public final class Analyzer {
             }
             return out;
         }
-        Map<String, LineIndex> indexes = new LinkedHashMap<>();
-        java.util.function.Function<String, LineIndex> linesOf = uri -> {
+        Map<String, SourceLayout> indexes = new LinkedHashMap<>();
+        java.util.function.Function<String, SourceLayout> linesOf = uri -> {
             if (uri == null) {
                 return null;
             }
             return indexes.computeIfAbsent(uri, at -> {
                 String text = graph.text(at);
-                return text == null ? null : new LineIndex(text);
+                return text == null ? null : SourceLayout.of(text, new SourceId(at));
             });
         };
         for (Map.Entry<SourceId, List<Located>> e : byUri.entrySet()) {
@@ -500,14 +503,17 @@ public final class Analyzer {
      * counted in the name lands inside the qualifier at one end and short of the last character at
      * the other.
      */
-    private Range writtenRange(WrittenName written) {
+    private Range writtenRange(SourceLayouts texts, WrittenName written) {
         Region segment = written.lastSegment();
-        return new Range(editorPosition(segment.start()), editorPosition(segment.end()));
+        return new Range(editorPosition(texts, segment.start()),
+                editorPosition(texts, segment.end()));
     }
 
     /** A compiler position as an editor counts, both of its numbers being one less. */
-    private static Position editorPosition(SourcePos at) {
-        return new Position(at.line() - 1, at.column() - 1);
+    private static Position editorPosition(SourceLayouts texts, SourcePos at) {
+        PhysicalPos sits = texts == null ? null : texts.resolve(at);
+        return sits == null ? new Position(0, 0)
+                : new Position(sits.line() - 1, sits.column() - 1);
     }
 
     /**
@@ -549,7 +555,7 @@ public final class Analyzer {
         }
         String uri = documentOf(written.pos(), moduleUri, graph);
         return uri == null ? Optional.empty()
-                : Optional.of(new Location(uri, writtenRange(written)));
+                : Optional.of(new Location(uri, writtenRange(textsOf(graph), written)));
     }
 
     /**
@@ -588,7 +594,7 @@ public final class Analyzer {
             }
             String title = lensTitle(compilation, module, behavior.name(), adequacy);
             if (title != null) {
-                out.add(new CodeLens(lensAnchorRange(behavior.pos()), title));
+                out.add(new CodeLens(lensAnchorRange(textsOf(graph), behavior.pos()), title));
             }
         }
         return out;
@@ -719,8 +725,8 @@ public final class Analyzer {
      * everything a lens needs. It says nothing about what a caret is in, which is a different
      * question and is answered from the declaration a caret is written inside of.
      */
-    private static Range lensAnchorRange(SourcePos pos) {
-        Position at = new Position(pos.line() - 1, pos.column() - 1);
+    private static Range lensAnchorRange(SourceLayouts texts, SourcePos pos) {
+        Position at = editorPosition(texts, pos);
         return new Range(at, at);
     }
 
@@ -767,7 +773,7 @@ public final class Analyzer {
     private List<CodeAction> repairs(String uri, Range requested, Compilation compilation) {
         List<CodeAction> out = new ArrayList<>();
         for (Compilation.RepairOffer offer : compilation.repairs(new SourceId(uri))) {
-            if (!overlaps(rangeOfRegion(offer.offeredAt()), requested)) {
+            if (!overlaps(rangeOfRegion(compilation.texts(), offer.offeredAt()), requested)) {
                 continue;
             }
             Repair.AnEdit edit = offer.repair();
@@ -779,7 +785,8 @@ public final class Analyzer {
                 continue;
             }
             out.add(new CodeAction.Applied("Replace with '" + edit.with() + "'",
-                    new CodeAction.Edit(written.value(), rangeOfRegion(edit.target()), edit.with())));
+                    new CodeAction.Edit(written.value(),
+                            rangeOfRegion(compilation.texts(), edit.target()), edit.with())));
         }
         return out;
     }
@@ -807,14 +814,14 @@ public final class Analyzer {
         // Which declaration is being asked about, asked of the document the request arrived with.
         // Ahead of the compile because it is what the rest is about: everything below answers about
         // a behavior, and there is no behavior to answer about until this says so.
-        LineIndex lines = new LineIndex(text);
+        SourceLayout lines = SourceLayout.of(text, new SourceId(uri));
         // The first behavior it reaches, and not the first definition. A selection is drawn over as
         // many declarations as somebody drags it over, and a `data` above the behavior is not an
         // answer about the behavior. Over more than one behavior it is the one written first: an
         // offer writes the rows of one declaration, so one of them is what it can be about.
         SyntaxNode declaration = defsReaching(root,
-                lines.offsetOf(requested.start().line(), requested.start().character()),
-                lines.offsetOf(requested.end().line(), requested.end().character())).stream()
+                lines.lines().offsetOf(requested.start().line(), requested.start().character()),
+                lines.lines().offsetOf(requested.end().line(), requested.end().character())).stream()
                 .filter(def -> def.kind() == SyntaxKind.BEHAVIOR_DEF)
                 .findFirst().orElse(null);
         if (declaration == null) {
@@ -879,9 +886,9 @@ public final class Analyzer {
      * is canonical on one side and as spelled on the other, and a declaration written in a
      * decomposed spelling would be joined to nothing.
      */
-    private static boolean declaredBy(LineIndex lines, Hir.BehaviorDef behavior, int declaredAt) {
+    private static boolean declaredBy(SourceLayout lines, Hir.BehaviorDef behavior, int declaredAt) {
         SourcePos pos = behavior.pos();
-        return lines.offsetOf(pos.line() - 1, pos.column() - 1) == declaredAt;
+        return lines.offsetOf(pos) == declaredAt;
     }
 
     /** Whether anything this behavior is short of is a thing writing a row could answer. */
@@ -1000,7 +1007,8 @@ public final class Analyzer {
         souther.compiler.report.GeneratedRows.Block block =
                 souther.compiler.report.GeneratedRows.of(compilation, offer.module(),
                         offer.behavior(), true,
-                        souther.compiler.diag.SourceNameResolver.identity());
+                        souther.compiler.diag.SourceRendering.namedByIdentity(
+                                compilation.texts()));
         if (block.rowCount() == 0) {
             return null;
         }
@@ -1059,16 +1067,16 @@ public final class Analyzer {
                 return value;
             }
         }
-        LineIndex lines = new LineIndex(text);
+        SourceLayout lines = SourceLayout.of(text, new SourceId(uri));
         SyntaxNode root = CstParser.parse(text).root();
-        SyntaxToken ident = identAt(meaningfulTokens(root), lines, lines.offsetOf(pos.line(), pos.character()));
+        SyntaxToken ident = identAt(meaningfulTokens(root), lines, lines.lines().offsetOf(pos.line(), pos.character()));
         if (ident == null) {
             return Optional.empty();
         }
         SyntaxNode local = declaringDef(root, nameOf(ident));
         if (local != null) {
             SyntaxToken name = nameToken(local);
-            return name == null ? Optional.empty() : Optional.of(new Location(uri, tokenRange(lines, name)));
+            return name == null ? Optional.empty() : Optional.of(new Location(uri, tokenRange(lines.lines(), name)));
         }
         String targetModule = importedFrom(text, nameOf(ident));
         if (targetModule == null) {
@@ -1120,8 +1128,8 @@ public final class Analyzer {
             // the cursor may be on a name it never saw. Matching the spelling still answers those.
         }
         SyntaxNode root = CstParser.parse(text).root();
-        LineIndex lines = new LineIndex(text);
-        SyntaxToken ident = identAt(meaningfulTokens(root), lines, lines.offsetOf(pos.line(), pos.character()));
+        SourceLayout lines = SourceLayout.of(text, new SourceId(uri));
+        SyntaxToken ident = identAt(meaningfulTokens(root), lines, lines.lines().offsetOf(pos.line(), pos.character()));
         if (ident == null) {
             return List.of();
         }
@@ -1172,11 +1180,11 @@ public final class Analyzer {
         for (Map.Entry<String, List<Range>> e : renameRanges(uri, pos, graph).entrySet()) {
             List<TextEdit> edits = new ArrayList<>();
             SyntaxNode root = CstParser.parse(graph.text(e.getKey())).root();
-            LineIndex lines = new LineIndex(graph.text(e.getKey()));
+            SourceLayout lines = SourceLayout.of(graph.text(e.getKey()), new SourceId(e.getKey()));
             List<SyntaxToken> tokens = meaningfulTokens(root);
             for (Range range : e.getValue()) {
                 String field = fieldTakenAsName(tokens, lines,
-                        lines.offsetOf(range.start().line(), range.start().character()));
+                        lines.lines().offsetOf(range.start().line(), range.start().character()));
                 edits.add(new TextEdit(range,
                         field == null ? newName : field + " = " + newName));
             }
@@ -1192,7 +1200,7 @@ public final class Analyzer {
      * <p>Which characters are there is the syntax tree's question, being what knows about
      * characters, and this is the one place where what a rename writes is not the name it was given.
      */
-    private String fieldTakenAsName(List<SyntaxToken> tokens, LineIndex lines, int offset) {
+    private String fieldTakenAsName(List<SyntaxToken> tokens, SourceLayout lines, int offset) {
         SyntaxToken token = identAt(tokens, lines, offset);
         SyntaxNode parent = token == null ? null : token.parent();
         if (parent == null || token.start() != offset) {
@@ -1288,8 +1296,8 @@ public final class Analyzer {
         }
         String text = graph.text(uri);
         SyntaxNode root = CstParser.parse(text).root();
-        LineIndex lines = new LineIndex(text);
-        SyntaxToken ident = identAt(meaningfulTokens(root), lines, lines.offsetOf(pos.line(), pos.character()));
+        SourceLayout lines = SourceLayout.of(text, new SourceId(uri));
+        SyntaxToken ident = identAt(meaningfulTokens(root), lines, lines.lines().offsetOf(pos.line(), pos.character()));
         if (ident != null) {
             String name = nameOf(ident);
             String definingModule = declaringDef(root, name) != null
@@ -1435,7 +1443,7 @@ public final class Analyzer {
                     : compilation.db().ask(new Names.UsesOf(module, target)).value()) {
                 String at = documentOf(use.pos(), moduleUri, graph);
                 if (at != null) {
-                    out.add(new Location(at, writtenRange(use.written())));
+                    out.add(new Location(at, writtenRange(textsOf(graph), use.written())));
                 }
             }
         }
@@ -1468,7 +1476,7 @@ public final class Analyzer {
                     : compilation.db().ask(new Names.ValueUsesOf(module, target)).value()) {
                 String at = documentOf(use.pos(), moduleUri, graph);
                 if (at != null) {
-                    out.add(new Location(at, writtenRange(use.written())));
+                    out.add(new Location(at, writtenRange(textsOf(graph), use.written())));
                 }
             }
         }
@@ -1644,10 +1652,10 @@ public final class Analyzer {
         if (callee == null) {
             return Optional.empty();
         }
-        LineIndex lines = new LineIndex(parsed, new SourceId(uri));
+        SourceLayout lines = SourceLayout.of(parsed, new SourceId(uri));
         Optional<SemanticSnapshot> snapshot = SemanticSnapshot.of(compilation.db(), module);
         int argument = argumentAt(call, cursor);
-        return snapshot.flatMap(reads -> reads.calledAt(lines.posOf(callee.start())))
+        return snapshot.flatMap(reads -> reads.calledAt(lines.at(callee)))
                 .filter(called -> reading == null || reading.mayBeRead(called.writtenAt()))
                 .filter(called -> called.takes().isEmpty() || argument < called.takes().size())
                 .map(called -> shown(called, snapshot.orElseThrow(), argument));
@@ -1839,16 +1847,16 @@ public final class Analyzer {
         if (text == null) {
             return List.of();
         }
-        LineIndex lines = new LineIndex(text);
-        int at = lines.offsetOf(pos.line(), pos.character());
+        SourceLayout lines = SourceLayout.of(text, new SourceId(uri));
+        int at = lines.lines().offsetOf(pos.line(), pos.character());
         List<Range> widening = new ArrayList<>();
         SyntaxToken on = tokenAt(CstParser.parse(text).root(), at);
         if (on != null) {
-            widening.add(tokenRange(lines, on));
+            widening.add(tokenRange(lines.lines(), on));
         }
         for (SyntaxNode node = on == null ? null : on.parent(); node != null;
                 node = node.parent()) {
-            Range around = nodeRange(lines, node);
+            Range around = nodeRange(lines.lines(), node);
             if (widening.isEmpty() || !around.equals(widening.get(widening.size() - 1))) {
                 widening.add(around);
             }
@@ -1898,7 +1906,7 @@ public final class Analyzer {
         }
         List<InlayHint> hints = new ArrayList<>();
         for (DeclaredParameter parameter : snapshot.get().parametersIn(new SourceId(uri))) {
-            Position after = editorPosition(parameter.writtenAt().end());
+            Position after = editorPosition(textsOf(graph), parameter.writtenAt().end());
             if (!within(within, after)) {
                 continue;
             }
@@ -1958,7 +1966,7 @@ public final class Analyzer {
         if (snapshot.isEmpty()) {
             return List.of();
         }
-        SourcePos at = new LineIndex(text, new SourceId(uri)).posOf(cursor);
+        SourcePos at = SourceLayout.of(text, new SourceId(uri)).placeAt(cursor);
         Optional<MemberReceiver> receiver = snapshot.get().memberReceiverAround(at);
         if (receiver.isEmpty() || !reading.mayBeRead(receiver.get().writtenAt())) {
             return List.of();
@@ -2590,9 +2598,9 @@ public final class Analyzer {
      * range of the top-level definition it names, if any. The workspace-aware
      * {@link #definition(String, Position, ModuleGraph)} resolves across imports as well. */
     public Optional<Range> definition(String text, Position pos) {
-        LineIndex lines = new LineIndex(text);
+        SourceLayout lines = SourceLayout.of(text);
         SyntaxNode root = CstParser.parse(text).root();
-        SyntaxToken ident = identAt(meaningfulTokens(root), lines, lines.offsetOf(pos.line(), pos.character()));
+        SyntaxToken ident = identAt(meaningfulTokens(root), lines, lines.lines().offsetOf(pos.line(), pos.character()));
         if (ident == null) {
             return Optional.empty();
         }
@@ -2601,7 +2609,7 @@ public final class Analyzer {
             return Optional.empty();
         }
         SyntaxToken name = nameToken(def);
-        return name == null ? Optional.empty() : Optional.of(tokenRange(lines, name));
+        return name == null ? Optional.empty() : Optional.of(tokenRange(lines.lines(), name));
     }
 
     /**
@@ -2633,10 +2641,10 @@ public final class Analyzer {
      */
     private Hover withWhatIsNotStated(Hover shown, String uri, String text, Position pos,
                                       ModuleGraph graph) {
-        LineIndex lines = new LineIndex(text);
+        SourceLayout lines = SourceLayout.of(text, new SourceId(uri));
         SyntaxNode root = CstParser.parse(text).root();
         SyntaxToken ident = identAt(meaningfulTokens(root), lines,
-                lines.offsetOf(pos.line(), pos.character()));
+                lines.lines().offsetOf(pos.line(), pos.character()));
         // The cursor on the name a behavior is declared under, and nowhere else. `declaringDef` finds
         // a definition by the characters of a name, so a parameter or a local spelled like a behavior
         // of this module finds that behavior — and what is said here would be said about a value that
@@ -2668,9 +2676,9 @@ public final class Analyzer {
      */
     private Optional<Hover> ensuresClauseHover(String uri, String text, Position pos,
                                                ModuleGraph graph) {
-        LineIndex lines = new LineIndex(text);
+        SourceLayout lines = SourceLayout.of(text, new SourceId(uri));
         SyntaxNode root = CstParser.parse(text).root();
-        int offset = lines.offsetOf(pos.line(), pos.character());
+        int offset = lines.lines().offsetOf(pos.line(), pos.character());
         SyntaxNode clause = enclosing(root, offset, SyntaxKind.ENSURES_CLAUSE);
         SyntaxNode behavior = enclosing(root, offset, SyntaxKind.BEHAVIOR_DEF);
         SyntaxToken name = behavior == null ? null : nameToken(behavior);
@@ -2686,13 +2694,13 @@ public final class Analyzer {
         List<RuleDischarge> here = new ArrayList<>();
         for (RuleDischarge rule : discharge.rules()) {
             SourcePos written = rule.capability().owed().clause();
-            int at = lines.offsetOf(written.line() - 1, written.column() - 1);
+            int at = lines.offsetOf(written);
             if (at >= clause.start() && at < clause.end()) {
                 here.add(rule);
             }
         }
         return here.isEmpty() ? Optional.empty()
-                : Optional.of(new Hover(ruleContents(here), nodeRange(lines, clause)));
+                : Optional.of(new Hover(ruleContents(here), nodeRange(lines.lines(), clause)));
     }
 
     /**
@@ -2786,9 +2794,9 @@ public final class Analyzer {
      * in one. */
     private Optional<Hover> invariantClauseHover(String uri, String text, Position pos,
                                                  ModuleGraph graph) {
-        LineIndex lines = new LineIndex(text);
+        SourceLayout lines = SourceLayout.of(text, new SourceId(uri));
         SyntaxNode root = CstParser.parse(text).root();
-        int offset = lines.offsetOf(pos.line(), pos.character());
+        int offset = lines.lines().offsetOf(pos.line(), pos.character());
         SyntaxNode clause = enclosing(root, offset, SyntaxKind.INVARIANT_CLAUSE);
         if (clause == null) {
             return Optional.empty();
@@ -2804,7 +2812,7 @@ public final class Analyzer {
         // Put together here from the module and the spelling instead, it would be an identity for
         // whatever that address names — including nothing.
         TypeSymbol declared = typeUnderCursor(compilation, uri,
-                new Position(lines.lspLine(name.start()), lines.lspColumn(name.start())));
+                new Position(lines.lines().lspLine(name.start()), lines.lines().lspColumn(name.start())));
         Map<TypeSymbol, List<ClauseDischarge>> byType =
                 compilation.db().ask(new Shapes.InvariantCapabilities(module)).value();
         List<ClauseDischarge> clauses = byType == null || declared == null
@@ -2817,7 +2825,7 @@ public final class Analyzer {
         SourcePos found = null;
         for (ClauseDischarge c : clauses) {
             SourcePos at = c.owed().clause();
-            if (lines.offsetOf(at.line() - 1, at.column() - 1) <= offset) {
+            if (lines.offsetOf(at) <= offset) {
                 found = at;
             }
         }
@@ -2832,7 +2840,7 @@ public final class Analyzer {
                 said.add(dischargeContents(c));
             }
         }
-        return Optional.of(new Hover(String.join("\n\n", said), nodeRange(lines, clause)));
+        return Optional.of(new Hover(String.join("\n\n", said), nodeRange(lines.lines(), clause)));
     }
 
     /** What a clause's classification says, in the terms an author acts on. */
@@ -2923,9 +2931,9 @@ public final class Analyzer {
 
     /** Hover: shows the signature line of the definition the identifier under the cursor names. */
     public Optional<Hover> hover(String text, Position pos) {
-        LineIndex lines = new LineIndex(text);
+        SourceLayout lines = SourceLayout.of(text);
         SyntaxNode root = CstParser.parse(text).root();
-        int offset = lines.offsetOf(pos.line(), pos.character());
+        int offset = lines.lines().offsetOf(pos.line(), pos.character());
         SyntaxToken ident = identAt(meaningfulTokens(root), lines, offset);
         if (ident == null) {
             return Optional.empty();
@@ -2941,7 +2949,7 @@ public final class Analyzer {
             signature = def != null ? signatureLine(text, def) : ident.text();
         }
         String contents = "```souther\n" + signature + "\n```";
-        return Optional.of(new Hover(contents, tokenRange(lines, ident)));
+        return Optional.of(new Hover(contents, tokenRange(lines.lines(), ident)));
     }
 
     /** The definition's first source line, from its first real token (leading comments dropped). */
@@ -2985,7 +2993,7 @@ public final class Analyzer {
      * one is a separator. Said rather than left to be found: this is an approximation the syntax
      * forces, not a second opinion about where a name ends.
      */
-    private SyntaxToken identAt(List<SyntaxToken> tokens, LineIndex lines, int offset) {
+    private SyntaxToken identAt(List<SyntaxToken> tokens, SourceLayout lines, int offset) {
         DottedRun run = dottedRun(tokens, offset);
         if (run.parts().isEmpty()) {
             return null;
@@ -2994,7 +3002,7 @@ public final class Analyzer {
         for (int i = 1; i < run.parts().size(); i++) {
             name = name.then(spelledBy(run.parts().get(i), lines));
         }
-        SourcePos at = lines.posOf(offset);
+        SourcePos at = lines.placeAt(offset);
         // A run a dot continues is a name the author is still writing, and the end of what is
         // written of it is not the end of the name — the member is what comes next, and a caret
         // waiting for it means neither the qualifier nor the name.
@@ -3012,8 +3020,8 @@ public final class Analyzer {
     }
 
     /** One token's name, where it is written. */
-    private static WrittenName spelledBy(SyntaxToken token, LineIndex lines) {
-        return WrittenName.of(token.text(), lines.posOf(token.start()));
+    private static WrittenName spelledBy(SyntaxToken token, SourceLayout lines) {
+        return WrittenName.of(token.text(), lines.at(token));
     }
 
     /**
@@ -3324,11 +3332,11 @@ public final class Analyzer {
     /** Every diagnostic the compile error carries, each as its own editor marker — a compile stops at
      * the first error, but a pass that finds several at once (each failing {@code example} row) is
      * squiggled row by row rather than collapsed onto the first. */
-    private List<LspDiagnostic> fromCompile(String text, LineIndex lines, CompileException e) {
+    private List<LspDiagnostic> fromCompile(String text, SourceLayout laidOut, CompileException e) {
         if (e.diagnostic() != null) {
             List<LspDiagnostic> out = new ArrayList<>();
             for (Diagnostic d : e.diagnostics()) {
-                out.add(fromDiagnostic(text, lines, d));
+                out.add(fromDiagnostic(text, laidOut, d));
             }
             return out;
         }
@@ -3343,12 +3351,13 @@ public final class Analyzer {
      * <p>No linked locations. A link is a URI, and a document compiled from its text alone has none
      * to give — the workspace path is where a marker can point somewhere the editor can open.
      */
-    private LspDiagnostic fromDiagnostic(String text, LineIndex lines, Diagnostic d) {
+    private LspDiagnostic fromDiagnostic(String text, SourceLayout laidOut, Diagnostic d) {
         // The document itself is what this route is reading, and it is the only thing that knows:
         // the compile behind it read this text without a name for it, so a report from that parse
         // has real numbers and no file. Left unsaid, the marker fell to the head of the document.
-        return project(d, ReportContext.ofTheTextItself(new SourceContext(null, text)),
-                id -> lines, id -> null);
+        return project(d, ReportContext.ofTheTextItself(
+                        new SourceContext(null, text, laidOut)),
+                id -> laidOut, id -> null);
     }
 
     /**
@@ -3363,11 +3372,11 @@ public final class Analyzer {
      * @param context what the editor answers for this report: the file it lists it under, and the
      *        document it is reading — which is the one thing that knows which text a report parsed
      *        out of an unsaved buffer is in
-     * @param linesOf the line index of a source, for turning its positions into ranges
+     * @param linesOf how a source is laid out, for turning the places in it into ranges
      * @param uriOf the editor's name for a source, null when it has none to link to
      */
     private LspDiagnostic project(Diagnostic d, ReportContext context,
-                                  java.util.function.Function<String, LineIndex> linesOf,
+                                  java.util.function.Function<String, SourceLayout> linesOf,
                                   java.util.function.Function<String, String> uriOf) {
         String message = DiagnosticRenderer.body(d, EDITOR_LANGUAGE);
         if (d.diff() != null) {
@@ -3393,19 +3402,20 @@ public final class Analyzer {
         for (Shown other : view.others()) {
             SourceId source = sourceOf(other.spot());
             String uri = source == null ? null : uriOf.apply(source.value());
-            LineIndex lines = linesOf.apply(uriOf(source));
+            SourceLayout lines = linesOf.apply(uriOf(source));
             if (uri == null || lines == null) {
                 continue;   // nothing the editor could open, so nothing to link to
             }
-            related.add(new LspDiagnostic.Related(uri, rangeOfRegion(other.spot().region()),
+            related.add(new LspDiagnostic.Related(uri, rangeOfRegion(place -> lines, other.spot().region()),
                     other instanceof Shown.ALabel(Spot _, souther.compiler.diag.msg.Message said)
                             ? DiagnosticRenderer.qualified(
                                     Messages.render(said, EDITOR_LANGUAGE),
                                     other.spot().region().start(), EDITOR_LANGUAGE)
                             : aboutTheDiagnostic));
         }
+        SourceLayout here = linesOf.apply(uriOf(context.filedUnder().orElse(null)));
         Range range = view.anchor()
-                .map(shown -> rangeOfRegion(shown.spot().region()))
+                .map(shown -> rangeOfRegion(place -> here, shown.spot().region()))
                 .orElseGet(Analyzer::theHeadOfTheDocument);
         return new LspDiagnostic(range, severity, d.code(), message, tagsOf(d), related);
     }
@@ -3425,8 +3435,8 @@ public final class Analyzer {
         };
     }
 
-    private Range rangeOfRegion(Region r) {
-        return new Range(position(r.start()), position(r.end()));
+    private Range rangeOfRegion(SourceLayouts texts, Region r) {
+        return new Range(position(texts, r.start()), position(texts, r.end()));
     }
 
     /** Where an editor puts a marker for something with no place of its own: the head of the
@@ -3436,9 +3446,35 @@ public final class Analyzer {
         return new Range(origin, origin);
     }
 
-    /** A 1-based compiler {@link SourcePos} as a 0-based LSP position. */
-    private Position position(SourcePos p) {
-        return new Position(Math.max(0, p.line() - 1), Math.max(0, p.column() - 1));
+    /** Where a place sits in the text it is in, as a 0-based LSP position. */
+    private Position position(SourceLayouts texts, SourcePos p) {
+        PhysicalPos sits = texts == null ? null : texts.resolve(p);
+        if (sits == null) {
+            return new Position(0, 0);
+        }
+        return new Position(Math.max(0, sits.line() - 1), Math.max(0, sits.column() - 1));
+    }
+
+    /**
+     * The documents this server is holding, laid out — what turns a place in an answer into
+     * somewhere an editor can put a marker.
+     *
+     * <p>Read off the graph as it now stands and never kept. Which document a place is in is the
+     * place's own to say, so this is asked of that rather than of a file name the caller worked
+     * out; a place in a text this server has no document for is nowhere it could scroll to.
+     */
+    private static SourceLayouts textsOf(ModuleGraph graph) {
+        Map<String, SourceLayout> held = new LinkedHashMap<>();
+        return place -> {
+            if (!(place.quotedFrom()
+                    instanceof QuotedFrom.ASourceThisCompileHolds(SourceId document))) {
+                return null;
+            }
+            return held.computeIfAbsent(document.value(), uri -> {
+                String text = graph.text(uri);
+                return text == null ? null : SourceLayout.of(text, new SourceId(uri));
+            });
+        };
     }
 
     private Range range(LineIndex lines, int startOffset, int endOffset) {

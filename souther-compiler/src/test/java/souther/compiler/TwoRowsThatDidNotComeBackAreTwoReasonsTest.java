@@ -1,8 +1,9 @@
 package souther.compiler;
 
+import souther.compiler.diag.SourceLayouts;
+import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 
-import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.observe.Incompleteness;
 import souther.compiler.publish.PublishedIncompleteness;
 import souther.compiler.observe.RowIdentity;
@@ -143,7 +144,7 @@ class TwoRowsThatDidNotComeBackAreTwoReasonsTest {
 
         List<String> shown = reasonsOf(compilation, "example.shown").stream()
                 .filter(gap -> gap.fact().scope() == Incompleteness.Scope.ROW)
-                .map(gap -> gap.fact().shown(SourceNameResolver.identity()))
+                .map(gap -> gap.fact().shown(SourceRendering.namedByIdentity(SourceLayouts.NONE)))
                 .toList();
 
         assertEquals(2, shown.size(), () -> "two rows did not come back: " + shown);

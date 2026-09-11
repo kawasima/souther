@@ -1,10 +1,11 @@
 package souther.compiler;
 
+import souther.compiler.diag.SourceLayouts;
+import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.RuleReadings;
-import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.Bodies;
 import souther.compiler.query.Compilation;
@@ -53,7 +54,7 @@ class WhatIsWrittenInAnEnsuresIsQuotedOverTheRowsTest {
 
     private static String block(String source) {
         return GeneratedRows.of(compiled(source), null, null, true,
-                SourceNameResolver.identity()).text();
+                SourceRendering.namedByIdentity(SourceLayouts.NONE)).text();
     }
 
     private static Compilation compiled(String source) {
@@ -200,7 +201,7 @@ class WhatIsWrittenInAnEnsuresIsQuotedOverTheRowsTest {
                 "the checker could not read this behavior's clause");
 
         String block = GeneratedRows.of(compilation, null, null, true,
-                SourceNameResolver.identity()).text();
+                SourceRendering.namedByIdentity(SourceLayouts.NONE)).text();
         assertTrue(block.contains("""
                 // `ensures` written for `wrong`:
                 //     ensures nope = Other -> n.value > 0
@@ -260,7 +261,7 @@ class WhatIsWrittenInAnEnsuresIsQuotedOverTheRowsTest {
                         souther.compiler.query.OfferingRequest.overTheModule("example.todo", true),
                         Map.of("findTodo", nothingOffered()), null)),
                 Map.of("findTodo", List.of("ensures asked = NotFound -> id.value > 0")),
-                SourceNameResolver.identity(), compiled(TODO).db()).text();
+                SourceRendering.namedByIdentity(SourceLayouts.NONE), compiled(TODO).db()).text();
 
         assertEquals("", block);
     }

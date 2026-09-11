@@ -1,6 +1,6 @@
 package souther.compiler.publish;
 
-import souther.compiler.diag.SourceNameResolver;
+import souther.compiler.diag.SourceRendering;
 import souther.compiler.source.SourceId;
 
 
@@ -85,13 +85,13 @@ public enum RuleHandleSurface {
      * <p>Only where the field is the handle. A field with words of its own has a sentence to put
      * together, and handed a bare handle it would carry the shortest true answer and lose the rest.
      */
-    public void put(DocumentItem into, PublishedRuleHandle handle, SourceNameResolver names,
+    public void put(DocumentItem into, PublishedRuleHandle handle, SourceRendering sources,
                     SourceId sectionSource) {
         if (carries != Carries.THE_HANDLE_ALONE) {
             throw new IllegalStateException(
                     "this field writes a sentence with a handle in it: " + this);
         }
-        into.node().put(here(into), RuleHandleSentence.said(handle, names, sectionSource));
+        into.node().put(here(into), RuleHandleSentence.said(handle, sources, sectionSource));
     }
 
     /**
@@ -100,12 +100,12 @@ public enum RuleHandleSurface {
      * <p>Only where the field has words of its own. A field that is the handle would carry words
      * beside it that a consumer reading it as a handle cannot take apart.
      */
-    public void put(DocumentItem into, PublishedSentence sentence, SourceNameResolver names,
+    public void put(DocumentItem into, PublishedSentence sentence, SourceRendering sources,
                     SourceId sectionSource) {
         if (carries != Carries.A_SENTENCE_AROUND_IT) {
             throw new IllegalStateException("this field is the handle and nothing else: " + this);
         }
-        into.node().put(here(into), RuleHandleSentence.of(sentence, names, sectionSource));
+        into.node().put(here(into), RuleHandleSentence.of(sentence, sources, sectionSource));
     }
 
     /**

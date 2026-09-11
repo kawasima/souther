@@ -1,5 +1,6 @@
 package souther.compiler.query;
 
+import souther.compiler.WhereItSits;
 import souther.compiler.diag.Primary;
 
 import souther.compiler.source.SourceId;
@@ -199,18 +200,19 @@ class UnresolvedNamesTest {
     /** A stage that names nothing is pointed at where it is written, not at the whole behavior. */
     @Test
     void anUnknownStageIsReportedAtTheStage() {
-        List<Diagnostic> found = diagnose("""
+        String source = """
                 module m.a exposing ( f, p )
 
                 behavior f : (n: Int) -> Int
                 let f (n) = n
 
                 behavior p = f >-> nosuch
-                """);
+                """;
+        List<Diagnostic> found = diagnose(source);
 
         assertEquals(1, found.size(), found.toString());
-        assertEquals(6, ((Primary.InSource) found.get(0).primary()).place().region().start().line(), found.toString());
-        assertEquals(20, ((Primary.InSource) found.get(0).primary()).place().region().start().column(),
+        assertEquals(6, WhereItSits.in(source, ((Primary.InSource) found.get(0).primary()).place().region()).start().line(), found.toString());
+        assertEquals(20, WhereItSits.in(source, ((Primary.InSource) found.get(0).primary()).place().region()).start().column(),
                 "the stage, not the behavior it is in: " + found);
     }
 

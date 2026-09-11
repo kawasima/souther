@@ -1,9 +1,10 @@
 package souther.compiler;
 
+import souther.compiler.diag.SourceLayouts;
+import souther.compiler.diag.SourceRendering;
 import souther.compiler.observe.ArmObservation;
 import org.junit.jupiter.api.Test;
 
-import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.Compilation;
 import souther.compiler.query.Output;
@@ -52,7 +53,7 @@ class WhatAWitnessRunDoesNotPayForTest {
         Compilation compilation = Compilation.ofSource(MODEL, "Main");
         compilation.measure(Adequacy.Asked.reportOnly(Adequacy.Level.WITNESS));
         compilation.answerEverything();
-        String report = AdequacyReport.of(compilation).human(SourceNameResolver.identity());
+        String report = AdequacyReport.of(compilation).human(SourceRendering.namedByIdentity(SourceLayouts.NONE));
 
         assertTrue(report.contains("border"), "the whole of a witness run was asked for: " + report);
         assertFalse(compilation.db().isComputed(
@@ -69,7 +70,7 @@ class WhatAWitnessRunDoesNotPayForTest {
         Compilation compilation = Compilation.ofSource(MODEL, "Main");
         compilation.measure(Adequacy.Asked.reportOnly(Adequacy.Level.ALL));
         compilation.answerEverything();
-        AdequacyReport.of(compilation).human(SourceNameResolver.identity());
+        AdequacyReport.of(compilation).human(SourceRendering.namedByIdentity(SourceLayouts.NONE));
 
         assertTrue(compilation.db().isComputed(
                 new Output.Evaluated("example.trip", ArmObservation.RECORD)));

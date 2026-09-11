@@ -1,12 +1,13 @@
 package souther.compiler.query;
 
+import souther.compiler.diag.SourceLayouts;
+import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 import souther.compiler.check.ReadingPolicy;
-import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.partition.AdequacyPolicy;
 import souther.compiler.partition.Budgets;
 import souther.compiler.partition.UndividedPosition;
@@ -463,7 +464,7 @@ class EveryNotReadReasonIsWrittenBySomeCompilationTest {
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
         Set<String> out = new LinkedHashSet<>();
-        collect(JSON.readTree(AdequacyReport.of(compilation).json(SourceNameResolver.identity())),
+        collect(JSON.readTree(AdequacyReport.of(compilation).json(SourceRendering.namedByIdentity(SourceLayouts.NONE))),
                 out);
         return out;
     }

@@ -1,9 +1,10 @@
 package souther.compiler;
 
+import souther.compiler.diag.SourceLayouts;
+import souther.compiler.diag.SourceRendering;
 import souther.compiler.query.Measurement;
 import org.junit.jupiter.api.Test;
 
-import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.BorderAssessment;
 import souther.compiler.query.ItemAssessment;
@@ -149,7 +150,7 @@ at.coverage().made().orElseThrow());
         compilation.answerEverything();
 
         String block = souther.compiler.report.GeneratedRows.of(
-                compilation, "example.proven", "place", true, SourceNameResolver.identity()).text();
+                compilation, "example.proven", "place", true, SourceRendering.namedByIdentity(SourceLayouts.NONE)).text();
 
         // In the behavior, because that is what this says. Every value tried at the point was
         // refused where a `Yen` is constructed, which is a fact about that reading and not about
@@ -462,7 +463,7 @@ at.coverage().made().orElseThrow());
             compilation.answerEverything();
             String block = souther.compiler.report.GeneratedRows.of(
                     compilation, "example.temporal", each[0], true,
-                    SourceNameResolver.identity()).text();
+                    SourceRendering.namedByIdentity(SourceLayouts.NONE)).text();
 
             assertTrue(block.contains(each[1]),
                     each[0] + ": a row is composed at the line: " + block);

@@ -91,8 +91,8 @@ class WhatWentUnreadIsWrittenInOneOrderHoweverItWasMetTest {
         assertEquals(PublicationOrders.placeFor(List.of(first, later)),
                 PublicationOrders.placeFor(List.of(later, first)),
                 "which of them a reader met first decides nothing");
-        assertEquals(Optional.of(2),
-                PublicationOrders.placeFor(List.of(later, first)).map(PublishedAt::line));
+        assertEquals(Optional.of(pos(2, 1)),
+                PublicationOrders.placeFor(List.of(later, first)).map(PublishedAt::at));
     }
 
     /** And a citation with nowhere to send a reader takes no part in the choosing. */

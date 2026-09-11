@@ -1,5 +1,8 @@
 package souther.compiler;
 
+import souther.compiler.diag.SourceLayouts;
+import souther.compiler.diag.SourceRendering;
+import souther.compiler.cst.SourceLayout;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.diag.Diagnostic;
@@ -428,7 +431,7 @@ class EveryPlaceAReportNamesSaysWhereTheCodeIsTest {
         assertEquals(1, arms.size(), () -> "one arm is unreached: " + arms.size());
         Diagnostic arm = arms.get(0);
 
-        List<String> human = report.human(SourceNameResolver.identity()).lines()
+        List<String> human = report.human(SourceRendering.namedByIdentity(SourceLayouts.NONE)).lines()
                 .map(String::strip).toList();
         List<String> armLines = human.stream()
                 // The sentence and not the mark it is printed under. What a build does about a
@@ -439,7 +442,7 @@ class EveryPlaceAReportNamesSaysWhereTheCodeIsTest {
         List<String> boundaryLines = human.stream()
                 .filter(line -> line.contains("no row is at")).toList();
 
-        JsonNode document = JSON.readTree(report.json(SourceNameResolver.identity()));
+        JsonNode document = JSON.readTree(report.json(SourceRendering.namedByIdentity(SourceLayouts.NONE)));
         JsonNode behavior = document.get("modules").get(0).get("behaviors").get(0);
         List<JsonNode> unreached = armsNoRowGoesThrough(behavior);
         assertEquals(1, unreached.size(), () -> "one arm is unreached: " + unreached);
@@ -447,7 +450,7 @@ class EveryPlaceAReportNamesSaysWhereTheCodeIsTest {
         behavior.get("partition").get("boundaries")
                 .forEach(each -> origins.add(each.get("origin").asString()));
 
-        SourceContext source = new SourceContext("m.sou", model);
+        SourceContext source = new SourceContext("m.sou", model, SourceLayout.of(model));
         return new Said(
                 DiagnosticRenderer.body(arm, Locale.ENGLISH),
                 new JsonRenderer().render(arm, source, Locale.ENGLISH),
@@ -481,7 +484,8 @@ class EveryPlaceAReportNamesSaysWhereTheCodeIsTest {
                 souther.compiler.meta.ModulePath.EMPTY);
         compilation.measure(Adequacy.Asked.warningsAt(Adequacy.Level.ALL));
         compilation.answerEverything();
-        SourceNameResolver names = id -> "0".equals(id.value()) ? "up.sou" : "down.sou";
+        SourceRendering names = new SourceRendering(
+                id -> "0".equals(id.value()) ? "up.sou" : "down.sou", compilation.texts());
         AdequacyReport report = AdequacyReport.of(compilation);
 
         List<String> lines = report.human(names).lines().map(String::strip)

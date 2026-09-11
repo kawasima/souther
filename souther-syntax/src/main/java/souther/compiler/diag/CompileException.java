@@ -8,11 +8,14 @@ import java.util.List;
  * A compile error with a source position. Carries an error code (e.g. {@code E1101})
  * when one applies (spec §compile-errors), otherwise a bare message for lex/parse errors.
  *
- * <p>The exception now wraps a structured {@link Diagnostic}. {@link #getMessage()} still returns the
- * one-line {@code line:col code: message} form (so existing callers and tests are unchanged), while a
- * renderer can take {@link #diagnostic()} and produce the Elm-style snippet or JSON. A site that has
- * not been moved onto a catalog key throws with a literal message, wrapped as a
- * {@link Diagnostic#literal literal} diagnostic.
+ * <p>The exception wraps a structured {@link Diagnostic}. {@link #getMessage()} returns the one-line
+ * {@code code: message} form, while a renderer takes {@link #diagnostic()} and produces the
+ * Elm-style snippet or JSON. A site that has not been moved onto a catalog key throws with a literal
+ * message, wrapped as a {@link Diagnostic#literal literal} diagnostic.
+ *
+ * <p>The one line says no place. Where a report points is a place in a text, and the line and column
+ * of it are what that text is laid out as at the moment — answered by whoever holds the text, which
+ * an exception on its way up a stack does not. Every renderer has one and asks.
  *
  * <p>Most phases stop at the first error, so the exception carries one diagnostic. A phase that finds
  * several independent errors at once — every failing {@code example} row — throws them all through
@@ -46,8 +49,7 @@ public class CompileException extends RuntimeException {
      * the first the day either is changed.
      */
     protected CompileException(Diagnostic diagnostic) {
-        this(diagnostic, format(positionOf(diagnostic), diagnostic.code(),
-                DiagnosticRenderer.legacyBody(diagnostic)));
+        this(diagnostic, format(diagnostic.code(), DiagnosticRenderer.legacyBody(diagnostic)));
     }
 
     private CompileException(List<Located> reported, String legacyMessage) {
@@ -68,8 +70,8 @@ public class CompileException extends RuntimeException {
 
     /**
      * A throw site that found several errors in one pass and reports each; {@code diagnostics} must
-     * not be empty. The first drives {@link #pos()}, {@link #code()} and the one-line
-     * {@code legacyBody} prefix; a renderer walks {@link #diagnostics()} and prints them all.
+     * not be empty. The first drives {@link #pos()} and {@link #code()}; a renderer walks
+     * {@link #diagnostics()} and prints them all.
      */
     public static CompileException ofAll(List<Diagnostic> diagnostics, String legacyBody) {
         if (diagnostics == null || diagnostics.isEmpty()) {
@@ -80,7 +82,7 @@ public class CompileException extends RuntimeException {
         Diagnostic first = diagnostics.get(0);
         return new CompileException(
                 diagnostics.stream().map(d -> new Located(d, ReportContext.NONE)).toList(),
-                format(positionOf(first), first.code(), legacyBody));
+                format(first.code(), legacyBody));
     }
 
     /**
@@ -93,7 +95,7 @@ public class CompileException extends RuntimeException {
     public static CompileException ofReported(Located reported) {
         Diagnostic only = reported.diagnostic();
         return new CompileException(List.of(reported),
-                format(positionOf(only), only.code(), DiagnosticRenderer.legacyBody(only)));
+                format(only.code(), DiagnosticRenderer.legacyBody(only)));
     }
 
     /**
@@ -106,7 +108,7 @@ public class CompileException extends RuntimeException {
         }
         Diagnostic first = reported.get(0).diagnostic();
         return new CompileException(List.copyOf(reported),
-                format(positionOf(first), first.code(), legacyBody));
+                format(first.code(), legacyBody));
     }
 
     /**
@@ -114,8 +116,8 @@ public class CompileException extends RuntimeException {
      *
      * <p>Read off what it points at rather than off a region it might not have. A report about a
      * module, and one whose code is out of sight, have no position at all; one in a text this
-     * compile could not name has numbers, and they are numbers of that text — which is what the
-     * one-line message below says them as, and is not a place anything sends a reader to.
+     * compile could not name has a place in that text, and that is not somewhere a reader can be
+     * sent.
      */
     public SourcePos pos() {
         return positionOf(diagnostic());
@@ -211,9 +213,16 @@ public class CompileException extends RuntimeException {
         return tagged;
     }
 
-    private static String format(SourcePos pos, String code, String message) {
-        String where = pos == null ? "" : pos + " ";
+    /**
+     * The one-line form: what the rule is called, and what it says.
+     *
+     * <p>Without a place. Where a report points is a place in a text, and a line and a column for it
+     * are what that text is laid out as — which whoever holds the text answers and this does not
+     * have. Every renderer reads {@link #diagnostic()} and asks; what is left here is for a stack
+     * trace and for an embedding that has no renderer.
+     */
+    private static String format(String code, String message) {
         String c = code == null ? "" : code + ": ";
-        return where + c + message;
+        return c + message;
     }
 }

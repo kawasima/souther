@@ -1,5 +1,6 @@
 package souther.compiler;
 
+import souther.compiler.cst.SourceLayout;
 import souther.compiler.diag.ReportContext;
 
 import souther.compiler.diag.Primary;
@@ -107,15 +108,16 @@ class AMistakeInAnAttachedFileIsSaidOnThatFileTest {
 
     @Test
     void aTypeErrorInAnAttachedFilesFixtureIsSaidInThatFile() {
-        CompileException e = raisedBy("""
+        String source = """
                 let 数 = 数量 { 個数 = "いくつか" }
 
                 example 送料を求める
                     | "一つ" : (都道府県 { 名前 = "北海道" }, 数) -> 送料 { 円 = 100 }
-                """);
+                """;
+        CompileException e = raisedBy(source);
 
         assertEquals(new SourceId("1"), e.sourceId(), "the field is given its value in the attached file");
-        assertEquals(3, ((Primary.InSource) e.diagnostic().primary()).place().region().start().line());
+        assertEquals(3, WhereItSits.in(source, ((Primary.InSource) e.diagnostic().primary()).place().region()).start().line());
     }
 
     /**
@@ -151,8 +153,8 @@ class AMistakeInAnAttachedFileIsSaidOnThatFileTest {
         CompileException e = assertThrows(CompileException.class,
                 () -> Compiler.compileModules(List.of(MODEL, attached)));
         SourceContextResolver sources = id -> switch (id.value()) {
-            case "0" -> new SourceContext("shippingfee.sou", MODEL);
-            case "1" -> new SourceContext("shippingfee.examples.sou", attached);
+            case "0" -> new SourceContext("shippingfee.sou", MODEL, SourceLayout.of(MODEL));
+            case "1" -> new SourceContext("shippingfee.examples.sou", attached, SourceLayout.of(attached));
             default -> null;
         };
 

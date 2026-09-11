@@ -1,11 +1,12 @@
 package souther.compiler;
 
+import souther.compiler.diag.SourceLayouts;
+import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
-import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.Compilation;
 import souther.compiler.report.AdequacyReport;
@@ -69,9 +70,9 @@ class AnInputTheRulesLeaveEmptyMakesEachInputMeasureNotApplicableTest {
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
         AdequacyReport report = AdequacyReport.of(compilation);
-        JsonNode document = JSON.readTree(report.json(SourceNameResolver.identity()));
+        JsonNode document = JSON.readTree(report.json(SourceRendering.namedByIdentity(SourceLayouts.NONE)));
         return new Measured(document.get("modules").get(0).get("behaviors").get(0),
-                report.human(SourceNameResolver.identity()));
+                report.human(SourceRendering.namedByIdentity(SourceLayouts.NONE)));
     }
 
     /** The measures of that input are not applicable, and say so for the one reason. */

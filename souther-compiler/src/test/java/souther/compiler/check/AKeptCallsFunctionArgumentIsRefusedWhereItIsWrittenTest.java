@@ -72,9 +72,9 @@ class AKeptCallsFunctionArgumentIsRefusedWhereItIsWrittenTest {
                 () -> Elaborator.elaborate(call, Scope.NONE, CheckContext.of(Symbols.none(DefaultStdlib.get()))
                         .preserving(Preserved.byTheLanguagesOwnOperations())));
 
-        assertEquals(ARGUMENT.line(), ((Primary.InSource) e.diagnostic().primary()).place().region().start().line(),
-                "the block is on line " + ARGUMENT.line() + " and the callee on line "
-                        + CALL.line());
+        assertEquals(ARGUMENT,
+                ((Primary.InSource) e.diagnostic().primary()).place().region().start(),
+                "the block is written at " + ARGUMENT + " and the callee at " + CALL);
     }
 
     /**

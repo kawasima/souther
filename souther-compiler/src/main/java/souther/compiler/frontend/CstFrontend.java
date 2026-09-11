@@ -5,7 +5,7 @@ import souther.compiler.source.SourceId;
 import souther.compiler.ast.Ast;
 import souther.compiler.cst.CstError;
 import souther.compiler.cst.CstParser;
-import souther.compiler.cst.LineIndex;
+import souther.compiler.cst.SourceLayout;
 import souther.compiler.cst.SyntaxNode;
 import souther.compiler.diag.CompileException;
 import souther.compiler.diag.Diagnostic;
@@ -41,7 +41,7 @@ public final class CstFrontend {
      * those positions are in a text this compile holds no file for.
      */
     public static Ast.Module parse(String source, String defaultModuleName) {
-        return parse(source, defaultModuleName, Placement.aTextWithNoIdentity());
+        return parseModule(source, defaultModuleName, Placement.aTextWithNoIdentity());
     }
 
     /** As {@link #parse(String, String)} with the default module name {@code Main}. */
@@ -67,16 +67,37 @@ public final class CstFrontend {
      * be a name this compile made up for a module that has one.
      */
     public static Ast.Module parseWhatAModulePublished(String source, SourceProvenance provenance) {
+        return readBackWhatAModulePublished(source, provenance).module();
+    }
+
+    /**
+     * The same, and how the text it read is laid out.
+     *
+     * <p>The two together, because the places in that module travel in it. What a place says is
+     * which of the things written in a text it is, and the text here is one this compile put back
+     * together and nobody holds a file for — so a reader that kept the module and let the text go
+     * would be holding places nothing left could read. Whoever remembers the module remembers this
+     * beside it.
+     */
+    public static ReadBack readBackWhatAModulePublished(String source, SourceProvenance provenance) {
         return parse(source, null, Placement.whatAModulePublished(provenance));
     }
 
-    private static Ast.Module parse(String source, String defaultModuleName, Placement read) {
+    /** A module read back out of what it published, and the layout of the text it was read from. */
+    public record ReadBack(Ast.Module module, SourceLayout laidOut) {}
+
+    private static Ast.Module parseModule(String source, String defaultModuleName, Placement read) {
+        return parse(source, defaultModuleName, read).module();
+    }
+
+    private static ReadBack parse(String source, String defaultModuleName, Placement read) {
         CstParser.Result result = CstParser.parse(source);
         if (!result.errors().isEmpty()) {
-            throw firstError(source, read, result.errors().get(0));
+            throw firstError(result.root(), source, read, result.errors().get(0));
         }
-        return ImplicitUnits.expand(
-                AstBuilder.build(result.root(), source, defaultModuleName, read));
+        return new ReadBack(
+                ImplicitUnits.expand(AstBuilder.build(result.root(), source, defaultModuleName, read)),
+                SourceLayout.of(result.root(), source, read));
     }
 
     /**
@@ -111,7 +132,7 @@ public final class CstFrontend {
                 : Placement.aFileOfThisCompile(sourceId);
         CstParser.Result result = CstParser.parse(source);
         if (!result.errors().isEmpty()) {
-            throw firstError(source, read, result.errors().get(0));
+            throw firstError(result.root(), source, read, result.errors().get(0));
         }
         Ast.Module module = ImplicitUnits.expand(
                 AstBuilder.build(result.root(), source, defaultModuleName, read));
@@ -150,14 +171,20 @@ public final class CstFrontend {
     public record Slices(String header, List<String> imports, Map<String, String> defs,
                          Map<String, String> behaviors, Map<String, String> fns) {}
 
-    /** The parser's first error, positioned in the file it was read from. The index is built here rather than
-     * taken off the builder — the build never ran — so this is the one position of a source that
+    /**
+     * The parser's first error, placed in the file it was read from. The layout is built here rather
+     * than taken off the builder — the build never ran — so this is the one place of a source that
      * would otherwise not say which file it is in, and a syntax error would be the single kind of
-     * mistake still reported against whatever file the reader guessed at. */
-    private static CompileException firstError(String source, Placement read, CstError<?> e) {
-        LineIndex lines = new LineIndex(source, read);
+     * mistake still reported against whatever file the reader guessed at.
+     *
+     * <p>Placed from an offset and not from a token, because what the parser has to say is where it
+     * stopped, and where it stopped may be no token at all.
+     */
+    private static CompileException firstError(SyntaxNode root, String source, Placement read,
+                                               CstError<?> e) {
+        SourceLayout layout = SourceLayout.of(root, source, read);
         Diagnostic diag = Diagnostic.say(e.said())
-                .at(lines.posOf(e.offset()), e.width()).build();
+                .at(layout.placeAt(e.offset()), e.width()).build();
         return CompileException.of(diag);
     }
 }

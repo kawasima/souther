@@ -1,5 +1,6 @@
 package souther.compiler.check;
 
+import souther.compiler.WhereItSits;
 import souther.compiler.diag.Primary;
 
 import souther.compiler.Compiler;
@@ -33,10 +34,10 @@ class ADiagnosticPointsAtTheOperandThatSuppliedTheValueTest {
 
     /** The text {@code region} underlines, cut out of {@code source}. */
     private static String underlined(String source, Region region) {
-        String line = source.split("\n", -1)[region.start().line() - 1];
-        int from = region.start().column() - 1;
-        int to = region.end().line() == region.start().line()
-                ? region.end().column() - 1 : line.length();
+        String line = source.split("\n", -1)[WhereItSits.in(source, region).start().line() - 1];
+        int from = WhereItSits.in(source, region).start().column() - 1;
+        int to = WhereItSits.in(source, region).end().line() == WhereItSits.in(source, region).start().line()
+                ? WhereItSits.in(source, region).end().column() - 1 : line.length();
         return line.substring(Math.min(from, line.length()), Math.min(to, line.length()));
     }
 
@@ -107,7 +108,7 @@ class ADiagnosticPointsAtTheOperandThatSuppliedTheValueTest {
                     )
                 """;
 
-        assertEquals(9, regionOf(source).start().line(),
+        assertEquals(9, WhereItSits.in(source, regionOf(source)).start().line(),
                 "the argument is on line 9 and the callee on line 8");
     }
 

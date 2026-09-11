@@ -4,7 +4,7 @@ import souther.compiler.coverage.ArmProbe;
 import souther.compiler.cst.CstError;
 import souther.compiler.cst.CstParser;
 import souther.compiler.cst.SyntaxKind;
-import souther.compiler.diag.SourceNameResolver;
+import souther.compiler.diag.SourceRendering;
 import souther.compiler.fmt.Formatter;
 import souther.compiler.publish.PublishedIncompleteness;
 import souther.compiler.publish.PublishedRuleHandle;
@@ -25,7 +25,6 @@ import souther.compiler.query.OfferItem;
 import souther.compiler.query.OfferedRow;
 import souther.compiler.query.Offering;
 import souther.compiler.query.OfferingRequest;
-import souther.compiler.source.SourceId;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -94,12 +93,12 @@ public final class GeneratedRows {
      * the edges cost nothing here: each was built where the boundary was measured, and this reads what
      * that attempt produced.
      *
-     * <p>{@code names} is what the caller calls its sources, for the same reason the report beside
+     * <p>{@code rendering} is what the caller calls its sources, for the same reason the report beside
      * this block asks for it: a note here is read in the same terminal, and a source id is an
      * identity rather than a name.
      */
     public static Block of(Compilation compilation, String module, String behavior,
-                           boolean boundaries, SourceNameResolver names) {
+                           boolean boundaries, SourceRendering rendering) {
         StringBuilder out = new StringBuilder();
         int rows = 0;
         for (String name : compilation.modules()) {
@@ -116,7 +115,7 @@ public final class GeneratedRows {
             if (offering == null) {
                 continue;
             }
-            Block one = of(offering, WrittenEnsures.of(compilation.db(), name), names,
+            Block one = of(offering, WrittenEnsures.of(compilation.db(), name), rendering,
                     compilation.db());
             out.append(one.text());
             rows += one.rowCount();
@@ -198,7 +197,7 @@ public final class GeneratedRows {
      * word, and a heading, a note and a comment marker are not things a row carries.
      */
     public static Block of(Offering offering, Map<String, List<String>> ensures,
-                           SourceNameResolver names, Db db) {
+                           SourceRendering rendering, Db db) {
         PublishedRuleHandle.WhereARuleIs places = cited -> Sites.placeOf(db, cited);
         String module = offering.request().module();
         boolean boundaries = offering.request().boundaries();
@@ -219,7 +218,7 @@ public final class GeneratedRows {
             out.append(stated(blocks(module, offered), ensures));
         }
         for (Map.Entry<String, Adequacy.Filling> behavior : offering.searched().entrySet()) {
-            notes(out, behavior.getKey(), behavior.getValue(), boundaries, names, offering,
+            notes(out, behavior.getKey(), behavior.getValue(), boundaries, rendering, offering,
                     places);
         }
         // And what the module's declarations are owed that nothing composed a row for. Here rather
@@ -545,7 +544,7 @@ public final class GeneratedRows {
      * the rows it was offering were printed two lines above the line saying it had stopped.
      */
     private static void notes(StringBuilder out, String behavior, Adequacy.Filling filling,
-                              boolean boundaries, SourceNameResolver names, Offering offering,
+                              boolean boundaries, SourceRendering rendering, Offering offering,
                               PublishedRuleHandle.WhereARuleIs places) {
         Set<String> said = new LinkedHashSet<>();
         List<Generator.UnresolvedCombination> left =
@@ -573,7 +572,7 @@ public final class GeneratedRows {
                 case GenerationOutcome.CannotGenerate cannot -> cannot.why().forEach(why ->
                         say(out, said, String.format("// no row for `%s` in `%s`: %s%n",
                                 each.finding().about() instanceof About.AnArmNoRowGoesThrough
-                                        ? about(each.finding(), places) : why.subject(),
+                                        ? about(each.finding(), rendering, places) : why.subject(),
                                 behavior, saidOf(why))));
                 // Told apart from the one above it in its own words. A strategy that tried and
                 // composed nothing and a finding nothing takes are different pieces of news: the
@@ -582,7 +581,7 @@ public final class GeneratedRows {
                 // something is written for it.
                 case GenerationOutcome.NotSupported none -> say(out, said,
                         String.format("// nothing offers a row for `%s` in `%s`: %s%n",
-                                about(each.finding(), places), behavior, none.reason().said()));
+                                about(each.finding(), rendering, places), behavior, none.reason().said()));
                 // Said rather than passed over, because the report counts this coordinate among
                 // what is missing and no row is offered for it. Left out, an author reads a gap
                 // above and no account of why nothing was written for it; the account is that the
@@ -591,7 +590,7 @@ public final class GeneratedRows {
                 case GenerationOutcome.ObligationAlreadySettled _ -> say(out, said,
                         String.format("// no row offered for `%s` in `%s`: this line is answered"
                                 + " by a row elsewhere%n",
-                                about(each.finding(), places), behavior));
+                                about(each.finding(), rendering, places), behavior));
                 // Filtered out above, and listed here so that the switch stays exhaustive: an
                 // answer added later has to be given words rather than falling silently into
                 // whichever arm a default would have put it in.
@@ -657,7 +656,7 @@ public final class GeneratedRows {
                     for (PublishedIncompleteness because
                             : PublishedIncompleteness.everyOne(unread.because()).written()) {
                         lines.append(String.format("// generation stopped for `%s`: %s%n",
-                                unread.behavior(), Reasons.said(because.fact(), names)));
+                                unread.behavior(), Reasons.said(because.fact(), rendering)));
                     }
                     yield lines.toString();
                 }
@@ -685,7 +684,7 @@ public final class GeneratedRows {
      * <p>Read off the value the finding was established with, so that a subject printed here and
      * a subject printed in the report are the same words about the same thing.
      */
-    private static String about(Adequacy.Finding finding,
+    private static String about(Adequacy.Finding finding, SourceRendering rendering,
                                 PublishedRuleHandle.WhereARuleIs places) {
         return switch (finding.about()) {
             // The point's own words, which is what the edge's own attempt is named by a few lines
@@ -693,7 +692,7 @@ public final class GeneratedRows {
             // the role: a point away from the line was written as the value the line is at, which
             // is the one place in reach that such a point is not.
             case About.APointOfABorder(var point) ->
-                    RuleHandleProse.said(point.said(places), SourceId::value, null);
+                    RuleHandleProse.said(point.said(places), rendering, null);
             // The same words on what the declaration wrote. Nothing composes a row for one of
             // these yet — the search walks one behavior's inputs and this line is owed once over
             // all of them — so what is printed beside it is that, in its own sentence.

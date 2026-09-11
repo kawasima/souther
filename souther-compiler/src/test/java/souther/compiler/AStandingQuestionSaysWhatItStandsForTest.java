@@ -1,11 +1,12 @@
 package souther.compiler;
 
+import souther.compiler.diag.SourceLayouts;
+import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
-import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.Compilation;
 import souther.compiler.report.AdequacyReport;
@@ -52,13 +53,13 @@ class AStandingQuestionSaysWhatItStandsForTest {
     }
 
     private static String reportOf(String source) {
-        return measured(source).human(SourceNameResolver.identity());
+        return measured(source).human(SourceRendering.namedByIdentity(SourceLayouts.NONE));
     }
 
     /** What the document says stopped the one question of {@code source}. */
     private static List<String> stoppedInDocument(String source) {
         JsonNode document =
-                JSON.readTree(measured(source).json(SourceNameResolver.identity()));
+                JSON.readTree(measured(source).json(SourceRendering.namedByIdentity(SourceLayouts.NONE)));
         JsonNode standing = document.get("modules").get(0).get("behaviors").get(0)
                 .get("partition").get("unanswered");
         assertEquals(1, standing.size(), "one question, so one entry: " + standing);
