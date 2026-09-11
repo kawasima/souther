@@ -276,7 +276,7 @@ public final class MeasuredInput {
      * two of the three and left to find the last reads the same declarations again, once per
      * position that arrives at one.
      */
-    public RuleReadingContext reading() {
+    public RuleReadingContext ruleReading() {
         return RuleReadingContext.of(rules(), written.policy(), machines);
     }
 

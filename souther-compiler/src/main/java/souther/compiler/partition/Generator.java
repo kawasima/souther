@@ -3034,7 +3034,7 @@ public final class Generator {
         // there is measured on as well, and the two are one value only for as long as no term
         // arrives where they part.
         souther.compiler.inputs.TermOrders on = subject.quantities().ordersOf(target.term());
-        return edgeFrom(TermRealizations.at(writtenAt, on, at, within, subject.reading()),
+        return edgeFrom(TermRealizations.at(writtenAt, on, at, within, subject.ruleReading()),
                 target, at);
     }
 
@@ -3674,7 +3674,7 @@ public final class Generator {
                 subject.inputs().policy(), under(root, settled), subject.machines());
         ConstructionPlan.Result planned = ConstructionPlan.of(subject.types().get(p), root,
                 subject.symbols(), decided.keySet(), additional,
-                (at, building) -> heldRange(under, at, building, subject.reading()));
+                (at, building) -> heldRange(under, at, building, subject.ruleReading()));
         ConstructionPlan plan;
         switch (planned) {
             case ConstructionPlan.Result.Planned made -> plan = made.plan();
@@ -3932,7 +3932,7 @@ public final class Generator {
                 java.util.EnumSet.noneOf(CompositionBudget.class);
         for (ConstructionPlan.Slot each : plan.slots()) {
             RuleKey field = fieldUnder(each.at());
-            budgets.addAll(Partitions.notBuilt(each.type(), subject.reading(),
+            budgets.addAll(Partitions.notBuilt(each.type(), subject.ruleReading(),
                     field == null ? null : rules.heldAt(field)));
         }
         return new HeldBack(budgets, plan.cutBy());
@@ -4056,7 +4056,7 @@ public final class Generator {
             if (!budget.spend()) {
                 return null;
             }
-            FixtureTemplate whole = compose(plan.root(), chosen, subject.reading());
+            FixtureTemplate whole = compose(plan.root(), chosen, subject.ruleReading());
             return whole != null && check.refuse(p, whole).isEmpty() ? whole : null;
         }
         ConstructionPlan.Slot position = positions.get(index);
@@ -4094,7 +4094,7 @@ public final class Generator {
         FieldDomains left = rulesOf(subject.types().get(p), subject.rules(),
                 subject.inputs().policy(), under(at, settled), subject.machines());
         RuleKey field = fieldUnder(position.at());
-        return Partitions.displacedRepresentativesOf(position.type(), subject.reading(),
+        return Partitions.displacedRepresentativesOf(position.type(), subject.ruleReading(),
                 field == null ? null : left.at(field).bounds(),
                 field == null ? null : left.heldAt(field));
     }
@@ -4159,7 +4159,7 @@ public final class Generator {
     private static Choices choicesOf(MeasuredInput subject, int p, ConstructionPlan plan,
                                      Map<TermPath, List<FixtureTemplate>> decided,
                                      Map<TermPath, Place> settled) {
-        RuleReadingContext reading = subject.reading();
+        RuleReadingContext reading = subject.ruleReading();
         RuleReadingSource ruleSource = reading.source();
         ReadingPolicy policy = reading.policy();
         TermPath at = TermPath.of(subject.parameters().get(p));
@@ -4577,7 +4577,7 @@ public final class Generator {
             for (int i = 0; i < positions; i++) {
                 chosen.put(at.get(i), values.get(i).get(assignment[i]));
             }
-            FixtureTemplate built = compose(plan.root(), chosen, subject.reading());
+            FixtureTemplate built = compose(plan.root(), chosen, subject.ruleReading());
             if (built != null && check.refuse(p, built).isEmpty()) {
                 return new Outcome.Built(built);
             }
