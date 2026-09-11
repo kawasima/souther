@@ -133,6 +133,12 @@ public final class Apartness<A> {
         return new Apartness<>(Set.of(new Edge<>(Sameness.Block.of(one), Sameness.Block.of(other))));
     }
 
+    /** These pairs of blocks, for a caller that worked out which blocks the denials it was told
+     *  name — see {@link StatedApartness#quotientBy}. */
+    static <A> Apartness<A> ofEdges(Set<Edge<A>> edges) {
+        return new Apartness<>(edges);
+    }
+
     /** Whether nothing is stated to differ from anything. */
     public boolean isEmpty() {
         return edges.isEmpty();

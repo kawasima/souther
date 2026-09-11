@@ -1,5 +1,7 @@
 package souther.compiler.values;
 
+import souther.compiler.hash.ValueHash;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -69,14 +71,69 @@ sealed interface PlannedHeld<A> {
      * or not anybody has worked out what the blocks it names admit — so what changes across that
      * line is the product and not this.
      *
-     * @param product what each block is described as holding
-     * @param apart which of those blocks are stated to hold different values
+     * <p>The denials as they were stated, and not the relation between blocks they come to
+     * ({@link StatedApartness}). Which blocks a denial names is settled by everything the
+     * alternative holds as one value, and a conjunction is where that is still being found out.
+     *
+     * <p><b>And whether what it states contradicts, which it is asked as each rule arrives.</b>
+     * Worked out where an alternative is made, since that is where what would have to be walked to
+     * answer it is at its smallest: a conjunction holds the denials of both sides, and neither
+     * side's answer changes unless the conjunction holds as one value something that side held
+     * apart. Asked of the whole of what an alternative states instead, a reading would walk every
+     * denial it holds for every denial it reads.
      */
-    record Alternative<A>(Box<A> product, Apartness<A> apart) {
+    static final class Alternative<A> {
+
+        private final Box<A> product;
+        private final StatedApartness<A> stated;
+
+        /** Whether some denial this states has both ends on one of this alternative's blocks. */
+        private final boolean contradicts;
+
+        private Alternative(Box<A> product, StatedApartness<A> stated, boolean contradicts) {
+            this.product = product;
+            this.stated = stated;
+            this.contradicts = contradicts;
+        }
 
         /** One alternative that states no denial. */
         static <A> Alternative<A> of(Box<A> product) {
-            return new Alternative<>(product, Apartness.nothing());
+            return new Alternative<>(product, StatedApartness.none(), false);
+        }
+
+        /** One alternative over the positions {@code stated} names and whatever {@code product}
+         *  describes, which is what a reading of a denial holds. */
+        static <A> Alternative<A> of(Box<A> product, StatedApartness<A> stated) {
+            return new Alternative<>(product, stated, stated.contradicts(product.sameness()));
+        }
+
+        /** What each block is described as holding. */
+        Box<A> product() {
+            return product;
+        }
+
+        /** Which positions are stated to hold different values, as they were stated. */
+        StatedApartness<A> stated() {
+            return stated;
+        }
+
+        /** Whether what this states leaves nothing, which is a value stated to differ from
+         *  itself. */
+        boolean contradicts() {
+            return contradicts;
+        }
+
+        /**
+         * The relation this alternative's denials come to, between the blocks it holds as one
+         * value.
+         *
+         * <p>Built where a relation is what is wanted — what a choice reads of two branches, and
+         * what a refusal says about them. The questions a reading asks of its denials on the way
+         * there are answered by {@link #contradicts} and by what was stated, so nothing that only
+         * needs those pays for this.
+         */
+        Apartness<A> apart() {
+            return stated.quotientBy(sameness());
         }
 
         /** One alternative over positions that are each their own block, stating no denial. */
@@ -89,12 +146,16 @@ sealed interface PlannedHeld<A> {
             return product.at();
         }
 
-        /** Which positions this alternative holds as one value, over its sides and its relation
-         *  alike — see {@link AdmissibleValues.Alternative#sameness}. */
+        /**
+         * Which positions this alternative holds as one value, which is what its product is over.
+         *
+         * <p>Its denials say nothing about it. A denial names two positions and says they differ,
+         * which holds neither of them with anything — so a position a denial is all this says about
+         * is a position of its own, which is what a relation answers for a position it never heard
+         * of ({@link Sameness#blockOf}).
+         */
         Sameness<A> sameness() {
-            Set<Sameness.Block<A>> named = new LinkedHashSet<>(product.at().keySet());
-            named.addAll(apart.blocks());
-            return Sameness.of(named);
+            return product.sameness();
         }
 
         AdmittedPlan get(Sameness.Block<A> block) {
@@ -110,23 +171,50 @@ sealed interface PlannedHeld<A> {
          *  it. */
         Set<A> positions() {
             Set<A> out = new LinkedHashSet<>(product.positions());
-            apart.blocks().forEach(block -> out.addAll(block.members()));
+            out.addAll(stated.positions());
             return out;
         }
 
-        /** Both alternatives holding at once, over what the two of them hold as one value —
-         *  see {@link AdmissibleValues.Alternative#narrowedWith}. */
+        /**
+         * Both alternatives holding at once, over what the two of them hold as one value —
+         * see {@link AdmissibleValues.Alternative#narrowedWith}.
+         *
+         * <p>The denials of the two are put together and nothing else is done to them. What a
+         * denial names is two positions, and the conjunction holds those positions wherever it
+         * holds them — so there is no step here for a denial to be carried across, which is what
+         * makes what a reading spends on its denials what it says rather than how it was bracketed.
+         */
         Alternative<A> meet(Alternative<A> other) {
-            Sameness<A> heldAsOne = sameness().meet(other.sameness());
+            Sameness<A> mine = sameness();
+            Sameness<A> theirs = other.sameness();
+            Sameness<A> heldAsOne = mine.meet(theirs);
+            // A side whose blocks the conjunction leaves alone answers this the way it already
+            // did: what its denials name is what they named. The one the conjunction coarsens is
+            // walked, and it is walked against the relation the conjunction leaves rather than the
+            // one it was read against.
+            boolean both = (heldAsOne == mine ? contradicts : stated.contradicts(heldAsOne))
+                    || (heldAsOne == theirs ? other.contradicts
+                            : other.stated.contradicts(heldAsOne));
             return new Alternative<>(product.meet(other.product, heldAsOne),
-                    apart.filedIn(Refinement.of(sameness(), heldAsOne))
-                            .and(other.apart.filedIn(
-                                    Refinement.of(other.sameness(), heldAsOne))));
+                    stated.and(other.stated), both);
+        }
+
+        @Override
+        public boolean equals(Object said) {
+            return said instanceof Alternative<?> it
+                    && product.equals(it.product) && stated.equals(it.stated);
+        }
+
+        /** What it describes and what it states to differ, which is the whole of what it is —
+         *  {@link #contradicts} is worked out from those. */
+        @Override
+        public int hashCode() {
+            return ValueHash.ofItsParts(Alternative.class, product.hashCode(), stated.hashCode());
         }
 
         @Override
         public String toString() {
-            return apart.isEmpty() ? product.toString() : product + " with " + apart;
+            return stated.isEmpty() ? product.toString() : product + " with " + stated;
         }
     }
 
