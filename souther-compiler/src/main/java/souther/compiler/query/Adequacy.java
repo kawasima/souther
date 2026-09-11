@@ -3515,7 +3515,7 @@ public final class Adequacy {
                             // readings this has no finding at, and a request about one behavior
                             // pays for the searches of the rest.
                             accountFor(db, name, new GenerationScope.Behavior(behavior)),
-                            composed, spec)));
+                            composed)));
         }
 
         /**
@@ -3541,8 +3541,8 @@ public final class Adequacy {
         private static List<GenerationDisposition> dispositions(List<Finding> findings,
                                                       RowsForRules rules,
                                                       BorderAccount account,
-                                                      souther.compiler.partition.FillResult composed,
-                                                      Hir.SpecBehavior spec) {
+                                                      souther.compiler.partition.FillResult
+                                                              composed) {
             List<GenerationDisposition> out = new ArrayList<>();
             for (Finding finding : findings) {
                 GenerationOutcome none = whereNoRowCouldAnswer(finding.about());
