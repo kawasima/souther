@@ -67,7 +67,8 @@ class WhatAnOfferedRowWouldSettleIsMeasuredOverTheCorpusTest {
                 Composition offering = Composition.composed(
                         OfferingRequest.overTheModule(module, true), filled,
                         Adequacy.accountFor(analysed.compilation().db(), module,
-                                new souther.compiler.query.GenerationScope.Module()));
+                                new souther.compiler.query.GenerationScope.Module()),
+                        Composition.WhatStandsIn.REQUIRING_NOTHING);
                 Settlements settlements =
                         Settlements.of(analysed.compilation().db(), offering);
                 rows += settlements.byRow().size();

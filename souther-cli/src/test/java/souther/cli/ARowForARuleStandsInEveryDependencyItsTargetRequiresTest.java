@@ -1,7 +1,8 @@
 package souther.cli;
 
 import org.junit.jupiter.api.Test;
-import souther.compiler.diag.SourceNameResolver;
+import souther.compiler.diag.SourceLayouts;
+import souther.compiler.diag.SourceRendering;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.Compilation;
 import souther.compiler.report.GeneratedRows;
@@ -189,6 +190,6 @@ class ARowForARuleStandsInEveryDependencyItsTargetRequiresTest {
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
         return GeneratedRows.of(compilation, compilation.modules().get(0), "decides", true,
-                SourceNameResolver.identity()).text();
+                SourceRendering.namedByIdentity(SourceLayouts.NONE)).text();
     }
 }

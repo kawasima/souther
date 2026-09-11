@@ -484,11 +484,11 @@ public final class GeneratedRows {
                 source.append("    | (").append(String.join(", ", entry.writtenAs()))
                         .append(") -> ").append(entry.answers().text()).append("\n");
             }
-            // The row a call none of the others state is answered by, which is what the table's own
-            // dispatch falls back to. Written from the first, because a table without one refuses a
-            // call it was not written for and a row that hits one stops with nothing to say.
-            source.append("    | _ -> ").append(table.entries().getFirst().answers().text())
-                    .append("\n");
+            // What a call none of the entries states is answered by, asked of the table rather than
+            // chosen here. The run that certified the row answered such a call too, and a fallback
+            // decided in two places is where a row run against one table is published beside
+            // another.
+            source.append("    | _ -> ").append(table.fallback().text()).append("\n");
         }
         for (Map.Entry<String, List<Offered>> behavior : offered.entrySet()) {
             if (behavior.getValue().isEmpty()) {

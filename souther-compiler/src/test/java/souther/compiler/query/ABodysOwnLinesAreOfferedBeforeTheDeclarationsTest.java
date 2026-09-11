@@ -89,7 +89,8 @@ class ABodysOwnLinesAreOfferedBeforeTheDeclarationsTest {
         Compilation compilation = compiled();
         Composition composition = Composition.composed(
                 OfferingRequest.overTheModule("example.dense", true),
-                Adequacy.generatedOf(compilation.db(), "example.dense"), account());
+                Adequacy.generatedOf(compilation.db(), "example.dense"), account(),
+                Composition.WhatStandsIn.REQUIRING_NOTHING);
         Settlements table = Settlements.of(compilation.db(), composition);
 
         ObligationIdentity inTheRun = table.requested().stream()

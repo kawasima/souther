@@ -101,7 +101,7 @@ public record RequiredDependencies(List<Required> inOrder) {
                 return null;
             }
             out.add(new RowTrials.AnsweredWith(each.dependency(), each.signature(),
-                    entries(stood)));
+                    entries(each.dependency(), stood)));
         }
         return List.copyOf(out);
     }
@@ -109,21 +109,26 @@ public record RequiredDependencies(List<Required> inOrder) {
     /**
      * The entries one dependency is stood in by, in the order they are to be tried.
      *
-     * <p>With one more at the end that answers every call, taken from the first. A candidate is
-     * being run to find out where it goes, and a call this reading did not foresee is answered
-     * rather than refused — a run that stopped at one would say nothing about where the row went,
-     * which is the whole of what running it is for.
+     * <p>The row's own table, read where a table is read ({@link StandInTable#of}) and not made
+     * again here. What a run goes against and what a block publishes are the one table, so a row
+     * certified here is certified against what a person is handed — read twice, the two would part
+     * at the calls a fallback exists for.
      */
-    private static List<RowTrials.AnsweredWith.Answer> entries(List<StoodInAnswer> stood) {
-        List<RowTrials.AnsweredWith.Answer> out = new ArrayList<>(stood.size() + 1);
-        for (StoodInAnswer each : stood) {
-            if (each.asking() instanceof StoodInAnswer.Asking.OfOne(var _, var appliedTo)) {
-                out.add(new RowTrials.AnsweredWith.Answer(
-                        appliedTo.stream().map(FixtureTemplate::value).toList(),
-                        each.value().value()));
-            }
+    private static List<RowTrials.AnsweredWith.Answer> entries(
+            ValueName.Behavior dependency, List<StoodInAnswer> stood) {
+        StandInTable table = StandInTable.of(dependency, stood);
+        if (table == null) {
+            return List.of(new RowTrials.AnsweredWith.Answer(null,
+                    stood.getFirst().value().value()));
         }
-        out.add(new RowTrials.AnsweredWith.Answer(null, stood.getFirst().value().value()));
+        List<RowTrials.AnsweredWith.Answer> out = new ArrayList<>(table.entries().size() + 1);
+        for (StandInTable.Entry each : table.entries()) {
+            out.add(new RowTrials.AnsweredWith.Answer(
+                    each.appliedTo().stream().map(FixtureTemplate::value).toList(),
+                    each.answers().value()));
+        }
+        out.add(new RowTrials.AnsweredWith.Answer(null, table.fallback().value()));
         return List.copyOf(out);
     }
+
 }

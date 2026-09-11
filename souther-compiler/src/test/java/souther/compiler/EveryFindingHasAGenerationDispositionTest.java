@@ -908,8 +908,8 @@ class EveryFindingHasAGenerationDispositionTest {
                         Map.of("pick", new Adequacy.Filling(stopped(why),
                                 atTheEdges(alsoAtTheEdges),
                                 Adequacy.Generated.RowsForRules.NOTHING,
-                                new souther.compiler.query.AnswersStoodIn.Stood(List.of()),
-                                List.of())), null)),
+                                List.of())), null,
+                        souther.compiler.query.Composition.WhatStandsIn.REQUIRING_NOTHING)),
                 Map.of(), SourceRendering.namedByIdentity(SourceLayouts.NONE),
                 compiled(KIND).db()).text();
     }

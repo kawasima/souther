@@ -95,8 +95,8 @@ class AGenerationThatWentOnDoesNotSayItStoppedTest {
                         Map.of("submit", new Adequacy.Filling(result,
                                 Generator.GenerationResult.NONE,
                                 Adequacy.Generated.RowsForRules.NOTHING,
-                                new souther.compiler.query.AnswersStoodIn.Stood(List.of()),
-                                List.of())), null)),
+                                List.of())), null,
+                        souther.compiler.query.Composition.WhatStandsIn.REQUIRING_NOTHING)),
                 Map.of(), SourceRendering.namedByIdentity(SourceLayouts.NONE), COMPILED.db()).text();
     }
 

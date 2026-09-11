@@ -2520,8 +2520,14 @@ public final class Adequacy {
         // And what the module's own declarations are owed, which is no behavior's and so is in none
         // of the fillings above. Asked only where the request asked for the edges: a request that
         // asked for no boundary rows is not asking about these either.
-        Composition composed = Composition.composed(request, generated, request.boundaries()
-                ? accountFor(db, request.module(), request.scope()) : null);
+        BorderAccount account = request.boundaries()
+                ? accountFor(db, request.module(), request.scope()) : null;
+        // What every behavior with rows stands its dependencies in with — the ones with a filling
+        // of their own and the ones that only carry a declaration's line alike. Asked here because
+        // this is where both lists are in hand: asked of the filling alone, a behavior that has no
+        // filling and carries a row would reach the block having stood nothing in.
+        Composition composed = Composition.composed(request, generated, account,
+                behavior -> supplyingFor(db, request.module(), behavior));
         // And then only the rows whose going would cost the offering something. A candidate is
         // composed for one thing and the positions that thing does not name hold whatever the row
         // has to hold, so a row composed for one item can stand where another item asks — and the
@@ -2539,6 +2545,25 @@ public final class Adequacy {
             }
         }
         return composed.keeping(kept, answered);
+    }
+
+    /**
+     * What one behavior's rows stand its dependencies in with.
+     *
+     * <p>Asked of whichever behavior has rows, and not of a list assembled beforehand. A behavior
+     * with nothing of its own to fill can still be the one reading that composed the row a
+     * declaration's line is owed, and such a row is a row of that behavior — applied the way every
+     * other row of it is, and no more applicable without a stand-in.
+     *
+     * <p>Once per behavior rather than once per row: what a dependency answers where nothing asks
+     * anything of it does not depend on which row is being composed.
+     */
+    private static AnswersStoodIn supplyingFor(Db db, String module, String behavior) {
+        souther.compiler.partition.MeasuredInput subject = subjectOf(db, module, behavior);
+        return subject == null
+                ? new AnswersStoodIn.NothingComposed(Generator.UnresolvedCombination.Reason
+                        .NOTHING_STANDS_IN_FOR_A_DEPENDENCY)
+                : Generated.supplying(db, module, behavior, subject);
     }
 
     /**
@@ -3510,26 +3535,18 @@ public final class Adequacy {
      * edge are different requests, asked with different flags, and a caller that merged them could not
      * take one without the other.
      *
-     * @param supplies what a row of this behavior stands its dependencies in with where the thing it
-     *                 was composed for asks nothing of them. A row for a class or an arm is composed
-     *                 out of what the positions divide into and says nothing about what a dependency
-     *                 answers — and a row of a behavior that requires one is still a row nothing can
-     *                 run, so one is supplied. An answer and never a list: a behavior that requires
-     *                 nothing is stood in by nothing, and a behavior whose stand-in nothing composed
-     *                 has rows that cannot go out, and the two read alike as an empty list
+     * <p>What a row of this behavior stands its dependencies in with is not here. A row of a
+     * behavior with nothing to fill can still be owed for a declaration's line, and such a row
+     * needs one too — so it is asked of every behavior that contributes a row rather than of the
+     * fillings, which are only some of them.
      */
     public record Filling(souther.compiler.partition.FillResult composed,
                           Generator.GenerationResult boundaries,
                           Generated.RowsForRules rules,
-                          AnswersStoodIn supplies,
                           List<GenerationDisposition> generation) {
 
         public Filling {
             generation = List.copyOf(generation);
-            if (supplies == null) {
-                throw new IllegalArgumentException(
-                        "a filling says what its rows stand the dependencies in with");
-            }
         }
 
     }
@@ -3715,7 +3732,6 @@ public final class Adequacy {
                     RowReadings.readingFor(byTarget, behavior),
                     db.ask(new Front.Adequacy()).value().generation(), composed.rows().size());
             return Answer.of(new Filling(composed, offeredHere(behavior, edges), rules,
-                    supplying(db, name, behavior, subject),
                     dispositions(owed, rules,
                             // This behavior's readings and no others. What a finding of this
                             // behavior is about is a line its own rules drew, and such a line is
