@@ -2,6 +2,7 @@ package souther.compiler.query;
 
 import souther.compiler.partition.FixtureTemplate;
 import souther.compiler.partition.Generator;
+import souther.compiler.partition.StoodInAnswer;
 
 import java.util.List;
 
@@ -45,9 +46,19 @@ public record RowKey(String behavior, List<String> written, List<String> stoodIn
     /** The key of one composed row, under the behavior whose block it belongs in. */
     public static RowKey of(String behavior, Generator.GeneratedRow row) {
         return new RowKey(behavior, row.inputs().stream().map(FixtureTemplate::text).toList(),
-                row.answers().stream()
-                        .map(each -> each.answer().spelled() + " = " + each.value().text())
-                        .toList());
+                row.answers().stream().map(RowKey::spelled).toList());
+    }
+
+    /**
+     * One answer a row states, as what tells it from another.
+     *
+     * <p>The dependency under the module that declares it, because two modules may declare
+     * behaviors of one name and a key that left the module off would join two rows standing two
+     * dependencies in.
+     */
+    private static String spelled(StoodInAnswer stood) {
+        return stood.dependency().module() + "." + stood.dependency().name()
+                + " = " + stood.value().text();
     }
 
     /** The values as one line, which is how a row reads where it is written. */

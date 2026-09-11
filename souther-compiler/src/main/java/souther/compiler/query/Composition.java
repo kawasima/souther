@@ -2,7 +2,9 @@ package souther.compiler.query;
 
 import souther.compiler.partition.Generator;
 import souther.compiler.partition.ObligationIdentity;
+import souther.compiler.partition.StoodInAnswer;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -70,16 +72,22 @@ public record Composition(OfferingRequest request,
         SequencedMap<String, Map<RowKey, OfferedRow>> byBehavior = new LinkedHashMap<>();
         for (Map.Entry<String, Adequacy.Filling> behavior : generated.entrySet()) {
             // The fill's rows and the ones the requirement search stood in the rules, which is a
-            // second search of this behavior's own the way the lines are a third. One block per
-            // behavior all the same: rows of one behavior written under two headings are legal and
-            // read as two lists of something, which they are not.
-            // The fill's rows and the ones the requirement search stood in the rules, which is a
             // second search of this behavior's own the way the lines are a third. Taken as rows
             // that say what they were composed for rather than as lines: two searches arriving at
             // one stimulus is one row offered for both things, and a row that kept only the first
             // purpose would be work a person is handed under half of what it does.
-            take(byBehavior, behavior.getKey(), behavior.getValue().composed().rows(),
-                    request.boundaries() ? atTheLines(owed.get(behavior.getKey())) : List.of(),
+            // The fill's rows and the ones at the lines stand the dependencies in with what the
+            // behavior requires and nothing more: neither was composed against anything a
+            // dependency answers, and a row of a behavior that requires one is a row nothing
+            // applies until something does. The rules' rows carry their own, which is what the way
+            // asked of them.
+            take(byBehavior, behavior.getKey(),
+                    standingIn(behavior.getValue().composed().rows(),
+                            behavior.getValue().supplies()),
+                    request.boundaries()
+                            ? standingIn(atTheLines(owed.get(behavior.getKey())),
+                                    behavior.getValue().supplies())
+                            : List.of(),
                     behavior.getValue().rules().byRule().values());
         }
         // A behavior with nothing of its own to fill can still be the one reading that composed the
@@ -93,6 +101,26 @@ public record Composition(OfferingRequest request,
         SequencedMap<String, List<OfferedRow>> out = new LinkedHashMap<>();
         byBehavior.forEach((behavior, here) -> out.put(behavior, List.copyOf(here.values())));
         return new Composition(request, out, new LinkedHashMap<>(generated), account);
+    }
+
+    /**
+     * {@code rows} standing the dependencies in with {@code supplies}.
+     *
+     * <p>Only where a row stands nothing in of its own. A row composed against what a way asks of a
+     * dependency carries that answer, and a supply written over it would offer a row that no longer
+     * takes the way it was composed for.
+     */
+    private static List<Generator.GeneratedRow> standingIn(List<Generator.GeneratedRow> rows,
+                                                           List<StoodInAnswer> supplies) {
+        if (supplies.isEmpty()) {
+            return rows;
+        }
+        List<Generator.GeneratedRow> out = new ArrayList<>(rows.size());
+        for (Generator.GeneratedRow row : rows) {
+            out.add(row.answers().isEmpty()
+                    ? new Generator.GeneratedRow(row.purposes(), row.inputs(), supplies) : row);
+        }
+        return List.copyOf(out);
     }
 
     /** One behavior's rows, joined onto whatever it already offers. */

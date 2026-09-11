@@ -15,6 +15,7 @@ import souther.compiler.partition.FixtureTemplate;
 import souther.compiler.partition.GenerationReason;
 import souther.compiler.partition.GenerationOutcome;
 import souther.compiler.partition.Generator;
+import souther.compiler.partition.StoodInAnswer;
 import souther.compiler.query.About;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.Compilation;
@@ -317,7 +318,7 @@ public final class GeneratedRows {
      * @param purposes what this layer calls the things it was composed for, in the order they were
      *                 taken
      */
-    private record Offered(String inputs, List<String> purposes) {
+    private record Offered(String inputs, String standsIn, List<String> purposes) {
 
         Offered {
             purposes = List.copyOf(purposes);
@@ -331,7 +332,7 @@ public final class GeneratedRows {
             }
             List<String> both = new ArrayList<>(purposes);
             both.add(purpose);
-            return new Offered(inputs, both);
+            return new Offered(inputs, standsIn, both);
         }
 
         /** The row as it is written: named where one thing names it, and not otherwise. What a
@@ -343,8 +344,8 @@ public final class GeneratedRows {
             // does — closes the literal early and the rest of it becomes source.
             return purposes.size() == 1
                     ? "    | " + FixtureTemplate.quoted(purposes.get(0))
-                            + " : (" + inputs + ") -> " + UNANSWERED
-                    : "    | (" + inputs + ") -> " + UNANSWERED;
+                            + " : (" + inputs + ")" + standsIn + " -> " + UNANSWERED
+                    : "    | (" + inputs + ")" + standsIn + " -> " + UNANSWERED;
         }
 
         /** What to say over the row, which is nothing where its name already says it. */
@@ -420,7 +421,7 @@ public final class GeneratedRows {
             Map<ArmProbe, String> arms = armNames(offering.searched().get(behavior));
             List<Offered> here = new ArrayList<>();
             for (OfferedRow row : rows) {
-                Offered offered = new Offered(row.key().inputs(), List.of());
+                Offered offered = new Offered(row.key().inputs(), standingIn(row), List.of());
                 for (String name : named(row.namedFor(), arms)) {
                     offered = offered.and(name);
                 }
@@ -429,6 +430,26 @@ public final class GeneratedRows {
             out.put(behavior, List.copyOf(here));
         });
         return out;
+    }
+
+    /**
+     * The {@code with} clause a row carries, or nothing where it stands nothing in.
+     *
+     * <p>A projection and not a decision. What a row stands a dependency in with was settled where
+     * the row was composed, and what a row states of one is a {@code with} — so there is nothing
+     * here to decide about which form a row needed.
+     *
+     * <p>The dependency by its own name, which is how a row names one. A dependency this module
+     * reaches under another spelling is written the way every other value this composes is written
+     * — by the name the declaration carries — and a block naming one that does not resolve here is
+     * a row a person edits rather than pastes.
+     */
+    private static String standingIn(OfferedRow row) {
+        List<String> written = new ArrayList<>();
+        for (StoodInAnswer each : row.answers()) {
+            written.add(each.dependency().name() + " = " + each.value().text());
+        }
+        return written.isEmpty() ? "" : " with " + String.join(", ", written);
     }
 
     /**

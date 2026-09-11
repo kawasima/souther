@@ -3,16 +3,13 @@ package souther.compiler.query;
 import souther.compiler.check.BehaviorRequirement;
 import souther.compiler.check.Sig;
 import souther.compiler.execute.RowTrials;
-import souther.compiler.partition.FixtureTemplate;
 import souther.compiler.partition.StoodInAnswer;
 import souther.compiler.types.ValueName;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * What a row of one behavior has to stand in for, in the order the behavior requires them.
@@ -87,58 +84,24 @@ public record RequiredDependencies(List<Required> inOrder) {
      * is a row nothing was seen doing — which reads as a row that went nowhere unless the shortfall
      * is said here instead.
      *
-     * <p>A dependency answered once, for no particular arguments, is what a row writes as a
-     * {@code with}; one answered differently at different arguments is a table. Which of the two a
-     * block prints is the block's, and both arrive here the same way.
+     * <p>One value per dependency, which is what a row's {@code with} states. A row holding two
+     * answers for one dependency is a row nothing composed, said where a row is composed rather
+     * than read back out of a list here.
      */
     public List<RowTrials.AnsweredWith> standingIn(List<StoodInAnswer> answers) {
-        Map<ValueName.Behavior, List<StoodInAnswer>> byDependency = new LinkedHashMap<>();
+        Map<ValueName.Behavior, StoodInAnswer> byDependency = new LinkedHashMap<>();
         for (StoodInAnswer each : answers) {
-            byDependency.computeIfAbsent(each.dependency(), _ -> new ArrayList<>()).add(each);
+            byDependency.put(each.dependency(), each);
         }
         List<RowTrials.AnsweredWith> out = new ArrayList<>(inOrder.size());
         for (Required each : inOrder) {
-            List<StoodInAnswer> stood = byDependency.get(each.dependency());
-            if (stood == null || stood.isEmpty()) {
+            StoodInAnswer stood = byDependency.get(each.dependency());
+            if (stood == null) {
                 return null;
             }
             out.add(new RowTrials.AnsweredWith(each.dependency(), each.signature(),
-                    entries(stood)));
+                    stood.value().value()));
         }
-        return List.copyOf(out);
-    }
-
-    /**
-     * The entries one dependency is stood in by, in the order they are to be tried.
-     *
-     * <p>One entry answering every call where one value serves every asking, which is what a row's
-     * {@code with} states and what a body asking one dependency about one thing needs. Where the
-     * askings want different answers, each is stated against the arguments it is an answer for, and
-     * the first of them answers a call none of them state — a call this reading did not foresee is
-     * answered rather than left to fail, since a run that stopped there would say nothing about
-     * where the row went.
-     *
-     * <p>Whether one value serves is asked of what a row would write. It is not a question about
-     * which askings are one — that is settled by {@link souther.compiler.partition.InjectedAnswer}
-     * and was settled where the body was read — but about whether the answers a row states come to
-     * one line of source, which is what the text is.
-     */
-    private static List<RowTrials.AnsweredWith.Answer> entries(List<StoodInAnswer> stood) {
-        Set<String> distinct = new LinkedHashSet<>();
-        for (StoodInAnswer each : stood) {
-            distinct.add(each.value().text());
-        }
-        if (distinct.size() == 1) {
-            return List.of(new RowTrials.AnsweredWith.Answer(null, stood.getFirst().value().value()));
-        }
-        List<RowTrials.AnsweredWith.Answer> out = new ArrayList<>(stood.size() + 1);
-        for (StoodInAnswer each : stood) {
-            out.add(new RowTrials.AnsweredWith.Answer(
-                    each.appliedTo().stream().map(FixtureTemplate::value)
-                            .toList(),
-                    each.value().value()));
-        }
-        out.add(new RowTrials.AnsweredWith.Answer(null, stood.getFirst().value().value()));
         return List.copyOf(out);
     }
 }
