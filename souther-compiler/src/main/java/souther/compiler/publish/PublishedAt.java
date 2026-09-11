@@ -33,12 +33,27 @@ import java.util.SequencedMap;
  * renderer's, recorded as the document writes it; asked here, the choosing of one place out of
  * several would decide which sources a document explains by the order it compared them in.
  */
-public record PublishedAt(SourceId source, SourcePos at, Where writtenAt) {
+public record PublishedAt(SourcePos at, Where writtenAt) {
 
     public PublishedAt {
-        if (source == null || at == null || writtenAt == null) {
+        if (at == null || writtenAt == null) {
             throw new IllegalArgumentException("a place a reader is sent to is in some source");
         }
+        if (!(at.quotedFrom() instanceof QuotedFrom.ASourceThisCompileHolds)) {
+            throw new IllegalArgumentException(
+                    "a place a reader is sent to is in a source this compile holds: " + at);
+        }
+    }
+
+    /**
+     * Which source this is in, which the place says.
+     *
+     * <p>Read off it rather than carried beside it. A source and a place that answers for one are
+     * two answers to one question, and nothing keeps them the same — a marker in one file with its
+     * line read from another is what that comes to.
+     */
+    public SourceId source() {
+        return ((QuotedFrom.ASourceThisCompileHolds) at.quotedFrom()).source();
     }
 
     /**
@@ -93,6 +108,6 @@ public record PublishedAt(SourceId source, SourcePos at, Where writtenAt) {
             case Citation.Elsewhere it -> new Where.OutOfSight(it.provenance().reachedBy());
             case Citation.Written _, Citation.Unplaced _ -> new Where.Here();
         };
-        return Optional.of(new PublishedAt(in, pos, written));
+        return Optional.of(new PublishedAt(pos, written));
     }
 }
