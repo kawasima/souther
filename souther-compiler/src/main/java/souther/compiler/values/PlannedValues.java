@@ -207,8 +207,8 @@ public sealed interface PlannedValues<A> {
         promised.put(Sameness.Block.of(here), AdmittedPlan.NONE);
         promised.put(Sameness.Block.of(there), AdmittedPlan.NONE);
         return new Settled<>(new Settled.Parts<>(
-                PlannedHeld.one(new PlannedHeld.Alternative<>(
-                        new PlannedHeld.Box<>(Map.of()), Apartness.of(here, there))),
+                PlannedHeld.one(PlannedHeld.Alternative.of(
+                        new PlannedHeld.Box<>(Map.of()), StatedApartness.of(here, there))),
                 Map.of(), Standing.nothing(), promised, AdmittedPlan.ANY, true,
                 Set.of(), Set.of()));
     }
@@ -288,8 +288,8 @@ public sealed interface PlannedValues<A> {
                         //
                         // And held together with what the blocks came to, since an alternative
                         // stands where its blocks and its denials both leave it standing.
-                        if (!stands.endsAMeet() && !box.apart().isEmpty()) {
-                            stands = stands.met(box.apart().holdsABlockApartFromItself()
+                        if (!stands.endsAMeet() && !box.stated().isEmpty()) {
+                            stands = stands.met(box.contradicts()
                                     ? Emptiness.EMPTY : Emptiness.UNDECIDED);
                         }
                         any = any.joined(stands);
@@ -349,7 +349,7 @@ public sealed interface PlannedValues<A> {
         // The block and not its positions — see {@link AdmissibleValues}.
         return Refusal.ofAnAlternative(at,
                 (block, plan) -> askedOf(block, plan, asked).isEmpty(),
-                WhatARelationShows.statedApart(box.apart()));
+                WhatARelationShows.statedApart(box));
     }
 
     /** What one block's description comes to under the question, waiting where a machine would
@@ -450,7 +450,7 @@ public sealed interface PlannedValues<A> {
             Map<Sameness.Block<A>, AdmittedPlan> at = box.at();
             Refusal<A> said = Refusal.ofAnAlternative(at,
                     (_, plan) -> plan instanceof AdmittedPlan.Nothing,
-                    WhatARelationShows.statedApart(box.apart()));
+                    WhatARelationShows.statedApart(box));
             everywhere = everywhere == null ? said : Refusal.shownByBoth(everywhere, said);
             if (everywhere.isNowhere()) {
                 return Refusal.nowhere();
@@ -831,9 +831,10 @@ public sealed interface PlannedValues<A> {
         // Merging a union into the smallest product containing it widens what the blocks hold; it
         // does not licence forgetting a rule both branches wrote, and a denial dropped here is one
         // no equality read beside the choice can be refused against.
-        return PlannedHeld.one(new PlannedHeld.Alternative<>(new PlannedHeld.Box<>(out),
-                Apartness.commonTo(List.of(apartInEveryAlternative(here, heldAsOne),
-                        apartInEveryAlternative(there, heldAsOne)), heldAsOne)));
+        return PlannedHeld.one(PlannedHeld.Alternative.of(new PlannedHeld.Box<>(out),
+                StatedApartness.of(Apartness.commonTo(
+                        List.of(apartInEveryAlternative(here, heldAsOne),
+                                apartInEveryAlternative(there, heldAsOne)), heldAsOne))));
     }
 
     /** What every alternative of one reading states to differ, said at {@code finer} — see
