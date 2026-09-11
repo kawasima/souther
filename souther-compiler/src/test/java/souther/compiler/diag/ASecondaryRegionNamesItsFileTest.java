@@ -36,12 +36,24 @@ class ASecondaryRegionNamesItsFileTest {
               | (1) -> 3
             """;
 
+    private static final SourceLayout ROWS = SourceLayout.of(ROW_FILE, new SourceId("rows"));
+
+    private static final SourceLayout FAKES = SourceLayout.of(FAKE_FILE, new SourceId("fakes"));
+
+    /** The same rows, as a text nobody has named — a buffer an editor is holding. */
+    private static final SourceLayout UNNAMED = SourceLayout.of(ROW_FILE);
+
+    /** The place at line {@code line} column {@code column} of {@code laidOut}'s text. */
+    private static SourcePos at(SourceLayout laidOut, int line, int column) {
+        return laidOut.placeAt(laidOut.lines().offsetOf(line - 1, column - 1));
+    }
+
     private static SourceContext rows() {
-        return new SourceContext("rows.sou", ROW_FILE, SourceLayout.of(ROW_FILE));
+        return new SourceContext("rows.sou", ROW_FILE, ROWS);
     }
 
     private static SourceContext fakes() {
-        return new SourceContext("fakes.sou", FAKE_FILE, SourceLayout.of(FAKE_FILE));
+        return new SourceContext("fakes.sou", FAKE_FILE, FAKES);
     }
 
     /** A resolver over named sources, recording what it was asked for. */
@@ -65,8 +77,8 @@ class ASecondaryRegionNamesItsFileTest {
      *  would leave the caller's answer doing that work as well. */
     private static Diagnostic withSecondary(String secondarySourceId) {
         return Diagnostic.say(new NameMessage.NoValueOfThatNameInScope("x"))
-                .at(new SourcePos(3, 3, new SourceId("rows")), 5)
-                .secondary(Region.ofWidth(new SourcePos(3, 3, new SourceId(secondarySourceId)), 4),
+                .at(at(ROWS, 3, 3), 5)
+                .secondary(Region.ofWidth(at("rows".equals(secondarySourceId) ? ROWS : FAKES, 3, 3), 4),
                         new NameMessage.WriteItOnItsOwn("x"))
                 .build();
     }
@@ -114,7 +126,7 @@ class ASecondaryRegionNamesItsFileTest {
     void aDiagnosticInATextTheCallerNamesIsQuotedFromIt() {
         Diagnostic inABufferNobodyNamed = Diagnostic
                 .say(new NameMessage.NoValueOfThatNameInScope("x"))
-                .at(new SourcePos(3, 3), 5)
+                .at(at(UNNAMED, 3, 3), 5)
                 .build();
 
         String out = new HumanRenderer(false).render(
@@ -136,7 +148,7 @@ class ASecondaryRegionNamesItsFileTest {
     void aDiagnosticInATextNobodyNamedIsNotQuotedFromWhateverIsToHand() {
         Diagnostic inABufferNobodyNamed = Diagnostic
                 .say(new NameMessage.NoValueOfThatNameInScope("x"))
-                .at(new SourcePos(3, 3), 5)
+                .at(at(UNNAMED, 3, 3), 5)
                 .build();
 
         String out = new HumanRenderer(false).render(
@@ -152,10 +164,10 @@ class ASecondaryRegionNamesItsFileTest {
     void aSourceIsReadOnceHoweverManyRegionsAreInIt() {
         Asked asked = resolver();
         Diagnostic d = Diagnostic.say(new NameMessage.NoValueOfThatNameInScope("x"))
-                .at(new SourcePos(3, 3), 5)
-                .secondary(Region.ofWidth(new SourcePos(3, 3, new SourceId("fakes")), 4),
+                .at(at(UNNAMED, 3, 3), 5)
+                .secondary(Region.ofWidth(at(FAKES, 3, 3), 4),
                         new NameMessage.WriteItOnItsOwn("x"))
-                .secondary(Region.ofWidth(new SourcePos(2, 1, new SourceId("fakes")), 4),
+                .secondary(Region.ofWidth(at(FAKES, 2, 1), 4),
                         new NameMessage.WriteItOnItsOwn("x"))
                 .build();
 
@@ -233,18 +245,18 @@ class ASecondaryRegionNamesItsFileTest {
     @Test
     void whereOneFileHoldsSeveralRegionsTheFirstWrittenIsTheAnchor() {
         Diagnostic d = Diagnostic.say(new NameMessage.NoValueOfThatNameInScope("x"))
-                .at(new SourcePos(3, 3), 5)
-                .secondary(Region.ofWidth(new SourcePos(3, 3, new SourceId("fakes")), 4),
+                .at(at(UNNAMED, 3, 3), 5)
+                .secondary(Region.ofWidth(at(FAKES, 3, 3), 4),
                         new NameMessage.WriteItOnItsOwn("x"))
-                .secondary(Region.ofWidth(new SourcePos(2, 1, new SourceId("fakes")), 4),
+                .secondary(Region.ofWidth(at(FAKES, 2, 1), 4),
                         new NameMessage.WriteItOnItsOwn("x"))
                 .build();
 
         DiagnosticView view = DiagnosticView.of(d, ReportContext.of(new SourceId("rows"), new SourceId("fakes")));
 
-        assertEquals(new SourcePos(3, 1, new SourceId("rows")),
+        assertEquals(at(UNNAMED, 3, 3),
                 view.anchor().orElseThrow().spot().region().start(),
-                "declaration order, not the earlier place");
+                "the primary, in declaration order, and not the earlier place beside it");
         assertEquals(2, view.others().size());
     }
 
@@ -260,10 +272,10 @@ class ASecondaryRegionNamesItsFileTest {
      */
     @Test
     void aLabelIsInTheSourceItsRegionWasReadFrom() {
-        LabeledRegion label = new LabeledRegion(Region.ofWidth(new SourcePos(3, 3, new SourceId("fakes")), 4),
+        LabeledRegion label = new LabeledRegion(Region.ofWidth(at(FAKES, 3, 3), 4),
                 new NameMessage.WriteItOnItsOwn("x"));
 
-        assertEquals(new DiagnosticPlace.InSource(Region.ofWidth(new SourcePos(3, 3, new SourceId("fakes")), 4)),
+        assertEquals(new DiagnosticPlace.InSource(Region.ofWidth(at(FAKES, 3, 3), 4)),
                 label.place());
         assertEquals(new SourceId("fakes"),
                 assertInstanceOf(DiagnosticPlace.InSource.class, label.place()).source(),
@@ -280,7 +292,7 @@ class ASecondaryRegionNamesItsFileTest {
     @Test
     void aPlaceCannotClaimASourceItsRegionWasNotReadFrom() {
         assertThrows(DiagnosticPlace.NotOnePlace.class,
-                () -> new DiagnosticPlace.InSource(new Region(new SourcePos(3, 3, new SourceId("rows")),
+                () -> new DiagnosticPlace.InSource(new Region(at(ROWS, 3, 3),
                         new SourcePos(3, 7, new SourceId("fakes")))));
         assertThrows(DiagnosticPlace.NotAPlace.class,
                 () -> new DiagnosticPlace.InSource(Region.ofWidth(new SourcePos(3, 3), 4)));

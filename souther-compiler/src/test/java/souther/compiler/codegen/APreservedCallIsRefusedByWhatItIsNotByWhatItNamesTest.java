@@ -60,6 +60,7 @@ class APreservedCallIsRefusedByWhatItIsNotByWhatItNamesTest {
 
         assertEquals(IllegalStateException.class, e.getClass());
         assertTrue(e.getMessage().contains(String.valueOf(operation)), e.getMessage());
-        assertTrue(e.getMessage().contains("3:7"), "and where it was: " + e.getMessage());
+        assertTrue(e.getMessage().contains(String.valueOf(POS)),
+                "and where it was: " + e.getMessage());
     }
 }
