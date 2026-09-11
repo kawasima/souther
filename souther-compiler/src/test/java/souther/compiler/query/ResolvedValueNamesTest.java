@@ -1,5 +1,6 @@
 package souther.compiler.query;
 
+import souther.compiler.cst.SourceLayout;
 import souther.compiler.WhereItSits;
 import souther.compiler.source.SourceId;
 
@@ -410,6 +411,12 @@ class ResolvedValueNamesTest {
         return at == null ? null : at.pos();
     }
 
+    /** The place at line {@code line} column {@code column} of {@code source}, as it is laid out. */
+    private static SourcePos at(String source, int line, int column) {
+        SourceLayout laidOut = SourceLayout.of(source, new SourceId("a.sou"));
+        return laidOut.placeAt(laidOut.lines().offsetOf(line - 1, column - 1));
+    }
+
     /** The occurrence an editor is sent to for the declaration of {@code written}. */
     private static WrittenName declaredNameOf(String source, String written) {
         Map<String, String> byId = new LinkedHashMap<>();
@@ -430,14 +437,16 @@ class ResolvedValueNamesTest {
      */
     @Test
     void aFieldAnInvariantReadsIsDeclaredWhereTheFieldIsWritten() {
-        assertEquals(new SourcePos(4, 7, new SourceId("a.sou")), declaredAt("""
+        String source = """
                 module m.a exposing ( Amount )
 
                 data Amount = {
                       value: Int
                 }
                     invariant value >= 0
-                """, "value"), "the field on line 4");
+                """;
+
+        assertEquals(at(source, 4, 7), declaredAt(source, "value"), "the field on line 4");
     }
 
     /**
@@ -462,7 +471,7 @@ class ResolvedValueNamesTest {
                 """.formatted(decomposed, composed);
         WrittenName declared = declaredNameOf(source, composed);
 
-        assertEquals(new SourcePos(4, 7, new SourceId("a.sou")), declared.pos(), "the field on line 4");
+        assertEquals(at(source, 4, 7), declared.pos(), "the field on line 4");
         assertEquals(decomposed, declared.spelling(), "quoted as the declaration writes it");
         assertEquals(decomposed.length(),
                 WhereItSits.in(source, declared.region()).end().column()
@@ -474,7 +483,7 @@ class ResolvedValueNamesTest {
      * declared there and not where it was spread in. */
     @Test
     void aFieldAnIncludeBringsInIsDeclaredWhereItWasWritten() {
-        assertEquals(new SourcePos(4, 7, new SourceId("a.sou")), declaredAt("""
+        String source = """
                 module m.a exposing ( Priced )
 
                 data Money = {
@@ -485,6 +494,9 @@ class ResolvedValueNamesTest {
                       ...Money
                 }
                     invariant cost >= 0
-                """, "cost"), "the field on line 4, in the declaration that wrote it");
+                """;
+
+        assertEquals(at(source, 4, 7), declaredAt(source, "cost"),
+                "the field on line 4, in the declaration that wrote it");
     }
 }
