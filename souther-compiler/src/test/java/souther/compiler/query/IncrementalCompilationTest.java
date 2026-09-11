@@ -297,6 +297,43 @@ class IncrementalCompilationTest {
                 "and what was written above it is where it was");
     }
 
+    /**
+     * And the tree the front end builds out of it is the same tree, regions and all.
+     *
+     * <p>The three above ask the layout what it answers. This asks what is made of those answers,
+     * because a region has two ends and the checks above compare places a node begins at. The end
+     * is the half that can be got wrong on its own: the offset a token ends at is the offset the
+     * next one starts at wherever nothing separates them, so an end read as an offset belonged to
+     * whichever token came next and moved back onto its own the moment a space was written between
+     * them. Nothing about the module had changed and every region closing on such a token was a
+     * different value.
+     *
+     * <p>Compared as the whole parsed module, so that every place and every region the tree carries
+     * is in the claim rather than the ones a test thought to name.
+     */
+    @Test
+    void aSpaceWrittenBetweenTwoTokensLeavesTheParsedModuleThatSameValue() {
+        String glued = ORDERS;
+        String spaced = ORDERS.replace("let twice (n)", "let twice  ( n )")
+                .replace("Amount(doubled(n.value))", "Amount( doubled(n.value) )");
+        assertNotEquals(glued, spaced, "the two texts differ, or this compares a text to itself");
+
+        assertEquals(parsed(glued), parsed(spaced),
+                "a space between two tokens leaves every place and every region as it was");
+        assertNotEquals(parsed(glued), parsed(glued.replace("n.value * 3", "n.value * 3 + 0")),
+                "and a token written in does move what follows it, which is the conservative half");
+    }
+
+    /** The module the front end reads out of {@code source}, places and regions and all. */
+    private static Object parsed(String source) {
+        Map<String, String> byId = new LinkedHashMap<>();
+        byId.put("orders.sou", source);
+        Compilation c = Compilation.ofDocuments(byId, Set.of(), ModulePath.EMPTY);
+        c.answerEverything();
+        assertTrue(c.db().allReports().isEmpty(), () -> "the model parses: " + c.db().allReports());
+        return c.db().ask(new Front.Parsed(new SourceId("orders.sou"))).value().module();
+    }
+
     /** The place the first character of {@code written} is at in {@code laidOut}'s text. */
     private static SourcePos placeOf(SourceLayout laidOut, String written) {
         return laidOut.placeAt(laidOut.text().indexOf(written));

@@ -7,6 +7,7 @@ import souther.compiler.diag.PhysicalPos;
 import souther.compiler.diag.Placement;
 import souther.compiler.diag.QuotedFrom;
 import souther.compiler.diag.SourcePos;
+import souther.compiler.diag.SourceProvenance;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -50,13 +51,20 @@ public final class SourceLayout implements LaidOutText {
     private final QuotedFrom text;
 
     /**
-     * Where each meaningful token sits, one line and column packed into a long, in order.
+     * Where each meaningful token sits, one line and column packed into a long — by construct, in
+     * order, the way a place addresses them.
      *
      * <p>What this layout can be asked and the whole of it, so it is what one layout being another
      * comes to. Held rather than worked out on a comparison: what holds one of these compares it
      * against the one it replaces on every edit.
+     *
+     * <p>The constructs are kept apart rather than run together. A place names a token of a
+     * construct, so where one construct ends and the next begins is part of what this answers:
+     * flattened, two texts whose tokens sit in the same places but fall into constructs differently
+     * came out equal while answering different lines for the same place, and what held a layout
+     * would have kept the one it had.
      */
-    private final List<Long> sits;
+    private final List<List<Long>> sits;
 
     private SourceLayout(String source, Placement read, List<List<Integer>> tokenStart) {
         this.source = source;
@@ -64,11 +72,13 @@ public final class SourceLayout implements LaidOutText {
         this.text = read.at(0, 0).quotedFrom();
         this.lines = new LineIndex(source);
         this.tokenStart = tokenStart;
-        List<Long> where = new ArrayList<>();
+        List<List<Long>> where = new ArrayList<>();
         for (List<Integer> construct : tokenStart) {
+            List<Long> its = new ArrayList<>();
             for (int offset : construct) {
-                where.add(((long) lines.lineOf(offset) << 32) | lines.columnOf(offset));
+                its.add(((long) lines.lineOf(offset) << 32) | lines.columnOf(offset));
             }
+            where.add(List.copyOf(its));
         }
         this.sits = List.copyOf(where);
     }
@@ -173,9 +183,17 @@ public final class SourceLayout implements LaidOutText {
         return placeAt(token.start());
     }
 
-    /** Where {@code token} ends — the other end of the region it covers. */
+    /**
+     * Where {@code token} ends — the other end of the region it covers.
+     *
+     * <p>That token's own place, carried its width along, and never the place the offset after it
+     * lands in. The two are the same offset and are not the same question: what is written at
+     * {@code token.end()} is the next token where nothing separates them, so read as an offset this
+     * end was the next token's start, and writing a space between the two moved it back onto this
+     * one. A region's end is on the node the region is of, whatever is written after it.
+     */
     public SourcePos after(SyntaxToken token) {
-        return placeAt(token.end());
+        return at(token).along(token.end() - token.start());
     }
 
     /**
@@ -183,8 +201,9 @@ public final class SourceLayout implements LaidOutText {
      * that token's start the offset is.
      *
      * <p>For a caller holding an offset and no token — a parser reporting where it stopped, an
-     * editor asking what is under a cursor. A caller that has the token asks {@link #at}, which
-     * cannot land one token out.
+     * editor asking what is under a cursor. A caller holding a token asks {@link #at} or
+     * {@link #after}, which answer about that token; this one answers about the offset, and at the
+     * boundary between two tokens those are different answers.
      */
     public SourcePos placeAt(int offset) {
         if (tokenStart.isEmpty()) {
@@ -226,21 +245,30 @@ public final class SourceLayout implements LaidOutText {
     }
 
     /**
-     * Refuses a place in a file this is not the layout of.
+     * Refuses a place in a text this is not the layout of.
      *
      * <p>A place says which of the things written in its text it is, and the count means nothing
      * against another text — the same numbers are a different place there. Read without saying so,
      * the two came back as a line and a column that looked like an answer, and a report quoted a
-     * line of whatever file the caller had in hand.
+     * line of whatever text the caller had in hand.
      *
-     * <p>Only where both say which file they are in. A text nobody named carries nothing to tell it
-     * apart by, and a caller laying one out is the only one who could know.
+     * <p>Asked of which text, and not of which file. A text this compile has no file for is still a
+     * text that can be told from another: one put back together out of what a module published is
+     * that module's, and reading a place in one module's published text against another's is the
+     * same mistake as reading a place in one file against another. Written as a question about
+     * files, this let every pair that crossed the published arm through — which is a pair a
+     * compilation now makes, because what a module was read back from travels beside its reading
+     * and is laid out here.
+     *
+     * <p>A text nobody named is the one that cannot be checked: it carries nothing to tell two of
+     * them apart by, so a place in one and a layout of one match as far as anything here can see.
      */
     private void refuseAnotherText(SourcePos place) {
-        if (text instanceof QuotedFrom.ASourceThisCompileHolds(SourceId mine)
-                && place.quotedFrom() instanceof QuotedFrom.ASourceThisCompileHolds(SourceId theirs)
-                && !mine.equals(theirs)) {
-            throw new NotThisText(mine, theirs);
+        QuotedFrom asked = place.quotedFrom();
+        if (!(text instanceof QuotedFrom.TextItCannotName)
+                && !(asked instanceof QuotedFrom.TextItCannotName)
+                && !text.equals(asked)) {
+            throw new NotThisText(text, asked);
         }
     }
 
@@ -249,8 +277,16 @@ public final class SourceLayout implements LaidOutText {
 
         private static final long serialVersionUID = 1L;
 
-        NotThisText(SourceId laidOut, SourceId asked) {
-            super("a place in " + asked + " read against the layout of " + laidOut);
+        NotThisText(QuotedFrom laidOut, QuotedFrom asked) {
+            super("a place in " + said(asked) + " read against the layout of " + said(laidOut));
+        }
+
+        private static String said(QuotedFrom text) {
+            return switch (text) {
+                case QuotedFrom.ASourceThisCompileHolds(SourceId source) -> String.valueOf(source);
+                case QuotedFrom.TextItCannotShow(SourceProvenance by) -> "what " + by + " published";
+                case QuotedFrom.TextItCannotName _ -> "a text with no name";
+            };
         }
     }
 
