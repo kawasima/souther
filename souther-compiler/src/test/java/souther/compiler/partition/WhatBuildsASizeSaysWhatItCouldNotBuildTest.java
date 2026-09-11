@@ -3,6 +3,7 @@ package souther.compiler.partition;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.DefaultStdlib;
+import souther.compiler.check.RuleReadingContext;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.RuleReadings;
 import souther.compiler.check.Shape;
@@ -32,6 +33,9 @@ class WhatBuildsASizeSaysWhatItCouldNotBuildTest {
     private static final RuleReadingSource NONE =
             RuleReadings.ofNoClauseFiled(Symbols.none(DefaultStdlib.get()));
 
+    private static final RuleReadingContext READING =
+            RuleReadingContext.unshared(NONE, souther.compiler.query.ReadAs.THE_COMPILATION_DOES);
+
     /** What a position of this type is, which is what the builder is asked about. */
     private static Shape shape(Type type) {
         return TypeView.of(type, NONE.symbols()).shape();
@@ -40,7 +44,7 @@ class WhatBuildsASizeSaysWhatItCouldNotBuildTest {
     @Test
     void aStringOfTheSizeAskedForIsBuilt() {
         assertEquals(List.of("\"xxx\""),
-                Witnesses.ofSize(shape(Type.STRING), 3, NONE, souther.compiler.query.ReadAs.THE_COMPILATION_DOES, Set.of()).values().stream()
+                Witnesses.ofSize(shape(Type.STRING), 3, READING, Set.of()).values().stream()
                         .map(FixtureTemplate::text).toList());
     }
 
@@ -52,10 +56,10 @@ class WhatBuildsASizeSaysWhatItCouldNotBuildTest {
     @Test
     void aSizeOfZeroIsTheEmptyValue() {
         assertEquals(List.of("\"\""),
-                Witnesses.ofSize(shape(Type.STRING), 0, NONE, souther.compiler.query.ReadAs.THE_COMPILATION_DOES, Set.of()).values().stream()
+                Witnesses.ofSize(shape(Type.STRING), 0, READING, Set.of()).values().stream()
                         .map(FixtureTemplate::text).toList());
         assertEquals(List.of("[]"),
-                Witnesses.ofSize(shape(new Type.ListOf(Type.INT)), 0, NONE, souther.compiler.query.ReadAs.THE_COMPILATION_DOES, Set.of()).values().stream()
+                Witnesses.ofSize(shape(new Type.ListOf(Type.INT)), 0, READING, Set.of()).values().stream()
                         .map(FixtureTemplate::text).toList());
     }
 
@@ -68,24 +72,24 @@ class WhatBuildsASizeSaysWhatItCouldNotBuildTest {
      */
     @Test
     void aFloorOfNoneAsksForNothingWhereASizeOfZeroAsksForTheEmptyValue() {
-        assertEquals(List.of(), Witnesses.holding(shape(Type.STRING), 0, NONE, souther.compiler.query.ReadAs.THE_COMPILATION_DOES, Set.of()));
-        assertTrue(!Witnesses.ofSize(shape(Type.STRING), 0, NONE, souther.compiler.query.ReadAs.THE_COMPILATION_DOES, Set.of()).values().isEmpty());
+        assertEquals(List.of(), Witnesses.holding(shape(Type.STRING), 0, READING, Set.of()));
+        assertTrue(!Witnesses.ofSize(shape(Type.STRING), 0, READING, Set.of()).values().isEmpty());
     }
 
     /** A count past what a row is worth carrying is one nothing composes, and says which it is. */
     @Test
     void aSizeNoRowWouldCarrySaysNothingComposesOne() {
-        assertEquals(List.of(), Witnesses.ofSize(shape(Type.STRING), 100_000, NONE, souther.compiler.query.ReadAs.THE_COMPILATION_DOES, Set.of()).values());
+        assertEquals(List.of(), Witnesses.ofSize(shape(Type.STRING), 100_000, READING, Set.of()).values());
         assertEquals(Generator.UnresolvedCombination.Reason.NOTHING_COMPOSES_ONE,
-                Witnesses.reasonForSize(shape(Type.STRING), 100_000, souther.compiler.query.ReadAs.THE_COMPILATION_DOES, NONE));
+                Witnesses.reasonForSize(shape(Type.STRING), 100_000, READING));
     }
 
     /** A carrier nothing counts has no size to build at, and says which silence that is. */
     @Test
     void aCarrierNothingCountsSaysNothingComposesOne() {
-        assertEquals(List.of(), Witnesses.ofSize(shape(Type.INT), 3, NONE, souther.compiler.query.ReadAs.THE_COMPILATION_DOES, Set.of()).values());
+        assertEquals(List.of(), Witnesses.ofSize(shape(Type.INT), 3, READING, Set.of()).values());
         assertEquals(Generator.UnresolvedCombination.Reason.NOTHING_COMPOSES_ONE,
-                Witnesses.reasonForSize(shape(Type.INT), 3, souther.compiler.query.ReadAs.THE_COMPILATION_DOES, NONE));
+                Witnesses.reasonForSize(shape(Type.INT), 3, READING));
     }
 
     /**
@@ -101,18 +105,18 @@ class WhatBuildsASizeSaysWhatItCouldNotBuildTest {
     void aSetIsNothingWhereTheTypeHasFewerValuesThanTheCountAsksFor() {
         Shape set = shape(new Type.SetOf(Type.BOOL));
 
-        assertEquals(List.of("[true, false]"), Witnesses.ofSize(set, 2, NONE, souther.compiler.query.ReadAs.THE_COMPILATION_DOES, Set.of()).values().stream()
+        assertEquals(List.of("[true, false]"), Witnesses.ofSize(set, 2, READING, Set.of()).values().stream()
                 .map(FixtureTemplate::text).toList());
-        assertEquals(List.of(), Witnesses.ofSize(set, 3, NONE, souther.compiler.query.ReadAs.THE_COMPILATION_DOES, Set.of()).values());
+        assertEquals(List.of(), Witnesses.ofSize(set, 3, READING, Set.of()).values());
         assertEquals(Generator.UnresolvedCombination.Reason.NOTHING_COMPOSES_ONE,
-                Witnesses.reasonForSize(set, 3, souther.compiler.query.ReadAs.THE_COMPILATION_DOES, NONE));
+                Witnesses.reasonForSize(set, 3, READING));
     }
 
     /** A floor goes on being offered what the type has, which is the value its rule refuses. */
     @Test
     void aFloorIsStillOfferedTheValueTheTypeCanReach() {
         assertEquals(List.of("[true, false]"),
-                Witnesses.holding(shape(new Type.SetOf(Type.BOOL)), 3, NONE, souther.compiler.query.ReadAs.THE_COMPILATION_DOES, Set.of()).stream()
+                Witnesses.holding(shape(new Type.SetOf(Type.BOOL)), 3, READING, Set.of()).stream()
                         .map(FixtureTemplate::text).toList());
     }
 
@@ -121,10 +125,10 @@ class WhatBuildsASizeSaysWhatItCouldNotBuildTest {
     void aMapIsNothingWhereItsKeysRunOutBeforeTheCount() {
         Shape map = shape(new Type.MapOf(Type.BOOL, Type.INT));
 
-        assertTrue(!Witnesses.ofSize(map, 2, NONE, souther.compiler.query.ReadAs.THE_COMPILATION_DOES, Set.of()).values().isEmpty(),
+        assertTrue(!Witnesses.ofSize(map, 2, READING, Set.of()).values().isEmpty(),
                 "two keys are two the type has");
-        assertEquals(List.of(), Witnesses.ofSize(map, 3, NONE, souther.compiler.query.ReadAs.THE_COMPILATION_DOES, Set.of()).values());
+        assertEquals(List.of(), Witnesses.ofSize(map, 3, READING, Set.of()).values());
         assertEquals(Generator.UnresolvedCombination.Reason.NOTHING_COMPOSES_ONE,
-                Witnesses.reasonForSize(map, 3, souther.compiler.query.ReadAs.THE_COMPILATION_DOES, NONE));
+                Witnesses.reasonForSize(map, 3, READING));
     }
 }

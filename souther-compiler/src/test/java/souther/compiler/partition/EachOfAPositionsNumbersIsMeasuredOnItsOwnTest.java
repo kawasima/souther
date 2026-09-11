@@ -2,6 +2,7 @@ package souther.compiler.partition;
 
 import org.junit.jupiter.api.Test;
 
+import souther.compiler.check.RuleReadingContext;
 import souther.compiler.check.RuleReadings;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.diag.SourceNameResolver;
@@ -173,7 +174,8 @@ class EachOfAPositionsNumbersIsMeasuredOnItsOwnTest {
                 rules, ReadAs.THE_COMPILATION_DOES);
         List<String> out = new ArrayList<>();
         for (souther.compiler.inputs.Position at : read.positions()) {
-            switch (LocalInspection.of(at, rules, ReadAs.THE_COMPILATION_DOES)) {
+            switch (LocalInspection.of(at,
+                    RuleReadingContext.unshared(rules, ReadAs.THE_COMPILATION_DOES))) {
                 case LocalPartition.Divided divided -> divided.measures().forEach(each ->
                         out.add(each.term() + ": " + labelled(each)));
                 case LocalPartition.Open _ -> { }

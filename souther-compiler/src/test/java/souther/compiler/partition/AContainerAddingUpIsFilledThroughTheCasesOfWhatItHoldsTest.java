@@ -3,6 +3,7 @@ package souther.compiler.partition;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.check.ReadingPolicy;
+import souther.compiler.check.RuleReadingContext;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.RuleReadings;
 import souther.compiler.check.Symbols;
@@ -333,7 +334,8 @@ class AContainerAddingUpIsFilledThroughTheCasesOfWhatItHoldsTest {
         TermOrders orders = TermOrdersFixtures.at(total, named("Amount"), symbols);
         assertNotNull(orders.answered(), "and the order it answers on is the amounts'");
 
-        return TermRealizations.at(entries, orders, SIX, NothingTheRulesSay.REGION, rules, POLICY);
+        return TermRealizations.at(entries, orders, SIX, NothingTheRulesSay.REGION,
+                RuleReadingContext.unshared(rules, POLICY));
     }
 
     private static Type named(String data) {

@@ -3,6 +3,7 @@ package souther.compiler.partition;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.check.DeclaredSig;
+import souther.compiler.check.RuleReadingContext;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.RuleReadings;
 import souther.compiler.check.Carrier;
@@ -193,7 +194,9 @@ class ACountTheCarrierDoesNotHoldIsNotAnEndTest {
         RuleReadingSource rules = RuleReadings.of(compilation, module);
         return Partitions.representativesOf(
                         souther.compiler.types.Type.ref(
-                                souther.compiler.types.TypeSymbols.declared(new souther.compiler.types.TypeKey(module, name))), rules, souther.compiler.query.ReadAs.THE_COMPILATION_DOES)
+                                souther.compiler.types.TypeSymbols.declared(new souther.compiler.types.TypeKey(module, name))),
+                        RuleReadingContext.unshared(rules,
+                                souther.compiler.query.ReadAs.THE_COMPILATION_DOES))
                 .stream().map(FixtureTemplate::text).toList();
     }
 

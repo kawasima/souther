@@ -2,7 +2,7 @@ package souther.compiler.partition;
 
 import souther.compiler.check.Carrier;
 import souther.compiler.check.DeclaredBounds;
-import souther.compiler.check.ReadingPolicy;
+import souther.compiler.check.RuleReadingContext;
 import souther.compiler.check.Shape;
 import souther.compiler.check.NumericMeasures;
 import souther.compiler.check.RuleReadingSource;
@@ -79,7 +79,8 @@ final class ContainersAddingUp {
      */
     static TermRealizations.Realization to(Place answer, Type container,
                                            TermOrders orders, SearchRegion within,
-                                           RuleReadingSource ruleSource, ReadingPolicy policy) {
+                                           RuleReadingContext reading) {
+        RuleReadingSource ruleSource = reading.source();
         // Which number is being built for, read off the answer that says which number it is of.
         // Named beside it, the two were free to be about two numbers and this would fill a
         // container found under one path with elements counted on another's order.
@@ -111,7 +112,7 @@ final class ContainersAddingUp {
         // asked of the plan and once per way down. A sum puts nothing under it until a case is
         // named, so what comes back is one way per case and the walk offers each of them.
         Ways ways = waysDown(holding.element(), target.writeRoot().element(), occurrences(target),
-                ruleSource);
+                reading);
         // Nothing to fill a container along, so there is no count and no shape of one to try. Said
         // before the counts are walked rather than as a condition on each figure below: a figure
         // reached where no container could have been built either way is one raising takes nothing
@@ -131,8 +132,7 @@ final class ContainersAddingUp {
             left.refused(cut);
         }
         WhatIsOffered offered = new WhatIsOffered();
-        Makings makings = new Makings(total.at(), ends, holding, view, elements, ways, ruleSource,
-                policy);
+        Makings makings = new Makings(total.at(), ends, holding, view, elements, ways, reading);
         // Every count the rules leave, which are all the counts there are: what the container may
         // hold is what the rules say, so a walk that runs out of them has run out of the population
         // and not only of what this compiler writes.
@@ -291,8 +291,7 @@ final class ContainersAddingUp {
      * @param container the position the container stands at, read once and worn by what is built
      */
     private record Makings(BigDecimal total, Ends ends, Shape.Sequence holding, TypeView container,
-                           Carrier elements, Ways ways, RuleReadingSource ruleSource,
-                           ReadingPolicy policy) {}
+                           Carrier elements, Ways ways, RuleReadingContext reading) {}
 
     /**
      * How many elements the container is filled with, walked from the least the rules leave upward.
@@ -360,7 +359,7 @@ final class ContainersAddingUp {
         private Iterable<FixtureTemplate> containers(List<BigDecimal> split) {
             return () -> makings.ways().filled().stream()
                     .map(each -> filled(split, makings.holding(), makings.container(), each,
-                            makings.elements(), makings.ruleSource(), makings.policy()))
+                            makings.elements(), makings.reading()))
                     .filter(Objects::nonNull)
                     .iterator();
         }
@@ -589,18 +588,19 @@ final class ContainersAddingUp {
      */
     private static FixtureTemplate filled(List<BigDecimal> split, Shape.Sequence holding,
                                           TypeView container, Filling filling,
-                                          Carrier elements, RuleReadingSource ruleSource, ReadingPolicy policy) {
+                                          Carrier elements, RuleReadingContext reading) {
         if (holding.kind() != Shape.Sequence.Kind.LIST) {
             return null;
         }
+        RuleReadingSource ruleSource = reading.source();
         List<FixtureTemplate> values = new ArrayList<>();
         for (BigDecimal each : split) {
             FixtureTemplate one = PlanComposer.compose(filling.plan().root(),
                     new ValuesCarryingANumber(filling.fixed(),
                             FixtureTemplate.on(elements, Count.of(each),
                                     ruleSource.symbols().scope()::reach),
-                            ruleSource, policy),
-                    ruleSource, policy);
+                            reading),
+                    reading);
             if (one == null) {
                 return null;
             }
@@ -687,10 +687,10 @@ final class ContainersAddingUp {
      * above is what says how many.
      */
     private static Ways waysDown(Type element, TermPath at, TermPath demand,
-                                 RuleReadingSource ruleSource) {
+                                 RuleReadingContext reading) {
         List<Filling> found = new ArrayList<>();
         List<TermPath> nothingStandsAt = new ArrayList<>();
-        Asking asking = new Asking(element, at, ruleSource);
+        Asking asking = new Asking(element, at, reading);
         asking.add(demand);
         for (ConstructionPlan.Result answer = asking.next(); answer != null;
                 answer = asking.next()) {
@@ -761,17 +761,17 @@ final class ContainersAddingUp {
 
         private final Type element;
         private final TermPath at;
-        private final RuleReadingSource ruleSource;
+        private final RuleReadingContext reading;
         private final Deque<TermPath> left = new ArrayDeque<>();
         private final Set<CompositionBudget> stoppedBy =
                 EnumSet.noneOf(CompositionBudget.class);
         private TermPath asked;
         private int asks;
 
-        Asking(Type element, TermPath at, RuleReadingSource ruleSource) {
+        Asking(Type element, TermPath at, RuleReadingContext reading) {
             this.element = element;
             this.at = at;
-            this.ruleSource = ruleSource;
+            this.reading = reading;
         }
 
         /** One more way to ask about, which is what stating a narrowing leaves. */
@@ -798,9 +798,9 @@ final class ContainersAddingUp {
             }
             asks++;
             asked = left.removeFirst();
-            return ConstructionPlan.of(element, at, ruleSource.symbols(),
+            return ConstructionPlan.of(element, at, reading.source().symbols(),
                     Set.of(asked), Requirements.NONE,
-                    (_, building) -> Partitions.heldRange(building, ruleSource, null));
+                    (_, building) -> Partitions.heldRange(building, reading, null));
         }
 
         /** The way the last answer is about. */

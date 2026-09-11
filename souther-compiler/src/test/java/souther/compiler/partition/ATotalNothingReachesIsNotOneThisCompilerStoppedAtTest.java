@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import souther.compiler.DefaultStdlib;
 import souther.compiler.check.ReadingPolicy;
+import souther.compiler.check.RuleReadingContext;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.RuleReadings;
 import souther.compiler.check.Symbols;
@@ -42,6 +43,9 @@ class ATotalNothingReachesIsNotOneThisCompilerStoppedAtTest {
     private static final ReadingPolicy POLICY = new ReadingPolicy(64, 12,
             souther.compiler.values.AsACompilationAllows.admittedValues(),
             souther.compiler.values.AsACompilationAllows.whatARuleLeaves());
+
+    private static final RuleReadingContext READING =
+            RuleReadingContext.unshared(RULES, POLICY);
 
     /** A list of whole numbers, which is what the rules below hold to three values either way. */
     private static final Type OF_WHOLE_NUMBERS = new Type.ListOf(Type.INT);
@@ -95,6 +99,6 @@ class ATotalNothingReachesIsNotOneThisCompilerStoppedAtTest {
         assertNotNull(sum, "a walk that adds up a list of whole numbers is a number of it");
         TermOrders orders = TermOrdersFixtures.at(sum, OF_WHOLE_NUMBERS, SYMBOLS);
         return TermRealizations.at(OF_WHOLE_NUMBERS, orders, total,
-                new ARunOfThisMany(A_RUN_OF_THREE), RULES, POLICY);
+                new ARunOfThisMany(A_RUN_OF_THREE), READING);
     }
 }

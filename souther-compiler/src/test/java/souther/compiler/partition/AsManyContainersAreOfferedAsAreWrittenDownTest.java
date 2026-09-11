@@ -3,6 +3,7 @@ package souther.compiler.partition;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.DefaultStdlib;
+import souther.compiler.check.RuleReadingContext;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.RuleReadings;
 import souther.compiler.check.ReadingPolicy;
@@ -43,6 +44,9 @@ class AsManyContainersAreOfferedAsAreWrittenDownTest {
     private static final ReadingPolicy POLICY = new ReadingPolicy(64, 12,
             souther.compiler.values.AsACompilationAllows.admittedValues(),
             souther.compiler.values.AsACompilationAllows.whatARuleLeaves());
+
+    private static final RuleReadingContext READING =
+            RuleReadingContext.unshared(RULES, POLICY);
 
     /** A list of whole numbers a behavior takes, which nothing bounds and nothing counts. */
     private static final Type OF_WHOLE_NUMBERS = new Type.ListOf(Type.INT);
@@ -117,6 +121,6 @@ class AsManyContainersAreOfferedAsAreWrittenDownTest {
                 .at(total, OF_WHOLE_NUMBERS, SYMBOLS);
         assertTrue(orders.answered() != null, "and the order it answers on is the elements'");
         return TermRealizations.at(OF_WHOLE_NUMBERS,
-                orders, SIX, NothingTheRulesSay.REGION, RULES, POLICY);
+                orders, SIX, NothingTheRulesSay.REGION, READING);
     }
 }

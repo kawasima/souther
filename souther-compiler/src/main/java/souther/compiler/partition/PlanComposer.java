@@ -1,6 +1,6 @@
 package souther.compiler.partition;
 
-import souther.compiler.check.ReadingPolicy;
+import souther.compiler.check.RuleReadingContext;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.Shape;
 import souther.compiler.check.TypeView;
@@ -60,7 +60,8 @@ final class PlanComposer {
      * would be written instead is a value of a type the position does not declare.
      */
     static FixtureTemplate compose(ConstructionPlan.Node node, Values values,
-                                   RuleReadingSource ruleSource, ReadingPolicy policy) {
+                                   RuleReadingContext reading) {
+        RuleReadingSource ruleSource = reading.source();
         return switch (node) {
             // Under the names the position wore before a narrowing reached it, and under none where
             // none did: what stands at a slot is a value of the narrowed type, already written
@@ -68,8 +69,8 @@ final class PlanComposer {
             // one of its cases is written `DecisionN(...)` all the same.
             case ConstructionPlan.Slot slot ->
                     WornNames.under(slot.worn(), values.at(slot), ruleSource);
-            case ConstructionPlan.Built built -> composed(built, values, ruleSource, policy);
-            case ConstructionPlan.Held held -> held(held, values, ruleSource, policy);
+            case ConstructionPlan.Built built -> composed(built, values, reading);
+            case ConstructionPlan.Held held -> held(held, values, reading);
             // The requirement settled this one, so nothing was chosen for it and there is nothing to
             // look up. Under every name the position wears, since the value arrives bare.
             case ConstructionPlan.Exact exact ->
@@ -89,11 +90,12 @@ final class PlanComposer {
      * them is of a type the parameter does not declare.
      */
     private static FixtureTemplate held(ConstructionPlan.Held plan, Values values,
-                                        RuleReadingSource ruleSource, ReadingPolicy policy) {
-        FixtureTemplate element = compose(plan.under(), values, ruleSource, policy);
+                                        RuleReadingContext reading) {
+        FixtureTemplate element = compose(plan.under(), values, reading);
         if (element == null) {
             return null;
         }
+        RuleReadingSource ruleSource = reading.source();
         // The one placed in the class, and enough beside it for the collection to be one the rules
         // admit. What may stand beside it is the carrier's business — a list may hold the same
         // value again and a set may not — so the collection is asked for whole rather than padded
@@ -103,7 +105,7 @@ final class PlanComposer {
             return null;
         }
         FixtureTemplate collection =
-                Witnesses.holdingAlso(carrier, element, plan.needed(), ruleSource, policy);
+                Witnesses.holdingAlso(carrier, element, plan.needed(), reading);
         if (collection == null) {
             return null;
         }
@@ -113,12 +115,13 @@ final class PlanComposer {
 
     /** One record of the plan, out of whatever the caller has at the positions under it. */
     private static FixtureTemplate composed(ConstructionPlan.Built built, Values values,
-                                            RuleReadingSource ruleSource, ReadingPolicy policy) {
+                                            RuleReadingContext reading) {
         Map<String, FixtureTemplate> fields =
-                values.under(built, node -> compose(node, values, ruleSource, policy));
+                values.under(built, node -> compose(node, values, reading));
         if (fields == null) {
             return null;
         }
+        RuleReadingSource ruleSource = reading.source();
         // Under the names the position is written with, which the descent that found the fields took
         // off to find them. A row at a `data SlotN = Slot` carries `SlotN(Slot { ... })`, and a value
         // composed without them is of a type the parameter does not declare.

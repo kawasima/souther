@@ -3,6 +3,7 @@ package souther.compiler.partition;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.check.DeclaredBounds;
+import souther.compiler.check.RuleReadingContext;
 import souther.compiler.check.FieldDomains;
 import souther.compiler.check.RuleKey;
 import souther.compiler.check.RuleReadingSource;
@@ -162,7 +163,9 @@ class AModelWithNoRoomIsAnsweredBeforeAFigureOfThisCompilersTest {
         return Partitions.heldRange(
                 new Type.ListOf(new Type.Ref(
                         TypeSymbols.declared(new TypeKey("example.placing", "Awkward")))),
-                rules, read.heldAt(RuleKey.of("xs")));
+                RuleReadingContext.unshared(rules,
+                        souther.compiler.query.ReadAs.THE_COMPILATION_DOES),
+                read.heldAt(RuleKey.of("xs")));
     }
 
     /**

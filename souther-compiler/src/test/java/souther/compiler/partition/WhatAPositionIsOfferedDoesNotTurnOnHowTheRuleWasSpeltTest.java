@@ -3,6 +3,7 @@ package souther.compiler.partition;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.check.DeclaredBounds;
+import souther.compiler.check.RuleReadingContext;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.RuleReadings;
 import souther.compiler.check.TypeView;
@@ -43,7 +44,9 @@ class WhatAPositionIsOfferedDoesNotTurnOnHowTheRuleWasSpeltTest {
 
         /** How many a value of the position has to hold. */
         int least(String type) {
-            return Partitions.leastHeld(view(type), rules);
+            return Partitions.leastHeld(view(type),
+                    RuleReadingContext.unshared(rules,
+                            souther.compiler.query.ReadAs.THE_COMPILATION_DOES));
         }
 
         /** And how many it may. */
