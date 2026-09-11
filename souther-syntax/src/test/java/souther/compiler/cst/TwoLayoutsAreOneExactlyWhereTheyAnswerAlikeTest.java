@@ -48,13 +48,24 @@ class TwoLayoutsAreOneExactlyWhereTheyAnswerAlikeTest {
 
     private static final String AS_A_FAKE = AS_DATA.replace("data B", "fake B");
 
-    /** Every place either layout can be asked about, over the constructs and tokens they hold. */
-    private static Map<SourcePos, PhysicalPos> answers(SourceLayout laidOut) {
-        Map<SourcePos, PhysicalPos> out = new LinkedHashMap<>();
+    /**
+     * What {@code laidOut} answers for every place in the range the two of them cover, including
+     * the places it holds none of.
+     *
+     * <p>A place this text does not hold is an answer here and not an omission: the two layouts
+     * hold their tokens in different constructs, so which places there are is part of what they
+     * differ in, and a walk over only what each holds would compare two different questions.
+     */
+    private static Map<SourcePos, String> answers(SourceLayout laidOut) {
+        Map<SourcePos, String> out = new LinkedHashMap<>();
         for (int construct = 0; construct < 6; construct++) {
             for (int token = 0; token < 6; token++) {
                 SourcePos place = Placement.aTextWithNoIdentity().at(construct, token, 0);
-                out.put(place, laidOut.resolve(place));
+                try {
+                    out.put(place, String.valueOf(laidOut.resolve(place)));
+                } catch (SourceLayout.NoSuchPlace none) {
+                    out.put(place, "no such place");
+                }
             }
         }
         return out;

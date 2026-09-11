@@ -39,7 +39,7 @@ class DiagnosticRenderTest {
      */
     @Test
     void jsonCarriesTheValuesTheMessageIsAbout() {
-        Diagnostic d = Diagnostic.at(new SourcePos(2, 13))
+        Diagnostic d = Diagnostic.at(at(2, 13))
                 .say(new souther.compiler.diag.msg.DataMessage.SpreadFieldCollision(
                         "issuedAt", "Sold", "...Issued"))
                 .build();
@@ -51,14 +51,14 @@ class DiagnosticRenderTest {
     /** A wrapped text carries no values object rather than an empty one: it is not a message. */
     @Test
     void jsonCarriesNoValuesWhereThereIsNoMessage() {
-        Diagnostic d = Diagnostic.literal(new SourcePos(2, 13), "the compiler was handed this");
+        Diagnostic d = Diagnostic.literal(at(2, 13), "the compiler was handed this");
         assertFalse(new JsonRenderer().render(d, SRC, Locale.ENGLISH).contains("\"values\""));
     }
 
     /** The names are the message's, so they are the same in every language the sentence is asked in. */
     @Test
     void theValuesAreNamedTheSameInEveryLanguage() {
-        Diagnostic d = Diagnostic.at(new SourcePos(2, 13))
+        Diagnostic d = Diagnostic.at(at(2, 13))
                 .say(new souther.compiler.diag.msg.DataMessage.SpreadFieldCollision(
                         "issuedAt", "Sold", "...Issued"))
                 .build();
@@ -82,7 +82,7 @@ class DiagnosticRenderTest {
     @Test
     void titleFollowsTheLocale() {
         Diagnostic d = Diagnostic.say(new DeclarationMessage.NullIsNotPartOfTheLanguage())
-                .at(new SourcePos(2, 13)).build();
+                .at(at(2, 13)).build();
         String en = new HumanRenderer(false).render(d, SRC, Locale.ENGLISH);
         String ja = new HumanRenderer(false).render(d, SRC, Locale.JAPANESE);
         assertTrue(en.contains("USE OF NULL"), en);

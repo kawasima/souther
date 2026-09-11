@@ -218,17 +218,36 @@ public final class SourceLayout implements LaidOutText {
     /**
      * Where {@code place} is in this text, in UTF-16 code units from its start.
      *
-     * @throws NotThisText where {@code place} is a place in a file this is not the layout of
+     * <p>Refused rather than nudged onto the nearest thing there is. A place naming a construct or
+     * a token this text does not hold is a place in some other text — the same mistake
+     * {@link NotThisText} is about, arriving from a text that gave no name to tell it by, or from a
+     * revision this layout is not of. Answered by moving it to the last token there is, it came
+     * back as a line and a column that read like an answer, which is what a caller does something
+     * wrong with.
+     *
+     * @throws NotThisText where {@code place} is in a text this is not the layout of
+     * @throws NoSuchPlace where this text holds no such place
      */
     public int offsetOf(SourcePos place) {
         refuseAnotherText(place);
         if (tokenStart.isEmpty()) {
+            // Nothing meaningful is written here, so there is one place and the offset is the whole
+            // of it. Every place of such a text is that one, which is what `placeAt` makes.
             return Math.max(0, place.within());
         }
-        int construct = Math.min(Math.max(place.construct(), 0), tokenStart.size() - 1);
-        List<Integer> tokens = tokenStart.get(construct);
-        int token = Math.min(Math.max(place.token(), 0), tokens.size() - 1);
-        return tokens.get(token) + place.within();
+        if (place.construct() < 0 || place.construct() >= tokenStart.size()) {
+            throw new NoSuchPlace(place, tokenStart.size() + " constructs");
+        }
+        List<Integer> tokens = tokenStart.get(place.construct());
+        if (place.token() < 0 || place.token() >= tokens.size()) {
+            throw new NoSuchPlace(place,
+                    tokens.size() + " tokens in construct " + place.construct());
+        }
+        // And not bounded by the length of the text. How far past a token's start a place sits is
+        // not a question about which of this text's things it is, and a report about a source that
+        // stops in the middle of something points at or past the end of it — a caret drawn over
+        // what was never typed. Where that reader is sent is {@link #resolve}'s to settle.
+        return tokens.get(place.token()) + place.within();
     }
 
     /**
@@ -236,11 +255,16 @@ public final class SourceLayout implements LaidOutText {
      *
      * <p>Answered against this layout and never remembered. A caller holding the number after the
      * text has been written in again is holding a number about a text nobody has.
+     *
+     * <p>Held to the text, which {@link #offsetOf} is not. This answers where to send a reader, and
+     * a place running past the end of the text — a caret over a construct the author stopped in the
+     * middle of — is a reader sent to the end of what they wrote. Which of this text's things a
+     * place is is the other question, and one this text does not hold is refused there rather than
+     * moved to the nearest one.
      */
     @Override
     public PhysicalPos resolve(SourcePos place) {
-        int offset = offsetOf(place);
-        int at = Math.max(0, Math.min(offset, source.length()));
+        int at = Math.max(0, Math.min(offsetOf(place), source.length()));
         return new PhysicalPos(lines.lineOf(at), lines.columnOf(at));
     }
 
@@ -269,6 +293,23 @@ public final class SourceLayout implements LaidOutText {
                 && !(asked instanceof QuotedFrom.TextItCannotName)
                 && !text.equals(asked)) {
             throw new NotThisText(text, asked);
+        }
+    }
+
+    /**
+     * A place this text does not hold.
+     *
+     * <p>Beside {@link NotThisText} and not under it, because they say different things to whoever
+     * reads the message: one is a place from another text, and this is a place from another text or
+     * another revision that carried nothing to say so. What they share is that neither is a place
+     * here, and neither is answered.
+     */
+    public static final class NoSuchPlace extends IllegalArgumentException {
+
+        private static final long serialVersionUID = 1L;
+
+        NoSuchPlace(SourcePos place, String held) {
+            super(place + " read against a text holding " + held);
         }
     }
 

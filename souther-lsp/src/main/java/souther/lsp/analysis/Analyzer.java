@@ -1657,7 +1657,10 @@ public final class Analyzer {
         if (callee == null) {
             return Optional.empty();
         }
-        SourceLayout lines = SourceLayout.of(parsed, new SourceId(uri));
+        // The reading's own layout where there is one, because that is what its answers are placed
+        // against; the buffer's where the line parses and no probe was needed.
+        SourceLayout lines = reading == null
+                ? SourceLayout.of(parsed, new SourceId(uri)) : reading.laidOut();
         Optional<SemanticSnapshot> snapshot = SemanticSnapshot.of(compilation.db(), module);
         int argument = argumentAt(call, cursor);
         return snapshot.flatMap(reads -> reads.calledAt(lines.at(callee)))
@@ -1971,8 +1974,8 @@ public final class Analyzer {
         if (snapshot.isEmpty()) {
             return List.of();
         }
-        // Laid out as the probe finished it off, which is the text the snapshot's places are in.
-        SourcePos at = SourceLayout.of(reading.repaired(), new SourceId(uri)).placeAt(cursor);
+        // The reading's own layout, which is of the text it compiled and not of the buffer.
+        SourcePos at = reading.placeAt(cursor);
         Optional<MemberReceiver> receiver = snapshot.get().memberReceiverAround(at);
         if (receiver.isEmpty() || !reading.mayBeRead(receiver.get().writtenAt())) {
             return List.of();

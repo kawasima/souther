@@ -71,12 +71,33 @@ final class SemanticProbe {
     record Repair(String text, int firstInserted) {}
 
     /**
-     * A probe that answered: the compile the repaired source is in, and how far into it may be read.
+     * A probe that answered: the compile the repaired source is in, how that source is laid out,
+     * and how far into it may be read.
      *
      * <p>{@code firstInserted} is a place rather than an offset because what is compared against it
      * is an extent, and an extent is two places.
+     *
+     * <p>The layout is handed over rather than left to be worked out. The text this reading is of
+     * is the repaired one and not the buffer the author left, and every place a caller makes has to
+     * be counted against the same text the compile read — so laying it out is done once, here,
+     * where which text that is is known. Left to the callers, three of them laid out the buffer
+     * instead, and an editor was answered about whichever token stood that far along in a text
+     * nothing was compiled from.
      */
-    record Reading(Compilation compilation, String uri, String repaired, SourcePos firstInserted) {
+    record Reading(Compilation compilation, String uri, SourceLayout laidOut,
+                   SourcePos firstInserted) {
+
+        /** The source this reading is of, which is the buffer with what the cursor was in the
+         *  middle of finished off. */
+        String repaired() {
+            return laidOut.text();
+        }
+
+        /** Where {@code offset} of that source is, as a place. The one way a caller holding an
+         *  offset into the buffer gets a place this reading's answers can be asked about. */
+        SourcePos placeAt(int offset) {
+            return laidOut.placeAt(offset);
+        }
 
         /**
          * Whether what is written over {@code extent} is the author's rather than the probe's.
@@ -257,8 +278,8 @@ final class SemanticProbe {
         // Laid out as repaired, because the extents it is compared against are places in the text
         // that was compiled. Laid out as the author left it, the count would be of a text that does
         // not parse and the two would be counting different things.
-        return new Reading(compile, uri, repair.text(),
-                SourceLayout.of(repair.text(), new SourceId(uri)).placeAt(repair.firstInserted()));
+        SourceLayout laidOut = SourceLayout.of(repair.text(), new SourceId(uri));
+        return new Reading(compile, uri, laidOut, laidOut.placeAt(repair.firstInserted()));
     }
 
     private static boolean parses(String text) {

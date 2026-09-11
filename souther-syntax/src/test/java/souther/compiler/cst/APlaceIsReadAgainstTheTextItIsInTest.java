@@ -15,6 +15,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -116,6 +117,50 @@ class APlaceIsReadAgainstTheTextItIsInTest {
             assertNotNull(laidOut.resolve(laidOut.placeAt(SOURCE.indexOf("Amount"))),
                     () -> "a place read against the layout it came from, in " + said);
         });
+    }
+
+    /**
+     * And a place this text does not hold is refused too, whatever text it says it is in.
+     *
+     * <p>The half the check above cannot make. Two texts nobody named match as far as anything here
+     * can see, so a place from one read against the other gets through — and then it names a
+     * construct or a token this text does not have, which is the same mistake arriving by the one
+     * door the identity check has to leave open. Answered by moving it to the nearest token there
+     * is, it came back as a line and a column that read like an answer.
+     */
+    @Test
+    void andAPlaceThisTextDoesNotHoldIsRefusedWhereverItSaysItIsFrom() {
+        SourceLayout laidOut = SourceLayout.of(SOURCE);
+
+        assertThrows(SourceLayout.NoSuchPlace.class,
+                () -> laidOut.resolve(Placement.aTextWithNoIdentity().at(9, 0, 0)),
+                "a construct this text does not have");
+        assertThrows(SourceLayout.NoSuchPlace.class,
+                () -> laidOut.resolve(Placement.aTextWithNoIdentity().at(0, 9, 0)),
+                "and a token that construct does not have");
+        assertThrows(SourceLayout.NoSuchPlace.class,
+                () -> laidOut.resolve(Placement.aTextWithNoIdentity().at(0, -1, 0)),
+                "and there is no token before the first");
+    }
+
+    /**
+     * A place running past the end of the text is not one of those: it is where a reader is sent.
+     *
+     * <p>Which of this text's things a place is at and how far past that thing it sits are two
+     * questions. A report about a source the author stopped in the middle of draws its caret over
+     * what was never typed, so it points at or past the end — and the end is where that reader goes.
+     * Refused with the other two, rendering a syntax error would raise one.
+     */
+    @Test
+    void andOneRunningPastTheEndOfTheTextSendsAReaderToTheEndOfIt() {
+        SourceLayout laidOut = SourceLayout.of(SOURCE);
+        SourcePos pastIt = laidOut.placeAt(SOURCE.indexOf("Int")).along(SOURCE.length());
+
+        assertEquals(laidOut.resolve(laidOut.placeAt(SOURCE.length())), laidOut.resolve(pastIt),
+                "as far as the text goes and no further");
+        assertTrue(laidOut.offsetOf(pastIt) > SOURCE.length(),
+                "while what it says about the text is left as it was said: where a reader is sent"
+                        + " is the answer that is held to the text, and how far along is not");
     }
 
     /** Whether {@code layout}'s text refuses a place made against {@code held}'s. */

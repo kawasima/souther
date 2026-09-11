@@ -1,6 +1,5 @@
 package souther.lsp.analysis;
 
-import souther.compiler.cst.SourceLayout;
 import org.junit.jupiter.api.Test;
 import souther.compiler.ast.Hir;
 import souther.compiler.meta.ModulePath;
@@ -8,7 +7,6 @@ import souther.compiler.query.Abandonment;
 import souther.compiler.query.Names;
 import souther.compiler.sites.MemberReceiver;
 import souther.compiler.sites.SemanticSnapshot;
-import souther.compiler.source.SourceId;
 import souther.lsp.analysis.SemanticProbe.Reading;
 import souther.lsp.analysis.SemanticProbe.Repair;
 
@@ -124,10 +122,9 @@ class WhatIsAskedOfAHalfWrittenLineIsAskedOfWhatItSaysNowTest {
         SemanticSnapshot snapshot = SemanticSnapshot.of(reading.compilation().db(), "m")
                 .orElseThrow(() -> new AssertionError("the repaired source has a snapshot"));
         int cursor = text.lastIndexOf(".\n") + 1;
-        // Laid out as the probe finished it off, because that is the text the snapshot is of.
+        // The reading's own layout, which is of the text it compiled and not of the buffer.
         MemberReceiver receiver = snapshot
-                .memberReceiverAround(
-                        SourceLayout.of(reading.repaired(), new SourceId(URI)).placeAt(cursor))
+                .memberReceiverAround(reading.placeAt(cursor))
                 .orElseThrow(() -> new AssertionError("nothing is written at the cursor"));
         return List.copyOf(snapshot
                 .fieldsOf(assertInstanceOf(MemberReceiver.Value.class, receiver).type()).keySet());
