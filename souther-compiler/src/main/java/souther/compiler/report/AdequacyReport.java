@@ -20,6 +20,7 @@ import souther.compiler.partition.ConditionReportAnchor;
 import souther.compiler.partition.CompositionBudget;
 import souther.compiler.partition.CompositionRepertoire;
 import souther.compiler.partition.DecidedCondition;
+import souther.compiler.partition.DecisionSubject;
 import souther.compiler.partition.DecisionReading;
 import souther.compiler.partition.DecisionRule;
 import souther.compiler.partition.DomainPoint;
@@ -194,7 +195,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
         };
     }
 
-    public static final int SCHEMA_VERSION = 19;
+    public static final int SCHEMA_VERSION = 20;
 
     /**
      * Where the schema this writes documents ships.
@@ -3218,9 +3219,14 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                         condition.proposition() + " " + condition.form());
                 out.put("outcome", held ? "held" : "denied");
             }
+            case DecidedCondition.Stood(var condition, var held) -> {
+                out.put("kind", "truth");
+                out.put("condition", subjectOf(condition.of()));
+                out.put("outcome", held ? "held" : "denied");
+            }
             case DecidedCondition.Narrowed(var condition, var to) -> {
-                out.put("kind", "position");
-                out.put("condition", condition.at().toString());
+                out.put("kind", "case");
+                out.put("condition", subjectOf(condition.of()));
                 out.put("outcome", to.spelled());
             }
             // A condition this compiler had no words for, named by the reading that met it. Two
@@ -3233,6 +3239,13 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             }
         }
         return out;
+    }
+
+    /** What a truth is the truth of, as the identity spells it. */
+    private static String subjectOf(DecisionSubject subject) {
+        return switch (subject) {
+            case DecisionSubject.AnInput _, DecisionSubject.AnAnswer _ -> subject.toString();
+        };
     }
 
     private static void obligationId(ObjectNode into,

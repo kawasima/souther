@@ -1,5 +1,5 @@
 {
-  "schemaVersion" : 19,
+  "schemaVersion" : 20,
   "compilerVersion" : "<version>",
   "status" : "partial",
   "weakening" : [ "rule_unread", "decision_of_row_unreadable" ],
@@ -2770,12 +2770,12 @@
               "outcome" : "denied"
             }, {
               "kind" : "not_read",
-              "condition" : "condition 1 of `出荷する`",
-              "outcome" : "held"
-            }, {
-              "kind" : "not_read",
               "condition" : "condition 4 of `出荷する`",
               "outcome" : "held"
+            }, {
+              "kind" : "case",
+              "condition" : "台帳へ書く(指示)",
+              "outcome" : "書けなかった"
             } ]
           },
           "taken" : false
@@ -2784,20 +2784,20 @@
             "behavior" : "出荷する",
             "conditions" : [ {
               "kind" : "comparison",
+              "condition" : "GE LinearForm[constant=-10000.00, coefs={現価を引く(指示.品目)=1}]",
+              "outcome" : "held"
+            }, {
+              "kind" : "comparison",
               "condition" : "GT LinearForm[constant=-30000, coefs={指示.重量=1}]",
               "outcome" : "denied"
             }, {
               "kind" : "not_read",
-              "condition" : "condition 2 of `出荷する`",
-              "outcome" : "held"
-            }, {
-              "kind" : "not_read",
-              "condition" : "condition 3 of `出荷する`",
-              "outcome" : "held"
-            }, {
-              "kind" : "not_read",
               "condition" : "condition 4 of `出荷する`",
               "outcome" : "held"
+            }, {
+              "kind" : "case",
+              "condition" : "台帳へ書く(指示)",
+              "outcome" : "出荷済み"
             } ]
           },
           "taken" : false
@@ -2806,20 +2806,20 @@
             "behavior" : "出荷する",
             "conditions" : [ {
               "kind" : "comparison",
+              "condition" : "GE LinearForm[constant=-10000.00, coefs={現価を引く(指示.品目)=1}]",
+              "outcome" : "denied"
+            }, {
+              "kind" : "comparison",
               "condition" : "GT LinearForm[constant=-30000, coefs={指示.重量=1}]",
               "outcome" : "denied"
             }, {
               "kind" : "not_read",
-              "condition" : "condition 2 of `出荷する`",
-              "outcome" : "denied"
-            }, {
-              "kind" : "not_read",
-              "condition" : "condition 3 of `出荷する`",
-              "outcome" : "held"
-            }, {
-              "kind" : "not_read",
               "condition" : "condition 4 of `出荷する`",
               "outcome" : "held"
+            }, {
+              "kind" : "case",
+              "condition" : "台帳へ書く(指示)",
+              "outcome" : "出荷済み"
             } ]
           },
           "taken" : false

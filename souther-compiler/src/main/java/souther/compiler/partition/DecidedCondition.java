@@ -10,10 +10,10 @@ import souther.compiler.inputs.Refinement;
  * yields a rule that says nothing about it, and that silence is the rule rather than something
  * folded away afterwards.
  *
- * <p>The three shapes pair each condition with the answers it has. A comparison and a condition
- * nothing read come out one of two ways; a fork on a position comes out as one of the position's
- * cases. Written as a condition beside an outcome of its own type, a comparison could be recorded
- * as having come out a case and a fork as having held.
+ * <p>Each shape pairs one condition with the answers that condition has. A comparison, a truth and
+ * a condition nothing read come out one of two ways; a fork on a position comes out as one of the
+ * position's cases. Written as a condition beside an outcome of its own type, a comparison could be
+ * recorded as having come out a case and a fork as having held.
  */
 public sealed interface DecidedCondition {
 
@@ -31,18 +31,28 @@ public sealed interface DecidedCondition {
         }
     }
 
+    /** A value read for its truth, holding or not. */
+    record Stood(DecisionCondition.ATruth condition, boolean held) implements DecidedCondition {
+
+        public Stood {
+            if (condition == null) {
+                throw new IllegalArgumentException("an answer is about some truth");
+            }
+        }
+    }
+
     /**
-     * A position read as one of its cases.
+     * A subject read as one of its cases.
      *
-     * @param to which values the arm the path took leaves at that position
+     * @param to which values the arm the path took leaves at that subject
      */
-    record Narrowed(DecisionCondition.APosition condition, Refinement to)
+    record Narrowed(DecisionCondition.ACase condition, Refinement to)
             implements DecidedCondition {
 
         public Narrowed {
             if (condition == null || to == null) {
                 throw new IllegalArgumentException(
-                        "an answer about a position is one of the cases it was read as");
+                        "an answer about a subject is one of the cases it was read as");
             }
         }
     }
