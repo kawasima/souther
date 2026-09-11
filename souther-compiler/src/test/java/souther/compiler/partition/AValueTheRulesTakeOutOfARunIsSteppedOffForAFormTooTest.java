@@ -1,6 +1,5 @@
 package souther.compiler.partition;
 
-import souther.compiler.diag.SourceLayouts;
 import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 
@@ -74,6 +73,6 @@ class AValueTheRulesTakeOutOfARunIsSteppedOffForAFormTooTest {
     private static String report(String model) {
         Compilation compilation = Compilation.ofSource(model, "Main");
         compilation.measure(Adequacy.Asked.fullReport());
-        return AdequacyReport.of(compilation).human(SourceRendering.namedByIdentity(SourceLayouts.NONE));
+        return AdequacyReport.of(compilation).human(SourceRendering.namedByIdentity(compilation.texts()));
     }
 }

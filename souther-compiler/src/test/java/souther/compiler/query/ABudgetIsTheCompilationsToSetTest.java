@@ -1,6 +1,5 @@
 package souther.compiler.query;
 
-import souther.compiler.diag.SourceLayouts;
 import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 
@@ -155,7 +154,7 @@ class ABudgetIsTheCompilationsToSetTest {
                         Budgets.generation()));
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
-        String document = AdequacyReport.of(compilation).json(SourceRendering.namedByIdentity(SourceLayouts.NONE));
+        String document = AdequacyReport.of(compilation).json(SourceRendering.namedByIdentity(compilation.texts()));
 
         assertTrue(document.contains("behavior_distinctions_too_costly"),
                 "the measure was held to less than the rule's two sides take: " + document);

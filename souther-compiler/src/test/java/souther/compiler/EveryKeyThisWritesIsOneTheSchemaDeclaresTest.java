@@ -1,6 +1,5 @@
 package souther.compiler;
 
-import souther.compiler.diag.SourceLayouts;
 import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 
@@ -91,7 +90,7 @@ class EveryKeyThisWritesIsOneTheSchemaDeclaresTest {
         Compilation compilation = Compilation.ofSource(model, "Main");
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
-        return JSON.readTree(AdequacyReport.of(compilation).json(SourceRendering.namedByIdentity(SourceLayouts.NONE)));
+        return JSON.readTree(AdequacyReport.of(compilation).json(SourceRendering.namedByIdentity(compilation.texts())));
     }
 
     /** The object at a `$defs` name, following the one `$ref` that stands in the way. */

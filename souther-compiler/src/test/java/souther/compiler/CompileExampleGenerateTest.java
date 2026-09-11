@@ -1,6 +1,5 @@
 package souther.compiler;
 
-import souther.compiler.diag.SourceLayouts;
 import souther.compiler.diag.SourceRendering;
 import souther.compiler.source.SourceId;
 
@@ -70,7 +69,7 @@ class CompileExampleGenerateTest {
         souther.compiler.query.Offering offering = Adequacy.offeredFor(compilation.db(),
                 OfferingRequest.overTheModule(module, boundaries));
         assertNotNull(offering, "the model under test compiles");
-        return GeneratedRows.of(offering, Map.of(), SourceRendering.namedByIdentity(SourceLayouts.NONE),
+        return GeneratedRows.of(offering, Map.of(), SourceRendering.namedByIdentity(compilation.texts()),
                 compilation.db()).text();
     }
 
@@ -1127,7 +1126,7 @@ class CompileExampleGenerateTest {
                 souther.compiler.meta.ModulePath.EMPTY);
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
-        String block = GeneratedRows.of(compilation, null, null, false, SourceRendering.namedByIdentity(SourceLayouts.NONE)).text();
+        String block = GeneratedRows.of(compilation, null, null, false, SourceRendering.namedByIdentity(compilation.texts())).text();
 
         assertEquals(declared, block.lines()
                         .filter(line -> line.startsWith("example "))

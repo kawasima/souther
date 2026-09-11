@@ -1,6 +1,5 @@
 package souther.compiler.check;
 
-import souther.compiler.diag.SourceLayouts;
 import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 import souther.compiler.coverage.ControlPlace;
@@ -193,7 +192,7 @@ class AGuardTheGuardsAboveItRuleOutIsProvenTest {
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
         return souther.compiler.report.GeneratedRows.of(compilation, "d", "charge", true,
-                SourceRendering.namedByIdentity(SourceLayouts.NONE)).text();
+                SourceRendering.namedByIdentity(compilation.texts())).text();
     }
 
     /**

@@ -1,6 +1,5 @@
 package souther.compiler;
 
-import souther.compiler.diag.SourceLayouts;
 import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 
@@ -72,7 +71,7 @@ class ARowIsOfferedForEveryCombinationOfTheDecisionsOneValueIsMadeOfTest {
         return GeneratedRows.of(Adequacy.offeredFor(compilation.db(),
                         souther.compiler.query.OfferingRequest.overTheModule(
                                 compilation.modules().get(0), false)),
-                Map.of(), SourceRendering.namedByIdentity(SourceLayouts.NONE), compilation.db()).text();
+                Map.of(), SourceRendering.namedByIdentity(compilation.texts()), compilation.db()).text();
     }
 
     @Test

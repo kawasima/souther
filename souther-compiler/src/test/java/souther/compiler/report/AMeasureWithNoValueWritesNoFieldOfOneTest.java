@@ -1,6 +1,5 @@
 package souther.compiler.report;
 
-import souther.compiler.diag.SourceLayouts;
 import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 
@@ -126,7 +125,7 @@ class AMeasureWithNoValueWritesNoFieldOfOneTest {
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
         return JsonMapper.builder().build().readTree(
-                AdequacyReport.of(compilation).json(SourceRendering.namedByIdentity(SourceLayouts.NONE)));
+                AdequacyReport.of(compilation).json(SourceRendering.namedByIdentity(compilation.texts())));
     }
 
     private static JsonNode reportOf(String source, Adequacy.Level level) {
@@ -134,7 +133,7 @@ class AMeasureWithNoValueWritesNoFieldOfOneTest {
         compilation.measure(Adequacy.Asked.reportOnly(level));
         compilation.answerEverything();
         JsonNode root = JsonMapper.builder().build().readTree(
-                AdequacyReport.of(compilation).json(SourceRendering.namedByIdentity(SourceLayouts.NONE)));
+                AdequacyReport.of(compilation).json(SourceRendering.namedByIdentity(compilation.texts())));
         assertNotNull(root, "the model under test compiles");
         return root;
     }

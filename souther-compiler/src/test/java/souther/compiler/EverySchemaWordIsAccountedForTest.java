@@ -1,6 +1,5 @@
 package souther.compiler;
 
-import souther.compiler.diag.SourceLayouts;
 import souther.compiler.source.SourceId;
 import souther.compiler.types.WrittenOwner;
 
@@ -1201,7 +1200,7 @@ class EverySchemaWordIsAccountedForTest {
         compilation.answerEverything();
 
         JsonNode report = JSON.readTree(AdequacyReport.of(compilation)
-                .json(souther.compiler.diag.SourceRendering.namedByIdentity(SourceLayouts.NONE)));
+                .json(souther.compiler.diag.SourceRendering.namedByIdentity(compilation.texts())));
         Set<String> allowed =
                 allowedAt(schema(), List.of("$defs", "incompleteness", "properties", "code"));
 

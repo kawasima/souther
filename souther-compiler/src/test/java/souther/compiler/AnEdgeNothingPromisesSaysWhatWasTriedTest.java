@@ -1,6 +1,5 @@
 package souther.compiler;
 
-import souther.compiler.diag.SourceLayouts;
 import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 
@@ -51,7 +50,7 @@ class AnEdgeNothingPromisesSaysWhatWasTriedTest {
         Compilation compilation = Compilation.ofSource(MODEL, "Main");
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
-        return AdequacyReport.of(compilation).human(SourceRendering.namedByIdentity(SourceLayouts.NONE));
+        return AdequacyReport.of(compilation).human(SourceRendering.namedByIdentity(compilation.texts()));
     }
 
     /** The line is still said, which is what keeps a discovered edge from disappearing. */

@@ -137,7 +137,7 @@ class AMeasureWithNoNumberSaysWhyTest {
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
         String judge = behaviorBlock(
-                AdequacyReport.of(compilation).human(SourceRendering.namedByIdentity(SourceLayouts.NONE)), "judge");
+                AdequacyReport.of(compilation).human(SourceRendering.namedByIdentity(compilation.texts())), "judge");
 
         assertTrue(judge.contains("signature   not measured (no row names this behavior)"), judge);
     }

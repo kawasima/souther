@@ -345,7 +345,7 @@ class CompilePartialAdequacyTest {
         String written = GeneratedRows.of(Adequacy.offeredFor(compilation.db(),
                         souther.compiler.query.OfferingRequest.overTheModule(
                                 "example.budget", true)),
-                Map.of(), SourceRendering.namedByIdentity(SourceLayouts.NONE), compilation.db()).text();
+                Map.of(), SourceRendering.namedByIdentity(compilation.texts()), compilation.db()).text();
         assertFalse(written.contains("example take"), "no row is offered: " + written);
         assertTrue(written.contains("no rows offered at"),
                 "the position it could not read is what there is to say: " + written);
@@ -543,7 +543,7 @@ class CompilePartialAdequacyTest {
         String written = GeneratedRows.of(Adequacy.offeredFor(compilation.db(),
                         souther.compiler.query.OfferingRequest.overTheModule(
                                 "example.split", true)),
-                Map.of(), SourceRendering.namedByIdentity(SourceLayouts.NONE), compilation.db()).text();
+                Map.of(), SourceRendering.namedByIdentity(compilation.texts()), compilation.db()).text();
         assertFalse(written.contains("example take"),
                 "the row may be sitting in the file that could not be read: " + written);
         assertTrue(written.contains("generation stopped"),
@@ -704,7 +704,7 @@ class CompilePartialAdequacyTest {
         assertEquals(4, partition.pairs().total());
         assertEquals(MeasurementStatus.PARTIAL, AdequacyReport.statusOf(partition.pairs().counted()),
                 "the one row could not be placed at either position");
-        String human = AdequacyReport.of(compilation).human(SourceRendering.namedByIdentity(SourceLayouts.NONE));
+        String human = AdequacyReport.of(compilation).human(SourceRendering.namedByIdentity(compilation.texts()));
         assertTrue(human.contains("unknown of the rows that were read"),
                 () -> "the count is over the rows that came back, and the line says so: " + human);
     }

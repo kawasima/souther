@@ -146,7 +146,7 @@ class APositionUnderANameIsReachedThroughItTest {
         assertTrue(lines(compilation, "wrapped").size() >= 4);
 
         String rows = GeneratedRows.of(compilation, "demo", "wrapped", true,
-                SourceRendering.namedByIdentity(SourceLayouts.NONE)).text();
+                SourceRendering.namedByIdentity(compilation.texts())).text();
         assertTrue(rows.contains("(PairN(Pair { low = N(9), high = N(10) }))"), rows);
     }
 }

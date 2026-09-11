@@ -1,6 +1,5 @@
 package souther.compiler.partition;
 
-import souther.compiler.diag.SourceLayouts;
 import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 
@@ -204,7 +203,7 @@ class ATypeWritingAboutBothOfItsNumbersMeasuresBothTest {
         Compilation compilation = Compilation.ofSource(source, "Main");
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
-        return AdequacyReport.of(compilation).human(SourceRendering.namedByIdentity(SourceLayouts.NONE));
+        return AdequacyReport.of(compilation).human(SourceRendering.namedByIdentity(compilation.texts()));
     }
 
     /** What {@code behavior} left unread, as the number it is about and the reason. */

@@ -1,6 +1,5 @@
 package souther.compiler;
 
-import souther.compiler.diag.SourceLayouts;
 import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 
@@ -144,7 +143,7 @@ class TwoRowsThatDidNotComeBackAreTwoReasonsTest {
 
         List<String> shown = reasonsOf(compilation, "example.shown").stream()
                 .filter(gap -> gap.fact().scope() == Incompleteness.Scope.ROW)
-                .map(gap -> gap.fact().shown(SourceRendering.namedByIdentity(SourceLayouts.NONE)))
+                .map(gap -> gap.fact().shown(SourceRendering.namedByIdentity(compilation.texts())))
                 .toList();
 
         assertEquals(2, shown.size(), () -> "two rows did not come back: " + shown);

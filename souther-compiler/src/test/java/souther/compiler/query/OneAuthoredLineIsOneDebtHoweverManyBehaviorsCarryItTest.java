@@ -1,6 +1,5 @@
 package souther.compiler.query;
 
-import souther.compiler.diag.SourceLayouts;
 import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 
@@ -217,7 +216,7 @@ class OneAuthoredLineIsOneDebtHoweverManyBehaviorsCarryItTest {
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
         AdequacyReport report = AdequacyReport.of(compilation);
-        String page = report.human(SourceRendering.namedByIdentity(SourceLayouts.NONE));
+        String page = report.human(SourceRendering.namedByIdentity(compilation.texts()));
 
         assertEquals(1, page.lines().filter(each -> each.contains("no row is at the ON point"))
                         .count(),
@@ -253,9 +252,9 @@ class OneAuthoredLineIsOneDebtHoweverManyBehaviorsCarryItTest {
         assertEquals(List.of(), report.adequacyGaps().stream()
                         .map(each -> each.about().toString()).toList(),
                 () -> "nothing is short of the line: "
-                        + report.human(SourceRendering.namedByIdentity(SourceLayouts.NONE)));
+                        + report.human(SourceRendering.namedByIdentity(compilation.texts())));
         assertEquals(AdequacyReport.AdequacyStatus.SATISFIED, report.adequacy(),
-                () -> "and the verdict says so: " + report.human(SourceRendering.namedByIdentity(SourceLayouts.NONE)));
+                () -> "and the verdict says so: " + report.human(SourceRendering.namedByIdentity(compilation.texts())));
     }
 
     /** Two behaviors carrying one type, one of them written a row at the boundary and the other
@@ -294,7 +293,7 @@ class OneAuthoredLineIsOneDebtHoweverManyBehaviorsCarryItTest {
         Compilation compilation = Compilation.ofSource(TWO_DECLARATIONS, "Main");
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
-        String json = AdequacyReport.of(compilation).json(SourceRendering.namedByIdentity(SourceLayouts.NONE));
+        String json = AdequacyReport.of(compilation).json(SourceRendering.namedByIdentity(compilation.texts()));
         tools.jackson.databind.JsonNode declarations =
                 tools.jackson.databind.json.JsonMapper.builder().build().readTree(json)
                         .get("modules").get(0).get("declarations");

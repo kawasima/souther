@@ -1,6 +1,5 @@
 package souther.compiler;
 
-import souther.compiler.diag.SourceLayouts;
 import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 
@@ -72,7 +71,7 @@ class TwoRulesAskingAlikeStayTwoInTheDocumentTest {
     private static JsonNode documentOf(Compilation compilation) {
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
-        return JSON.readTree(AdequacyReport.of(compilation).json(SourceRendering.namedByIdentity(SourceLayouts.NONE)));
+        return JSON.readTree(AdequacyReport.of(compilation).json(SourceRendering.namedByIdentity(compilation.texts())));
     }
 
     private static JsonNode behaviorOf(String source) {

@@ -1,6 +1,5 @@
 package souther.compiler;
 
-import souther.compiler.diag.SourceLayouts;
 import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 
@@ -127,7 +126,7 @@ class WhatAReadingLeavesStandingIsAStateTheSchemaSaysTest {
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
         JsonNode document = JSON.readTree(
-                AdequacyReport.of(compilation).json(SourceRendering.namedByIdentity(SourceLayouts.NONE)));
+                AdequacyReport.of(compilation).json(SourceRendering.namedByIdentity(compilation.texts())));
         for (JsonNode each : document.get("modules").get(0).get("behaviors")) {
             if (each.get("name").asString().equals(behavior)) {
                 return each.get("partition");

@@ -1,6 +1,5 @@
 package souther.compiler.partition;
 
-import souther.compiler.diag.SourceLayouts;
 import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 
@@ -96,7 +95,7 @@ class ARuleAboutAValueMadeFromAPositionIsNamedTest {
         Compilation compilation = Compilation.ofSource(MODEL, "Main");
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
-        String human = AdequacyReport.of(compilation).human(SourceRendering.namedByIdentity(SourceLayouts.NONE));
+        String human = AdequacyReport.of(compilation).human(SourceRendering.namedByIdentity(compilation.texts()));
 
         assertTrue(human.contains("it is about a value made from this one, and what it says about"
                         + " the values here is not worked out, about `people[*]`"),

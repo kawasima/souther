@@ -1,6 +1,5 @@
 package souther.compiler.partition;
 
-import souther.compiler.diag.SourceLayouts;
 import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 
@@ -104,7 +103,7 @@ class WhatABehaviorDividesIsWrittenIntoTheDocumentAndIntoRowsTest {
                         .map(each -> each.diagnostic().code() + " " + each.diagnostic().primary())
                         .toList(),
                 "the model under test compiles");
-        return AdequacyReport.of(compilation).json(SourceRendering.namedByIdentity(SourceLayouts.NONE));
+        return AdequacyReport.of(compilation).json(SourceRendering.namedByIdentity(compilation.texts()));
     }
 
     private static Compilation compilation() {

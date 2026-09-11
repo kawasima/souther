@@ -142,7 +142,7 @@ class FindingDispositionFollowsTheBarTest {
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
         AdequacyReport report = AdequacyReport.of(compilation);
-        String human = report.human(SourceRendering.namedByIdentity(SourceLayouts.NONE));
+        String human = report.human(SourceRendering.namedByIdentity(compilation.texts()));
 
         assertTrue(report.adequacyGaps().isEmpty(), human);
         assertFalse(human.contains("marked `!`"), human);
@@ -240,7 +240,7 @@ class FindingDispositionFollowsTheBarTest {
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
         JsonNode check = JSON.readTree(
-                        AdequacyReport.of(compilation).json(SourceRendering.namedByIdentity(SourceLayouts.NONE)))
+                        AdequacyReport.of(compilation).json(SourceRendering.namedByIdentity(compilation.texts())))
                 .get("modules").get(0).get("behaviors").get(0);
 
         List<JsonNode> arms = new ArrayList<>();

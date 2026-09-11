@@ -1,6 +1,5 @@
 package souther.compiler.partition;
 
-import souther.compiler.diag.SourceLayouts;
 import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 
@@ -759,14 +758,14 @@ class ABorderIsALineOnWhateverTheRuleCutsTest {
         Compilation compilation = Compilation.ofSource(model, "Main");
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
-        return AdequacyReport.of(compilation).human(SourceRendering.namedByIdentity(SourceLayouts.NONE));
+        return AdequacyReport.of(compilation).human(SourceRendering.namedByIdentity(compilation.texts()));
     }
 
     private static String generated(String model) {
         Compilation compilation = Compilation.ofSource(model, "Main");
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
-        return GeneratedRows.of(compilation, null, null, true, SourceRendering.namedByIdentity(SourceLayouts.NONE)).text();
+        return GeneratedRows.of(compilation, null, null, true, SourceRendering.namedByIdentity(compilation.texts())).text();
     }
 
     /**

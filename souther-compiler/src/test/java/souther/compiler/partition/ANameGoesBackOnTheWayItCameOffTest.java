@@ -1,6 +1,5 @@
 package souther.compiler.partition;
 
-import souther.compiler.diag.SourceLayouts;
 import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 
@@ -161,7 +160,7 @@ class ANameGoesBackOnTheWayItCameOffTest {
 
         assertEquals(List.of("Approved", "Rejected"), evidence.axes().get(0).classes());
         String rows = GeneratedRows.of(compilation, "demo", "run", true,
-                SourceRendering.namedByIdentity(SourceLayouts.NONE)).text();
+                SourceRendering.namedByIdentity(compilation.texts())).text();
         assertTrue(rows.contains("DecisionN(Approved { id = 0 })"), rows);
         assertTrue(rows.contains("DecisionN(Rejected)"), rows);
     }

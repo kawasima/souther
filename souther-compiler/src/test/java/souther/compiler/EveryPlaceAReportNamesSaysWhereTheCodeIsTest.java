@@ -1,6 +1,5 @@
 package souther.compiler;
 
-import souther.compiler.diag.SourceLayouts;
 import souther.compiler.diag.SourceRendering;
 import souther.compiler.cst.SourceLayout;
 import org.junit.jupiter.api.Test;
@@ -431,7 +430,7 @@ class EveryPlaceAReportNamesSaysWhereTheCodeIsTest {
         assertEquals(1, arms.size(), () -> "one arm is unreached: " + arms.size());
         Diagnostic arm = arms.get(0);
 
-        List<String> human = report.human(SourceRendering.namedByIdentity(SourceLayouts.NONE)).lines()
+        List<String> human = report.human(SourceRendering.namedByIdentity(compilation.texts())).lines()
                 .map(String::strip).toList();
         List<String> armLines = human.stream()
                 // The sentence and not the mark it is printed under. What a build does about a
@@ -442,7 +441,7 @@ class EveryPlaceAReportNamesSaysWhereTheCodeIsTest {
         List<String> boundaryLines = human.stream()
                 .filter(line -> line.contains("no row is at")).toList();
 
-        JsonNode document = JSON.readTree(report.json(SourceRendering.namedByIdentity(SourceLayouts.NONE)));
+        JsonNode document = JSON.readTree(report.json(SourceRendering.namedByIdentity(compilation.texts())));
         JsonNode behavior = document.get("modules").get(0).get("behaviors").get(0);
         List<JsonNode> unreached = armsNoRowGoesThrough(behavior);
         assertEquals(1, unreached.size(), () -> "one arm is unreached: " + unreached);

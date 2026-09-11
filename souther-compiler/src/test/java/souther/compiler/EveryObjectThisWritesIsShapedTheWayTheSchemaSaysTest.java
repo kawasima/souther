@@ -1,6 +1,5 @@
 package souther.compiler;
 
-import souther.compiler.diag.SourceLayouts;
 import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
@@ -222,6 +221,6 @@ class EveryObjectThisWritesIsShapedTheWayTheSchemaSaysTest {
     private static JsonNode reportOf(Compilation compilation) {
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
-        return JSON.readTree(AdequacyReport.of(compilation).json(SourceRendering.namedByIdentity(SourceLayouts.NONE)));
+        return JSON.readTree(AdequacyReport.of(compilation).json(SourceRendering.namedByIdentity(compilation.texts())));
     }
 }

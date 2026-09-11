@@ -1,6 +1,5 @@
 package souther.compiler.query;
 
-import souther.compiler.diag.SourceLayouts;
 import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 
@@ -464,7 +463,7 @@ class EveryNotReadReasonIsWrittenBySomeCompilationTest {
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
         Set<String> out = new LinkedHashSet<>();
-        collect(JSON.readTree(AdequacyReport.of(compilation).json(SourceRendering.namedByIdentity(SourceLayouts.NONE))),
+        collect(JSON.readTree(AdequacyReport.of(compilation).json(SourceRendering.namedByIdentity(compilation.texts()))),
                 out);
         return out;
     }

@@ -1,6 +1,5 @@
 package souther.compiler;
 
-import souther.compiler.diag.SourceLayouts;
 import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 
@@ -54,7 +53,7 @@ class AClassOffersAValueTheDeclarationsAdmitTest {
         souther.compiler.query.Offering offering = Adequacy.offeredFor(compilation.db(),
                 OfferingRequest.overTheModule("example.away", false));
         assertNotNull(offering, "the model under test compiles");
-        return GeneratedRows.of(offering, Map.of(), SourceRendering.namedByIdentity(SourceLayouts.NONE),
+        return GeneratedRows.of(offering, Map.of(), SourceRendering.namedByIdentity(compilation.texts()),
                 compilation.db()).text();
     }
 

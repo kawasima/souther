@@ -1,6 +1,5 @@
 package souther.compiler;
 
-import souther.compiler.diag.SourceLayouts;
 import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 
@@ -84,7 +83,7 @@ class AnExpansionThatDidNotHappenIsARuleNotReachedTest {
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
         JsonNode document = JSON.readTree(
-                AdequacyReport.of(compilation).json(SourceRendering.namedByIdentity(SourceLayouts.NONE)));
+                AdequacyReport.of(compilation).json(SourceRendering.namedByIdentity(compilation.texts())));
         Map<String, JsonNode> out = new LinkedHashMap<>();
         for (JsonNode module : document.get("modules")) {
             for (JsonNode behavior : module.path("behaviors")) {

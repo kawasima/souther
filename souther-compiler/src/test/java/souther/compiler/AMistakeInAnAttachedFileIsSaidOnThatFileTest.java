@@ -1,5 +1,6 @@
 package souther.compiler;
 
+import souther.compiler.diag.SourcePos;
 import souther.compiler.cst.SourceLayout;
 import souther.compiler.diag.ReportContext;
 
@@ -60,50 +61,71 @@ class AMistakeInAnAttachedFileIsSaidOnThatFileTest {
 
     private static final String ATTACHED_PREFIX = "examples for shippingfee\n\n";
 
-    private static CompileException raisedBy(String attached) {
-        return assertThrows(CompileException.class,
-                () -> Compiler.compileModules(List.of(MODEL, ATTACHED_PREFIX + attached)));
+    private static Raised raisedBy(String attached) {
+        String whole = ATTACHED_PREFIX + attached;
+        return new Raised(assertThrows(CompileException.class,
+                () -> Compiler.compileModules(List.of(MODEL, whole))), whole);
     }
 
-    /** Where the compile says the problem is, as `sourceId line:column`. */
-    private static String saidAt(CompileException e) {
-        return e.sourceId() + " " + ((Primary.InSource) e.diagnostic().primary()).place().region().start();
+    /**
+     * What a compile refused, and the attached file it was handed.
+     *
+     * <p>The two together, because where a report points is a place in one of two files and the
+     * line it is at is what that file is laid out as — which is the whole of what this test is
+     * about. Read against the other file, the numbers came out plausible and about nothing.
+     */
+    private record Raised(CompileException said, String attached) {
+
+        /** Where the compile says the problem is, as {@code sourceId line:column}. */
+        String saidAt() {
+            SourcePos at = ((Primary.InSource) said.diagnostic().primary()).place().region().start();
+            String text = new SourceId("1").equals(said.sourceId()) ? attached : MODEL;
+            return said.sourceId() + " " + WhereItSits.in(text, at);
+        }
+
+        SourceId sourceId() {
+            return said.sourceId();
+        }
+
+        souther.compiler.diag.Diagnostic diagnostic() {
+            return said.diagnostic();
+        }
     }
 
     // --- one method per way of getting it wrong -------------------------------------------------
 
     @Test
     void anUnknownValueNamedByARowIsSaidInTheFileTheRowIsWrittenIn() {
-        CompileException e = raisedBy("""
+        Raised e = raisedBy("""
                 example 送料を求める
                     | "北海道" : (北海道沖縄, 数量 { 個数 = 1 }) -> 送料 { 円 = 100 }
                 """);
 
-        assertEquals("1 4:16", saidAt(e), "the row names it, and the row is in the attached file");
+        assertEquals("1 4:16", e.saidAt(), "the row names it, and the row is in the attached file");
     }
 
     @Test
     void anUnknownValueInAnAttachedFilesFixtureIsSaidInThatFile() {
-        CompileException e = raisedBy("""
+        Raised e = raisedBy("""
                 let 県 = 都道府県 { 名前 = 北海道沖縄 }
 
                 example 送料を求める
                     | "一つ" : (県, 数量 { 個数 = 1 }) -> 送料 { 円 = 100 }
                 """);
 
-        assertEquals("1 3:21", saidAt(e), "the value is declared in the attached file");
+        assertEquals("1 3:21", e.saidAt(), "the value is declared in the attached file");
     }
 
     @Test
     void anUnknownTypeInAnAttachedFilesFixtureIsSaidInThatFile() {
-        CompileException e = raisedBy("""
+        Raised e = raisedBy("""
                 let 県 = 北海道沖縄 { 名前 = "北海道" }
 
                 example 送料を求める
                     | "一つ" : (県, 数量 { 個数 = 1 }) -> 送料 { 円 = 100 }
                 """);
 
-        assertEquals("1 3:9", saidAt(e), "the type is written in the attached file");
+        assertEquals("1 3:9", e.saidAt(), "the type is written in the attached file");
     }
 
     @Test
@@ -114,10 +136,10 @@ class AMistakeInAnAttachedFileIsSaidOnThatFileTest {
                 example 送料を求める
                     | "一つ" : (都道府県 { 名前 = "北海道" }, 数) -> 送料 { 円 = 100 }
                 """;
-        CompileException e = raisedBy(source);
+        Raised e = raisedBy(source);
 
         assertEquals(new SourceId("1"), e.sourceId(), "the field is given its value in the attached file");
-        assertEquals(3, WhereItSits.in(source, ((Primary.InSource) e.diagnostic().primary()).place().region()).start().line());
+        assertEquals(3, WhereItSits.in(ATTACHED_PREFIX + source, ((Primary.InSource) e.diagnostic().primary()).place().region()).start().line());
     }
 
     /**
@@ -128,7 +150,7 @@ class AMistakeInAnAttachedFileIsSaidOnThatFileTest {
      */
     @Test
     void aSyntaxErrorInAnAttachedFileIsSaidInThatFile() {
-        CompileException e = raisedBy("""
+        Raised e = raisedBy("""
                 example 送料を求める
                     | "壊れている" : (
                 """);

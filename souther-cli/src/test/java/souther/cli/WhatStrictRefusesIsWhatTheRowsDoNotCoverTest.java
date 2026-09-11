@@ -401,7 +401,7 @@ class WhatStrictRefusesIsWhatTheRowsDoNotCoverTest {
 
         assertEquals(AdequacyReport.AdequacyStatus.UNDETERMINED, report.adequacy(),
                 () -> "the classes bar asks what the rows reach of this position and nothing read"
-                        + " them: " + report.human(SourceRendering.namedByIdentity(SourceLayouts.NONE)));
+                        + " them: " + report.human(SourceRendering.namedByIdentity(compilation.texts())));
     }
 
     /**

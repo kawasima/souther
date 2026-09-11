@@ -1,6 +1,5 @@
 package souther.compiler.query;
 
-import souther.compiler.diag.SourceLayouts;
 import souther.compiler.diag.SourceRendering;
 import souther.compiler.conformance.ConformanceCorpus;
 import souther.compiler.report.AdequacyReport;
@@ -76,7 +75,7 @@ class EverythingAnAnswerHoldsMeansSomethingTest {
                 Compilation compilation = Compilation.ofSource(SPOKEN_ABOUT, "Main");
                 compilation.measure(Adequacy.Asked.fullReport());
                 compilation.answerEverything();
-                AdequacyReport.of(compilation).json(SourceRendering.namedByIdentity(SourceLayouts.NONE));
+                AdequacyReport.of(compilation).json(SourceRendering.namedByIdentity(compilation.texts()));
                 out.add(compilation.db());
             }
         }

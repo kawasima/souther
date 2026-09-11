@@ -1,6 +1,5 @@
 package souther.compiler.partition;
 
-import souther.compiler.diag.SourceLayouts;
 import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 
@@ -550,7 +549,7 @@ class ALineBetweenTwoPositionsIsStillALineTest {
         Compilation compilation = Compilation.ofSource(model, "Main");
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
-        return AdequacyReport.of(compilation).human(SourceRendering.namedByIdentity(SourceLayouts.NONE));
+        return AdequacyReport.of(compilation).human(SourceRendering.namedByIdentity(compilation.texts()));
     }
 
     /**
@@ -585,7 +584,7 @@ class ALineBetweenTwoPositionsIsStillALineTest {
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
         return souther.compiler.report.GeneratedRows.of(compilation, null, null, true,
-                SourceRendering.namedByIdentity(SourceLayouts.NONE)).text();
+                SourceRendering.namedByIdentity(compilation.texts())).text();
     }
 
     /** Held here so a rename of the report's own words does not quietly turn every assertion above

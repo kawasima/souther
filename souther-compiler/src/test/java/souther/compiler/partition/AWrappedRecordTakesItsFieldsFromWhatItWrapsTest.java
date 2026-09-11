@@ -1,6 +1,5 @@
 package souther.compiler.partition;
 
-import souther.compiler.diag.SourceLayouts;
 import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 
@@ -109,7 +108,7 @@ class AWrappedRecordTakesItsFieldsFromWhatItWrapsTest {
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
         return GeneratedRows.of(compilation, "demo", "run", true,
-                SourceRendering.namedByIdentity(SourceLayouts.NONE)).text();
+                SourceRendering.namedByIdentity(compilation.texts())).text();
     }
 
     /**

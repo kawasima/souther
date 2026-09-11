@@ -504,7 +504,7 @@ class EveryFindingHasAGenerationDispositionTest {
         Compilation compilation = compiled(NARROWED);
 
         String block = GeneratedRows.of(compilation, "example.narrowed", "held", true,
-                SourceRendering.namedByIdentity(SourceLayouts.NONE)).text();
+                SourceRendering.namedByIdentity(compilation.texts())).text();
 
         assertTrue(block.contains("in `held`"),
                 "what the reading this asked about came to, named as its own: " + block);
@@ -982,7 +982,7 @@ class EveryFindingHasAGenerationDispositionTest {
         String block = GeneratedRows.of(Adequacy.offeredFor(compilation.db(),
                         souther.compiler.query.OfferingRequest.overTheModule(
                                 "example.policy", true)),
-                Map.of(), SourceRendering.namedByIdentity(SourceLayouts.NONE), compilation.db()).text();
+                Map.of(), SourceRendering.namedByIdentity(compilation.texts()), compilation.db()).text();
 
         assertTrue(block.contains("`then`"),
                 "the arm nothing offers a row for is named: " + block);

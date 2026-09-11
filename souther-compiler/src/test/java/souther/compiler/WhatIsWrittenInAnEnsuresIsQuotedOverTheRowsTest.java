@@ -201,7 +201,7 @@ class WhatIsWrittenInAnEnsuresIsQuotedOverTheRowsTest {
                 "the checker could not read this behavior's clause");
 
         String block = GeneratedRows.of(compilation, null, null, true,
-                SourceRendering.namedByIdentity(SourceLayouts.NONE)).text();
+                SourceRendering.namedByIdentity(compilation.texts())).text();
         assertTrue(block.contains("""
                 // `ensures` written for `wrong`:
                 //     ensures nope = Other -> n.value > 0
