@@ -194,7 +194,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
         };
     }
 
-    public static final int SCHEMA_VERSION = 19;
+    public static final int SCHEMA_VERSION = 20;
 
     /**
      * Where the schema this writes documents ships.
@@ -3174,6 +3174,14 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             case ObligationIdentity.OfAClass(var owed) -> {
                 into.put("axis", owed.at().toString());
                 into.put("class", owed.classId());
+            }
+            // The behavior, which of its inputs and which case — what a case of an input is owed at
+            // where nothing divides that input into classes. The input by its number, because a
+            // behavior that declares no parameters has no name to call it by.
+            case ObligationIdentity.OfAnInputCase(var behavior, var at, var missing) -> {
+                into.put("behavior", behavior);
+                into.put("input", at);
+                into.put("case", missing.name());
             }
             case ObligationIdentity.OfADecisionRule(var behavior, var rule) ->
                     ruleId(into, behavior, rule);

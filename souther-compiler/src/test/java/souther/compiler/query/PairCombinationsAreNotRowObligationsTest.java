@@ -91,16 +91,17 @@ class PairCombinationsAreNotRowObligationsTest {
      * would say a row is owed at one in the only way an author meets — the command that hands them
      * the row to write.
      *
-     * <p>Read from what says what a row can be offered for, which is a sum of three and none of
-     * them is a relation between two positions.
+     * <p>Read from what says what a row can be offered for, and none of its shapes is a relation
+     * between two positions.
      */
     @Test
     void nothingARowIsOfferedForIsACombination() {
         List<String> every = new ArrayList<>();
         walk(souther.compiler.partition.ObligationIdentity.class, every);
 
-        assertEquals(List.of("OfALine", "OfAnArm", "OfAClass", "OfADecisionRule"), every,
-                "a thing a row can be offered for that this law says nothing about");
+        assertEquals(
+                List.of("OfALine", "OfAnArm", "OfAClass", "OfAnInputCase", "OfADecisionRule"),
+                every, "a thing a row can be offered for that this law says nothing about");
     }
 
     /**

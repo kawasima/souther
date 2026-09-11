@@ -155,7 +155,8 @@ class AFindingCarriesWhatTheMeasureThatFoundItWentWithoutTest {
         // is given — which is the line that was wrong.
         List<Adequacy.Finding> found = new ArrayList<>();
         // What the declaration calls the two inputs, which is what a case of one is a class of.
-        Adequacy.Findings.signatureFindings("sort", List.of("a", "b"), signature, found);
+        Adequacy.Findings.signatureFindings("sort",
+                new Adequacy.Findings.InputPositions.Declared(List.of("a", "b")), signature, found);
         assertFalse(found.isEmpty(), "the producer says something about these cases");
 
         Adequacy.AdequacyBar held = Adequacy.AdequacyBar.SIMPLIFIED_DOMAIN;

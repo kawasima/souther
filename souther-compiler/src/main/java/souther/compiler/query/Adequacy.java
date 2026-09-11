@@ -3886,6 +3886,18 @@ public final class Adequacy {
          * than off an empty row list, which would be the same as calling a search that found
          * nothing a fact about the model.
          */
+        private static GenerationOutcome atCase(ObligationIdentity owed,
+                                                souther.compiler.partition.FillResult composed) {
+            // A case of an input nothing divides into classes. What this run composes rows from is
+            // the classes of a position, so there is no position here for it to have looked at —
+            // the same answer it gives for a class at a position this subject has no axis for.
+            if (owed instanceof ObligationIdentity.OfAnInputCase) {
+                return new GenerationOutcome.NotSupported(
+                        GenerationOutcome.NotSupported.Reason.NO_AXIS_AT_THIS_POSITION);
+            }
+            return atCase(((ObligationIdentity.OfAClass) owed).classOfAPosition(), composed);
+        }
+
         private static GenerationOutcome atCase(ClassOfAPosition owed,
                                                 souther.compiler.partition.FillResult composed) {
             // Asked of the subject the search was made over, which is what says what this run had
@@ -5253,6 +5265,12 @@ public final class Adequacy {
             Map<String, Measure<List<BorderObligationPointAssessment>>> accounts =
                     db.ask(new BodyBorders(name)).value();
             Map<String, BranchEvidence> branches = db.ask(new BranchCoverage(name)).value();
+            // What each behavior's input is read from, which is what says whether a case of it is
+            // also a class of a position this behavior has. Asked of the one place that puts a
+            // behavior in that state, so that a finding and the measures it is made from read the
+            // declaration the same way.
+            Map<String, Sig> sigs = db.ask(new Bodies.Signatures(name)).value();
+            Map<String, InputDomain> readInputs = db.ask(new Inputs(name)).value();
 
             // One list and not a block per behavior. What each finding is about is its own
             // ({@link FindingSubject}), and a map keyed by behavior has no key for a finding about
@@ -5267,7 +5285,9 @@ public final class Adequacy {
             List<Finding> out = new ArrayList<>();
             for (Hir.BehaviorDef behavior : prepared.value().behaviors()) {
                 unansweredRows(prepared.value().module(), behavior.name(), out);
-                signatureFindings(behavior.name(), positionsOf(behavior),
+                signatureFindings(behavior.name(),
+                        positionsOf(BoundaryForMeasurement.of(sigs == null ? Map.of() : sigs,
+                                readInputs, behavior)),
                         signatures == null ? null : signatures.get(behavior.name()), out);
                 partitionFindings(behavior,
                         partitions == null ? null : partitions.get(behavior.name()),
@@ -5281,17 +5301,6 @@ public final class Adequacy {
             return Answer.of(List.copyOf(out));
         }
 
-        /**
-         * What a declaration calls each of a behavior's inputs, in order.
-         *
-         * <p>Empty for a behavior that declares no parameters of its own, which is what a
-         * composition is. Its stages are where its inputs are measured, so nothing here names a
-         * position of it.
-         */
-        private static List<String> positionsOf(Hir.BehaviorDef behavior) {
-            return behavior instanceof Hir.SpecBehavior spec
-                    ? spec.params().stream().map(Hir.Param::name).toList() : List.of();
-        }
 
         /**
          * The rules of one behavior's decision that no row takes and something can stand in.
@@ -5365,6 +5374,41 @@ public final class Adequacy {
         }
 
         /**
+         * What positions of its own a behavior has, which is what says whether a case of one of
+         * its inputs is also a class of a position it has.
+         *
+         * <p>Two answers and not a list that may be empty. A behavior whose input is read at its
+         * stages has no positions here, and a list standing in for that is a list to index into —
+         * which is the reading that had every case of such a behavior looked up at a position
+         * nothing declared.
+         */
+        sealed interface InputPositions {
+
+            /** The behavior declares its own inputs, and calls them these. */
+            record Declared(List<String> names) implements InputPositions {
+
+                public Declared {
+                    names = List.copyOf(names);
+                }
+            }
+
+            /** It declares none: its stages are where what it takes is read. */
+            record AtStages() implements InputPositions {}
+        }
+
+        /**
+         * Which of those {@code boundary} says this behavior is, read off the one place that puts a
+         * behavior in that state rather than from the kind of its declaration.
+         */
+        private static InputPositions positionsOf(BoundaryForMeasurement boundary) {
+            return boundary instanceof BoundaryForMeasurement.Derived(
+                    Sig _, InputForMeasurement.Local(Hir.SpecBehavior spec, InputDomain _))
+                    ? new InputPositions.Declared(
+                            spec.params().stream().map(Hir.Param::name).toList())
+                    : new InputPositions.AtStages();
+        }
+
+        /**
          * What the rows left undone about the cases of one signature.
          *
          * <p>Each finding is carried at its own measure's account: a case nothing claims is, where
@@ -5378,8 +5422,11 @@ public final class Adequacy {
          * measurement each finding is given, and the states that tell a right answer from a wrong
          * one are states a fixture may or may not reach; handed the evidence, this can be shown the
          * state itself.
+         *
+         * @param positions what positions of its own this behavior has, which says whether a case
+         *                  of one of its inputs is also a class of a position it has
          */
-        static void signatureFindings(String behavior, List<String> positions,
+        static void signatureFindings(String behavior, InputPositions positions,
                                       SignatureEvidence signature, List<Finding> out) {
             if (signature == null || signature.counted().made().isEmpty()) {
                 return;
@@ -5431,10 +5478,35 @@ public final class Adequacy {
                     // readings of one entry rather than two entries that happen to coincide.
                     out.add(Finding.by(behavior, input.cases(),
                             new About.ACaseNoRowAppliesItTo(input, missing,
-                                    new ClassOfAPosition(positionOf(behavior, positions,
-                                            input.at()), missing.name()))));
+                                    owedAt(behavior, positions, input.at(), missing))));
                 }
             }
+        }
+
+        /**
+         * What the account keys a case of one input on.
+         *
+         * <p>The class of the position where this behavior has one. A behavior that declares its
+         * own input is divided into classes at each of its positions, and the case and the class
+         * are one thing a row is owed for; a behavior whose input is read at its stages has no
+         * position of its own to be a class of, so the case is what it is owed at and nothing else.
+         *
+         * <p><b>And not the stage's class.</b> What the stages divide are their own positions,
+         * under their own names, and a finding of this behavior keyed there would be this account
+         * pointing at another behavior's entry — the identity rebuilt somewhere other than where
+         * the obligation is, which is what carrying it here is for. That the values coincide is not
+         * the two being one obligation: a row of a stage discharges the stage's, and a row of this
+         * behavior discharges this one.
+         */
+        private static ObligationIdentity owedAt(String behavior, InputPositions positions,
+                                                 int at, TypeSymbol missing) {
+            return switch (positions) {
+                case InputPositions.Declared(List<String> names) ->
+                        new ObligationIdentity.OfAClass(new ClassOfAPosition(
+                                positionOf(behavior, names, at), missing.name()));
+                case InputPositions.AtStages _ ->
+                        new ObligationIdentity.OfAnInputCase(behavior, at, missing);
+            };
         }
 
         /**

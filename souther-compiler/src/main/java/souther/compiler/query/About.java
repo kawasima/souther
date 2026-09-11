@@ -62,27 +62,36 @@ public sealed interface About {
      * <p>The evidence names which input, so that a case and the position it is a case of arrive
      * together.
      *
-     * <p><b>One obligation with the class of that position, and the same one.</b> A case of a sum
-     * an input ranges over and the class that sum makes of the position are one thing a row is
-     * owed for, reached by two derivations: the signature counts the cases a row applies the
-     * behavior to, and the partition counts the classes a row sits in. The identity is what says
-     * they are one — carried here, where the position is known, rather than worked out again by
-     * whoever needs it, which is how a second identity for one obligation came to exist at the one
-     * consumer that needed one.
+     * <p><b>One obligation with the class of that position, where that class is this behavior's
+     * own.</b> A case of a sum an input ranges over and the class that sum makes of the position
+     * are one thing a row is owed for, reached by two derivations: the signature counts the cases a
+     * row applies the behavior to, and the partition counts the classes a row sits in. That holds
+     * while both are about one behavior's own position, and a behavior whose input is read at its
+     * stages has the first without the second — so which identity this carries is settled where the
+     * finding is made, from the boundary both measures were read from, rather than worked out again
+     * by whoever needs one.
      *
-     * @param owed the class of the position this case is, which is the account's own key for it
+     * @param owed what the account keys this case on: the class of the position where the behavior
+     *             has one, and the case of the input where nothing divides it
      */
     record ACaseNoRowAppliesItTo(InputCaseEvidence input, TypeSymbol missing,
-                                 ClassOfAPosition owed) implements OfAnObligation {
+                                 ObligationIdentity owed) implements OfAnObligation {
         public ACaseNoRowAppliesItTo {
             java.util.Objects.requireNonNull(input, "a finding is about something");
             java.util.Objects.requireNonNull(missing, "a finding is about something");
-            java.util.Objects.requireNonNull(owed, "a case of an input is a class of a position");
+            java.util.Objects.requireNonNull(owed, "a case of an input is owed at something");
+            // The two shapes a case of an input is owed at, held to here so that a maker reaching
+            // for another would be saying this obligation is a point of a line or an arm.
+            if (!(owed instanceof ObligationIdentity.OfAClass
+                    || owed instanceof ObligationIdentity.OfAnInputCase)) {
+                throw new IllegalArgumentException("a case of an input is owed at a class of its"
+                        + " position or at the case itself: " + owed);
+            }
         }
 
         @Override
         public ObligationIdentity obligationIdentity() {
-            return new ObligationIdentity.OfAClass(owed);
+            return owed;
         }
     }
 
