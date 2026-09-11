@@ -78,8 +78,8 @@ class WhatWasObservedDecidesWhatAReportMayNameTest {
     }
 
     private static souther.compiler.diag.Citation at(int line) {
-        return souther.compiler.diag.Citation.of(new souther.compiler.diag.SourcePos(line, 1,
-                new souther.compiler.source.SourceId("m.sou")));
+        return souther.compiler.diag.Citation.of(souther.compiler.diag.Placement
+                .aFileOfThisCompile(new souther.compiler.source.SourceId("m.sou")).at(line, 1));
     }
 
     /** Every row read, and one fork whose rule could not be worked out. */

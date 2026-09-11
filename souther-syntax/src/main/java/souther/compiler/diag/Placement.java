@@ -324,7 +324,18 @@ public final class Placement {
      * from, {@code SourceLayout} is what makes it, and this is not the way in.
      */
     public SourcePos at(int token, int within) {
-        return new SourcePos(token, within, this);
+        return at(0, token, within);
+    }
+
+    /**
+     * The same, in the {@code construct}-th of them.
+     *
+     * <p>The way a laid-out text makes its places, and the only way in from outside this package
+     * that says which construct. What counts the constructs of a text is what parsed it, so a
+     * caller reaching this without one has counted them a second time.
+     */
+    public SourcePos at(int construct, int token, int within) {
+        return new SourcePos(construct, token, within, this);
     }
 
     /** A file this compile holds, under the identity it holds it by. Its positions are where the

@@ -1,5 +1,6 @@
 package souther.compiler.query;
 
+import souther.compiler.diag.Placement;
 import souther.compiler.cst.SourceLayout;
 import souther.compiler.source.SourceId;
 import souther.compiler.diag.QuotedFrom;
@@ -130,7 +131,7 @@ class ACursorIsOnAPlaceNotACoordinateTest {
 
     @Test
     void aQuestionThatNamesNoFileIsNotAnsweredWithANameFromOne() {
-        assertFalse(Names.spans(WrittenName.of("name", new SourcePos(8, 14, MODEL_ID)),
+        assertFalse(Names.spans(WrittenName.of("name", Placement.aFileOfThisCompile(MODEL_ID).at(8, 14)),
                 new SourcePos(8, 14)));
     }
 
@@ -142,12 +143,12 @@ class ACursorIsOnAPlaceNotACoordinateTest {
     @Test
     void aQuestionAboutAFileIsNotAnsweredWithANameFromNoFile() {
         assertFalse(Names.spans(WrittenName.of("name", new SourcePos(8, 14)),
-                new SourcePos(8, 14, MODEL_ID)));
+                Placement.aFileOfThisCompile(MODEL_ID).at(8, 14)));
     }
 
     @Test
     void aNameInAnotherFileIsNotUnderTheCursorHoweverTheLinesLineUp() {
-        assertFalse(Names.spans(WrittenName.of("name", new SourcePos(8, 14, ATTACHED_ID)),
-                new SourcePos(8, 14, MODEL_ID)));
+        assertFalse(Names.spans(WrittenName.of("name", Placement.aFileOfThisCompile(ATTACHED_ID).at(8, 14)),
+                Placement.aFileOfThisCompile(MODEL_ID).at(8, 14)));
     }
 }

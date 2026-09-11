@@ -32,8 +32,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class WhetherAPlaceCanBeQuotedIsAskedBeforeItIsPointedAtTest {
 
+    /** A place somebody spells by hand in the file {@code file}. */
+    private static SourcePos at(String file, int token, int within) {
+        return Placement.aFileOfThisCompile(new SourceId(file)).at(token, within);
+    }
+
+    /** A region in {@code sourceId}, or in a text nothing names where it is none. */
     private static Region in(SourceId sourceId) {
-        return new Region(new SourcePos(3, 5, sourceId), new SourcePos(3, 20, sourceId));
+        Placement text = sourceId == null ? Placement.aTextWithNoIdentity()
+                : Placement.aFileOfThisCompile(sourceId);
+        return new Region(text.at(3, 5), text.at(3, 20));
     }
 
     /** A region read from a text put back together out of what a module published. */
@@ -80,8 +88,8 @@ class WhetherAPlaceCanBeQuotedIsAskedBeforeItIsPointedAtTest {
     @Test
     void aRegionRunningBetweenTwoSourcesIsNotAPlaceAtAll() {
         DiagnosticPlace.NotOnePlace refused = assertThrows(DiagnosticPlace.NotOnePlace.class,
-                () -> DiagnosticPlace.of(new Region(new SourcePos(3, 5, new SourceId("model.sou")),
-                        new SourcePos(3, 20, new SourceId("other.sou")))));
+                () -> DiagnosticPlace.of(new Region(at("model.sou", 3, 5),
+                        at("other.sou", 3, 20))));
 
         assertTrue(refused.getMessage().contains("model.sou"), refused.getMessage());
         assertTrue(refused.getMessage().contains("other.sou"), refused.getMessage());
@@ -105,8 +113,8 @@ class WhetherAPlaceCanBeQuotedIsAskedBeforeItIsPointedAtTest {
         assertThrows(DiagnosticPlace.NotOnePlace.class,
                 () -> DiagnosticPlace.of(new Region(fromA, fromB)));
         assertThrows(DiagnosticPlace.NotOnePlace.class,
-                () -> DiagnosticPlace.of(new Region(new SourcePos(3, 5, new SourceId("model.sou")),
-                        new SourcePos(3, 20, new SourceId("model.sou")).standingInFor(
+                () -> DiagnosticPlace.of(new Region(at("model.sou", 3, 5),
+                        at("model.sou", 3, 20).standingInFor(
                                 new DeclaringCode(
                                         new SourceProvenance.APublishedModule("lib.a"))))));
     }
@@ -116,10 +124,10 @@ class WhetherAPlaceCanBeQuotedIsAskedBeforeItIsPointedAtTest {
     @Test
     void aRegionWithOneEndInASourceIsRefusedToo() {
         assertThrows(DiagnosticPlace.NotOnePlace.class,
-                () -> DiagnosticPlace.of(new Region(new SourcePos(3, 5, new SourceId("model.sou")),
+                () -> DiagnosticPlace.of(new Region(at("model.sou", 3, 5),
                         new SourcePos(3, 20))));
         assertThrows(DiagnosticPlace.NotOnePlace.class,
                 () -> DiagnosticPlace.of(new Region(new SourcePos(3, 5),
-                        new SourcePos(3, 20, new SourceId("model.sou")))));
+                        at("model.sou", 3, 20))));
     }
 }

@@ -30,6 +30,14 @@ class AReportWithNowhereToPointStillSaysWhereItsCodeIsTest {
     private static final SourceProvenance THE_CODE =
             new SourceProvenance.APublishedModule("lib.rule", "lib.rule.atLeast");
 
+    /** A place in the importing file, where a report with nowhere to point is moved to. */
+    private static final SourcePos AN_IMPORT_LINE = inTheImport(1);
+
+    /** The place {@code within} units into the second thing written in that file. */
+    private static SourcePos inTheImport(int within) {
+        return Placement.aFileOfThisCompile(new SourceId("app.sou")).at(2, within);
+    }
+
     private static Diagnostic nowhereToPoint() {
         return Diagnostic.atCodeWrittenOutOfSight(THE_CODE)
                 .say(new ModuleMessage.CannotReadAFieldOnASum("x", "S"))
@@ -72,7 +80,7 @@ class AReportWithNowhereToPointStillSaysWhereItsCodeIsTest {
     void movingItSomewhereReadableDoesNotRedecideWhatItIsAbout() {
         assertThrows(Diagnostic.MovedSomewhereElsesCode.class,
                 () -> nowhereToPoint().reachedFrom(
-                        java.util.List.of(new SourcePos(2, 1, new SourceId("app.sou"))),
+                        java.util.List.of(AN_IMPORT_LINE),
                         new SourceProvenance.APublishedModule("lib.other"),
                         new ModuleMessage.ItIsReachedFromHereToo()));
     }
@@ -96,7 +104,7 @@ class AReportWithNowhereToPointStillSaysWhereItsCodeIsTest {
                 "it says where its code is, through what it points at");
         assertThrows(Diagnostic.MovedSomewhereElsesCode.class,
                 () -> said.reachedFrom(
-                        java.util.List.of(new SourcePos(2, 1, new SourceId("app.sou"))),
+                        java.util.List.of(AN_IMPORT_LINE),
                         new SourceProvenance.APublishedModule("lib.other"),
                         new ModuleMessage.ItIsReachedFromHereToo()));
     }
@@ -111,7 +119,7 @@ class AReportWithNowhereToPointStillSaysWhereItsCodeIsTest {
     @Test
     void aReportAboutCodeTheReaderIsLookingAtSaysItIsHereAndIsNotMoved() {
         Diagnostic said = Diagnostic.at(
-                        Placement.aFileOfThisCompile(new SourceId("app.sou")).at(2, 1))
+                        AN_IMPORT_LINE)
                 .say(new ModuleMessage.CannotReadAFieldOnASum("x", "S"))
                 .build();
 
@@ -119,7 +127,7 @@ class AReportWithNowhereToPointStillSaysWhereItsCodeIsTest {
                 "the code is where it points");
         assertThrows(Diagnostic.MovedSomewhereElsesCode.class,
                 () -> said.reachedFrom(
-                        java.util.List.of(new SourcePos(2, 1, new SourceId("app.sou"))),
+                        java.util.List.of(AN_IMPORT_LINE),
                         new SourceProvenance.APublishedModule("lib.other"),
                         new ModuleMessage.ItIsReachedFromHereToo()));
     }
@@ -134,7 +142,7 @@ class AReportWithNowhereToPointStillSaysWhereItsCodeIsTest {
         assertEquals(new WhereCodeIsWritten.Unstated(), said.whereItsCodeIsWritten(),
                 "nothing to point at, and nothing said through it");
         assertEquals(THE_CODE, ((Citation.Reached) Citation.of(((Primary.InSource) said.reachedFrom(
-                        java.util.List.of(new SourcePos(2, 1, new SourceId("app.sou"))), THE_CODE,
+                        java.util.List.of(AN_IMPORT_LINE), THE_CODE,
                         new ModuleMessage.ItIsReachedFromHereToo()).primary()).place().region().start()))
                         .provenance(),
                 "so the caller says where the code is, and it is taken");
@@ -145,7 +153,7 @@ class AReportWithNowhereToPointStillSaysWhereItsCodeIsTest {
     @Test
     void movedWithWhatItSaysItPointsSomewhereAndIsAboutTheSameCode() {
         Diagnostic moved = nowhereToPoint().reachedFrom(
-                java.util.List.of(new SourcePos(2, 1, new SourceId("app.sou"))), THE_CODE,
+                java.util.List.of(AN_IMPORT_LINE), THE_CODE,
                 new ModuleMessage.ItIsReachedFromHereToo());
 
         Citation.Reached reached =
@@ -175,7 +183,7 @@ class AReportWithNowhereToPointStillSaysWhereItsCodeIsTest {
     void aLabelOfItsOwnDoesNotBecomeThePlaceItPointsAt() {
         Diagnostic said = Diagnostic.atCodeWrittenOutOfSight(THE_CODE)
                 .say(new ModuleMessage.CannotReadAFieldOnASum("x", "S"))
-                .secondary(Region.point(new SourcePos(2, 3, new SourceId("app.sou"))),
+                .secondary(Region.point(inTheImport(3)),
                         new ModuleMessage.RenameItOrDropTheDependency("lib.rule"))
                 .build();
         Located located = new Located(said, ReportContext.inFile(new SourceId("app.sou")));

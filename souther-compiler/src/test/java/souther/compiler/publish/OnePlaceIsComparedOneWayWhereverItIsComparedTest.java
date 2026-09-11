@@ -1,5 +1,6 @@
 package souther.compiler.publish;
 
+import souther.compiler.diag.Placement;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.check.Clause;
@@ -148,6 +149,6 @@ class OnePlaceIsComparedOneWayWhereverItIsComparedTest {
     }
 
     private static SourcePos pos(int line, int column) {
-        return new SourcePos(line, column, new SourceId("0"));
+        return Placement.aFileOfThisCompile(new SourceId("0")).at(line, column);
     }
 }

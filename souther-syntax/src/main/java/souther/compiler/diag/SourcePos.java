@@ -77,8 +77,12 @@ public final class SourcePos {
      * <p>Made where a text becomes places and nowhere else, which is {@code SourceLayout}. A caller
      * spelling one out of numbers it worked out for itself has counted the tokens of that text a
      * second time, and the two go on counting separately.
+     *
+     * <p>Which is why this is the package's and not everyone's: what is offered outside it is
+     * {@link Placement#at}, where saying which text a hand-spelled place is in is the thing the
+     * caller has to write down.
      */
-    public SourcePos(int construct, int token, int within, Placement placement) {
+    SourcePos(int construct, int token, int within, Placement placement) {
         this.construct = construct;
         this.token = token;
         this.within = within;
@@ -116,26 +120,19 @@ public final class SourcePos {
         return Objects.hash(construct, token, within, placement);
     }
 
-    /** A place a source was read for, where the code it names is written — or a text with no
-     *  identity where {@code sourceId} is none. */
-    public SourcePos(int construct, int token, int within, SourceId sourceId) {
-        this(construct, token, within, sourceId == null ? Placement.aTextWithNoIdentity()
-                : Placement.aFileOfThisCompile(sourceId));
-    }
-
-    /** A place in the first top-level construct of a file this compile holds — what a caller
-     *  spelling a place out by hand writes, where which construct it is in is not what it is
-     *  about. */
-    public SourcePos(int token, int within, SourceId sourceId) {
-        this(0, token, within, sourceId);
-    }
-
-    /** The same, in some text this compilation has no name for. */
-    public SourcePos(int token, int within, Placement placement) {
-        this(0, token, within, placement);
-    }
-
-    /** A position read from no source. */
+    /**
+     * A position read from no source.
+     *
+     * <p>The one place spelling left. A place in a text somebody holds is read off that text
+     * ({@code SourceLayout}), and one spelled out of numbers against a named file is a count made
+     * against nothing that has to agree with the count that text was laid out by — which is how a
+     * cursor arrived at the token four along from wherever the editor's fourth column happened to
+     * be. A place in no text says which of nothing it is, resolves nowhere, and is equal to the
+     * other places minted to mean nowhere, which is the whole of what its callers want.
+     *
+     * <p>A caller that does want to say which text is saying something about that text, and says it
+     * there: {@link Placement#at}.
+     */
     public SourcePos(int token, int within) {
         this(0, token, within, Placement.aTextWithNoIdentity());
     }

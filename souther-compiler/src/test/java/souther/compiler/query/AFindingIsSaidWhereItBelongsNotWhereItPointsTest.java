@@ -1,5 +1,6 @@
 package souther.compiler.query;
 
+import souther.compiler.diag.Placement;
 import souther.compiler.source.SourceId;
 
 import org.junit.jupiter.api.Test;
@@ -51,7 +52,7 @@ class AFindingIsSaidWhereItBelongsNotWhereItPointsTest {
     }
 
     private static SourcePos in(String sourceId) {
-        return new SourcePos(2, 1, new SourceId(sourceId));
+        return Placement.aFileOfThisCompile(new SourceId(sourceId)).at(2, 1);
     }
 
     /** A report found about {@code module}, its caret in {@code caretIn}, pointing at {@code

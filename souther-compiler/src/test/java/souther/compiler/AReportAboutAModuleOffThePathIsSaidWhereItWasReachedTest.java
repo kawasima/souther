@@ -514,13 +514,15 @@ class AReportAboutAModuleOffThePathIsSaidWhereItWasReachedTest {
         Diagnostic said = Diagnostic.say(new NameMessage.NoValueOfThatNameInScope("x"))
                 .at(Placement.whatAModulePublished(
                         new SourceProvenance.APublishedModule("lib.held")).at(1, 1))
-                .secondary(Region.ofWidth(new SourcePos(3, 3, new SourceId("0")), 4),
+                .secondary(
+                        Region.ofWidth(Placement.aFileOfThisCompile(new SourceId("0")).at(3, 3), 4),
                         new NameMessage.WriteItOnItsOwn("x"))
                 .build();
 
         assertEquals(1, said.secondary().size(), "the label is there to begin with");
 
-        Diagnostic moved = said.reachedFrom(List.of(new SourcePos(2, 1, new SourceId("0"))),
+        Diagnostic moved = said.reachedFrom(
+                List.of(Placement.aFileOfThisCompile(new SourceId("0")).at(2, 1)),
                 new SourceProvenance.APublishedModule("lib.held"),
                 new ModuleMessage.ItIsReachedFromHereToo());
 
@@ -533,7 +535,7 @@ class AReportAboutAModuleOffThePathIsSaidWhereItWasReachedTest {
     @Test
     void aLabelOverARegionNamingNoSourceIsRefused() {
         Diagnostic.Builder building = Diagnostic.say(new NameMessage.NoValueOfThatNameInScope("x"))
-                .at(new SourcePos(1, 1, new SourceId("0")));
+                .at(Placement.aFileOfThisCompile(new SourceId("0")).at(1, 1));
 
         assertThrows(IllegalArgumentException.class,
                 () -> building.secondary(Region.ofWidth(new SourcePos(3, 3), 4),

@@ -39,7 +39,7 @@ class MovingAReportDoesNotMoveItsRepairTest {
                 .build();
 
         Diagnostic moved = said.reachedFrom(
-                List.of(new SourcePos(2, 1, new SourceId("app.sou"))),
+                List.of(Placement.aFileOfThisCompile(new SourceId("app.sou")).at(2, 1)),
                 THE_CODE.asDeclared(),
                 new ModuleMessage.ItIsReachedFromHereToo());
 
@@ -78,7 +78,7 @@ class MovingAReportDoesNotMoveItsRepairTest {
     }
 
     private static Region borrowed() {
-        SourcePos wrote = new SourcePos(4, 20, new SourceId("app.sou"));
+        SourcePos wrote = Placement.aFileOfThisCompile(new SourceId("app.sou")).at(4, 20);
         DeclaringCode declaring = new DeclaringCode(THE_CODE.asDeclared());
         return new Region(wrote.standingInFor(declaring), wrote.standingInFor(declaring));
     }

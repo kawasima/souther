@@ -188,12 +188,12 @@ public final class SourceLayout implements LaidOutText {
      */
     public SourcePos placeAt(int offset) {
         if (tokenStart.isEmpty()) {
-            return new SourcePos(0, 0, Math.max(0, offset), read);
+            return read.at(0, 0, Math.max(0, offset));
         }
         int construct = constructAt(offset);
         List<Integer> tokens = tokenStart.get(construct);
         int token = tokenAt(tokens, offset);
-        return new SourcePos(construct, token, offset - tokens.get(token), read);
+        return read.at(construct, token, offset - tokens.get(token));
     }
 
     /**

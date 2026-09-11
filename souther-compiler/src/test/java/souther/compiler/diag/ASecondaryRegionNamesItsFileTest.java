@@ -293,7 +293,7 @@ class ASecondaryRegionNamesItsFileTest {
     void aPlaceCannotClaimASourceItsRegionWasNotReadFrom() {
         assertThrows(DiagnosticPlace.NotOnePlace.class,
                 () -> new DiagnosticPlace.InSource(new Region(at(ROWS, 3, 3),
-                        new SourcePos(3, 7, new SourceId("fakes")))));
+                        Placement.aFileOfThisCompile(new SourceId("fakes")).at(3, 7))));
         assertThrows(DiagnosticPlace.NotAPlace.class,
                 () -> new DiagnosticPlace.InSource(Region.ofWidth(new SourcePos(3, 3), 4)));
     }

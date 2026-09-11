@@ -1,5 +1,6 @@
 package souther.compiler;
 
+import souther.compiler.diag.Placement;
 import souther.compiler.source.SourceId;
 import souther.compiler.types.WrittenOwner;
 
@@ -240,7 +241,7 @@ class EverySchemaWordIsAccountedForTest {
      * agreeing with the copy after the writer had stopped saying it.
      */
     private static Set<String> writtenAtWords() {
-        SourcePos here = new SourcePos(1, 1, new SourceId("s"));
+        SourcePos here = Placement.aFileOfThisCompile(new SourceId("s")).at(1, 1);
         return java.util.stream.Stream
                 .of(here, here.standingInFor(new souther.compiler.diag.DeclaringCode(
                         new SourceProvenance.TheStandardLibrary("List.filter"))))

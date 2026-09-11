@@ -10,6 +10,7 @@ import souther.compiler.diag.DiagnosticPlace;
 import souther.compiler.diag.HumanRenderer;
 import souther.compiler.diag.LabeledRegion;
 import souther.compiler.diag.Located;
+import souther.compiler.diag.Placement;
 import souther.compiler.diag.SourceContext;
 import souther.compiler.diag.SourceProvenance;
 import souther.compiler.query.Compilation;
@@ -159,7 +160,7 @@ class ALabelSaysWhereItIsWithoutBeingToldWhereItIsShownTest {
     void aRegionNobodyPlacedIsRefusedRatherThanPlacedByTheReport() {
         Diagnostic.Builder building = Diagnostic
                 .say(new souther.compiler.diag.msg.NameMessage.NoValueOfThatNameInScope("x"))
-                .at(new souther.compiler.diag.SourcePos(1, 1, new SourceId("0")));
+                .at(Placement.aFileOfThisCompile(new SourceId("0")).at(1, 1));
 
         assertThrowsIllegalArgument(() -> building.secondary(
                 souther.compiler.diag.Region.ofWidth(new souther.compiler.diag.SourcePos(3, 3), 4),
@@ -172,7 +173,7 @@ class ALabelSaysWhereItIsWithoutBeingToldWhereItIsShownTest {
     void aRegionWithNoEndIsRefusedWhereItIsMadeAPlace() {
         org.junit.jupiter.api.Assertions.assertThrows(DiagnosticPlace.NotAPlace.class,
                 () -> DiagnosticPlace.of(new souther.compiler.diag.Region(
-                        new souther.compiler.diag.SourcePos(3, 3, new SourceId("0")), null)));
+                        Placement.aFileOfThisCompile(new SourceId("0")).at(3, 3), null)));
         org.junit.jupiter.api.Assertions.assertThrows(DiagnosticPlace.NotAPlace.class,
                 () -> DiagnosticPlace.of(null));
     }

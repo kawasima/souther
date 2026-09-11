@@ -1,5 +1,6 @@
 package souther.compiler.publish;
 
+import souther.compiler.diag.Placement;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.diag.Citation;
@@ -132,7 +133,7 @@ class WhatWentUnreadIsWrittenInOneOrderHoweverItWasMetTest {
     }
 
     private static SourcePos pos(int line, int column) {
-        return new SourcePos(line, column, new SourceId("0"));
+        return Placement.aFileOfThisCompile(new SourceId("0")).at(line, column);
     }
 
     /** Every order the facts could be met in, so that nothing here is asked of one of them. */

@@ -1,5 +1,6 @@
 package souther.compiler.query;
 
+import souther.compiler.diag.Placement;
 import souther.compiler.WhereItSits;
 import souther.compiler.diag.Primary;
 
@@ -10,7 +11,6 @@ import souther.compiler.diag.CompileException;
 import souther.compiler.diag.Diagnostic;
 import souther.compiler.diag.DiagnosticRenderer;
 import souther.compiler.diag.Located;
-import souther.compiler.diag.SourcePos;
 import souther.compiler.diag.msg.InvariantMessage;
 import souther.compiler.meta.ModulePath;
 
@@ -134,14 +134,14 @@ class ACompileAnswersWithEveryErrorItFoundTest {
 
     private static Db.Found errorIn(SourceId sourceId, int line, int column, String says) {
         return new Db.Found("m.c", sourceId,
-                Report.of(Diagnostic.literal(new SourcePos(line, column, sourceId), says)));
+                Report.of(Diagnostic.literal(Placement.aFileOfThisCompile(sourceId).at(line, column), says)));
     }
 
     /** A warning, which is not what a compile fails with however many of them there are. */
     private static Db.Found warningAt(int line, String says) {
         return new Db.Found("m.c", new SourceId("a.sou"), Report.of(Diagnostic
                 .say(new InvariantMessage.NothingKnownHereEstablishesTheInvariant(says))
-                .at(new SourcePos(line, 1, new SourceId("a.sou"))).build()));
+                .at(Placement.aFileOfThisCompile(new SourceId("a.sou")).at(line, 1)).build()));
     }
 
     private static Compilation ofOneSource() {
