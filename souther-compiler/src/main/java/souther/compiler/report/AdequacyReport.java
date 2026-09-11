@@ -3706,7 +3706,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                 behavior.pending().ifPresent(count -> b.put("pending", count));
                 b.put("status", wire(behavior.status()));
                 weakening(b, behavior.weakenedBy());
-                signature(b, behavior.signature());
+                signature(b, behavior.name(), behavior.signature(), sources);
                 partition(b, behavior.partition(), behavior.boundaryReadings(),
                         behavior.account(), behavior.claimed(), sources,
                         behavior.rulePlace());
@@ -3841,7 +3841,8 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
         };
     }
 
-    private static void signature(ObjectNode behavior, Adequacy.SignatureEvidence signature) {
+    private static void signature(ObjectNode behavior, String named,
+                                  Adequacy.SignatureEvidence signature, DocumentSources sources) {
         if (signature == null) {
             return;
         }
@@ -3875,6 +3876,14 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             ObjectNode in = inputs.addObject();
             names(in.putArray("declared"), input.declared());
             names(in.putArray("excluded"), input.excluded());
+            // What a row is owed at here, where this measure's account is the one that holds it: a
+            // case of an input of a behavior with no position of its own. Where it has one, the
+            // axes carry that entry and this array is empty — one obligation is one entry, and a
+            // second array listing it would be the same thing for a consumer to reconcile.
+            ArrayNode owed = in.putArray("obligations");
+            for (ObligationIdentity each : signature.owned(named, input)) {
+                obligationId(owed.addObject().putObject("obligationId"), each, sources);
+            }
             measured(in, input.cases(), (node, cases) -> {
                 names(node.putArray("specified"), cases.specified());
                 names(node.putArray("executed"), cases.executed());

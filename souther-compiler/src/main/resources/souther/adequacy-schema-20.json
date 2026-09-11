@@ -3186,12 +3186,29 @@
             "type": "object",
             "required": [
               "declared",
+              "obligations",
               "status"
             ],
             "additionalProperties": false,
             "properties": {
               "declared": {
                 "$ref": "#/$defs/caseNames"
+              },
+              "obligations": {
+                "type": "array",
+                "description": "What a row is owed at this input, where this measure's own account is what holds it: one entry per case of an input of a behavior with no position of its own. Where the behavior declares its input, the case and the class its position divides into are one thing a row is owed for, `partition.axes` carries that entry, and this array is empty — one obligation is one entry, and a second array listing it would be the same thing twice for a consumer to reconcile. A finding's `obligationId` says which of the two it is, and so which of the two places to join it to.",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "obligationId"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "obligationId": {
+                      "$ref": "#/$defs/inputCaseObligationId"
+                    }
+                  }
+                }
               },
               "specified": {
                 "$ref": "#/$defs/caseNames"

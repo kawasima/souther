@@ -14,8 +14,6 @@ import souther.compiler.partition.ObservedInputs;
 import souther.compiler.partition.RulesTaken;
 import souther.compiler.partition.StandingAtAPoint;
 import souther.compiler.observe.Classification;
-import souther.compiler.observe.ObservedValue;
-import souther.compiler.types.TypeSymbol;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -487,7 +485,14 @@ public record Settlements(List<ObligationIdentity> requested,
         Settlement settlementOf(RowAsRead asRead, ObligationIdentity item) {
             return switch (item) {
                 case ObligationIdentity.OfAClass(var owed) -> inClass(asRead, owed);
-                case ObligationIdentity.OfAnInputCase owed -> atAnInputCase(asRead, owed);
+                // A case of an input of a behavior that divides no position of its own. Nothing
+                // asks for a row at one — what is offered comes from the classes a position
+                // divides into — and what discharges it is what a row states at that input, which
+                // the signature measure counts off the row's own text. Answered here as well, that
+                // would be a second reading of one relation, made from the values a row builds
+                // rather than from what it states.
+                case ObligationIdentity.OfAnInputCase owed -> throw new IllegalStateException(
+                        "no row is offered for " + owed + ", so none is weighed against it");
                 case ObligationIdentity.OfAnArm(var owed) -> throughArm(asRead, owed);
                 case ObligationIdentity.OfALine at -> atThePoint(asRead, at);
                 case ObligationIdentity.OfADecisionRule owed -> takingTheRule(asRead, owed);
@@ -550,48 +555,6 @@ public record Settlements(List<ObligationIdentity> requested,
                 case Classification.Unclassified _ -> new Settlement.Undetermined(
                         Settlement.Reason.THE_VALUES_COULD_NOT_BE_READ);
             };
-        }
-
-        /**
-         * Whether the row states a value of that case at that input.
-         *
-         * <p>What the row states and not where its run went, which is the evidence a case of an
-         * input asks for: a behavior applied to a value of the case has been applied to it whatever
-         * the body then does. The value is read the way every other question here reads one — off
-         * what the row built — so a row naming a case the model refuses answers nothing rather than
-         * answering by its spelling.
-         */
-        private Settlement atAnInputCase(RowAsRead asRead,
-                                         ObligationIdentity.OfAnInputCase owed) {
-            if (!behavior.equals(owed.behavior())) {
-                return new Settlement.DoesNotSettle();
-            }
-            if (asRead.values() == null) {
-                return undetermined(asRead);
-            }
-            if (owed.at() >= asRead.values().size()) {
-                return new Settlement.DoesNotSettle();
-            }
-            return switch (asRead.values().get(owed.at())) {
-                // The two shapes a case of a sum arrives as: one carrying fields and one carrying
-                // none. Every other shape is a value of something that is not a sum, which is a
-                // position this measure has no cases at.
-                case ObservedValue.Constructed(TypeSymbol type, var _) -> settles(type, owed);
-                case ObservedValue.Unit(TypeSymbol type) -> settles(type, owed);
-                case ObservedValue.Bool _, ObservedValue.Integer _, ObservedValue.Decimal _,
-                        ObservedValue.Text _, ObservedValue.Temporal _, ObservedValue.Sequence _,
-                        ObservedValue.Mapping _, ObservedValue.Absent _ ->
-                        new Settlement.DoesNotSettle();
-                // A value this run could not hand on, which is not a value of another case.
-                case ObservedValue.Unknown _, ObservedValue.Truncated _ ->
-                        new Settlement.Undetermined(Settlement.Reason.THE_VALUES_COULD_NOT_BE_READ);
-            };
-        }
-
-        private static Settlement settles(TypeSymbol type,
-                                          ObligationIdentity.OfAnInputCase owed) {
-            return type.equals(owed.caseOfTheInput())
-                    ? new Settlement.Settles() : new Settlement.DoesNotSettle();
         }
 
         /**

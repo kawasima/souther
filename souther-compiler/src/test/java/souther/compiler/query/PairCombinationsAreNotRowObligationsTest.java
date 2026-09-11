@@ -100,7 +100,7 @@ class PairCombinationsAreNotRowObligationsTest {
         walk(souther.compiler.partition.ObligationIdentity.class, every);
 
         assertEquals(
-                List.of("OfALine", "OfAnArm", "OfAClass", "OfAnInputCase", "OfADecisionRule"),
+                List.of("OfALine", "OfAnArm", "OfADecisionRule", "OfAClass", "OfAnInputCase"),
                 every, "a thing a row can be offered for that this law says nothing about");
     }
 

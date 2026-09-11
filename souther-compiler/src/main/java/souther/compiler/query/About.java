@@ -7,6 +7,7 @@ import souther.compiler.observe.RowIdentity;
 import souther.compiler.partition.ClassOfAPosition;
 import souther.compiler.partition.DecisionReading;
 import souther.compiler.partition.ObligationIdentity;
+import souther.compiler.partition.WhereACaseOfAnInputIsOwed;
 import souther.compiler.types.TypeSymbol;
 
 import java.util.Objects;
@@ -75,18 +76,11 @@ public sealed interface About {
      *             has one, and the case of the input where nothing divides it
      */
     record ACaseNoRowAppliesItTo(InputCaseEvidence input, TypeSymbol missing,
-                                 ObligationIdentity owed) implements OfAnObligation {
+                                 WhereACaseOfAnInputIsOwed owed) implements OfAnObligation {
         public ACaseNoRowAppliesItTo {
             java.util.Objects.requireNonNull(input, "a finding is about something");
             java.util.Objects.requireNonNull(missing, "a finding is about something");
             java.util.Objects.requireNonNull(owed, "a case of an input is owed at something");
-            // The two shapes a case of an input is owed at, held to here so that a maker reaching
-            // for another would be saying this obligation is a point of a line or an arm.
-            if (!(owed instanceof ObligationIdentity.OfAClass
-                    || owed instanceof ObligationIdentity.OfAnInputCase)) {
-                throw new IllegalArgumentException("a case of an input is owed at a class of its"
-                        + " position or at the case itself: " + owed);
-            }
         }
 
         @Override

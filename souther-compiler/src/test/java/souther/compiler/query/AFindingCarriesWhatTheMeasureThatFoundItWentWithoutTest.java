@@ -142,8 +142,9 @@ class AFindingCarriesWhatTheMeasureThatFoundItWentWithoutTest {
                 new InputCaseEvidence.Cases(Set.of(small), Set.of(small), Set.of(small), 0),
                 true, WeakeningSet.none());
 
-        Adequacy.SignatureEvidence signature =
-                Adequacy.SignatureEvidence.of(output, List.of(unreadable, read));
+        // What the declaration calls the two inputs, which is what a case of one is a class of.
+        Adequacy.SignatureEvidence signature = Adequacy.SignatureEvidence.of(output,
+                List.of(unreadable, read), new InputPositions.Declared(List.of("a", "b")));
 
         assertTrue(output.cases().weakening().isEmpty(), "the output was measured in full");
         assertFalse(unreadable.cases().weakening().isEmpty(), "and one input was not");
@@ -154,9 +155,7 @@ class AFindingCarriesWhatTheMeasureThatFoundItWentWithoutTest {
         // finding means and nothing about the one line that decides which measurement each finding
         // is given — which is the line that was wrong.
         List<Adequacy.Finding> found = new ArrayList<>();
-        // What the declaration calls the two inputs, which is what a case of one is a class of.
-        Adequacy.Findings.signatureFindings("sort",
-                new Adequacy.Findings.InputPositions.Declared(List.of("a", "b")), signature, found);
+        Adequacy.Findings.signatureFindings("sort", signature, found);
         assertFalse(found.isEmpty(), "the producer says something about these cases");
 
         Adequacy.AdequacyBar held = Adequacy.AdequacyBar.SIMPLIFIED_DOMAIN;

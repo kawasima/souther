@@ -513,7 +513,64 @@ public final class Adequacy {
      */
     public record SignatureEvidence(OutputCaseEvidence output,
                                     Measure<List<InputCaseEvidence>> inputs,
+                                    InputPositions layout,
                                     Measure<Counted> counted) {
+
+        /**
+         * What the account keys a case of one of these inputs on.
+         *
+         * <p>The one place the rule is written. A case of a sum an input ranges over and the class
+         * that sum makes of the position are one thing a row is owed for where the behavior has
+         * that position; where its input is read at its stages, nothing divides a position of its
+         * own and the case is what it is owed at. Both the finding about such a case and the entry
+         * the account publishes for it are made here, so a consumer joining one to the other is
+         * joining two readings of one value rather than two values that have to agree.
+         *
+         * @throws IllegalStateException where the layout was not read, which is a signature
+         *         nothing could be measured of and so a case nothing found missing
+         */
+        public souther.compiler.partition.WhereACaseOfAnInputIsOwed owedAt(
+                String behavior, int at, TypeSymbol missing) {
+            return switch (layout) {
+                case InputPositions.Declared(List<String> names) -> {
+                    if (at < 0 || at >= names.size()) {
+                        throw new IllegalStateException("the cases of input " + at + " of `"
+                                + behavior + "` were measured at a position its declaration does"
+                                + " not have");
+                    }
+                    yield new ObligationIdentity.OfAClass(new ClassOfAPosition(
+                            new souther.compiler.partition.AxisId(behavior, names.get(at)),
+                            missing.name()));
+                }
+                case InputPositions.AtStages _ ->
+                        new ObligationIdentity.OfAnInputCase(behavior, at, missing);
+                case InputPositions.NotRead _ -> throw new IllegalStateException(
+                        "the cases of input " + at + " of `" + behavior + "` are owed somewhere"
+                                + " and this compilation did not read what it takes");
+            };
+        }
+
+        /**
+         * The obligations this measure's own account holds, for the input at {@code at}.
+         *
+         * <p>What a row is owed at, published where nothing else publishes it: the cases of an
+         * input of a behavior with no position of its own. Where it has one, the axes carry that
+         * entry and this is empty — one obligation is one entry, and a second array listing it
+         * would be the same thing published twice for a consumer to reconcile.
+         *
+         * <p>Every case a row is owed at and not the ones no row wrote. An account is what there is
+         * to cover; which of them a finding is about is the finding's.
+         */
+        public List<ObligationIdentity> owned(String behavior, InputCaseEvidence input) {
+            if (!(layout instanceof InputPositions.AtStages)) {
+                return List.of();
+            }
+            List<ObligationIdentity> out = new ArrayList<>();
+            for (TypeSymbol each : input.coverable()) {
+                out.add(owedAt(behavior, input.at(), each));
+            }
+            return List.copyOf(out);
+        }
 
         /**
          * That the signature's cases were counted.
@@ -560,14 +617,16 @@ public final class Adequacy {
         }
 
         public static SignatureEvidence notASum(OutputCaseEvidence output,
-                                                List<InputCaseEvidence> inputs) {
-            return new SignatureEvidence(output, at(inputs),
+                                                List<InputCaseEvidence> inputs,
+                                                InputPositions layout) {
+            return new SignatureEvidence(output, at(inputs), layout,
                     new Measure.NotApplicable<>(NotASum.NOT_A_SUM));
         }
 
         public static SignatureEvidence noRows(OutputCaseEvidence output,
-                                               List<InputCaseEvidence> inputs) {
-            return new SignatureEvidence(output, at(inputs),
+                                               List<InputCaseEvidence> inputs,
+                                               InputPositions layout) {
+            return new SignatureEvidence(output, at(inputs), layout,
                     new Measurement.NotMeasured<>(NoRows.NO_ROWS));
         }
 
@@ -596,8 +655,12 @@ public final class Adequacy {
                     behavior instanceof Hir.SpecBehavior spec
                             ? at(declaredPositions(name, spec, why))
                             : why.failed(name);
+            // And where the cases of those positions are owed is not known either: what a behavior
+            // takes is what could not be worked out, and a layout read off the kind of the
+            // declaration here would be this measure answering from the one place that says it
+            // could not.
             return new SignatureEvidence(OutputCaseEvidence.notMeasurable(why, name), positions,
-                    why.failed(name));
+                    new InputPositions.NotRead(), why.failed(name));
         }
 
         /** One entry per parameter the declaration writes, each saying its cases were not read. */
@@ -623,8 +686,9 @@ public final class Adequacy {
          *  what they went without, and a measure nobody made went without nothing — so a signature
          *  assembled that way over unmeasured parts would come out complete. */
         public static SignatureEvidence notAsked(OutputCaseEvidence output,
-                                                 List<InputCaseEvidence> inputs) {
-            return new SignatureEvidence(output, at(inputs),
+                                                 List<InputCaseEvidence> inputs,
+                                                 InputPositions layout) {
+            return new SignatureEvidence(output, at(inputs), layout,
                     new Measurement.NotMeasured<>(NothingWasAsked.NOT_ASKED));
         }
 
@@ -633,12 +697,13 @@ public final class Adequacy {
          *  one of them would be right about a measure the whole contradicts. */
         // (the union is below; `weakening()` hands it on so nothing above lists the parts again)
         public static SignatureEvidence of(OutputCaseEvidence output,
-                                           List<InputCaseEvidence> inputs) {
+                                           List<InputCaseEvidence> inputs,
+                                           InputPositions layout) {
             WeakeningSet by = output.cases().weakening();
             for (InputCaseEvidence each : inputs) {
                 by = by.union(each.cases().weakening());
             }
-            return new SignatureEvidence(output, at(inputs), by.isEmpty()
+            return new SignatureEvidence(output, at(inputs), layout, by.isEmpty()
                     ? new Measurement.Complete<>(new Counted())
                     : new Measurement.Partial<>(new Counted(), by));
         }
@@ -1524,6 +1589,7 @@ public final class Adequacy {
                         case BoundaryForMeasurement.Derived(Sig sig, InputForMeasurement input) ->
                                 evidenceOf(behavior.name(), sig, scope.value(), asked,
                                         RowReadings.readingFor(byTarget, behavior.name()),
+                                        InputPositions.of(input),
                                         InputCaseExclusions.of(input),
                                         producing.get(behavior.name()), producingPlan,
                                         reachableArms == null ? NOTHING_PROVEN
@@ -5265,12 +5331,6 @@ public final class Adequacy {
             Map<String, Measure<List<BorderObligationPointAssessment>>> accounts =
                     db.ask(new BodyBorders(name)).value();
             Map<String, BranchEvidence> branches = db.ask(new BranchCoverage(name)).value();
-            // What each behavior's input is read from, which is what says whether a case of it is
-            // also a class of a position this behavior has. Asked of the one place that puts a
-            // behavior in that state, so that a finding and the measures it is made from read the
-            // declaration the same way.
-            Map<String, Sig> sigs = db.ask(new Bodies.Signatures(name)).value();
-            Map<String, InputDomain> readInputs = db.ask(new Inputs(name)).value();
 
             // One list and not a block per behavior. What each finding is about is its own
             // ({@link FindingSubject}), and a map keyed by behavior has no key for a finding about
@@ -5286,8 +5346,6 @@ public final class Adequacy {
             for (Hir.BehaviorDef behavior : prepared.value().behaviors()) {
                 unansweredRows(prepared.value().module(), behavior.name(), out);
                 signatureFindings(behavior.name(),
-                        positionsOf(BoundaryForMeasurement.of(sigs == null ? Map.of() : sigs,
-                                readInputs, behavior)),
                         signatures == null ? null : signatures.get(behavior.name()), out);
                 partitionFindings(behavior,
                         partitions == null ? null : partitions.get(behavior.name()),
@@ -5374,41 +5432,6 @@ public final class Adequacy {
         }
 
         /**
-         * What positions of its own a behavior has, which is what says whether a case of one of
-         * its inputs is also a class of a position it has.
-         *
-         * <p>Two answers and not a list that may be empty. A behavior whose input is read at its
-         * stages has no positions here, and a list standing in for that is a list to index into —
-         * which is the reading that had every case of such a behavior looked up at a position
-         * nothing declared.
-         */
-        sealed interface InputPositions {
-
-            /** The behavior declares its own inputs, and calls them these. */
-            record Declared(List<String> names) implements InputPositions {
-
-                public Declared {
-                    names = List.copyOf(names);
-                }
-            }
-
-            /** It declares none: its stages are where what it takes is read. */
-            record AtStages() implements InputPositions {}
-        }
-
-        /**
-         * Which of those {@code boundary} says this behavior is, read off the one place that puts a
-         * behavior in that state rather than from the kind of its declaration.
-         */
-        private static InputPositions positionsOf(BoundaryForMeasurement boundary) {
-            return boundary instanceof BoundaryForMeasurement.Derived(
-                    Sig _, InputForMeasurement.Local(Hir.SpecBehavior spec, InputDomain _))
-                    ? new InputPositions.Declared(
-                            spec.params().stream().map(Hir.Param::name).toList())
-                    : new InputPositions.AtStages();
-        }
-
-        /**
          * What the rows left undone about the cases of one signature.
          *
          * <p>Each finding is carried at its own measure's account: a case nothing claims is, where
@@ -5426,7 +5449,7 @@ public final class Adequacy {
          * @param positions what positions of its own this behavior has, which says whether a case
          *                  of one of its inputs is also a class of a position it has
          */
-        static void signatureFindings(String behavior, InputPositions positions,
+        static void signatureFindings(String behavior,
                                       SignatureEvidence signature, List<Finding> out) {
             if (signature == null || signature.counted().made().isEmpty()) {
                 return;
@@ -5478,58 +5501,9 @@ public final class Adequacy {
                     // readings of one entry rather than two entries that happen to coincide.
                     out.add(Finding.by(behavior, input.cases(),
                             new About.ACaseNoRowAppliesItTo(input, missing,
-                                    owedAt(behavior, positions, input.at(), missing))));
+                                    signature.owedAt(behavior, input.at(), missing))));
                 }
             }
-        }
-
-        /**
-         * What the account keys a case of one input on.
-         *
-         * <p>The class of the position where this behavior has one. A behavior that declares its
-         * own input is divided into classes at each of its positions, and the case and the class
-         * are one thing a row is owed for; a behavior whose input is read at its stages has no
-         * position of its own to be a class of, so the case is what it is owed at and nothing else.
-         *
-         * <p><b>And not the stage's class.</b> What the stages divide are their own positions,
-         * under their own names, and a finding of this behavior keyed there would be this account
-         * pointing at another behavior's entry — the identity rebuilt somewhere other than where
-         * the obligation is, which is what carrying it here is for. That the values coincide is not
-         * the two being one obligation: a row of a stage discharges the stage's, and a row of this
-         * behavior discharges this one.
-         */
-        private static ObligationIdentity owedAt(String behavior, InputPositions positions,
-                                                 int at, TypeSymbol missing) {
-            return switch (positions) {
-                case InputPositions.Declared(List<String> names) ->
-                        new ObligationIdentity.OfAClass(new ClassOfAPosition(
-                                positionOf(behavior, names, at), missing.name()));
-                case InputPositions.AtStages _ ->
-                        new ObligationIdentity.OfAnInputCase(behavior, at, missing);
-            };
-        }
-
-        /**
-         * Which position of {@code behavior} an input measure is of, as the account names it.
-         *
-         * <p>The declaration's answer, handed in rather than read here. What the signature measure
-         * holds is which of the inputs it is of, and the account keys a class on the position it is
-         * a class of — so the crossing is made once, against the declaration both measures were
-         * read from.
-         *
-         * @param positions what the declaration calls each of this behavior's inputs, in order
-         * @throws IllegalStateException where the signature measured a position the declaration
-         *         does not have, which is one declaration read two ways rather than a state a model
-         *         can be in
-         */
-        private static souther.compiler.partition.AxisId positionOf(String behavior,
-                                                                    List<String> positions,
-                                                                    int at) {
-            if (at < 0 || at >= positions.size()) {
-                throw new IllegalStateException("the cases of input " + at + " of `" + behavior
-                        + "` were measured at a position its declaration does not have");
-            }
-            return new souther.compiler.partition.AxisId(behavior, positions.get(at));
         }
 
         /**
@@ -6326,6 +6300,7 @@ public final class Adequacy {
      */
     static SignatureEvidence evidenceOf(String name, Sig sig, Symbols symbols, boolean asked,
                                         RowReading seen,
+                                        InputPositions layout,
                                         InputCaseExclusions excluded,
                                         souther.compiler.core.Core body,
                                         souther.compiler.coverage.CoverageSites.Plan plan,
@@ -6369,8 +6344,8 @@ public final class Adequacy {
             return out.cases() instanceof Measure.NotApplicable<OutputCaseEvidence.Cases>
                     && none.stream().allMatch(in ->
                             in.cases() instanceof Measure.NotApplicable<InputCaseEvidence.Cases>)
-                    ? SignatureEvidence.notASum(out, none)
-                    : SignatureEvidence.notAsked(out, none);
+                    ? SignatureEvidence.notASum(out, none, layout)
+                    : SignatureEvidence.notAsked(out, none, layout);
         }
 
         for (RowOutcome row : rows) {
@@ -6439,15 +6414,15 @@ public final class Adequacy {
         // told to go and do something about it.
         if (output.declared().isEmpty()
                 && inputs.stream().allMatch(in -> in.declared().isEmpty())) {
-            return SignatureEvidence.notASum(output, inputs);
+            return SignatureEvidence.notASum(output, inputs, layout);
         }
         if (rows.isEmpty() && seen.complete()) {
-            return SignatureEvidence.noRows(output, inputs);
+            return SignatureEvidence.noRows(output, inputs, layout);
         }
         // And the signature is the union of its parts, with nothing of its own. What the rows went
         // without reaches it through every case measure that was counted over them, so holding it
         // here as well would be the one fact arriving twice.
-        return SignatureEvidence.of(output, inputs);
+        return SignatureEvidence.of(output, inputs, layout);
     }
 
     private Adequacy() {}
