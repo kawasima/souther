@@ -21,6 +21,16 @@ import java.util.List;
 public sealed interface DecisionSubject {
 
     /**
+     * What this subject is, as an identity spells it.
+     *
+     * <p>Whole, and not what a reader is shown. Nothing shows a column — a sentence about a rule
+     * points at the construct the author wrote — so what this has to do is tell two subjects apart
+     * wherever they are two: a dependency carries the module that declares it, since two modules
+     * may declare behaviors of one name.
+     */
+    String spelled();
+
+    /**
      * A position of the behavior's input, where a row writes a value.
      *
      * <p>The position before any arm narrows it, the way {@link DecisionCondition.APosition} says:
@@ -36,8 +46,13 @@ public sealed interface DecisionSubject {
         }
 
         @Override
-        public String toString() {
+        public String spelled() {
             return at.toString();
+        }
+
+        @Override
+        public String toString() {
+            return spelled();
         }
     }
 
@@ -66,10 +81,15 @@ public sealed interface DecisionSubject {
         }
 
         @Override
-        public String toString() {
-            StringBuilder out = new StringBuilder(answered.toString());
+        public String spelled() {
+            StringBuilder out = new StringBuilder(answered.spelled());
             steps.forEach(step -> out.append('.').append(step));
             return out.toString();
+        }
+
+        @Override
+        public String toString() {
+            return spelled();
         }
     }
 }

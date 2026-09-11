@@ -49,7 +49,9 @@ class ADecisionIsDrawnOnWhatARowControlsTest {
                 let onAnInput (f) = if f then Accepted else Rejected
                 """, "onAnInput"));
 
-        assertEquals(List.of("permits(c)"), truths(TYPES + """
+        // Under the module that declares it: two modules may declare behaviors of one name, and an
+        // identity that left the module off would hold one column for two dependencies.
+        assertEquals(List.of("example.subjects.permits(c)"), truths(TYPES + """
 
                 behavior permits : (c: Customer) -> Bool
 
@@ -102,12 +104,68 @@ class ADecisionIsDrawnOnWhatARowControlsTest {
                         new InjectedAnswer(
                                 new souther.compiler.types.ValueName.Behavior(
                                         "example.subjects", "riskScore"),
-                                List.of(new DecisionSubject.AnInput(
-                                        souther.compiler.inputs.TermPath.of("c")))),
+                                List.of(new DecisionArgument.OfASubject(
+                                        new DecisionSubject.AnInput(
+                                                souther.compiler.inputs.TermPath.of("c"))))),
                         List.of()))),
                 comparison.form().coefs().keySet(),
                 "the quantity is what the dependency answered, with the newtype's value looked"
                         + " through: " + comparison);
+    }
+
+    /**
+     * And one written with a quantity on each side is one proposition either way round.
+     *
+     * <p>The case a reading that keeps the authored side cannot answer. With a number on one side,
+     * which quantity the author put on the left and which one this reading writes first are the
+     * same quantity; with one on each side they are not, and the two spellings come out as
+     * quantities that are each other negated. A table holding both admits an assignment where one
+     * proposition holds and does not.
+     */
+    @Test
+    void aComparisonOfTwoQuantitiesIsOnePropositionEitherWayRound() {
+        assertEquals(onlyColumn(comparesTo("riskScore(c).value >= limit.value")),
+                onlyColumn(comparesTo("limit.value <= riskScore(c).value")),
+                "greater and less over two quantities are one column");
+        assertEquals(onlyColumn(comparesTo("riskScore(c).value == limit.value")),
+                onlyColumn(comparesTo("limit.value == riskScore(c).value")),
+                "and so is an equality, whose relation is the same either way round");
+    }
+
+    /**
+     * A dependency asked about a number it was written with is one question however often it is
+     * asked.
+     *
+     * <p>What a row controls is what makes a distinction one an author can write a row against;
+     * what an argument is is what tells two askings apart, and a number the model settles tells
+     * them apart as well as a position does. Read as the first, a call about a written number had
+     * no identity at all and two askings were two columns of a table that tells them apart nowhere.
+     */
+    @Test
+    void anAnswerAboutAWrittenNumberIsOneColumnHoweverOftenItIsAsked() {
+        assertEquals(1, columnsOf(TYPES + """
+
+                behavior riskAt : (n: Int) -> Score
+
+                behavior twice : (c: Customer) -> Verdict
+                    depends on riskAt
+                let twice (c, riskAt) =
+                    if riskAt(42).value >= 700 then
+                        if riskAt(42).value >= 700 then Accepted else Rejected
+                    else Rejected
+                """, "twice").size(), "one number asked about twice is one column");
+
+        assertEquals(2, columnsOf(TYPES + """
+
+                behavior riskAt : (n: Int) -> Score
+
+                behavior two : (c: Customer) -> Verdict
+                    depends on riskAt
+                let two (c, riskAt) =
+                    if riskAt(42).value >= 700 then
+                        if riskAt(43).value >= 700 then Accepted else Rejected
+                    else Rejected
+                """, "two").size(), "and two numbers are two");
     }
 
     /** One dependency asked about two things draws two distinctions, and asked twice about one
@@ -198,6 +256,18 @@ class ADecisionIsDrawnOnWhatARowControlsTest {
         Set<DecisionCondition> columns = columnsIn(rules);
         assertEquals(1, columns.size(), "one comparison is one column: " + columns);
         return columns.iterator().next();
+    }
+
+    /** The same, over a body whose input carries a quantity of its own to compare against. */
+    private static List<DecisionRule> comparesTo(String condition) {
+        return DecisionReadings.readToTheEnd(TYPES + """
+
+                behavior riskScore : (c: Customer) -> Score
+
+                behavior decide : (c: Customer, limit: Score) -> Verdict
+                    depends on riskScore
+                let decide (c, limit, riskScore) = if %s then Accepted else Rejected
+                """.formatted(condition), "decide");
     }
 
     /** The rules of a body that decides by {@code condition} over what a dependency answered. */

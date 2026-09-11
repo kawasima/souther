@@ -16,7 +16,6 @@ import souther.compiler.numeric.LinearForm;
 import souther.compiler.numeric.Rel;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -45,11 +44,9 @@ record DecisionComparison(InputDomain inputs, RuleReadingSource rules, DecisionS
      * read, and answering it here would be a second reading of it.
      */
     DecidedCondition of(Comparison comparison, InputReads reads, boolean held) {
-        List<DecisionAtom> onTheLeft = new ArrayList<>();
         LinearForm<DecisionAtom> left = null;
         for (Core side : List.of(comparison.stated().left(), comparison.stated().right())) {
-            List<DecisionAtom> named = left == null ? onTheLeft : new ArrayList<>();
-            if (!(AffineForms.outcome(side, reads, reading(named))
+            if (!(AffineForms.outcome(side, reads, reading())
                     instanceof AffineForms.Outcome.Composed<DecisionAtom, InputReads>(
                             LinearForm<DecisionAtom> form))) {
                 return null;
@@ -64,70 +61,65 @@ record DecisionComparison(InputDomain inputs, RuleReadingSource rules, DecisionS
                             .noneMatch(DecisionAtom.OfAnAnswer.class::isInstance)) {
                 return null;
             }
-            return stated(whole, comparison, onTheLeft, held);
+            return stated(whole, comparison.stated().claim(), held);
         }
         throw new IllegalStateException("a comparison has two sides");
     }
 
     /**
-     * The column {@code whole} states, with the quantity facing the way the author wrote it.
+     * The column {@code whole} states, facing the one way this reading writes it.
      *
-     * <p>Turned round where the quantity the left side names comes out negative, which is what
-     * {@link AffineReading} does with a line: {@code 700 <= riskScore(c)} and {@code riskScore(c)
-     * >= 700} are one proposition, and a reading that kept the first as it met it would hold a
-     * quantity no author wrote.
+     * <p><b>Which way is a fact about the proposition and not about the source.</b> A line keeps
+     * the quantity its author put on the left, because a report sends a reader to the comparison
+     * they wrote; a column is shown to nobody — what a sentence points at is the construct — and
+     * what it has to do is come out the same for two bodies that state one thing. Read off the
+     * authored side, {@code a >= b} and {@code b <= a} are two columns over quantities that are
+     * each other negated, and a table with both admits an assignment where one proposition holds
+     * and does not.
+     *
+     * <p>So the quantity is turned until its first coefficient is positive, taken in the order the
+     * atoms name themselves, and the relation turns with it. Which atom is first does not depend on
+     * how the comparison was written, so neither does the answer.
      */
-    private DecidedCondition stated(LinearForm<DecisionAtom> whole, Comparison comparison,
-                                    List<DecisionAtom> onTheLeft, boolean held) {
-        LinearForm<DecisionAtom> quantity = new LinearForm<>(BigDecimal.ZERO, whole.coefs());
-        BigDecimal cut = whole.constant().negate();
-        boolean turned = facesTheOtherWay(quantity, onTheLeft);
-        ComparisonClaim claim = turned ? comparison.stated().claim().turned()
-                : comparison.stated().claim();
-        if (turned) {
-            quantity = quantity.negate();
-            cut = cut.negate();
-        }
-        Rel states = claim.statedRelation();
+    private DecidedCondition stated(LinearForm<DecisionAtom> whole, ComparisonClaim written,
+                                    boolean held) {
+        boolean turned = facesTheOtherWay(whole);
+        LinearForm<DecisionAtom> form = turned ? whole.negate() : whole;
+        Rel states = (turned ? written.turned() : written).statedRelation();
         Rel rel = held ? states : states.denied();
-        // The threshold back in the quantity, which is how a column states `form rel 0`.
-        LinearForm<DecisionAtom> form = quantity.minus(LinearForm.constant(cut));
         Rel proposition = rel.orItsDenial();
         return new DecidedCondition.Compared(
                 new DecisionCondition.AComparison(form, proposition), rel == proposition);
     }
 
-    /** Whether the quantity the left side named first comes out negative, which is the same
-     *  statement written the other way round. */
-    private static boolean facesTheOtherWay(LinearForm<DecisionAtom> quantity,
-                                            List<DecisionAtom> onTheLeft) {
-        for (DecisionAtom named : onTheLeft) {
-            BigDecimal coefficient = quantity.coefs().get(named);
-            if (coefficient != null) {
-                return coefficient.signum() < 0;
-            }
-        }
-        return ordered(quantity).getFirst().getValue().signum() < 0;
+    /**
+     * Whether the quantity is the one this reading writes negated.
+     *
+     * <p>The first coefficient by the atoms' own order, which is what makes this total: settled by
+     * every coefficient being negative, a quantity with one of each sign would face neither way and
+     * two spellings of it would stay two columns.
+     */
+    private static boolean facesTheOtherWay(LinearForm<DecisionAtom> whole) {
+        return ordered(whole).getFirst().getValue().signum() < 0;
     }
 
-    /** The quantity's atoms by their own names, so that which one is first does not depend on how
-     *  the comparison was written. */
+    /** The quantity's atoms by what each of them is, so that which one is first does not depend on
+     *  how the comparison was written. */
     private static List<Map.Entry<DecisionAtom, BigDecimal>> ordered(
             LinearForm<DecisionAtom> form) {
         return form.coefs().entrySet().stream()
-                .sorted(java.util.Comparator.comparing(each -> each.getKey().toString())).toList();
+                .sorted(java.util.Comparator.comparing(each -> each.getKey().spelled())).toList();
     }
 
     /**
-     * How a side of the comparison is read, with {@code named} taking the atoms in the order they
-     * were met.
+     * How a side of the comparison is read.
      *
      * <p>Everything but the leaf is the reading the input's arithmetic uses, asked of the same
      * answers: what a name denotes and what a field access reads through are facts about the body,
      * and a second answer to either would be this reading disagreeing with the one a line is drawn
      * with about a body they are both reading.
      */
-    private AffineForms.Reading<DecisionAtom, InputReads> reading(List<DecisionAtom> named) {
+    private AffineForms.Reading<DecisionAtom, InputReads> reading() {
         return new AffineForms.Reading<DecisionAtom, InputReads>() {
 
             @Override
@@ -141,11 +133,7 @@ record DecisionComparison(InputDomain inputs, RuleReadingSource rules, DecisionS
                 DecisionAtom atom = term != null ? new DecisionAtom.OfTheInput(term)
                         : subjects.of(node, at) instanceof DecisionSubject.AnAnswer answered
                                 ? new DecisionAtom.OfAnAnswer(answered) : null;
-                if (atom == null) {
-                    return null;
-                }
-                named.add(atom);
-                return LinearForm.atom(atom);
+                return atom == null ? null : LinearForm.atom(atom);
             }
 
             @Override

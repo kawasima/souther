@@ -14,6 +14,16 @@ import souther.compiler.inputs.NumericTerm;
  */
 public sealed interface DecisionAtom {
 
+    /**
+     * What this quantity is, as the identity of a column spells it.
+     *
+     * <p>Whole, so that two quantities are one exactly where they are the same thing. A dependency
+     * is written under the module that declares it: two modules may declare behaviors of one name,
+     * and a spelling that left the module off would make the order two quantities come in — and so
+     * which way a comparison over them faces — turn on which of them a reader happens to meet.
+     */
+    String spelled();
+
     /** A number of the behavior's input. */
     record OfTheInput(NumericTerm term) implements DecisionAtom {
 
@@ -24,8 +34,13 @@ public sealed interface DecisionAtom {
         }
 
         @Override
-        public String toString() {
+        public String spelled() {
             return term.toString();
+        }
+
+        @Override
+        public String toString() {
+            return spelled();
         }
     }
 
@@ -39,8 +54,13 @@ public sealed interface DecisionAtom {
         }
 
         @Override
+        public String spelled() {
+            return at.spelled();
+        }
+
+        @Override
         public String toString() {
-            return at.toString();
+            return spelled();
         }
     }
 }

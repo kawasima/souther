@@ -17,15 +17,15 @@ import java.util.List;
  * table with a column apiece admits an assignment where one answer is two answers — an assignment
  * no row can be written at, since a row stands a dependency in for the whole of its run.
  *
- * <p>The arguments as subjects rather than as expressions, for the same reason: what a row controls
- * is what the argument comes to, and two spellings of one argument are one question asked. An
- * argument this reading cannot say as a subject leaves the answer unnamed, which is what a
- * condition over it being unread says.
+ * <p>The arguments as what tells two askings apart rather than as expressions, for the same reason:
+ * two spellings of one argument are one question asked. What an argument has to be is known and not
+ * controlled — a number the model settles is as much a question asked as a position a row writes at
+ * — which is {@link DecisionArgument}'s, beside the subjects rather than among them.
  *
  * @param dependency which behavior the row stands in for, named as the provisioning names it
  * @param arguments  what it was applied to, in the order the declaration takes them
  */
-public record InjectedAnswer(ValueName.Behavior dependency, List<DecisionSubject> arguments) {
+public record InjectedAnswer(ValueName.Behavior dependency, List<DecisionArgument> arguments) {
 
     public InjectedAnswer {
         if (dependency == null || arguments == null) {
@@ -35,12 +35,25 @@ public record InjectedAnswer(ValueName.Behavior dependency, List<DecisionSubject
         arguments = List.copyOf(arguments);
     }
 
-    @Override
-    public String toString() {
-        StringBuilder out = new StringBuilder(dependency.name()).append('(');
+    /**
+     * What this answer is, as an identity spells it.
+     *
+     * <p>The behavior under the module that declares it. Two modules may declare behaviors of one
+     * name, and a spelling that left the module off would have one column for two dependencies —
+     * and, where an order is taken over these, would settle that order by which of them a reader
+     * happened to meet.
+     */
+    public String spelled() {
+        StringBuilder out = new StringBuilder(dependency.module()).append('.')
+                .append(dependency.name()).append('(');
         for (int i = 0; i < arguments.size(); i++) {
-            out.append(i == 0 ? "" : ", ").append(arguments.get(i));
+            out.append(i == 0 ? "" : ", ").append(arguments.get(i).spelled());
         }
         return out.append(')').toString();
+    }
+
+    @Override
+    public String toString() {
+        return spelled();
     }
 }

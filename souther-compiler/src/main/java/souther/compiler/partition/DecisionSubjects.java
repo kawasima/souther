@@ -1,7 +1,9 @@
 package souther.compiler.partition;
 
+import souther.compiler.check.AffineForms;
 import souther.compiler.check.Location;
 import souther.compiler.check.Symbols;
+import souther.compiler.numeric.LinearForm;
 import souther.compiler.core.Core;
 import souther.compiler.inputs.InputDomain;
 import souther.compiler.inputs.InputReads;
@@ -82,9 +84,9 @@ record DecisionSubjects(InputDomain inputs, Symbols symbols,
     /**
      * The answer {@code e} is, or null where it is not a call to a dependency of this behavior.
      *
-     * <p>The arguments are subjects themselves, so an argument nothing here names leaves the answer
-     * unnamed: two calls whose arguments this reading cannot tell apart are two questions, and one
-     * column for them would say a body that asks about two things asks about one.
+     * <p>An argument this reading cannot say leaves the answer unnamed: two askings it cannot tell
+     * apart may be two questions, and one column for them would say a body that asks about two
+     * things asks about one.
      */
     private InjectedAnswer answerOf(Core e, InputReads at) {
         if (!(e instanceof Core.Call call && call.fn() instanceof Core.Reached reached
@@ -92,14 +94,78 @@ record DecisionSubjects(InputDomain inputs, Symbols symbols,
                 && dependencies.contains(dependency))) {
             return null;
         }
-        List<DecisionSubject> arguments = new ArrayList<>();
+        List<DecisionArgument> arguments = new ArrayList<>();
         for (Core argument : call.args()) {
-            DecisionSubject stands = of(argument, at);
-            if (stands == null) {
+            DecisionArgument asked = argumentOf(argument, at);
+            if (asked == null) {
                 return null;
             }
-            arguments.add(stands);
+            arguments.add(asked);
         }
         return new InjectedAnswer(dependency, arguments);
+    }
+
+    /**
+     * What {@code e} asks the dependency about, or null where this reading cannot say.
+     *
+     * <p>Something a row controls, or a number the model settles. The second is asked of the same
+     * walk the arithmetic folds a call with, so an expression this compiler works out to a number
+     * is the number it works out to — the question a body asks by writing it is the question it
+     * asks by writing the answer.
+     */
+    private DecisionArgument argumentOf(Core e, InputReads at) {
+        DecisionSubject stands = of(e, at);
+        if (stands != null) {
+            return new DecisionArgument.OfASubject(stands);
+        }
+        return AffineForms.outcome(e, at, aNumberAndNothingElse())
+                instanceof AffineForms.Outcome.Composed<Void, InputReads>(LinearForm<Void> form)
+                && form.coefs().isEmpty()
+                ? new DecisionArgument.OfANumber(form.constant()) : null;
+    }
+
+    /**
+     * The arithmetic with no atoms at all, which composes a number and nothing else.
+     *
+     * <p>The same walk a comparison is read with, asked for less: what a name denotes is the one
+     * answer there is about a name, so a number reached through a binding is the number. Where it
+     * meets anything the language does not settle, it stops and there is no number here.
+     */
+    private AffineForms.Reading<Void, InputReads> aNumberAndNothingElse() {
+        return new AffineForms.Reading<Void, InputReads>() {
+
+            @Override
+            public Symbols symbols() {
+                return symbols;
+            }
+
+            @Override
+            public LinearForm<Void> leafOf(Core node, InputReads at) {
+                return null;
+            }
+
+            @Override
+            public InputReads inside(Core.LetIn li, InputReads at) {
+                return at.and(li.binder(), li.value());
+            }
+
+            @Override
+            public AffineForms.ReadThrough<InputReads> readThrough(Core.Read read, InputReads at) {
+                return NameAnswers.denoting(read, at, symbols);
+            }
+
+            @Override
+            public List<AffineForms.ReadThrough<InputReads>> alternativesOf(Core.Read read,
+                                                                           InputReads at) {
+                return NameAnswers.alternativesOf(read, at, symbols);
+            }
+
+            @Override
+            public boolean readsThrough(Core.FieldAccess fa, InputReads at) {
+                // A field of something is a place and not a number this settles. What the input's
+                // own places are is the question above this one, asked first.
+                return false;
+            }
+        };
     }
 }
