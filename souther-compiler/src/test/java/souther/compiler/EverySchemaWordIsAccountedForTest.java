@@ -210,7 +210,8 @@ class EverySchemaWordIsAccountedForTest {
     private static Set<String> conditionWords() {
         Map<String, String> spelling = new LinkedHashMap<>();
         spelling.put("AComparison", "comparison");
-        spelling.put("APosition", "position");
+        spelling.put("ATruth", "truth");
+        spelling.put("ACase", "case");
         spelling.put("AConditionNotRead", "not_read");
         Set<String> words = new LinkedHashSet<>();
         for (Class<?> shape

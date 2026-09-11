@@ -1,5 +1,5 @@
 {
-  "schemaVersion" : 20,
+  "schemaVersion" : 21,
   "compilerVersion" : "<version>",
   "status" : "complete",
   "adequacy" : "undetermined",
@@ -3972,7 +3972,7 @@
               "condition" : "GT LinearForm[constant=-100, coefs={hours=1}]",
               "outcome" : "held"
             }, {
-              "kind" : "position",
+              "kind" : "case",
               "condition" : "agreement",
               "outcome" : "Extended"
             } ]
@@ -3986,7 +3986,7 @@
               "condition" : "GT LinearForm[constant=-100, coefs={hours=1}]",
               "outcome" : "denied"
             }, {
-              "kind" : "position",
+              "kind" : "case",
               "condition" : "agreement",
               "outcome" : "Extended"
             } ]
@@ -4000,7 +4000,7 @@
               "condition" : "GT LinearForm[constant=-45, coefs={hours=1}]",
               "outcome" : "held"
             }, {
-              "kind" : "position",
+              "kind" : "case",
               "condition" : "agreement",
               "outcome" : "Standard"
             } ]
@@ -4014,7 +4014,7 @@
               "condition" : "GT LinearForm[constant=-45, coefs={hours=1}]",
               "outcome" : "denied"
             }, {
-              "kind" : "position",
+              "kind" : "case",
               "condition" : "agreement",
               "outcome" : "Standard"
             } ]
@@ -4033,7 +4033,7 @@
             "condition" : "GT LinearForm[constant=-100, coefs={hours=1}]",
             "outcome" : "held"
           }, {
-            "kind" : "position",
+            "kind" : "case",
             "condition" : "agreement",
             "outcome" : "Extended"
           } ]
@@ -4050,7 +4050,7 @@
             "condition" : "GT LinearForm[constant=-100, coefs={hours=1}]",
             "outcome" : "denied"
           }, {
-            "kind" : "position",
+            "kind" : "case",
             "condition" : "agreement",
             "outcome" : "Extended"
           } ]
@@ -4067,7 +4067,7 @@
             "condition" : "GT LinearForm[constant=-45, coefs={hours=1}]",
             "outcome" : "held"
           }, {
-            "kind" : "position",
+            "kind" : "case",
             "condition" : "agreement",
             "outcome" : "Standard"
           } ]
@@ -4084,7 +4084,7 @@
             "condition" : "GT LinearForm[constant=-45, coefs={hours=1}]",
             "outcome" : "denied"
           }, {
-            "kind" : "position",
+            "kind" : "case",
             "condition" : "agreement",
             "outcome" : "Standard"
           } ]

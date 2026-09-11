@@ -46,7 +46,9 @@ final class DecisionReadings {
                 compilation.db().ask(new Adequacy.Inputs(module)).value().get(behavior);
         return DecisionReading.of(behavior, analysis.core(), inputs.reading(rules),
                 InputReads.ofParametersWhereCallsStand(inputs.parameterReads(),
-                        ElementBindings.of(analysis.core(), analysis.elements(), rules.symbols())));
+                        ElementBindings.of(analysis.core(), analysis.elements(), rules.symbols())),
+                compilation.db().ask(new Bodies.Spec(module, behavior)).value()
+                        .dependsOnBehaviors());
     }
 
     /** The rules of that decision, with the reading held to having been made to the end. */

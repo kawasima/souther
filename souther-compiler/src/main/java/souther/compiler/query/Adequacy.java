@@ -1103,7 +1103,8 @@ public final class Adequacy {
                         analysis.core(), read.reading(reading.value()),
                         InputReads.ofParametersWhereCallsStand(read.parameterReads(),
                                 ElementBindings.of(analysis.core(), analysis.elements(),
-                                        reading.value().symbols()))));
+                                        reading.value().symbols())),
+                        spec.dependsOnBehaviors()));
             }
             return Answer.of(Ordered.map(out));
         }
