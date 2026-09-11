@@ -160,6 +160,40 @@ class WhatADecoderReportsDoesNotTurnOnHowTheRuleWasSpeltTest {
                 "and the one it breaks above it");
     }
 
+    /**
+     * A conjunct only some of whose rules a constraint states keeps its own check, all of it.
+     *
+     * <p>The policy the statements are read for. {@code Bool.not(value < 3 || value == 7)} states a
+     * floor, which Raoh has a constraint for, and a value held away from one, which it has none
+     * for — and they are one conjunct. Hoisting the floor out of it reports the value that breaks
+     * the floor as {@code out_of_range} and the value that breaks the other rule as an invariant
+     * violation, so one thing the author wrote breaks in two different words depending on which
+     * half of it the value broke.
+     *
+     * <p>Which is what tells this from the rules being unmappable: the floor is mapped where its
+     * author wrote it as a conjunct of its own, and that is the case below.
+     */
+    @Test
+    void aConjunctOnlyPartlyMappableKeepsItsOwnCheckWhole() throws Exception {
+        Issue issue = refusalOf("""
+                data V = Int
+                    invariant Bool.not(value < 3 || value == 7)
+                """, 2L);
+        assertEquals("invariant_violation", issue.code(),
+                "the conjunct states a rule no constraint says, so none of it is hoisted");
+    }
+
+    /** The same two rules as two conjuncts, where the floor is the author's own unit and is
+     *  mapped. */
+    @Test
+    void andTheSameRulesWrittenAsTwoConjunctsHoistTheOneThatMaps() throws Exception {
+        assertEquals(new Refusal("out_of_range", 3L),
+                Refusal.of(refusalOf("""
+                        data V = Int
+                            invariant value >= 3 && value /= 7
+                        """, 2L), "min"));
+    }
+
     // --- a rule stated as an operation rather than as a comparison ---
 
     private static final String PATTERN_WRITTEN_OUT = """

@@ -1919,7 +1919,7 @@ public final class InvariantChecker {
                         direct(reached.said(), reached.statement(), each, part.id(),
                                 inside(reached.crossed(), at), byName, out, noLines,
                                 withoutAnEnd, aboutOneCoordinate, narrowers,
-                                raised, took, typeAt, rules, raisedByPart, standing))));
+                                raised, took, rules, raisedByPart, standing))));
         // Insertion order, kept: `Map.copyOf` iterates in an order salted once per JVM run, and
         // what a report prints for a position is these in the order the declaration writes them.
         return new Reading(List.copyOf(out), List.copyOf(noLines),
@@ -2061,7 +2061,6 @@ public final class InvariantChecker {
                         SequencedMap<Candidate, Set<InvariantStatementId>> naming,
                         Map<RuleKey, List<TypeSymbol.AtModule>> narrowers,
                         Map<RuleRef.Invariant, Required> raised, ReadingEvidence took,
-                        Map<RuleKey, Type> typeAt,
                         RulesRead rules,
                         Map<ReadingPlace, Required> raisedByPart,
                         Map<FieldDomains.BoundaryQuestion,
