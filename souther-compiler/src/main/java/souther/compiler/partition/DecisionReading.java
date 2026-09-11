@@ -64,13 +64,17 @@ public record DecisionReading(String behavior, List<Ruled> found, Enumeration en
      * @param shownBy every condition the path consulted, in the order it met them, said as what a
      *                run through it would be seen doing
      * @param states  the same conditions in the words a composer of a row works from, which is what
-     *                a row standing in this rule would have to satisfy
+     *                a row standing in this rule would have to satisfy of the input
+     * @param demands what the same conditions ask of the answers a row stands the dependencies in
+     *                with, which is the other half of what such a row has to be. Two accounts
+     *                because a row writes at a position and stands a dependency in, and what a
+     *                search may assume about the one is not what it may pin the other to
      * @param whole   whether every condition on the way was one this reading has words for. A path
      *                that is not is a rule this compiler read less of than the body states, which is
      *                a weakening of the measurement rather than a rule the body does not have
      */
     public record Ruled(DecisionRule rule, List<ShownBy> shownBy, WayToTheBorder states,
-                        boolean whole) {
+                        AnswersDemanded demands, boolean whole) {
 
         public Ruled {
             shownBy = List.copyOf(shownBy);
@@ -131,7 +135,7 @@ public record DecisionReading(String behavior, List<Ruled> found, Enumeration en
         List<Ruled> found = new ArrayList<>();
         for (Arrival<DecisionPath> way : held.arrivals()) {
             found.add(new Ruled(way.path().rule(), way.path().shownBy(), way.path().states(),
-                    way.isComplete()));
+                    way.path().demands(), way.isComplete()));
         }
         return new DecisionReading(behavior, found, new Enumeration.Complete());
     }
