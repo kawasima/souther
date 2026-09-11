@@ -722,10 +722,11 @@ final class CodecGen {
         if (statements == null) {
             return null;
         }
+        InvariantConstraints mapping =
+                InvariantConstraints.against(symbols, ctx.invariantStatements());
         List<InvariantConstraints.Constraint> out = new ArrayList<>();
         for (InvariantStatement each : statements) {
-            Optional<InvariantConstraints.Constraint> c =
-                    InvariantConstraints.against(symbols, ctx.invariantStatements()).of(each, base);
+            Optional<InvariantConstraints.Constraint> c = mapping.of(each, base);
             if (c.isEmpty()) {
                 return null;
             }

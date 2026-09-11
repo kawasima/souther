@@ -17,6 +17,8 @@ import souther.compiler.execute.WrittenValue;
 import souther.compiler.ast.Ast;
 import souther.compiler.ast.Hir;
 import souther.compiler.check.ExpandedClauseLookup;
+import souther.compiler.check.InvariantStatements;
+import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.ExpandedClauses;
 import souther.compiler.types.TypeKey;
 import souther.compiler.check.BehaviorRequirement;
@@ -137,7 +139,7 @@ public final class Output {
                       Bodies.Elaborated checked,
                       Map<ValueName.Behavior, souther.compiler.core.Composition> compositions,
                       ExpandedClauseLookup dischargeClauses,
-                      souther.compiler.check.InvariantStatements invariantStatements,
+                      InvariantStatements invariantStatements,
                       Map<souther.compiler.types.TypeSymbol.AtModule,
                               souther.compiler.core.ValueShape> shapes,
                       Map<ValueName.Behavior, EnsuresEnforcement> checks,
@@ -194,23 +196,20 @@ public final class Output {
             // What each conjunct of a declaration's rules states. The mapping onto a decoder's
             // constraints is about what a rule says, and reading that off the tree recognises a rule
             // written out and declines the same rule named through a helper.
-            Answer<souther.compiler.check.RuleReadingSource> reading = Shapes.ruleReading(db, name);
-            if (!reading.present()) {
-                return null;
-            }
+            Answer<RuleReadingSource> reading = Shapes.ruleReading(db, name);
             if (!checked.present() || !compositions.present()
                     || !lowering.present() || !scope.present() || !imported.present()
                     || !signatures.present() || !injected.present() || !callees.present()
                     || !prepared.present() || !requirements.present() || !expandable.present()
-                    || !checks.present() || !standing.present() || !shapes.present()) {
+                    || !checks.present() || !standing.present() || !shapes.present()
+                    || !reading.present()) {
                 return null;
             }
             return new Inputs(lowering.value().lowered(), scope.value(),
                     prepared.value().importedFrom(), signatures.value(), imported.value(),
                     injected.value(),
                     callees.value(), requirements.value(), checked.value(), compositions.value(),
-                    Shapes.expandedClauses(db),
-                    souther.compiler.check.InvariantStatements.of(reading.value()),
+                    Shapes.expandedClauses(db), InvariantStatements.of(reading.value()),
                     shapes.value(), checks.value(),
                     Set.copyOf(prepared.value().operandMethods().values()), standing.value());
         }

@@ -130,6 +130,63 @@ class WhatADecoderReportsDoesNotTurnOnHowTheRuleWasSpeltTest {
                 Refusal.of(refusalOf(OWN_VALUE_BOUND_UNDER_A_DENIAL, 2L), "min"));
     }
 
+    // --- a conjunct that states more than one rule ---
+
+    private static final String RANGE_WRITTEN_OUT = """
+            data V = Int
+                invariant value >= 1 && value <= 10
+            """;
+
+    private static final String RANGE_UNDER_A_DENIAL = """
+            data V = Int
+                invariant Bool.not(value < 1 || value > 10)
+            """;
+
+    /**
+     * A denied choice is one conjunct stating one rule per branch, and each of them reaches the
+     * boundary as the constraint it is.
+     *
+     * <p>What the author wrote as two conjuncts and what they wrote as one denied choice are the
+     * same two rules, so a value breaking either is refused in the same words. Read off the tree,
+     * the denial was a shape the mapping had no word for and both rules fell back together.
+     */
+    @Test
+    void aDeniedChoiceStatesBothOfItsRulesAtTheBoundary() throws Exception {
+        assertEquals(Refusal.of(refusalOf(RANGE_WRITTEN_OUT, 0L), "min"),
+                Refusal.of(refusalOf(RANGE_UNDER_A_DENIAL, 0L), "min"),
+                "the rule the value breaks below the run");
+        assertEquals(Refusal.of(refusalOf(RANGE_WRITTEN_OUT, 11L), "max"),
+                Refusal.of(refusalOf(RANGE_UNDER_A_DENIAL, 11L), "max"),
+                "and the one it breaks above it");
+    }
+
+    // --- a rule stated as an operation rather than as a comparison ---
+
+    private static final String PATTERN_WRITTEN_OUT = """
+            data V = String
+                invariant String.matches("[0-9]{3}", value)
+            """;
+
+    private static final String PATTERN_THROUGH_A_HELPER = """
+            let shaped (s: String) = String.matches("[0-9]{3}", s)
+
+            data V = String
+                invariant shaped(value)
+            """;
+
+    /**
+     * And a rule an operation states rather than a comparison is read through a helper too.
+     *
+     * <p>What a binding is does not depend on what stands under it, so a rule the mapping recognises
+     * by which operation it is written in terms of reaches the boundary the same way a comparison
+     * does.
+     */
+    @Test
+    void anOperationStatingARuleIsTheSameRefusalThroughAHelper() throws Exception {
+        assertEquals(Refusal.of(refusalOf(PATTERN_WRITTEN_OUT, "12x"), "pattern"),
+                Refusal.of(refusalOf(PATTERN_THROUGH_A_HELPER, "12x"), "pattern"));
+    }
+
     // --- the control: a rule no Raoh constraint states ---
 
     private static final String NO_EQUIVALENT_WRITTEN_OUT = """
