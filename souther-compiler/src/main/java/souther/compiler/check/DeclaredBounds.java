@@ -20,6 +20,11 @@ import java.util.Set;
  * stand for it. Each working it out for itself is how a reading of one invariant came to mean two
  * things.
  *
+ * <p>And read off the one walk that goes inside a conjunct. What a declaration's rules leave is
+ * established where the statements are ({@link FieldDomains}); what is done here is narrowing that
+ * to one number of one position and dropping the lines. A reading of its own here would be a second
+ * account of what the rules say, free to answer about fewer of them than the author wrote.
+ *
  * <p>A range, and only what a range can hold. What the rules leave out between their ends is not
  * here — a caller asking whether some particular value is admitted is asking the domain the rules
  * seed ({@link FieldDomains#mayHoldNothingAt}) and not this.

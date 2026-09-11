@@ -952,8 +952,9 @@ public record Border(BoundaryTarget cut, LineOrigin origin, Map<DomainPoint, Poi
      *
      * <p><b>And a bound that stops short of its own line where the order does name a value beside
      * it is refused, not repaired.</b> Such an end is not canonical: a strict bound is moved onto
-     * the value it leaves where the carrier steps, by {@code InvariantBound} for a type's own clause
-     * and by the solver for what a record leaves, so {@code value > 5} on an {@code Int} reaches
+     * the value it leaves where the carrier steps, by {@code InvariantBound} where a statement
+     * places an end and by the solver for what a record leaves, so {@code value > 5} on an
+     * {@code Int} reaches
      * here as an inclusive 6 and never as an exclusive 5. Answered by stepping to the 6 here, this
      * would be a third place that normalizes ends — and the day either of the two above stopped
      * doing it, the border would come out right and nothing would say the reading had been repaired
