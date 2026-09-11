@@ -152,8 +152,7 @@ class ARowIsNotOfferedForAPointItIsNotSeenToStandAtTest {
         return Settlements.of(compilation.db(), Composition.composed(
                 OfferingRequest.overTheModule("example.unspoken", true), generated,
                 Adequacy.accountFor(compilation.db(), "example.unspoken",
-                        new GenerationScope.Module()),
-                Composition.WhatStandsIn.REQUIRING_NOTHING));
+                        new GenerationScope.Module())));
     }
 
     private static Compilation analysed() {

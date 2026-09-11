@@ -1,7 +1,4 @@
-package souther.compiler.query;
-
-import souther.compiler.partition.Generator;
-import souther.compiler.partition.StoodInAnswer;
+package souther.compiler.partition;
 
 import java.util.List;
 
@@ -18,6 +15,15 @@ import java.util.List;
  * absence of a row.
  */
 public sealed interface AnswersStoodIn {
+
+    /**
+     * What a behavior requiring nothing hands its rows.
+     *
+     * <p>An answer and not an empty one. Every dependency of nothing is answered, so a row of such
+     * a behavior is complete with nothing standing in — which is the composition having succeeded
+     * and is what a caller with no dependencies to supply says.
+     */
+    AnswersStoodIn REQUIRING_NOTHING = new Stood(List.of());
 
     /** Every dependency answered, in the order they are required. */
     record Stood(List<StoodInAnswer> answers) implements AnswersStoodIn {

@@ -64,8 +64,7 @@ public record Composition(OfferingRequest request,
      */
     public static Composition composed(OfferingRequest request,
                                     Map<String, Adequacy.Filling> generated,
-                                    BorderAccount account,
-                                    WhatStandsIn supplies) {
+                                    BorderAccount account) {
         Map<String, List<Generator.GeneratedRow>> owed = account == null
                 ? Map.of() : account.rowsByCarrier();
         SequencedMap<String, Map<RowKey, OfferedRow>> byBehavior = new LinkedHashMap<>();
@@ -77,12 +76,6 @@ public record Composition(OfferingRequest request,
         generated.keySet().forEach(name -> behaviors.put(name, name));
         owed.keySet().forEach(name -> behaviors.put(name, name));
         for (String behavior : behaviors.keySet()) {
-            // A behavior whose stand-ins nothing composed has no rows to offer. What is wrong with
-            // them is not their values — it is that nothing applies the behavior they are written
-            // for — so offering them would hand a person work that cannot be run.
-            if (!(supplies.of(behavior) instanceof AnswersStoodIn.Stood)) {
-                continue;
-            }
             Adequacy.Filling filling = generated.get(behavior);
             // The fill's rows and the ones the requirement search stood in the rules, which is a
             // second search of this behavior's own the way the lines are a third. Taken as rows
@@ -90,16 +83,10 @@ public record Composition(OfferingRequest request,
             // one stimulus is one row offered for both things, and a row that kept only the first
             // purpose would be work a person is handed under half of what it does.
             //
-            // The fill's rows and the ones at the lines stand the dependencies in with what the
-            // behavior requires and nothing more: neither was composed against anything a
-            // dependency answers, and a row of a behavior that requires one is a row nothing
-            // applies until something does. The rules' rows carry their own, which is what the way
-            // asked of them.
-            //
-            // Where nothing composed those stand-ins, the rows that would have carried them do not
-            // go out. What is wrong with them is not their values — it is that nothing applies the
-            // behavior they are written for — so offering them would hand a person work that
-            // cannot be run, and what stopped it is said beside the block.
+            // Every one of them already stands the behavior's dependencies in. A row is composed
+            // with its stand-ins on it, and a search that could compose none of them composed no
+            // rows — so there is nothing to check here, and a check would be a second place
+            // deciding what a row needs to be run.
             take(byBehavior, behavior,
                     filling == null ? List.of() : filling.composed().rows(),
                     request.boundaries() ? atTheLines(owed.get(behavior)) : List.of(),
@@ -112,30 +99,6 @@ public record Composition(OfferingRequest request,
             }
         });
         return new Composition(request, out, new LinkedHashMap<>(generated), account);
-    }
-
-    /**
-     * What one behavior's rows stand its dependencies in with.
-     *
-     * <p>Asked per behavior rather than handed over as a list of them. What has rows is worked out
-     * here — a behavior with a filling of its own, and one that only carries a declaration's line —
-     * so a caller assembling the list would be assembling it against a walk it cannot see, and the
-     * behavior it left out is the one whose rows go out standing nothing in.
-     */
-    @FunctionalInterface
-    public interface WhatStandsIn {
-
-        /** What the rows of {@code behavior} stand in with, or why nothing does. */
-        AnswersStoodIn of(String behavior);
-
-        /**
-         * Nothing, for a caller that has established there is nothing to stand in.
-         *
-         * <p>Said outright, because a behavior that requires nothing and a behavior whose stand-in
-         * nothing composed both carry no answers — and a reader that took one for the other
-         * published rows nothing applies.
-         */
-        WhatStandsIn REQUIRING_NOTHING = _ -> new AnswersStoodIn.Stood(List.of());
     }
 
     /** One behavior's rows, joined onto whatever it already offers. */

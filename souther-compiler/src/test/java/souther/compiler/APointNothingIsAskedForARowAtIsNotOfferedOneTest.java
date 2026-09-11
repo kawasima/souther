@@ -136,8 +136,8 @@ class APointNothingIsAskedForARowAtIsNotOfferedOneTest {
         var declared = Adequacy.accountFor(compilation.db(),
                 "example.declaredwritten", new GenerationScope.Module());
         Composition composed = Composition.composed(
-                OfferingRequest.overTheModule("example.declaredwritten", true), generated, declared,
-                Composition.WhatStandsIn.REQUIRING_NOTHING);
+                OfferingRequest.overTheModule("example.declaredwritten", true), generated,
+                declared);
         Settlements table = Settlements.of(compilation.db(), composed);
 
         Set<BorderObligationPoint> asked = table.requested().stream()
@@ -173,7 +173,6 @@ class APointNothingIsAskedForARowAtIsNotOfferedOneTest {
         assertNotNull(generated, "the model under test compiles: " + compilation.errors());
         return Composition.composed(OfferingRequest.overTheModule("example.written", true), generated,
                 Adequacy.accountFor(compilation.db(), "example.written",
-                        new GenerationScope.Module()),
-                Composition.WhatStandsIn.REQUIRING_NOTHING);
+                        new GenerationScope.Module()));
     }
 }

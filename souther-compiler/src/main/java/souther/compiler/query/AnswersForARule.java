@@ -3,6 +3,7 @@ package souther.compiler.query;
 import souther.compiler.partition.AnAnswerComposed;
 import souther.compiler.partition.AnswerDemand;
 import souther.compiler.partition.AnswersDemanded;
+import souther.compiler.partition.AnswersStoodIn;
 import souther.compiler.partition.FixtureTemplate;
 import souther.compiler.partition.Generator;
 import souther.compiler.partition.InjectedAnswer;

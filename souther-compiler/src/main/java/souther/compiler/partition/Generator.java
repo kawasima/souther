@@ -48,10 +48,16 @@ import java.util.Set;
  * the report calls reached. A combination of the body's decisions is where a witness for an arm is
  * looked for and is not itself a thing anyone is owed a row at.
  *
- * <p>What comes out is inputs and nothing else. The expected answer is left for a person, because the
- * compiler does not know it: the whole point of a model with no {@code let} is that the answer lives in
- * a legacy system or in someone's head, and a generator that guessed would turn a question into an
- * assertion nobody made.
+ * <p>What comes out is everything it takes to run the row and nothing that says what should come of
+ * it. The inputs, and what each dependency the behavior requires is stood in with; the expected
+ * answer is left for a person, because the compiler does not know it — the whole point of a model
+ * with no {@code let} is that the answer lives in a legacy system or in someone's head, and a
+ * generator that guessed would turn a question into an assertion nobody made.
+ *
+ * <p>The stand-ins are on a candidate from the moment it is composed. What a row does is what it
+ * does in some environment, so a candidate run in one environment and published in another is a row
+ * certified for a line nobody is offered — and completing a row downstream is how the two came
+ * apart.
  *
  * <p>What it reports is not only the rows. Everything on the plan gets an entry saying what came of
  * it, with which of {@link UnresolvedCombination.Reason} it was — the list is that enum's to keep,
@@ -141,7 +147,7 @@ public final class Generator {
             }
         }
 
-        /** One row composed for one thing, which is what most of the searches here compose. */
+        /** One row composed for one thing, of a behavior that requires nothing to be stood in. */
         public GeneratedRow(Purpose purpose, List<FixtureTemplate> inputs) {
             this(List.of(purpose), inputs, List.of());
         }
@@ -920,6 +926,10 @@ public final class Generator {
      *
      * <p>A row that missed is not offered and the arm stays unanswered. It is not evidence that the
      * arm is unreachable: what was shown is that these candidates were not witnesses (ADR-0091).
+     *
+     * <p>For a behavior that requires nothing. What a row stands its target's dependencies in with
+     * is the plan-taking search's parameter, and a caller whose behavior requires one has to say
+     * what it answers rather than reach a search that composes rows nothing can apply.
      */
     public static FillResult fill(MeasuredInput subject, List<ObservedRow> existing,
                                         CandidateCheck check,
@@ -929,7 +939,7 @@ public final class Generator {
         // and the numbers the plan gave the arms. Each is what that walk means by its order.
         return fill(planOver(subject, everyClassNoRowSitsIn(subject, existing),
                         List.copyOf(read.arms().keySet())),
-                existing, check, read, trial, List.of(), budget);
+                existing, check, read, trial, List.of(), AnswersStoodIn.REQUIRING_NOTHING, budget);
     }
 
     /**
@@ -960,7 +970,7 @@ public final class Generator {
                                         List<ArmProbe> armsOwed,
                                         AdequacyPolicy.OfTheGeneration budget) {
         return fill(planOver(subject, classesOwed, armsOwed), existing, check, read, trial,
-                baselines, budget);
+                baselines, AnswersStoodIn.REQUIRING_NOTHING, budget);
     }
 
     /**
@@ -1143,12 +1153,39 @@ public final class Generator {
      * either way; what a baseline settles is where the positions the row is <em>not</em> about
      * stand, and a value the model already names is one a reader recognises — so the difference
      * between the row and what is already written is the class, and the class alone.
+     *
+     * <p><b>And every row it composes stands the behavior's dependencies in with {@code stood}.</b>
+     * What a class or an arm asks about is the positions, so nothing on this route asks a
+     * dependency for one answer over another and the environment is the behavior's rather than the
+     * row's. It arrives here because a candidate is run in it: composed without it and completed
+     * afterwards, the row the search certified and the row a person is offered were two rows, and
+     * the arm was settled by running the one nobody sees.
+     *
+     * <p>A behavior whose stand-ins nothing composed has no rows at all, which is what comes back.
+     * Every obligation on the plan is answered with what the composition came to, because none of
+     * them can be answered with a row that cannot be applied.
      */
     public static FillResult fill(GenerationPlan plan, List<ObservedRow> existing,
                                         CandidateCheck check,
                                         souther.compiler.reading.CoverageRead.Read read,
                                         Trial trial, List<Baseline> baselines,
+                                        AnswersStoodIn stood,
                                         AdequacyPolicy.OfTheGeneration budget) {
+        return switch (stood) {
+            case AnswersStoodIn.NothingComposed(var why) ->
+                    FillResult.nothingWasLookedFor(plan, why, List.of());
+            case AnswersStoodIn.Stood(var answers) ->
+                    filling(plan, existing, check, read, trial, baselines, answers, budget);
+        };
+    }
+
+    /** The search itself, once the environment its rows go out in is in hand. */
+    private static FillResult filling(GenerationPlan plan, List<ObservedRow> existing,
+                                      CandidateCheck check,
+                                      souther.compiler.reading.CoverageRead.Read read,
+                                      Trial trial, List<Baseline> baselines,
+                                      List<StoodInAnswer> answers,
+                                      AdequacyPolicy.OfTheGeneration budget) {
         MeasuredInput subject = plan.subject();
         List<ClassOfAPosition> classesOwed = plan.classesOwed();
         // Every place a run through an owed arm is recorded at, which is where a row may be
@@ -1263,7 +1300,7 @@ public final class Generator {
                 }
                 break;
             }
-            ClassAttempt attempt = rowFor(axes, at[0], at[1], origins, check, references);
+            ClassAttempt attempt = rowFor(axes, at[0], at[1], origins, check, references, answers);
             attempts.add(attempt);
             switch (attempt) {
                 case ClassAttempt.Built made -> {
@@ -1272,7 +1309,7 @@ public final class Generator {
                     // composed one apiece — each is offered for its own class, and merging them
                     // would take one of the two classes its answer.
                     answeredAt.put(new ClassOfAPosition(attempt.at(), attempt.classId()),
-                            compose(composed, made.row().inputs()));
+                            compose(composed, made.row()));
                 }
                 case ClassAttempt.Unresolved none -> unresolved.add(none.why());
             }
@@ -1334,7 +1371,7 @@ public final class Generator {
                 }
                 if (place.tried == null) {
                     place.tried = witnessFor(axes, place.at, check, trial, ran,
-                            List.of(probe), origins, references);
+                            List.of(probe), origins, references, answers);
                 }
                 // Each of the three, one at a time, so that a fourth added later has to be decided
                 // about here rather than fall in with whichever of these a cast happened to take.
@@ -1378,7 +1415,7 @@ public final class Generator {
                 // The row already offering these values where there is one, so that a class's row
                 // an arm also goes through is one line and not two. What each of them is offered for
                 // is the entries naming it, so nothing is written on the row here.
-                RowId kept = keep(composed, row.inputs());
+                RowId kept = keep(composed, row);
                 built.put(probe, kept);
                 left.remove(probe);
                 also.forEach(each -> {
@@ -1643,9 +1680,8 @@ public final class Generator {
      * ways in agree. Written down twice, an author is handed the same line twice and told it
      * answers two different things.
      */
-    private static RowId keep(SequencedMap<RowId, ComposedRow> composed,
-                              List<FixtureTemplate> inputs) {
-        List<String> written = inputs.stream().map(FixtureTemplate::text).toList();
+    private static RowId keep(SequencedMap<RowId, ComposedRow> composed, GeneratedRow row) {
+        List<String> written = new ComposedRow(row.inputs(), row.answers()).writtenAs();
         for (Map.Entry<RowId, ComposedRow> already : composed.entrySet()) {
             // Whatever the row beside it was composed for, and not the arms alone. One set of
             // values is one line in the file: a class's row and an arm's row of the same values are
@@ -1659,7 +1695,7 @@ public final class Generator {
                 return already.getKey();
             }
         }
-        return compose(composed, inputs);
+        return compose(composed, row);
     }
 
     /**
@@ -1670,10 +1706,9 @@ public final class Generator {
      * with whatever the offer was ordered by — which is the arrangement a row's own account of what
      * it was composed for came apart under.
      */
-    private static RowId compose(SequencedMap<RowId, ComposedRow> composed,
-                                 List<FixtureTemplate> inputs) {
+    private static RowId compose(SequencedMap<RowId, ComposedRow> composed, GeneratedRow row) {
         RowId id = new RowId(composed.size());
-        composed.put(id, new ComposedRow(inputs));
+        composed.put(id, new ComposedRow(row.inputs(), row.answers()));
         return id;
     }
 
@@ -1738,7 +1773,8 @@ public final class Generator {
      */
     private static ClassAttempt rowFor(MeasuredInput.MeasuredAxes axes, int at, int cls,
                                        List<ResolvedOrigin> origins, CandidateCheck check,
-                                       FixtureReferences references) {
+                                       FixtureReferences references,
+                                       List<StoodInAnswer> answers) {
         Axis axis = axes.get(at);
         String classId = axis.classes().get(cls).id();
         String label = label(axis, cls);
@@ -1751,13 +1787,15 @@ public final class Generator {
         // row of every behavior taking it — a change somewhere else in the file, answering a
         // question nobody asked it. What order they are walked in is {@link #nearestFirst}'s to
         // say; how many of them may be built is this class's own budget.
-        Building building = new Building(axes, at, classId, label, check, MOST_REPAIRS, references);
+        Building building =
+                new Building(axes, at, classId, label, check, MOST_REPAIRS, references, answers);
         Traversal stated = nearestFirst(axes.axes(), reading, origins, (_, _) -> true, building);
         if (stated == Traversal.SATISFIED) {
             return new ClassAttempt.Built(axis.id(), classId, building.found);
         }
         // The composition, whatever the stated values spent, and with a budget of its own.
-        Building composing = new Building(axes, at, classId, label, check, MOST_REPAIRS, references);
+        Building composing =
+                new Building(axes, at, classId, label, check, MOST_REPAIRS, references, answers);
         Traversal composed = composing(axes.axes(), reading, origins, (_, _) -> true, composing);
         if (composed == Traversal.SATISFIED) {
             return new ClassAttempt.Built(axis.id(), classId, composing.found);
@@ -1834,8 +1872,12 @@ public final class Generator {
         /** The run's minter for the references what this composes will hold. */
         private final FixtureReferences references;
 
+        /** What every row of this behavior stands its dependencies in with. */
+        private final List<StoodInAnswer> answers;
+
         private Building(MeasuredInput.MeasuredAxes axes, int at, String classId, String label,
-                         CandidateCheck check, int most, FixtureReferences references) {
+                         CandidateCheck check, int most, FixtureReferences references,
+                         List<StoodInAnswer> answers) {
             this.axes = axes;
             this.at = at;
             this.classId = classId;
@@ -1843,6 +1885,7 @@ public final class Generator {
             this.check = check;
             this.most = most;
             this.references = references;
+            this.answers = answers;
         }
 
         @Override
@@ -1857,7 +1900,7 @@ public final class Generator {
                 return Taken.NOT_TAKEN;   // this candidate is the work nobody did
             }
             builds++;
-            Attempt made = build(axes, candidate.where(), check, given);
+            Attempt made = build(axes, candidate.where(), check, given, answers);
             if (made.row() == null) {
                 last = made;
                 return Taken.AND_MORE;
@@ -1867,8 +1910,9 @@ public final class Generator {
                         Optional.empty());
                 return Taken.AND_MORE;
             }
-            found = new GeneratedRow(new Purpose.ForAClass(axes.get(at).id(), classId, label),
-                    made.row().inputs());
+            found = new GeneratedRow(
+                    List.of(new Purpose.ForAClass(axes.get(at).id(), classId, label)),
+                    made.row().inputs(), made.row().answers());
             return Taken.AND_DONE;
         }
     }
@@ -2725,6 +2769,22 @@ public final class Generator {
     public static BoundaryAttempt probeFixing(MeasuredInput subject, String label,
                                               Map<RealizationTarget, Place> fixing,
                                               Reachability.Reaching reaching, CandidateCheck check) {
+        return probeFixing(subject, label, fixing, reaching, check,
+                AnswersStoodIn.REQUIRING_NOTHING);
+    }
+
+    /**
+     * The same, for a subject whose behavior requires dependencies to be stood in.
+     *
+     * <p>The stand-ins arrive with the search rather than being put on the row afterwards. A row
+     * without them is a row nothing applies, so a point answered with one is a point nothing was
+     * composed for — said here, where what the search came to is said, instead of by a reader that
+     * takes a built row apart and rebuilds it.
+     */
+    public static BoundaryAttempt probeFixing(MeasuredInput subject, String label,
+                                              Map<RealizationTarget, Place> fixing,
+                                              Reachability.Reaching reaching, CandidateCheck check,
+                                              AnswersStoodIn stood) {
         LocationWrites decided = new LocationWrites();
         // What the rest of the row has to sit beside. A field of a record is not chosen from its own
         // type once another field of that record is fixed: the rule relating them says what is left,
@@ -2872,8 +2932,16 @@ public final class Generator {
                         "a composed row is not something to say a point came to nothing in");
             };
         }
-        return new BoundaryAttempt.Built(
-                new GeneratedRow(new Purpose.ForAPoint(label), inputs), where.unrepresented());
+        return switch (stood) {
+            // The values stand at the point and nothing stands in for what the behavior requires,
+            // so there is no row here to offer. Said as what the search came to, because a row a
+            // person cannot run is not a row this composed.
+            case AnswersStoodIn.NothingComposed(var why) -> new BoundaryAttempt.Unresolved(
+                    new UnresolvedCombination(List.of(label), why), where.unrepresented());
+            case AnswersStoodIn.Stood(var answers) -> new BoundaryAttempt.Built(
+                    new GeneratedRow(List.of(new Purpose.ForAPoint(label)), inputs, answers),
+                    where.unrepresented());
+        };
     }
 
     /**
@@ -3372,9 +3440,10 @@ public final class Generator {
     private static Witness witnessFor(MeasuredInput.MeasuredAxes axes,
                                       CellSelection selection, CandidateCheck check, Trial trial,
                                       Map<List<String>, Watched> applied, List<ArmProbe> takes,
-                                      List<ResolvedOrigin> origins, FixtureReferences references) {
-        Reading reading =
-                new Reading(axes, selection, check, trial, applied, takes, origins, references);
+                                      List<ResolvedOrigin> origins, FixtureReferences references,
+                                      List<StoodInAnswer> answers) {
+        Reading reading = new Reading(axes, selection, check, trial, applied, takes, origins,
+                references, answers);
         Traversal walked = selection.interpretations(reading);
         return walked == Traversal.SATISFIED ? reading.found : reading.nothing(walked);
     }
@@ -3435,7 +3504,7 @@ public final class Generator {
         private Reading(MeasuredInput.MeasuredAxes axes, CellSelection selection,
                         CandidateCheck check, Trial trial, Map<List<String>, Watched> applied,
                         List<ArmProbe> takes, List<ResolvedOrigin> origins,
-                        FixtureReferences references) {
+                        FixtureReferences references, List<StoodInAnswer> answers) {
             this.axes = axes;
             this.selection = selection;
             this.check = check;
@@ -3444,10 +3513,15 @@ public final class Generator {
             this.takes = takes;
             this.origins = origins;
             this.references = references;
+            this.answers = answers;
         }
 
         /** The run's minter for the references what this composes will hold. */
         private final FixtureReferences references;
+
+        /** What every row of this behavior stands its dependencies in with, which is the
+         *  environment the candidate is run in and the one it goes out with. */
+        private final List<StoodInAnswer> answers;
 
         @Override
         public Taken take(Interpretation reading) {
@@ -3561,7 +3635,7 @@ public final class Generator {
                     return Taken.AND_MORE;
                 }
                 where = candidate.where();
-                last = build(axes, candidate.where(), check, given);
+                last = build(axes, candidate.where(), check, given, answers);
                 if (last.row() == null) {
                     // nothing composed here; another assignment may compose
                     return Taken.AND_MORE;
@@ -3573,16 +3647,18 @@ public final class Generator {
                 GeneratedRow named = new GeneratedRow(
                         takes.stream().map(Purpose.ForAnArm::new).map(Purpose.class::cast).toList(),
                         last.row().inputs(), last.row().answers());
-                // Run once per set of values, however many places a row of them was looked for.
-                // What a run of one row did is one fact: two arms searched on their own can come to
-                // the same values, and running them again would be the same row applied twice and
-                // counted twice.
+                // Run once per line, however many places a row of it was looked for. What a run of
+                // one row did is one fact: two arms searched on their own can come to the same
+                // line, and running them again would be the same row applied twice and counted
+                // twice.
                 //
-                // Keyed by what the row is written as. A template is the text and the expression it
-                // stands for, and the second is a tree whose equality is its own — so a pair of
-                // them makes no key, while the text is the whole of what a row applied twice would
-                // be.
-                List<String> written = named.inputs().stream().map(FixtureTemplate::text).toList();
+                // Keyed by what the row is written as, which is its values and what it stands the
+                // dependencies in with. A template is the text and the expression it stands for,
+                // and the second is a tree whose equality is its own — so a pair of them makes no
+                // key, while the text is the whole of what a row applied twice would be. The
+                // stand-ins are part of that key because they are part of the run: a row applied in
+                // one environment is not the row applied in another.
+                List<String> written = new ComposedRow(named.inputs(), named.answers()).writtenAs();
                 Watched watched = applied.get(written);
                 if (watched == null) {
                     if (runs >= most) {
@@ -3663,9 +3739,17 @@ public final class Generator {
      * written for came back as one nothing composed — a representative chosen from the classes
      * alone breaks a rule relating two positions while the model's own value does not — and a row
      * the baseline needed nothing beside came back carrying whatever the composition had needed.
+     *
+     * <p>{@code answers} is what the row stands its target's dependencies in with, which is the
+     * same for every row of one behavior here: what a class or an arm asks about is the positions,
+     * and nothing on that route asks a dependency for one answer over another. It is carried in
+     * rather than put on afterwards because a row without it is a row nothing applies, and a
+     * candidate the search ran in one environment and published in another was certified for a row
+     * nobody is offered.
      */
     private static Attempt build(MeasuredInput.MeasuredAxes axes, int[] where,
-                                 CandidateCheck check, Map<String, FixtureTemplate> given) {
+                                 CandidateCheck check, Map<String, FixtureTemplate> given,
+                                 List<StoodInAnswer> answers) {
         MeasuredInput subject = axes.subject();
         LocationWrites decided = new LocationWrites();
         // What every position of this row has to be for the classes it sits in to exist. Read off
@@ -3783,7 +3867,7 @@ public final class Generator {
         // whether it is a class, a combination the body decides together, or an edge. Named here
         // from the assignment, every row said every position it happened to hold — which is what
         // put three classes in the name of a row composed for one (issue #967).
-        return Attempt.of(new GeneratedRow(new Purpose.Unstated(), inputs));
+        return Attempt.of(new GeneratedRow(List.of(new Purpose.Unstated()), inputs, answers));
     }
 
     /**

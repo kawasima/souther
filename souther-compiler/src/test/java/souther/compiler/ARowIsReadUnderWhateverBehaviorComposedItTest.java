@@ -71,8 +71,7 @@ class ARowIsReadUnderWhateverBehaviorComposedItTest {
         // The offering a run makes when nothing was asked of the carrier itself. Which is the state
         // `Composition.composed` is written for, and the one a reader off the searches cannot read.
         Composition composed = Composition.composed(
-                OfferingRequest.overTheModule("example.carried", true), Map.of(), declared,
-                Composition.WhatStandsIn.REQUIRING_NOTHING);
+                OfferingRequest.overTheModule("example.carried", true), Map.of(), declared);
         assertFalse(composed.rowsByBehavior().isEmpty(), "the row is offered under its carrier: " + composed);
         for (String carrier : composed.rowsByBehavior().keySet()) {
             assertFalse(composed.searched().containsKey(carrier),
@@ -109,8 +108,7 @@ class ARowIsReadUnderWhateverBehaviorComposedItTest {
         BorderAccount declared = Adequacy.accountFor(compilation.db(),
                 "example.carried", new GenerationScope.Module());
         Composition composed = Composition.composed(
-                OfferingRequest.overTheModule("example.carried", true), Map.of(), declared,
-                Composition.WhatStandsIn.REQUIRING_NOTHING);
+                OfferingRequest.overTheModule("example.carried", true), Map.of(), declared);
         Settlements table = Settlements.of(compilation.db(), composed);
 
         // The behavior has lines of its own, so this says something.
@@ -139,8 +137,7 @@ class ARowIsReadUnderWhateverBehaviorComposedItTest {
         BorderAccount declared = Adequacy.accountFor(compilation.db(),
                 "example.carried", new GenerationScope.Module());
         Composition composed = Composition.composed(
-                OfferingRequest.overTheModule("example.carried", true), Map.of(), declared,
-                Composition.WhatStandsIn.REQUIRING_NOTHING);
+                OfferingRequest.overTheModule("example.carried", true), Map.of(), declared);
         Settlements table = Settlements.of(compilation.db(), composed);
 
         // Nothing here is undetermined for want of a reading. What a run cannot tell about is a

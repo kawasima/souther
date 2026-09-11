@@ -173,7 +173,6 @@ class EveryThingOwedAtAPointIsAnItemOfItsOwnTest {
         assertNotNull(generated, "the model under test compiles: " + compilation.errors());
         return Composition.composed(OfferingRequest.overTheModule("example.stops", true), generated,
                 Adequacy.accountFor(compilation.db(), "example.stops",
-                        new GenerationScope.Module()),
-                Composition.WhatStandsIn.REQUIRING_NOTHING);
+                        new GenerationScope.Module()));
     }
 }

@@ -259,8 +259,7 @@ class WhatIsWrittenInAnEnsuresIsQuotedOverTheRowsTest {
         String block = GeneratedRows.of(souther.compiler.query.EveryRowOfIt.offered(
                         souther.compiler.query.Composition.composed(
                         souther.compiler.query.OfferingRequest.overTheModule("example.todo", true),
-                        Map.of("findTodo", nothingOffered()), null,
-                        souther.compiler.query.Composition.WhatStandsIn.REQUIRING_NOTHING)),
+                        Map.of("findTodo", nothingOffered()), null)),
                 Map.of("findTodo", List.of("ensures asked = NotFound -> id.value > 0")),
                 SourceRendering.namedByIdentity(SourceLayouts.NONE), compiled(TODO).db()).text();
 
