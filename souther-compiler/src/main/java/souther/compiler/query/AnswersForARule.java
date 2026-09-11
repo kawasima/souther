@@ -14,7 +14,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 
 /**
  * What a row takes to stand a behavior's dependencies in for one rule of its decision.
@@ -30,13 +29,16 @@ import java.util.function.Function;
  * handed can be written as.
  *
  * @param requires what the behavior has to stand in for, in the order it requires them
- * @param standing a subject of one position for what a dependency answers, or null where none
- *                 could be read. Asked for rather than made: where a reading of a type is made is
- *                 where every reading of a behavior's input is made, and a second maker of one
- *                 would be free to read the same declarations another way
+ * @param standing one subject per dependency a value can be composed for, and no entry for one
+ *                 whose answer no position stands at. Handed in rather than made: where a reading
+ *                 of a type is made is where every reading of a behavior's input is made, and a
+ *                 second maker of one would be free to read the same declarations another way.
+ *                 One per dependency and not one per rule — what a dependency answers is the same
+ *                 whichever way through the body is being composed for, and a subject made per
+ *                 rule reads every declaration its answer reaches once for every way
  */
 record AnswersForARule(RequiredDependencies requires,
-                       Function<RequiredDependencies.Required, MeasuredInput> standing) {
+                       Map<ValueName.Behavior, MeasuredInput> standing) {
 
     /** What the answers for one rule came to. */
     sealed interface Outcome {
@@ -137,7 +139,7 @@ record AnswersForARule(RequiredDependencies requires,
     /** A value of the dependency's answer meeting {@code demands}, or null where none was composed. */
     private FixtureTemplate composed(RequiredDependencies.Required required,
                                      List<AnswerDemand> demands) {
-        MeasuredInput subject = standing.apply(required);
+        MeasuredInput subject = standing.get(required.dependency());
         return subject != null
                 && AnAnswerComposed.of(subject, demands)
                         instanceof AnAnswerComposed.Outcome.Composed(var value) ? value : null;

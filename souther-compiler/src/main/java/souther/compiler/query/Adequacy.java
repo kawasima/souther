@@ -1968,7 +1968,7 @@ public final class Adequacy {
             // not, and asking it per rule would read every declaration once per way through the
             // body.
             AnswersForARule answers = new AnswersForARule(requires,
-                    required -> standingFor(db, name, subject, required));
+                    standingForEach(db, name, subject, requires));
             // Asked once, because what it answers is one list and asking it per rule would walk the
             // rules once for every rule.
             Set<DecisionRule> toSettle = new LinkedHashSet<>(evidence.notTakenByRows());
@@ -2243,6 +2243,32 @@ public final class Adequacy {
                 reading, policy, beside.machines()).reading(reading);
         return souther.compiler.partition.MeasuredInput.of(ANSWER, read,
                 souther.compiler.partition.Partitions.of(ANSWER, read, policy));
+    }
+
+    /**
+     * One subject per dependency, made once for the behavior.
+     *
+     * <p>Once and not once per way through the body. What a dependency answers does not depend on
+     * which rule a row is being composed for, and a subject made per rule reads every declaration
+     * that answer reaches once for every rule — which is the reading of one type done as many times
+     * as the body has ways.
+     *
+     * <p>Without an entry for a dependency whose answer no position stands at, which is what a
+     * composer reads as a value it cannot make.
+     */
+    private static Map<ValueName.Behavior, souther.compiler.partition.MeasuredInput>
+            standingForEach(Db db, String module, souther.compiler.partition.MeasuredInput beside,
+                            RequiredDependencies requires) {
+        Map<ValueName.Behavior, souther.compiler.partition.MeasuredInput> out =
+                new LinkedHashMap<>();
+        for (RequiredDependencies.Required each : requires.inOrder()) {
+            souther.compiler.partition.MeasuredInput standing =
+                    standingFor(db, module, beside, each);
+            if (standing != null) {
+                out.put(each.dependency(), standing);
+            }
+        }
+        return java.util.Collections.unmodifiableMap(out);
     }
 
     /** What the reading of a dependency's answer calls the whole of it. */
@@ -3772,7 +3798,7 @@ public final class Adequacy {
                 return List.of();
             }
             return new AnswersForARule(requires,
-                    required -> standingFor(db, module, subject, required))
+                    standingForEach(db, module, subject, requires))
                     .of(souther.compiler.partition.AnswersDemanded.NOTHING)
                     instanceof AnswersForARule.Outcome.Stood(var answers) ? answers : List.of();
         }
