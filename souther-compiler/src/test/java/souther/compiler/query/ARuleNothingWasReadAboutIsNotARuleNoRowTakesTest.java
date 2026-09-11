@@ -4,6 +4,8 @@ import org.junit.jupiter.api.Test;
 
 import souther.compiler.partition.DecisionReading;
 
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -53,7 +55,7 @@ class ARuleNothingWasReadAboutIsNotARuleNoRowTakesTest {
                         DecisionEvidence.Unreadable.NO_ROW_CAME_BACK,
                         WeakeningSet.of(new Weakening.BodiesNotElaborated("example.decide"))));
 
-        assertEquals(java.util.List.of(), unread.notTakenByRows(),
+        assertEquals(List.of(), unread.notTakenByRows(),
                 () -> "no rule is said to be one no row takes: " + unread.notTakenByRows());
         assertFalse(unread.weakening().isEmpty(),
                 "and the account says what the reading went without");
@@ -100,9 +102,9 @@ class ARuleNothingWasReadAboutIsNotARuleNoRowTakesTest {
         assertTrue(took.took().made().isEmpty(), "nothing was read about the runs");
         assertEquals(DecisionEvidence.NotAsked.NOT_ASKED, took.took().why(),
                 "and the measure says the build did not ask");
-        assertEquals(java.util.List.of(), took.notTakenByRows(),
+        assertEquals(List.of(), took.notTakenByRows(),
                 "so no rule is reported as one no row takes");
-        assertEquals(java.util.List.of(),
+        assertEquals(List.of(),
                 compilation.db().ask(new Adequacy.DecisionFindings("example.decide")).value(),
                 "and the account holds no finding about one");
     }

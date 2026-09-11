@@ -6,8 +6,10 @@ import souther.compiler.types.BindingId;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.IdentityHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.SequencedSet;
 import java.util.Set;
 
 /**
@@ -608,7 +610,7 @@ public final class ValueArrivals<P> {
          * from what the way consulted pays that search once per pair, and the cost of gathering
          * one body's ways grew with their square.
          */
-        private final java.util.SequencedSet<Arrival<P>> ways = new java.util.LinkedHashSet<>();
+        private final SequencedSet<Arrival<P>> ways = new LinkedHashSet<>();
         private boolean beyond;
 
         boolean isBeyond() {

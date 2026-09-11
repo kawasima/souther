@@ -3340,11 +3340,11 @@ public final class Adequacy {
      * finding: the two are separate readings of one set of findings, and a name that said gap kept
      * the older arrangement alive in every reader that met it.
      */
-    public record GenerationDisposition(Finding finding, java.util.Optional<ObligationIdentity> item,
+    public record GenerationDisposition(Finding finding, Optional<ObligationIdentity> item,
                                         GenerationOutcome outcome) {
 
         public GenerationDisposition {
-            item = item == null ? java.util.Optional.empty() : item;
+            item = item == null ? Optional.empty() : item;
         }
 
         /**
@@ -3356,7 +3356,7 @@ public final class Adequacy {
          * having no item says.
          */
         public GenerationDisposition(Finding finding, GenerationOutcome outcome) {
-            this(finding, java.util.Optional.empty(), outcome);
+            this(finding, Optional.empty(), outcome);
         }
     }
 
@@ -3590,23 +3590,23 @@ public final class Adequacy {
          * <p>Empty for the rest. A case whose position this run has no axis at is not something a
          * row is offered for, and neither is a measure this compiler could not make.
          */
-        private static java.util.Optional<ObligationIdentity> itemOf(
+        private static Optional<ObligationIdentity> itemOf(
                 Finding finding, souther.compiler.partition.FillResult composed,
                 Hir.SpecBehavior spec) {
             return switch (finding.about()) {
-                case About.APointOfABorder(var point) -> java.util.Optional.of(
+                case About.APointOfABorder(var point) -> Optional.of(
                         new ObligationIdentity.OfALine(point.point()));
-                case About.AnArmNoRowGoesThrough(var arm) -> java.util.Optional.of(
+                case About.AnArmNoRowGoesThrough(var arm) -> Optional.of(
                         new ObligationIdentity.OfAnArm(arm.obligation()));
-                case About.ARuleNoRowTakes(var behavior, var ruled) -> java.util.Optional.of(
+                case About.ARuleNoRowTakes(var behavior, var ruled) -> Optional.of(
                         new ObligationIdentity.OfADecisionRule(behavior, ruled.rule()));
-                case About.AClassNoRowIsIn(var missing) -> java.util.Optional.of(
+                case About.AClassNoRowIsIn(var missing) -> Optional.of(
                         new ObligationIdentity.OfAClass(new ClassOfAPosition(missing.axis().at(),
                                 missing.name())));
                 case About.ACaseNoRowAppliesItTo(var input, var missing) ->
                         classOfTheCase(input, missing, composed, spec)
                                 .map(ObligationIdentity.OfAClass::new);
-                default -> java.util.Optional.empty();
+                default -> Optional.empty();
             };
         }
 
@@ -3617,18 +3617,18 @@ public final class Adequacy {
          * classes for — the same question {@link #atCase} puts, so that what is offered for the
          * case and what it is called are one thing.
          */
-        private static java.util.Optional<ClassOfAPosition> classOfTheCase(
+        private static Optional<ClassOfAPosition> classOfTheCase(
                 InputCaseEvidence input, TypeSymbol case_,
                 souther.compiler.partition.FillResult composed, Hir.SpecBehavior spec) {
             int at = input.at();
             if (at < 0 || at >= spec.params().size()) {
-                return java.util.Optional.empty();
+                return Optional.empty();
             }
             ClassOfAPosition owed = new ClassOfAPosition(
                     new souther.compiler.partition.AxisId(spec.name(), spec.params().get(at).name()),
                     case_.name());
             return composed.plan().subject().divides(owed)
-                    ? java.util.Optional.of(owed) : java.util.Optional.empty();
+                    ? Optional.of(owed) : Optional.empty();
         }
 
         /**
@@ -4213,8 +4213,7 @@ public final class Adequacy {
             // one splice is not what steers it into another — and asked at a single occurrence the
             // answer was whichever the walk wrote first: one body with its two call sites swapped
             // offered a row for the arm in one order and said nothing could steer one in the other.
-            java.util.LinkedHashMap<CoverageSites.Obligation, List<ArmProbe>> arms =
-                    new java.util.LinkedHashMap<>();
+            LinkedHashMap<CoverageSites.Obligation, List<ArmProbe>> arms = new LinkedHashMap<>();
             for (Finding finding : owed) {
                 if (finding.about()
                         instanceof About.AnArmNoRowGoesThrough(CoverageSites.ArmSite arm)) {
@@ -6183,7 +6182,7 @@ public final class Adequacy {
                 souther.compiler.coverage.CoverageSites.Site arm) {
             return arm.outcome() instanceof souther.compiler.coverage.SourceOutcome.Failed(
                     souther.compiler.coverage.SourceOutcome.FailedBy.Construction(var clause))
-                    ? clause : java.util.Optional.empty();
+                    ? clause : Optional.empty();
         }
 
     }

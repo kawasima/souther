@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import souther.compiler.reading.PathAccess;
 
+import java.util.LinkedHashSet;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -60,11 +61,11 @@ class AnArmWithNoWayInAnywhereIsAnsweredFromEveryPlaceTest {
     @Test
     void whatIsMissingAtEachPlaceIsKeptAndNotOrderedByTheWalk() {
         GenerationOutcome.NotSupported one = new GenerationOutcome.NotSupported(
-                new java.util.LinkedHashSet<>(List.of(
+                new LinkedHashSet<>(List.of(
                         GenerationOutcome.NotSupported.Reason.MORE_WAYS_IN_THAN_THE_READING_HOLDS,
                         GenerationOutcome.NotSupported.Reason.THE_ARM_RUNS_WHERE_SOMETHING_CALLS_IT)));
         GenerationOutcome.NotSupported other = new GenerationOutcome.NotSupported(
-                new java.util.LinkedHashSet<>(List.of(
+                new LinkedHashSet<>(List.of(
                         GenerationOutcome.NotSupported.Reason.THE_ARM_RUNS_WHERE_SOMETHING_CALLS_IT,
                         GenerationOutcome.NotSupported.Reason.MORE_WAYS_IN_THAN_THE_READING_HOLDS)));
 

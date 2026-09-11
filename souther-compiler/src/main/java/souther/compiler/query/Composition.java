@@ -3,11 +3,13 @@ package souther.compiler.query;
 import souther.compiler.partition.Generator;
 import souther.compiler.partition.ObligationIdentity;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.SequencedMap;
+import java.util.Set;
 
 /**
  * Everything the two searches composed, under the behavior each row is written for.
@@ -97,7 +99,7 @@ public record Composition(OfferingRequest request,
     private static void take(SequencedMap<String, Map<RowKey, OfferedRow>> byBehavior,
                              String behavior, List<Generator.GeneratedRow> cells,
                              List<Generator.GeneratedRow> lines,
-                             java.util.Collection<Generator.GeneratedRow> rules) {
+                             Collection<Generator.GeneratedRow> rules) {
         // One block per behavior, however many kinds of row it holds. Rows of one behavior written
         // under two headings are legal and read as two lists of something, which they are not.
         Map<RowKey, OfferedRow> here =
@@ -176,7 +178,7 @@ public record Composition(OfferingRequest request,
      * constructor and leaving the one call that reaches it open would have left the same door with
      * a longer name on it.
      */
-    Offering keeping(java.util.Set<RowKey> kept, java.util.Set<ObligationIdentity> answered) {
+    Offering keeping(Set<RowKey> kept, Set<ObligationIdentity> answered) {
         SequencedMap<String, List<OfferedRow>> out = new LinkedHashMap<>();
         rowsByBehavior.forEach((behavior, here) -> {
             List<OfferedRow> left = here.stream().filter(row -> kept.contains(row.key())).toList();
