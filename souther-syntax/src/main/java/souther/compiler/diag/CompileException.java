@@ -37,6 +37,19 @@ public class CompileException extends RuntimeException {
         this(List.of(new Located(diagnostic, ReportContext.NONE)), legacyMessage);
     }
 
+    /**
+     * The same, wording the message the way {@link #of} words it — for an error that carries
+     * something beside its diagnostic and so cannot be made by that factory.
+     *
+     * <p>The wording is here and not repeated there. What an error says is what its diagnostic says,
+     * and a subclass left to word its own would be a second sentence for one rule, differing from
+     * the first the day either is changed.
+     */
+    protected CompileException(Diagnostic diagnostic) {
+        this(diagnostic, format(positionOf(diagnostic), diagnostic.code(),
+                DiagnosticRenderer.legacyBody(diagnostic)));
+    }
+
     private CompileException(List<Located> reported, String legacyMessage) {
         super(legacyMessage);
         this.reported = List.copyOf(reported);
@@ -50,8 +63,7 @@ public class CompileException extends RuntimeException {
      * rule says is in the catalog, and this is where it is read.
      */
     public static CompileException of(Diagnostic diagnostic) {
-        return new CompileException(diagnostic, format(positionOf(diagnostic), diagnostic.code(),
-                DiagnosticRenderer.legacyBody(diagnostic)));
+        return new CompileException(diagnostic);
     }
 
     /**
