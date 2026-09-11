@@ -356,7 +356,8 @@ sealed interface Confinement<A> {
                                       PositionEnvelope.Restrictions<A> outside,
                                       Admitting<A> admitting,
                                       Refusing<A> refused,
-                                      Refusal<A> alreadyShown, StringMachineAnswers machines) {
+                                      AskedOfTheReadingAlone<A> alreadyShown,
+                                      StringMachineAnswers machines) {
         // The ends holding a position nothing, which is that reading's own answer whatever else
         // places the position: a reading left with no range at all names none, and where it names
         // one, that is where the lack is.
@@ -465,12 +466,18 @@ sealed interface Confinement<A> {
             // Each of those places holds something on its own, so "the values admit nothing" is
             // true of the declaration and says less than what was shown — and which of the two
             // nearer sentences it is is the refusal's to say and not a second reading of it.
+            //
+            // The one place the reading is asked what refused it, and asked once: this is the only
+            // answer here that is about the alternatives rather than about them met with what
+            // places their positions, and every other way out of this question is settled without
+            // it.
+            Refusal<A> already = alreadyShown.of();
             return new Admission<>(souther.compiler.values.Emptiness.EMPTY,
-                    switch (alreadyShown.nearest()) {
+                    switch (already.nearest()) {
                         case NOWHERE -> EmptyBy.VALUES;
                         case AT_EACH_OF -> EmptyBy.POSITIONS_HELD_AS_ONE;
                         case OF_THEM_TOGETHER -> EmptyBy.POSITIONS_HELD_APART;
-                    }, alreadyShown, Shown.BY_THE_READINGS);
+                    }, already, Shown.BY_THE_READINGS);
         }
         return new Admission<>(souther.compiler.values.Emptiness.EMPTY, EmptyBy.SET_AND_RANGE, where, how);
     }
@@ -509,6 +516,25 @@ sealed interface Confinement<A> {
     @FunctionalInterface
     interface Refusing<A> {
         Refusal<A> of(AskedOfEachBlock<A> blocks, AskedOfARelation<A> relation);
+    }
+
+    /**
+     * What a reading's own descriptions show it refused by, asked of the reading and nothing else.
+     *
+     * <p>Beside {@link Admitting} and {@link Refusing} and not one of them. Those two are asked
+     * against a placing of the positions, which is why each of them takes the walk's two questions;
+     * this one is answered out of the alternatives alone and there is no placing for it to consult.
+     * The difference is which reading the answer is about and not how many questions it takes.
+     *
+     * <p><b>A question, because the walk mostly does not refuse.</b> The answer is worked out over
+     * every position each alternative describes and every denial each of them states, and it is
+     * read in one place: where a reading has been found to hold nothing and what emptied it is the
+     * values rather than the ends. Handed over as an answer instead, what it costs to ask whether a
+     * reading stands would follow how much the reading says rather than what was asked of it.
+     */
+    @FunctionalInterface
+    interface AskedOfTheReadingAlone<A> {
+        Refusal<A> of();
     }
 
     /**
@@ -725,7 +751,7 @@ sealed interface Confinement<A> {
                             // one.
                             (asked, _) -> values.anyAlternativeAdmits(asked),
                             (asked, _) -> values.refusedInEveryAlternativeAt(asked),
-                            values.refusedBy(), machines),
+                            values::refusedBy, machines),
                     LeftUnbuilt.NOTHING);
         }
 
@@ -910,7 +936,7 @@ sealed interface Confinement<A> {
                     shown != null ? shown : Confinement.admission(ordered, carriers, outside,
                             made.values()::anyAlternativeAdmits,
                             made.values()::refusedInEveryAlternativeAt,
-                            made.values().refusedBy(), machines),
+                            made.values()::refusedBy, machines),
                     made.leftUnbuilt());
         }
 
@@ -985,7 +1011,7 @@ sealed interface Confinement<A> {
             return new ReadAdmission<>(
                     shown != null ? shown : Confinement.admission(ordered, carriers, outside,
                             values::anyAlternativeAdmits, values::refusedInEveryAlternativeAt,
-                            values.refusedBy(), machines),
+                            values::refusedBy, machines),
                     leftUnbuilt);
         }
 
