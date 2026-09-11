@@ -26,12 +26,23 @@ public final class WhereItSits {
 
     /** Where {@code place} sits in {@code source}. */
     public static PhysicalPos in(String source, SourcePos place) {
-        return SourceLayout.of(source).resolve(place);
+        return laidOutAs(source, place).resolve(place);
     }
 
     /** Where {@code region} runs from and to in {@code source}. */
     public static PhysicalRegion in(String source, Region region) {
-        return SourceLayout.of(source).resolve(region);
+        return laidOutAs(source, region.start()).resolve(region);
+    }
+
+    /**
+     * {@code source} laid out as the text {@code place} is in.
+     *
+     * <p>Said, rather than laid out as a text with no name: a place in a file read against a layout
+     * of another file is refused, and a test handing over the wrong source is what that refusal is
+     * for. The text is the caller's to get right; which file it is being read as is not.
+     */
+    private static SourceLayout laidOutAs(String source, SourcePos place) {
+        return SourceLayout.of(source, place.placement());
     }
 
     /**

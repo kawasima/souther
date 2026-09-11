@@ -5,6 +5,7 @@ import souther.compiler.source.SourceId;
 import souther.compiler.diag.LaidOutText;
 import souther.compiler.diag.PhysicalPos;
 import souther.compiler.diag.Placement;
+import souther.compiler.diag.QuotedFrom;
 import souther.compiler.diag.SourcePos;
 
 import java.util.ArrayList;
@@ -45,9 +46,13 @@ public final class SourceLayout implements LaidOutText {
      */
     private final int[][] tokenStart;
 
+    /** Which text this is, asked once — a placement answers it and does not publish it. */
+    private final QuotedFrom text;
+
     private SourceLayout(String source, Placement read, int[][] tokenStart) {
         this.source = source;
         this.read = read;
+        this.text = read.at(0, 0).quotedFrom();
         this.lines = new LineIndex(source);
         this.tokenStart = tokenStart;
     }
@@ -177,8 +182,13 @@ public final class SourceLayout implements LaidOutText {
         return new SourcePos(construct, token, offset - tokens[token], read);
     }
 
-    /** Where {@code place} is in this text, in UTF-16 code units from its start. */
+    /**
+     * Where {@code place} is in this text, in UTF-16 code units from its start.
+     *
+     * @throws NotThisText where {@code place} is a place in a file this is not the layout of
+     */
     public int offsetOf(SourcePos place) {
+        refuseAnotherText(place);
         if (tokenStart.length == 0) {
             return Math.max(0, place.within());
         }
@@ -199,6 +209,35 @@ public final class SourceLayout implements LaidOutText {
         int offset = offsetOf(place);
         int at = Math.max(0, Math.min(offset, source.length()));
         return new PhysicalPos(lines.lineOf(at), lines.columnOf(at));
+    }
+
+    /**
+     * Refuses a place in a file this is not the layout of.
+     *
+     * <p>A place says which of the things written in its text it is, and the count means nothing
+     * against another text — the same numbers are a different place there. Read without saying so,
+     * the two came back as a line and a column that looked like an answer, and a report quoted a
+     * line of whatever file the caller had in hand.
+     *
+     * <p>Only where both say which file they are in. A text nobody named carries nothing to tell it
+     * apart by, and a caller laying one out is the only one who could know.
+     */
+    private void refuseAnotherText(SourcePos place) {
+        if (text instanceof QuotedFrom.ASourceThisCompileHolds(SourceId mine)
+                && place.quotedFrom() instanceof QuotedFrom.ASourceThisCompileHolds(SourceId theirs)
+                && !mine.equals(theirs)) {
+            throw new NotThisText(mine, theirs);
+        }
+    }
+
+    /** A place read against a text it is not in. */
+    public static final class NotThisText extends IllegalArgumentException {
+
+        private static final long serialVersionUID = 1L;
+
+        NotThisText(SourceId laidOut, SourceId asked) {
+            super("a place in " + asked + " read against the layout of " + laidOut);
+        }
     }
 
     /** The last construct beginning at or before {@code offset}, and the first where none does. */
