@@ -5446,8 +5446,9 @@ public final class Adequacy {
          * one are states a fixture may or may not reach; handed the evidence, this can be shown the
          * state itself.
          *
-         * @param positions what positions of its own this behavior has, which says whether a case
-         *                  of one of its inputs is also a class of a position it has
+         * <p>Where a case of an input is owed is the evidence's own answer and is asked of it. The
+         * measure knows both halves — which input it is of, and whether the behavior has a position
+         * of its own — so a finding worked out here would be the second reading of one rule.
          */
         static void signatureFindings(String behavior,
                                       SignatureEvidence signature, List<Finding> out) {
