@@ -3,6 +3,7 @@ package souther.compiler.query;
 import souther.compiler.partition.Generator;
 import souther.compiler.partition.ObligationIdentity;
 import souther.compiler.partition.StoodInAnswer;
+import souther.compiler.types.ValueName;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -81,13 +82,22 @@ public record Composition(OfferingRequest request,
             // dependency answers, and a row of a behavior that requires one is a row nothing
             // applies until something does. The rules' rows carry their own, which is what the way
             // asked of them.
-            take(byBehavior, behavior.getKey(),
-                    standingIn(behavior.getValue().composed().rows(),
-                            behavior.getValue().supplies()),
-                    request.boundaries()
-                            ? standingIn(atTheLines(owed.get(behavior.getKey())),
-                                    behavior.getValue().supplies())
-                            : List.of(),
+            //
+            // Where nothing composed those stand-ins, the rows that would have carried them do not
+            // go out. What is wrong with them is not their values — it is that nothing applies the
+            // behavior they are written for — so offering them would hand a person work that
+            // cannot be run, and the reason is on the filling for whoever writes the block.
+            List<Generator.GeneratedRow> supplied =
+                    behavior.getValue().supplies() instanceof AnswersStoodIn.Stood(
+                            var answers)
+                            ? standingIn(behavior.getValue().composed().rows(), answers)
+                            : List.of();
+            List<Generator.GeneratedRow> atLines =
+                    behavior.getValue().supplies() instanceof AnswersStoodIn.Stood(
+                            var answers) && request.boundaries()
+                            ? standingIn(atTheLines(owed.get(behavior.getKey())), answers)
+                            : List.of();
+            take(byBehavior, behavior.getKey(), supplied, atLines,
                     behavior.getValue().rules().byRule().values());
         }
         // A behavior with nothing of its own to fill can still be the one reading that composed the
@@ -207,13 +217,68 @@ public record Composition(OfferingRequest request,
      * a longer name on it.
      */
     Offering keeping(Set<RowKey> kept, Set<ObligationIdentity> answered) {
+        // What the rows that answer a dependency by what it was applied to come to, merged as the
+        // rows are walked. A row whose table the merge cannot hold is one the block cannot hold,
+        // so it is taken out here rather than printed beside a table that answers it another way.
+        SequencedMap<ValueName.Behavior, Map<List<String>, StandInTable.Entry>> tables =
+                new LinkedHashMap<>();
+        List<Generator.UnresolvedCombination> withheld = new ArrayList<>();
         SequencedMap<String, List<OfferedRow>> out = new LinkedHashMap<>();
         rowsByBehavior.forEach((behavior, here) -> {
-            List<OfferedRow> left = here.stream().filter(row -> kept.contains(row.key())).toList();
+            List<OfferedRow> left = new ArrayList<>();
+            for (OfferedRow row : here) {
+                if (!kept.contains(row.key())) {
+                    continue;
+                }
+                Generator.UnresolvedCombination cost = merge(tables, row);
+                if (cost != null) {
+                    withheld.add(cost);
+                    continue;
+                }
+                left.add(row);
+            }
             if (!left.isEmpty()) {
-                out.put(behavior, left);
+                out.put(behavior, List.copyOf(left));
             }
         });
-        return new Offering(request, out, searched, account, answered);
+        SequencedMap<ValueName.Behavior, StandInTable> written = new LinkedHashMap<>();
+        tables.forEach((dependency, rows) ->
+                written.put(dependency, new StandInTable(dependency, List.copyOf(rows.values()))));
+        return new Offering(request, out, searched, account, answered, written,
+                List.copyOf(withheld));
+    }
+
+    /**
+     * {@code row}'s table rows merged into what the block already writes, or why they do not fit.
+     *
+     * <p>A row answering every call states no table row and always fits: what it writes is its own
+     * {@code with}, which the run prefers to whatever a module says. What does not fit is a row
+     * answering one call the block already answers another way — two blocks are not rows of one
+     * table, so writing a second recovers nothing, and which row goes out is what was composed
+     * first.
+     */
+    private static Generator.UnresolvedCombination merge(
+            SequencedMap<ValueName.Behavior, Map<List<String>, StandInTable.Entry>> tables,
+            OfferedRow row) {
+        Map<ValueName.Behavior, Map<List<String>, StandInTable.Entry>> adding = new LinkedHashMap<>();
+        for (StoodInAnswer each : row.answers()) {
+            if (!(each.asking() instanceof StoodInAnswer.Asking.OfOne(var _, var appliedTo))) {
+                continue;
+            }
+            StandInTable.Entry writing = new StandInTable.Entry(appliedTo, each.value());
+            StandInTable.Entry already = tables.getOrDefault(each.dependency(), Map.of())
+                    .get(writing.writtenAs());
+            if (already != null && !already.answers().text().equals(each.value().text())) {
+                return new Generator.UnresolvedCombination(row.key().written(),
+                        Generator.UnresolvedCombination.Reason.A_TABLE_IS_WRITTEN_ONCE_FOR_A_MODULE);
+            }
+            adding.computeIfAbsent(each.dependency(), _ -> new LinkedHashMap<>())
+                    .put(writing.writtenAs(), writing);
+        }
+        // Put in after every one of them was looked at, so a row the block cannot hold leaves the
+        // table as it was — half of one merged in would answer calls for a row nobody is offered.
+        adding.forEach((dependency, rows) ->
+                tables.computeIfAbsent(dependency, _ -> new LinkedHashMap<>()).putAll(rows));
+        return null;
     }
 }

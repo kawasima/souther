@@ -1968,7 +1968,7 @@ public final class Adequacy {
             // not, and asking it per rule would read every declaration once per way through the
             // body.
             AnswersForARule answers = new AnswersForARule(requires,
-                    standingForEach(db, name, subject, requires));
+                    standingForEach(db, name, subject, requires), subject.parameters());
             // Asked once, because what it answers is one list and asking it per rule would walk the
             // rules once for every rule.
             Set<DecisionRule> toSettle = new LinkedHashSet<>(evidence.notTakenByRows());
@@ -2032,12 +2032,17 @@ public final class Adequacy {
                         new Generator.UnresolvedCombination(List.of(),
                                 Generator.UnresolvedCombination.Reason.NOTHING_COMPOSES_ONE));
             }
-            if (!(answers.of(ruled.demands())
-                    instanceof AnswersForARule.Outcome.Stood(var stoodIn))) {
+            // In the words the composition came back with, which say which of the things that
+            // stop a row stopped this one: nothing answered for a dependency, or the row asks one
+            // of them twice at one call. Folded to one word, an author reading the rule would be
+            // told a search came to nothing and not what it came to nothing on.
+            AnswersStoodIn stood = answers.of(ruled.demands(), built.row().inputs());
+            if (stood instanceof AnswersStoodIn.NothingComposed(var why)) {
                 return new RuleRequirement.Unsettled.NothingComposedARow(
-                        new Generator.UnresolvedCombination(List.of(),
-                                Generator.UnresolvedCombination.Reason.NOTHING_COMPOSES_ONE));
+                        new Generator.UnresolvedCombination(List.of(), why));
             }
+            List<souther.compiler.partition.StoodInAnswer> stoodIn =
+                    ((AnswersStoodIn.Stood) stood).answers();
             souther.compiler.partition.RowToRun composed =
                     new souther.compiler.partition.RowToRun(built.row().inputs(), stoodIn);
             if (!(probe.read(composed).watched() instanceof Generator.Watched.Ran(var seen))) {
@@ -2222,24 +2227,19 @@ public final class Adequacy {
      * the behavior's own input, which is the reading this is being composed beside. Started afresh,
      * every declaration the answer's type reaches would be read again once per rule of the body.
      *
-     * <p>Null where the module did not build far enough to say how a declaration is read, and null
-     * where what the dependency answers is a shape no position stands at. A behavior may answer
-     * with an anonymous union of cases and no parameter names one, so there is no position for such
-     * an answer and nothing here composes a value for it — which leaves the rule where it was,
-     * rather than a value composed out of less.
+     * <p>Null where the module did not build far enough to say how a declaration is read, which is
+     * a value nothing composes rather than a value composed out of less.
      */
     private static souther.compiler.partition.MeasuredInput standingFor(
             Db db, String module, souther.compiler.partition.MeasuredInput beside,
-            RequiredDependencies.Required required) {
+            souther.compiler.types.Type answers) {
         RuleReadingSource reading = Shapes.ruleReading(db, module).value();
         souther.compiler.check.ReadingPolicy policy = db.ask(new Front.Reading()).value();
-        if (reading == null || policy == null
-                || required.signature().out() instanceof BoundaryOutput.Cases) {
+        if (reading == null || policy == null) {
             return null;
         }
         souther.compiler.inputs.InputReading read = souther.compiler.inputs.InputDomain.of(
-                List.of(new souther.compiler.inputs.InputDomain.Parameter(
-                        ANSWER, null, required.signature().out().type())),
+                List.of(new souther.compiler.inputs.InputDomain.Parameter(ANSWER, null, answers)),
                 reading, policy, beside.machines()).reading(reading);
         return souther.compiler.partition.MeasuredInput.of(ANSWER, read,
                 souther.compiler.partition.Partitions.of(ANSWER, read, policy));
@@ -2256,16 +2256,41 @@ public final class Adequacy {
      * <p>Without an entry for a dependency whose answer no position stands at, which is what a
      * composer reads as a value it cannot make.
      */
-    private static Map<ValueName.Behavior, souther.compiler.partition.MeasuredInput>
-            standingForEach(Db db, String module, souther.compiler.partition.MeasuredInput beside,
-                            RequiredDependencies requires) {
-        Map<ValueName.Behavior, souther.compiler.partition.MeasuredInput> out =
-                new LinkedHashMap<>();
+    private static Map<ValueName.Behavior, AnswerSubjects> standingForEach(
+            Db db, String module, souther.compiler.partition.MeasuredInput beside,
+            RequiredDependencies requires) {
+        Map<ValueName.Behavior, AnswerSubjects> out = new LinkedHashMap<>();
         for (RequiredDependencies.Required each : requires.inOrder()) {
+            // A union of cases is no position's shape, so what a value of it is, is a value of one
+            // of its cases — and each of those is a type a position stands at. Read as one subject
+            // apiece rather than refused, since a row standing nothing in for such a dependency is
+            // a row nothing applies.
+            if (each.signature().out() instanceof BoundaryOutput.Cases cases) {
+                Map<souther.compiler.types.TypeSymbol,
+                        souther.compiler.partition.MeasuredInput> byCase = new LinkedHashMap<>();
+                List<souther.compiler.types.TypeSymbol> ordered =
+                        cases.members().stream().sorted().toList();
+                // In the order the cases themselves come in, which is the one a case carries and
+                // not the one a set happened to hold them in. A way that says nothing about which
+                // case an answer is takes the first, so where that order is a set's, one run
+                // composes one case and the next composes another — and a block that offers
+                // different rows for one model twice is one nobody can read against the last.
+                for (souther.compiler.types.TypeSymbol member : ordered) {
+                    souther.compiler.partition.MeasuredInput standing = standingFor(db, module,
+                            beside, new souther.compiler.types.Type.Ref(member));
+                    if (standing != null) {
+                        byCase.put(member, standing);
+                    }
+                }
+                if (!byCase.isEmpty()) {
+                    out.put(each.dependency(), new AnswerSubjects(null, ordered, byCase));
+                }
+                continue;
+            }
             souther.compiler.partition.MeasuredInput standing =
-                    standingFor(db, module, beside, each);
+                    standingFor(db, module, beside, each.signature().out().type());
             if (standing != null) {
-                out.put(each.dependency(), standing);
+                out.put(each.dependency(), new AnswerSubjects(standing, List.of(), Map.of()));
             }
         }
         return java.util.Collections.unmodifiableMap(out);
@@ -3486,18 +3511,22 @@ public final class Adequacy {
      *                 was composed for asks nothing of them. A row for a class or an arm is composed
      *                 out of what the positions divide into and says nothing about what a dependency
      *                 answers — and a row of a behavior that requires one is still a row nothing can
-     *                 run, so one is supplied. Empty for a behavior that requires nothing, and empty
-     *                 where nothing could be composed for what it requires
+     *                 run, so one is supplied. An answer and never a list: a behavior that requires
+     *                 nothing is stood in by nothing, and a behavior whose stand-in nothing composed
+     *                 has rows that cannot go out, and the two read alike as an empty list
      */
     public record Filling(souther.compiler.partition.FillResult composed,
                           Generator.GenerationResult boundaries,
                           Generated.RowsForRules rules,
-                          List<souther.compiler.partition.StoodInAnswer> supplies,
+                          AnswersStoodIn supplies,
                           List<GenerationDisposition> generation) {
 
         public Filling {
             generation = List.copyOf(generation);
-            supplies = List.copyOf(supplies);
+            if (supplies == null) {
+                throw new IllegalArgumentException(
+                        "a filling says what its rows stand the dependencies in with");
+            }
         }
 
     }
@@ -3786,21 +3815,22 @@ public final class Adequacy {
          * differs between rows, and these are the answers of a way that asks nothing — so a value
          * per row would be the same value composed as many times as the block is long.
          *
-         * <p>Empty where nothing could be composed, which leaves the rows where they were: a row
-         * offered without a stand-in it needs is a row a person completes and cannot run, and one
-         * offered with a value nothing composed would be a row this made up.
+         * <p>What could not be composed comes back as that and not as nothing to compose. A row
+         * offered without a stand-in it needs is a row a person completes and cannot run, so the
+         * rows of such a behavior are held back where they are read — which takes telling the two
+         * apart, and an empty list tells nobody anything.
          */
-        private static List<souther.compiler.partition.StoodInAnswer> supplying(
+        private static AnswersStoodIn supplying(
                 Db db, String module, String behavior,
                 souther.compiler.partition.MeasuredInput subject) {
             RequiredDependencies requires = RequiredDependencies.of(db, module, behavior);
-            if (requires == null || requires.none()) {
-                return List.of();
+            if (requires == null) {
+                return new AnswersStoodIn.NothingComposed(Generator
+                        .UnresolvedCombination.Reason.NOTHING_STANDS_IN_FOR_A_DEPENDENCY);
             }
             return new AnswersForARule(requires,
-                    standingForEach(db, module, subject, requires))
-                    .of(souther.compiler.partition.AnswersDemanded.NOTHING)
-                    instanceof AnswersForARule.Outcome.Stood(var answers) ? answers : List.of();
+                    standingForEach(db, module, subject, requires), subject.parameters())
+                    .of(souther.compiler.partition.AnswersDemanded.NOTHING, List.of());
         }
 
         /**

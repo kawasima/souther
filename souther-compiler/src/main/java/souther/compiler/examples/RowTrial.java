@@ -16,6 +16,7 @@ import souther.compiler.generated.ProbeImage;
 import souther.compiler.jvm.ClassFileImage;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -156,20 +157,41 @@ public final class RowTrial {
      * text and a tree, and what an implementation is constructed with is of the loader it came
      * from.
      *
-     * <p>One answer for every call, which is what a row's {@code with} states and what a candidate
-     * carries. A candidate is being run to find out where it goes, so a call this reading did not
-     * foresee is answered rather than refused — a run that stopped at one would say nothing about
-     * where the row went.
+     * <p>Which entry answers a call is the rule a written table dispatches by
+     * ({@link ExampleStatements.Standins#answering}), asked of what this built rather than decided
+     * again here. The entry naming no arguments is the fallback, so a call none of the others state
+     * is answered rather than refused.
      */
     private static List<DependencyStandin> standingIn(FixtureReader fixtures,
                                                       List<RowTrials.AnsweredWith> answers) {
         List<DependencyStandin> out = new ArrayList<>(answers.size());
         for (RowTrials.AnsweredWith each : answers) {
-            Object value = fixtures.buildFixture(each.answers(), each.signature().out()).value();
-            out.add(StandingIn.by(each.dependency(), each.signature().ins().size(), _ -> value));
+            List<BoundaryInput> takes = each.signature().ins();
+            List<Entry> stated = new ArrayList<>();
+            Entry otherwise = null;
+            for (RowTrials.AnsweredWith.Answer answer : each.answers()) {
+                Object value = fixtures.buildFixture(answer.answers(), each.signature().out())
+                        .value();
+                if (answer.forEveryCall()) {
+                    otherwise = new Entry(null, value);
+                    continue;
+                }
+                Object[] key = new Object[takes.size()];
+                for (int i = 0; i < key.length; i++) {
+                    key[i] = fixtures.built(answer.whenAppliedTo().get(i), takes.get(i));
+                }
+                stated.add(new Entry(key, value));
+            }
+            Entry fallback = otherwise;
+            out.add(StandingIn.by(each.dependency(), takes.size(), applied ->
+                    ExampleStatements.Standins.answering(stated, fallback, Entry::arguments,
+                            Arrays.copyOf(applied, takes.size())).value()));
         }
         return List.copyOf(out);
     }
+
+    /** One entry of what a candidate stands a dependency in with, built. */
+    private record Entry(Object[] arguments, Object value) {}
 
     /**
      * Applies the behavior, and says whether it was applied at all.

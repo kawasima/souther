@@ -3,6 +3,7 @@ package souther.compiler.query;
 import souther.compiler.check.BehaviorRequirement;
 import souther.compiler.check.Sig;
 import souther.compiler.execute.RowTrials;
+import souther.compiler.partition.FixtureTemplate;
 import souther.compiler.partition.StoodInAnswer;
 import souther.compiler.types.ValueName;
 
@@ -84,24 +85,45 @@ public record RequiredDependencies(List<Required> inOrder) {
      * is a row nothing was seen doing — which reads as a row that went nowhere unless the shortfall
      * is said here instead.
      *
-     * <p>One value per dependency, which is what a row's {@code with} states. A row holding two
-     * answers for one dependency is a row nothing composed, said where a row is composed rather
-     * than read back out of a list here.
+     * <p>The entries in the order they were composed, which is the order a table dispatches by.
+     * What each of them answers for was settled where the row was composed, so nothing here
+     * decides it again.
      */
     public List<RowTrials.AnsweredWith> standingIn(List<StoodInAnswer> answers) {
-        Map<ValueName.Behavior, StoodInAnswer> byDependency = new LinkedHashMap<>();
+        Map<ValueName.Behavior, List<StoodInAnswer>> byDependency = new LinkedHashMap<>();
         for (StoodInAnswer each : answers) {
-            byDependency.put(each.dependency(), each);
+            byDependency.computeIfAbsent(each.dependency(), _ -> new ArrayList<>()).add(each);
         }
         List<RowTrials.AnsweredWith> out = new ArrayList<>(inOrder.size());
         for (Required each : inOrder) {
-            StoodInAnswer stood = byDependency.get(each.dependency());
-            if (stood == null) {
+            List<StoodInAnswer> stood = byDependency.get(each.dependency());
+            if (stood == null || stood.isEmpty()) {
                 return null;
             }
             out.add(new RowTrials.AnsweredWith(each.dependency(), each.signature(),
-                    stood.value().value()));
+                    entries(stood)));
         }
+        return List.copyOf(out);
+    }
+
+    /**
+     * The entries one dependency is stood in by, in the order they are to be tried.
+     *
+     * <p>With one more at the end that answers every call, taken from the first. A candidate is
+     * being run to find out where it goes, and a call this reading did not foresee is answered
+     * rather than refused — a run that stopped at one would say nothing about where the row went,
+     * which is the whole of what running it is for.
+     */
+    private static List<RowTrials.AnsweredWith.Answer> entries(List<StoodInAnswer> stood) {
+        List<RowTrials.AnsweredWith.Answer> out = new ArrayList<>(stood.size() + 1);
+        for (StoodInAnswer each : stood) {
+            if (each.asking() instanceof StoodInAnswer.Asking.OfOne(var _, var appliedTo)) {
+                out.add(new RowTrials.AnsweredWith.Answer(
+                        appliedTo.stream().map(FixtureTemplate::value).toList(),
+                        each.value().value()));
+            }
+        }
+        out.add(new RowTrials.AnsweredWith.Answer(null, stood.getFirst().value().value()));
         return List.copyOf(out);
     }
 }

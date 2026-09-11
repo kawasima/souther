@@ -141,6 +141,49 @@ class ARowForARuleStandsInEveryDependencyItsTargetRequiresTest {
                 () -> "and the dependency the decision reads nothing of is answered too: " + block);
     }
 
+    /** A body asking one dependency about two calls it can tell apart. */
+    private static final String TWO_CALLS = TYPES + """
+
+            behavior lookup : (id: Int) -> Sighting
+
+            behavior decides : (id: Int) -> Answer
+                depends on lookup
+            let decides (id, lookup) =
+                if id > 5 then
+                    match lookup(id) with
+                        | Found -> match lookup(0) with
+                            | Found -> Yes
+                            | Missing -> No
+                        | Missing -> No
+                else No
+            """;
+
+    /**
+     * A row that needs one dependency to answer two calls differently is written with a table, and
+     * the table is keyed on what the row applied it to.
+     *
+     * <p>Which is what the asking's own identity is for. Folded to one answer per dependency, the
+     * row would have nothing left to key a table on by the time anything wrote one — and the block
+     * would have to choose between a row that answers the wrong call and saying the way cannot be
+     * composed for, neither of which is so.
+     */
+    @Test
+    void aRowNeedingTwoAnswersAtTwoCallsIsWrittenWithATableKeyedOnThem() {
+        String block = generated(TWO_CALLS);
+
+        assertTrue(block.contains("fake lookup"),
+                () -> "the block writes a table for the dependency: " + block);
+        assertTrue(block.contains("| (6) -> Found"),
+                () -> "keyed on the call the row writes at the position: " + block);
+        assertTrue(block.contains("| (0) -> Missing"),
+                () -> "and on the call the body writes the number at: " + block);
+        // The row that reads the table carries no clause of its own: a `with` answers every call
+        // the row makes, which is the one thing this row must not do.
+        assertTrue(block.contains("| (6)                                   -> <?>")
+                        || block.lines().anyMatch(each -> each.trim().equals("| (6) -> <?>")),
+                () -> "and the row that needs it writes no `with` of its own: " + block);
+    }
+
     private static String generated(String model) {
         Compilation compilation = Compilation.ofSource(model, "Main");
         compilation.measure(Adequacy.Asked.fullReport());

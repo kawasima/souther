@@ -26,6 +26,8 @@ import souther.compiler.partition.ObligationIdentity;
 import souther.compiler.query.OfferedRow;
 import souther.compiler.query.Offering;
 import souther.compiler.query.OfferingRequest;
+import souther.compiler.query.StandInTable;
+import souther.compiler.types.ValueName;
 import souther.compiler.source.SourceId;
 
 import java.util.ArrayList;
@@ -217,7 +219,14 @@ public final class GeneratedRows {
                     rows, rows == 1 ? "row" : "rows"));
             out.append(String.format(
                     "// Replace each `%s` with what the system actually answers.%n", UNANSWERED));
-            out.append(stated(blocks(module, offered), ensures));
+            out.append(stated(blocks(module, offered, offering.tables()), ensures));
+        }
+        // What the block could not hold, said rather than left out. A row composed and then not
+        // offered is work this run did, and a block that printed neither the row nor the reason
+        // reads as a run that never looked.
+        for (Generator.UnresolvedCombination each : offering.withheld()) {
+            out.append(String.format("// no row for (%s) in this block: %s%n",
+                    String.join(", ", each.classes()), saidOf(each)));
         }
         for (Map.Entry<String, Adequacy.Filling> behavior : offering.searched().entrySet()) {
             notes(out, behavior.getKey(), behavior.getValue(), boundaries, names, offering,
@@ -435,9 +444,11 @@ public final class GeneratedRows {
     /**
      * The {@code with} clause a row carries, or nothing where it stands nothing in.
      *
-     * <p>A projection and not a decision. What a row stands a dependency in with was settled where
-     * the row was composed, and what a row states of one is a {@code with} — so there is nothing
-     * here to decide about which form a row needed.
+     * <p>A projection and not a decision. What each answer is for was settled where the row was
+     * composed: one answering every call is what a row writes as a {@code with}, and one answering
+     * a single call is a row of the table beside the block ({@link #blocks}). So this writes the
+     * first and never the second, and a row that answers by what it was applied to carries no
+     * clause at all — the table it reads is the one written above it.
      *
      * <p>The dependency by its own name, which is how a row names one. A dependency this module
      * reaches under another spelling is written the way every other value this composes is written
@@ -447,7 +458,9 @@ public final class GeneratedRows {
     private static String standingIn(OfferedRow row) {
         List<String> written = new ArrayList<>();
         for (StoodInAnswer each : row.answers()) {
-            written.add(each.dependency().name() + " = " + each.value().text());
+            if (each.asking() instanceof StoodInAnswer.Asking.ForEveryCall) {
+                written.add(each.dependency().name() + " = " + each.value().text());
+            }
         }
         return written.isEmpty() ? "" : " with " + String.join(", ", written);
     }
@@ -459,9 +472,25 @@ public final class GeneratedRows {
      * file that {@code souther fmt} then runs over. A block that came out in a shape the formatter
      * would change turns a paste into a diff on the next commit.
      */
-    private static String blocks(String module, Map<String, List<Offered>> offered) {
+    private static String blocks(String module, Map<String, List<Offered>> offered,
+                                 Map<ValueName.Behavior, StandInTable> tables) {
         StringBuilder source = new StringBuilder();
         source.append("examples for ").append(module).append("\n");
+        // Before the rows, because a table is written for the module and the rows read it. Which
+        // rows a table holds was settled where the rows were ({@link Offering}), so there is
+        // nothing here but the writing.
+        for (StandInTable table : tables.values()) {
+            source.append("\n").append("fake ").append(table.dependency().name()).append("\n");
+            for (StandInTable.Entry entry : table.entries()) {
+                source.append("    | (").append(String.join(", ", entry.writtenAs()))
+                        .append(") -> ").append(entry.answers().text()).append("\n");
+            }
+            // The row a call none of the others state is answered by, which is what the table's own
+            // dispatch falls back to. Written from the first, because a table without one refuses a
+            // call it was not written for and a row that hits one stops with nothing to say.
+            source.append("    | _ -> ").append(table.entries().getFirst().answers().text())
+                    .append("\n");
+        }
         for (Map.Entry<String, List<Offered>> behavior : offered.entrySet()) {
             if (behavior.getValue().isEmpty()) {
                 continue;
@@ -774,6 +803,17 @@ public final class GeneratedRows {
             case ALL_CANDIDATES_REJECTED ->
                     "every value tried was refused at construction, which does not make the"
                             + " combination impossible";
+            // What is missing is the stand-in and not the row's values, so an author reading this
+            // is being told what to write beside the row rather than that no row exists.
+            case NOTHING_STANDS_IN_FOR_A_DEPENDENCY ->
+                    "nothing here could answer for a behavior the target depends on, and a row"
+                            + " that stands none in is a row nothing applies";
+            case A_TABLE_IS_WRITTEN_ONCE_FOR_A_MODULE ->
+                    "a row already in this block needs a different table for a behavior the target"
+                            + " depends on, and a table is written once for a module";
+            case TWO_ANSWERS_AT_ONE_CALL ->
+                    "it asks one behavior the target depends on for two answers at one call the"
+                            + " row makes, and a table answers by what it was applied to";
             // As above: one of the two ways a search leaves something untried has a number in it
             // and the other has none, so neither is said as a halt here.
             case THE_SEARCH_LEFT_SOMETHING_UNTRIED -> "the search left something untried";

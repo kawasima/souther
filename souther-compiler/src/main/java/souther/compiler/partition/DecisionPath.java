@@ -144,8 +144,13 @@ final class DecisionPath {
             case DecidedCondition.Narrowed(var condition, var to) ->
                     condition.of() instanceof DecisionSubject.AnAnswer at
                             ? new AnswerDemand.ACase(at.answered(), anchor, at.steps(), to) : null;
+            // A truth of the answer itself and not of a place inside one. A `Bool` divides a
+            // position into two values and puts nothing under it, so what a demand about a field
+            // of an answer would ask is something nothing here composes against — stated all the
+            // same, it would sit among the demands a value is built to meet while nothing built
+            // one to meet it, and the way would read as one whose demands were all stated.
             case DecidedCondition.Stood(var condition, var held) ->
-                    condition.of() instanceof DecisionSubject.AnAnswer at
+                    condition.of() instanceof DecisionSubject.AnAnswer at && at.steps().isEmpty()
                             ? new AnswerDemand.ATruth(at.answered(), anchor, at.steps(), held)
                             : null;
             case DecidedCondition.Compared(var condition, var held) -> compared(condition, held,

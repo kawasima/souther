@@ -323,6 +323,42 @@ public final class Generator {
             /** Every value tried was refused at construction. */
             ALL_CANDIDATES_REJECTED,
             /**
+             * Nothing was composed for what a dependency the target requires answers.
+             *
+             * <p>A row of a behavior that requires one cannot be run until something answers for
+             * it, whether or not the body decides on what it says. So this stops a row going out
+             * rather than leaving one that reports a stand-in missing the moment it is pasted.
+             *
+             * <p>A fact about this compiler and not about the model: what a dependency answers may
+             * be a shape nothing here writes a value of, and an author writes one by hand.
+             */
+            NOTHING_STANDS_IN_FOR_A_DEPENDENCY,
+            /**
+             * The row asks one dependency for two answers at one call it makes.
+             *
+             * <p>A body asking a dependency two things draws two distinctions, and a row that
+             * writes the same arguments at both is a row where the two are one call — which one
+             * answer has to serve, and the way needs two. No table tells them apart, since a table
+             * answers by what it was applied to.
+             *
+             * <p>About the row and not about the model. A row writing different arguments at the
+             * two asks two calls, and the way may well be reachable by one.
+             */
+            TWO_ANSWERS_AT_ONE_CALL,
+            /**
+             * Another row already needs the table this one would need.
+             *
+             * <p>A row answers a dependency for itself with a {@code with}, and one that needs the
+             * dependency to vary by what it was applied to needs a table — which is written once
+             * for a module. Two rows wanting two tables for one dependency are two blocks, and two
+             * blocks are not rows of one table, so writing the second recovers nothing.
+             *
+             * <p>About what a block can hold and not about the model or about either row. Each of
+             * them is a row somebody can write; what cannot be written is both at once, and which
+             * one goes out is settled by what was composed first.
+             */
+            A_TABLE_IS_WRITTEN_ONCE_FOR_A_MODULE,
+            /**
              * The search left something untried.
              *
              * <p>Not that it stopped. A figure with no room for the candidate in front of it leaves
@@ -491,6 +527,8 @@ public final class Generator {
                     // Every one of these is this compiler falling short, and none of them is the
                     // model saying anything: another value of the same classes may well build.
                     case NOTHING_COMPOSES_ONE, ALL_CANDIDATES_REJECTED, THE_SEARCH_LEFT_SOMETHING_UNTRIED,
+                         NOTHING_STANDS_IN_FOR_A_DEPENDENCY, TWO_ANSWERS_AT_ONE_CALL,
+                         A_TABLE_IS_WRITTEN_ONCE_FOR_A_MODULE,
                          NOTHING_TO_BUILD_AGAINST, NO_VALUES_WERE_ASKED_FOR, LINKAGE_FAILED,
                          NO_CERTIFIED_WITNESS, THE_GROUP_WAS_NOT_OFFERED,
                          THE_POSITION_WAS_WITHHELD, THE_ROWS_WERE_NOT_READ,
@@ -574,6 +612,8 @@ public final class Generator {
                     // what somebody else did: the model settling the point, a candidate refused, a
                     // module with no classes, a position held back, a group never offered.
                     case ALL_CANDIDATES_REJECTED, THE_RULES_LEAVE_NOTHING_THERE,
+                         NOTHING_STANDS_IN_FOR_A_DEPENDENCY, TWO_ANSWERS_AT_ONE_CALL,
+                         A_TABLE_IS_WRITTEN_ONCE_FOR_A_MODULE,
                          ONE_POSITION_CANNOT_BE_BOTH, NOTHING_TO_BUILD_AGAINST,
                          NO_VALUES_WERE_ASKED_FOR, LINKAGE_FAILED, NO_CERTIFIED_WITNESS,
                          THE_GROUP_WAS_NOT_OFFERED, THE_POSITION_WAS_WITHHELD,
