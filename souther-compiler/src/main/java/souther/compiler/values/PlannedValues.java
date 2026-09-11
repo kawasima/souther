@@ -349,7 +349,7 @@ public sealed interface PlannedValues<A> {
         // The block and not its positions — see {@link AdmissibleValues}.
         return Refusal.ofAnAlternative(at,
                 (block, plan) -> askedOf(block, plan, asked).isEmpty(),
-                WhatARelationShows.statedApart(box.apart()));
+                WhatARelationShows.statedApart(box));
     }
 
     /** What one block's description comes to under the question, waiting where a machine would
@@ -450,7 +450,7 @@ public sealed interface PlannedValues<A> {
             Map<Sameness.Block<A>, AdmittedPlan> at = box.at();
             Refusal<A> said = Refusal.ofAnAlternative(at,
                     (_, plan) -> plan instanceof AdmittedPlan.Nothing,
-                    WhatARelationShows.statedApart(box.apart()));
+                    WhatARelationShows.statedApart(box));
             everywhere = everywhere == null ? said : Refusal.shownByBoth(everywhere, said);
             if (everywhere.isNowhere()) {
                 return Refusal.nowhere();

@@ -136,6 +136,19 @@ sealed interface PlannedHeld<A> {
             return stated.quotientBy(sameness());
         }
 
+        /**
+         * Where this alternative states a block to differ from itself, which is the whole of what
+         * its denials show before anything has worked out what its positions admit.
+         *
+         * <p>Answered here because the answer to whether there is one is here: it was worked out
+         * where this was made, and what it would cost to find out again is a walk of every denial
+         * the alternative holds. {@link Apartness#apartFromThemselves} decides the same way from
+         * what it was told when it was built.
+         */
+        Lacks<A> denialsApartFromThemselves() {
+            return contradicts ? stated.apartFromThemselves(sameness()) : Lacks.none();
+        }
+
         /** One alternative over positions that are each their own block, stating no denial. */
         static <A> Alternative<A> at(Map<A, AdmittedPlan> said) {
             return of(Box.at(said));

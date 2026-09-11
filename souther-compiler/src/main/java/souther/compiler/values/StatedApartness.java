@@ -3,10 +3,12 @@ package souther.compiler.values;
 import souther.compiler.hash.ValueHash;
 
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -35,7 +37,7 @@ import java.util.Set;
 final class StatedApartness<A> {
 
     private static final StatedApartness<?> NOTHING =
-            new StatedApartness<>(null, null, null, null, 0, 0);
+            new StatedApartness<Void>(null, null, null, null, 0L);
 
     /** The denial this is, where it is one, and null where it is none of them or both of two. */
     private final A one;
@@ -45,32 +47,40 @@ final class StatedApartness<A> {
     private final StatedApartness<A> left;
     private final StatedApartness<A> right;
 
-    /** How many were said, counting a denial said twice twice — what is held is what was said. */
-    private final int stated;
-
     /**
-     * The denials this holds, added up.
+     * A bit for each denial this holds, and the same bits for the same denials.
      *
-     * <p>Added rather than taken in order, because what this holds is a set and two callers reaching
-     * the same denials by different compositions hold the same thing. Carried across a composition
-     * instead of walked for, so that hashing one is what it costs to say one.
+     * <p>What this holds is a set, so what stands for it has to be what a set is: putting two
+     * together is a union, saying one of them again changes nothing, and which order they were said
+     * in is not part of it. Bits taken together are all three — added up or counted, what would be
+     * carried is how many times a composition reaches a denial, which is a fact about how it was
+     * arrived at and is exactly what this type exists to stop anybody paying for.
+     *
+     * <p>Carried across a composition rather than walked for, so that hashing a reading is what it
+     * costs to say a denial. Two different sets may leave the same bits, which is what a hash is
+     * allowed to do; the same set never leaves different ones, which is what it is not.
      */
-    private final int mixed;
+    private final long mixed;
 
     /** The denials said, each once, worked out on the first question that needs them and kept. */
     private Set<Denial<A>> settled;
 
     private StatedApartness(A one, A other, StatedApartness<A> left, StatedApartness<A> right,
-                            int stated, int mixed) {
+                            long mixed) {
         this.one = one;
         this.other = other;
         this.left = left;
         this.right = right;
-        this.stated = stated;
         this.mixed = mixed;
     }
 
-    /** Nothing stated to differ, which is what a reading that read no denial holds. */
+    /**
+     * Nothing stated to differ, which is what a reading that read no denial holds.
+     *
+     * <p>The one of these there is, and what makes {@link #isEmpty} the question it is: saying
+     * nothing beside something leaves the something, so nothing is ever inside a composition and
+     * holding no denial is being this.
+     */
     @SuppressWarnings("unchecked")
     static <A> StatedApartness<A> none() {
         return (StatedApartness<A>) NOTHING;
@@ -78,8 +88,13 @@ final class StatedApartness<A> {
 
     /** The two positions stated to hold different values. */
     static <A> StatedApartness<A> of(A one, A other) {
-        return new StatedApartness<>(one, other, null, null, 1,
-                new Denial<>(one, other).hashCode());
+        return new StatedApartness<>(one, other, null, null,
+                bitFor(new Denial<>(one, other).hashCode()));
+    }
+
+    /** The bits one denial leaves, which are the same bits every time it is said. */
+    private static long bitFor(int denial) {
+        return (1L << (denial & 63)) | (1L << ((denial >>> 6) & 63));
     }
 
     /**
@@ -108,19 +123,19 @@ final class StatedApartness<A> {
 
     /** Both of them said, which is what a conjunction of two readings was told. */
     StatedApartness<A> and(StatedApartness<A> more) {
-        if (stated == 0) {
+        if (isEmpty()) {
             return more;
         }
-        if (more.stated == 0) {
+        if (more.isEmpty()) {
             return this;
         }
-        return new StatedApartness<>(null, null, this, more,
-                stated + more.stated, mixed + more.mixed);
+        return new StatedApartness<>(null, null, this, more, mixed | more.mixed);
     }
 
-    /** Whether nothing is stated to differ. */
+    /** Whether nothing is stated to differ, which is holding the one of these that holds
+     *  nothing. */
     boolean isEmpty() {
-        return stated == 0;
+        return this == NOTHING;
     }
 
     /**
@@ -145,7 +160,7 @@ final class StatedApartness<A> {
                 if (next.left != null) {
                     toRead.push(next.right);
                     toRead.push(next.left);
-                } else if (next.stated != 0) {
+                } else if (!next.isEmpty()) {
                     out.add(new Denial<>(next.one, next.other));
                 }
             }
@@ -177,7 +192,7 @@ final class StatedApartness<A> {
      * whether there is one, so the walk stops at the first.
      */
     boolean contradicts(Sameness<A> heldAsOne) {
-        if (stated == 0) {
+        if (isEmpty()) {
             return false;
         }
         Set<StatedApartness<A>> read = Collections.newSetFromMap(new IdentityHashMap<>());
@@ -199,6 +214,30 @@ final class StatedApartness<A> {
     }
 
     /**
+     * Each block {@code heldAsOne} holds both ends of some denial on, which is a value stated to
+     * differ from itself.
+     *
+     * <p>{@link Apartness#apartFromThemselves} without the relation. What a reading is refused by
+     * before anything has worked out what its positions admit is only ever this, and it is asked
+     * that as each rule arrives — built as a relation to answer it, a reading would build every
+     * pair it holds for every rule it reads and read one answer out of it.
+     *
+     * <p>Asked only where there is one to find, which {@link #contradicts} answered when the
+     * alternative was made. Nothing is decided at a call site by that: a reading holding no such
+     * denial shows nothing here either, so what is skipped is the walking and not a question.
+     */
+    Lacks<A> apartFromThemselves(Sameness<A> heldAsOne) {
+        List<Shown<A>> out = new ArrayList<>();
+        for (Denial<A> denial : denials()) {
+            Sameness.Block<A> block = heldAsOne.blockOf(denial.one());
+            if (block.equals(heldAsOne.blockOf(denial.other()))) {
+                out.add(Shown.of(new RelationalLack.ABlockApartFromItself<>(block)));
+            }
+        }
+        return Lacks.of(out);
+    }
+
+    /**
      * The relation these denials come to, between the blocks {@code heldAsOne} holds their ends on.
      *
      * <p>Where this stops and {@link Apartness} begins. A denial names two positions and what it
@@ -207,7 +246,7 @@ final class StatedApartness<A> {
      * there is that a value differs from itself.
      */
     Apartness<A> quotientBy(Sameness<A> heldAsOne) {
-        if (stated == 0) {
+        if (isEmpty()) {
             return Apartness.nothing();
         }
         Set<Apartness.Edge<A>> edges = new LinkedHashSet<>();
@@ -223,14 +262,17 @@ final class StatedApartness<A> {
         if (this == said) {
             return true;
         }
+        // The bits first because they are in hand, and they only rule out: the same denials leave
+        // the same bits, so different bits are different denials and the same bits decide nothing.
         return said instanceof StatedApartness<?> it && mixed == it.mixed
                 && denials().equals(it.denials());
     }
 
-    /** The denials it holds — see {@link ValueHash}. */
+    /** The bits its denials leave, which is one thing and is what it is equal by — see
+     *  {@link ValueHash}. */
     @Override
     public int hashCode() {
-        return ValueHash.ofWhatItHolds(StatedApartness.class, mixed, stated);
+        return ValueHash.ofOnePart(StatedApartness.class, Long.hashCode(mixed));
     }
 
     @Override

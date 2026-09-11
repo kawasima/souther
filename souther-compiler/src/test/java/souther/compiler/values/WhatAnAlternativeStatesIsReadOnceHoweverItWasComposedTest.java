@@ -3,6 +3,7 @@ package souther.compiler.values;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -39,6 +40,9 @@ class WhatAnAlternativeStatesIsReadOnceHoweverItWasComposedTest {
     /** Doublings enough that a reader paying per reach rather than per part takes far longer than
      *  this test is given, and few enough that it still stops and says so. */
     private static final int MORE_REACHES_THAN_THERE_ARE_PARTS = 27;
+
+    /** Doublings enough that how many reaches there are is past what a count of them holds. */
+    private static final int PAST_WHAT_A_COUNT_HOLDS = 64;
 
     private static StatedApartness<String> said(List<String> pairs) {
         StatedApartness<String> out = StatedApartness.none();
@@ -107,6 +111,44 @@ class WhatAnAlternativeStatesIsReadOnceHoweverItWasComposedTest {
             shared = shared.and(shared);
         }
         assertEquals(List.of(denial("p", "q")), List.copyOf(shared.denials()));
+    }
+
+    /**
+     * A denial stated twice is the denial, and a reading is what it states.
+     *
+     * <p>Which is what every reader of these is told they hold, and is not a property of how one was
+     * arrived at. Two readings holding one denial are one alternative, so a conjunction of a reading
+     * with itself leaves the alternatives it had rather than as many again.
+     */
+    @Test
+    void aReadingStatingOneDenialTwiceIsTheReadingStatingIt() {
+        StatedApartness<String> once = StatedApartness.of("p", "q");
+        StatedApartness<String> twice = once.and(once);
+
+        assertEquals(once, twice);
+        assertEquals(once.hashCode(), twice.hashCode());
+        assertEquals(1, new LinkedHashSet<>(List.of(once, twice)).size(),
+                "so a set of alternatives holds one of them and not two");
+    }
+
+    /**
+     * And a reading that reaches its denials however many times still holds them.
+     *
+     * <p>Nothing is copied when two of these are said together, so what a caller says twice it
+     * reaches twice — carried as how many reaches there are, what a reading holds would come to
+     * nothing the moment there were as many of them as a number can count.
+     */
+    @Test
+    void aReadingReachingOneDenialPastCountingStillStatesIt() {
+        StatedApartness<String> shared = StatedApartness.of("p", "q");
+        for (int doubled = 0; doubled < PAST_WHAT_A_COUNT_HOLDS; doubled++) {
+            shared = shared.and(shared);
+        }
+
+        assertFalse(shared.isEmpty(), "a reading that states a denial states it");
+        assertEquals(List.of(denial("p", "q")), List.copyOf(shared.denials()));
+        assertTrue(shared.contradicts(Sameness.of("p", "q")),
+                "and holding its ends as one value empties the reading");
     }
 
     /**

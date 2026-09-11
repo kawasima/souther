@@ -107,6 +107,11 @@ class WhoMayBuildARefusalFromOneOfItsHalvesTest {
      * predicate, a relation and a second chance to answer — hands the same power over without
      * naming a block anywhere. So what is pinned is the way in, and a new one is a finding whatever
      * it takes.
+     *
+     * <p>Two of them take the denials as a relation and one takes the alternative whose denials
+     * they are, which is a reading whose values are still descriptions and whose denials are still
+     * what it was told. That one is a subject and not a question: what it shows is its own to say,
+     * the way a relation's is, and a caller holding one has handed over nothing it may write.
      */
     @Test
     void andWhatMayBeAskedOfARelationIsTheseTwoQuestions() {
@@ -124,12 +129,15 @@ class WhoMayBuildARefusalFromOneOfItsHalvesTest {
         }
 
         assertEquals(List.of(
-                        "<init>(L" + WHERE + "Apartness;L" + WHERE + "AskedOfARelation;L"
+                        "<init>(L" + WHERE + "Apartness;L" + WHERE + "PlannedHeld$Alternative;L"
+                                + WHERE + "AskedOfARelation;L"
                                 + WHERE + "AdmissibleValues$Box;)V private",
                         "askedOf(L" + WHERE + "AskedOfARelation;L" + WHERE + "Apartness;L"
                                 + WHERE + "AdmissibleValues$Box;)L"
                                 + WHERE + "WhatARelationShows;",
-                        "statedApart(L" + WHERE + "Apartness;)L" + WHERE + "WhatARelationShows;"),
+                        "statedApart(L" + WHERE + "Apartness;)L" + WHERE + "WhatARelationShows;",
+                        "statedApart(L" + WHERE + "PlannedHeld$Alternative;)L"
+                                + WHERE + "WhatARelationShows;"),
                 waysIn.stream().sorted().toList(),
                 "a question about the relation that a caller writes is one they may leave unasked"
                         + " wherever the blocks answered something, so what may be asked is what a"

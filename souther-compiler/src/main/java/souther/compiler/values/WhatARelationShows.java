@@ -25,6 +25,20 @@ public final class WhatARelationShows<A> {
 
     private final Apartness<A> apart;
 
+    /**
+     * The alternative whose denials these are, where they are still what it was told. Nothing where
+     * a relation was handed over instead.
+     *
+     * <p>A reading whose values are still descriptions is asked this as each rule arrives, and what
+     * it can be refused by then is only a block stated to differ from itself. Held as the relation
+     * its denials come to, that is a relation built for every rule read, out of every pair the
+     * reading holds — and read once.
+     *
+     * <p>The alternative and not an answer about it. What it shows is its own to say, the same way
+     * a relation's is, so nothing here promises about what a caller happened to write.
+     */
+    private final PlannedHeld.Alternative<A> alternative;
+
     /** How a reader holding the ranges settles the relation, or nothing where what is asked needs
      *  no values. */
     private final AskedOfARelation<A> relating;
@@ -33,9 +47,10 @@ public final class WhatARelationShows<A> {
      *  relation against. Nothing where there is no such reader. */
     private final AdmissibleValues.Box<A> product;
 
-    private WhatARelationShows(Apartness<A> apart, AskedOfARelation<A> relating,
-                               AdmissibleValues.Box<A> product) {
+    private WhatARelationShows(Apartness<A> apart, PlannedHeld.Alternative<A> alternative,
+                               AskedOfARelation<A> relating, AdmissibleValues.Box<A> product) {
         this.apart = apart;
+        this.alternative = alternative;
         this.relating = relating;
         this.product = product;
     }
@@ -48,7 +63,13 @@ public final class WhatARelationShows<A> {
      * waits for the sets, and is the other question below.
      */
     public static <A> WhatARelationShows<A> statedApart(Apartness<A> apart) {
-        return new WhatARelationShows<>(apart, null, null);
+        return new WhatARelationShows<>(apart, null, null, null);
+    }
+
+    /** The same question of an alternative whose denials are still what it was told — see
+     *  {@link PlannedHeld.Alternative#denialsApartFromThemselves}. */
+    static <A> WhatARelationShows<A> statedApart(PlannedHeld.Alternative<A> alternative) {
+        return new WhatARelationShows<>(null, alternative, null, null);
     }
 
     /**
@@ -62,13 +83,14 @@ public final class WhatARelationShows<A> {
     public static <A> WhatARelationShows<A> askedOf(AskedOfARelation<A> relating,
                                                     Apartness<A> apart,
                                                     AdmissibleValues.Box<A> product) {
-        return new WhatARelationShows<>(apart, relating, product);
+        return new WhatARelationShows<>(apart, null, relating, product);
     }
 
     /** The lacks, which are none where the relation refuses nothing. */
     Lacks<A> shows() {
         if (relating == null) {
-            return apart.apartFromThemselves();
+            return apart != null ? apart.apartFromThemselves()
+                    : alternative.denialsApartFromThemselves();
         }
         return relating.of(apart, product) instanceof Apartness.Reduction.Nothing<A> it
                 ? it.lacks() : Lacks.none();
