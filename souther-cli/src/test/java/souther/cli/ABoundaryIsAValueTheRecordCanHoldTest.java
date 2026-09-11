@@ -104,7 +104,7 @@ class ABoundaryIsAValueTheRecordCanHoldTest {
         assertNotNull(borders, "the model under test compiles");
         souther.compiler.diag.SourceRendering names = new souther.compiler.diag.SourceRendering(
                 souther.compiler.diag.SourceNameResolver.identity(),
-                souther.compiler.diag.SourceLayouts.NONE);
+                compilation.texts());
         // Where each rule a line names is shown, asked of the compile that read it — which is what
         // a sentence about a rule with no name is written from.
         souther.compiler.publish.PublishedRuleHandle.WhereARuleIs places =

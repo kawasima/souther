@@ -227,7 +227,9 @@ class AdequacyNeverAssertsFromPartOfTheRowsTest {
                             + RuleHandleProse.said(
                                     point.said(cited -> souther.compiler.query.Sites.placeOf(
                                             compilation.db(), cited)),
-                                    new souther.compiler.diag.SourceRendering(souther.compiler.source.SourceId::value, souther.compiler.diag.SourceLayouts.NONE), null));
+                                    new souther.compiler.diag.SourceRendering(
+                                            souther.compiler.source.SourceId::value,
+                                            compilation.texts()), null));
                 }
             }
             if (partition.pairs().counted() instanceof Measurement.Complete<?>

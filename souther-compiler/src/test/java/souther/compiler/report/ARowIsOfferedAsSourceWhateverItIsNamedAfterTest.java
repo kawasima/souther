@@ -1,6 +1,5 @@
 package souther.compiler.report;
 
-import souther.compiler.diag.SourceLayouts;
 import souther.compiler.diag.SourceRendering;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.Compilation;
@@ -52,7 +51,7 @@ class ARowIsOfferedAsSourceWhateverItIsNamedAfterTest {
         assertEquals(java.util.List.of(), compilation.errors(),
                 "the model under test compiles");
         return GeneratedRows.of(compilation, null, null, false,
-                new SourceRendering(id -> "esc.sou", SourceLayouts.NONE)).text();
+                new SourceRendering(id -> "esc.sou", compilation.texts())).text();
     }
 
     /** The name is written as a string the language reads back. */
