@@ -116,7 +116,9 @@ class ALabelSaysWhereItIsWithoutBeingToldWhereItIsShownTest {
         String out = rendered(inOneCompile(), IN_ONE_COMPILE);
 
         assertInstanceOf(DiagnosticPlace.InSource.class, label.place());
-        assertEquals(4, WhereItSits.in(out, ((souther.compiler.diag.DiagnosticPlace.InSource) label.place()).region()).start().line());
+        assertEquals(4, WhereItSits.in(IN_ONE_COMPILE,
+                ((souther.compiler.diag.DiagnosticPlace.InSource) label.place()).region())
+                .start().line());
         assertTrue(out.contains("invariant atLeastOne = value >= 1"),
                 () -> "the clause is quoted: " + out);
     }

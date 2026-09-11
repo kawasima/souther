@@ -452,19 +452,21 @@ class ResolvedValueNamesTest {
     void aFieldReadComposedIsTheOneDeclaredDecomposedAndKeepsItsWidth() {
         String decomposed = "\u304b\u3099f";
         String composed = "\u304cf";
-        WrittenName declared = declaredNameOf("""
+        String source = """
                 module m.a exposing ( Amount )
 
                 data Amount = {
                       %s: Int
                 }
                     invariant %s >= 0
-                """.formatted(decomposed, composed), composed);
+                """.formatted(decomposed, composed);
+        WrittenName declared = declaredNameOf(source, composed);
 
         assertEquals(new SourcePos(4, 7, new SourceId("a.sou")), declared.pos(), "the field on line 4");
         assertEquals(decomposed, declared.spelling(), "quoted as the declaration writes it");
         assertEquals(decomposed.length(),
-                WhereItSits.in(composed, declared.region()).end().column() - WhereItSits.in(composed, declared.region()).start().column(),
+                WhereItSits.in(source, declared.region()).end().column()
+                        - WhereItSits.in(source, declared.region()).start().column(),
                 "an underline over the name would stop one character short");
     }
 

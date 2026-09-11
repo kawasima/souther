@@ -418,8 +418,8 @@ class CompileDestructuringTest {
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
 
         String line = src.lines().toList().get(4);
-        assertEquals(5, WhereItSits.in(line, ((Primary.InSource) e.diagnostic().primary()).place().region()).start().line(), e.getMessage());
-        assertEquals(line.indexOf("Line(") + 1, WhereItSits.in(line, ((Primary.InSource) e.diagnostic().primary()).place().region()).start().column(),
+        assertEquals(5, WhereItSits.in(src, ((Primary.InSource) e.diagnostic().primary()).place().region()).start().line(), e.getMessage());
+        assertEquals(line.indexOf("Line(") + 1, WhereItSits.in(src, ((Primary.InSource) e.diagnostic().primary()).place().region()).start().column(),
                 "the caret is on the pattern: " + line);
     }
 

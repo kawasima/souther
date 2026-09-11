@@ -81,7 +81,7 @@ class WhyAComparisonBearsNoLineIsAnAnswerAndNotAnAbsenceTest {
             Citation.Written at = assertInstanceOf(
                     Citation.Written.class, each.at(),
                     "the model under test is written in this compile's own source");
-            byLine.put(WhereItSits.in(module, at.at()).line(), each.standing());
+            byLine.put(WhereItSits.in(MODEL, at.at()).line(), each.standing());
         }
         return byLine;
     }

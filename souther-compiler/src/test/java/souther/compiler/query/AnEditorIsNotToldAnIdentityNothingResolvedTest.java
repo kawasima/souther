@@ -1,5 +1,6 @@
 package souther.compiler.query;
 
+import souther.compiler.cst.SourceLayout;
 import souther.compiler.source.SourceId;
 
 import org.junit.jupiter.api.Test;
@@ -72,11 +73,11 @@ class AnEditorIsNotToldAnIdentityNothingResolvedTest {
     }
 
     private static TypeSymbol typeAt(int line, int column) {
-        return (TypeSymbol) under(TYPES, new Names.TypeAt(new SourcePos(line, column, new SourceId(ID))));
+        return (TypeSymbol) under(TYPES, new Names.TypeAt(caret(TYPES, line, column)));
     }
 
     private static ValueName valueAt(int line, int column) {
-        return (ValueName) under(VALUES, new Names.ValueAt(new SourcePos(line, column, new SourceId(ID))));
+        return (ValueName) under(VALUES, new Names.ValueAt(caret(VALUES, line, column)));
     }
 
     /** Both names are written in one field list, so what separates them is what they name. */
@@ -90,8 +91,8 @@ class AnEditorIsNotToldAnIdentityNothingResolvedTest {
     @Test
     void aClauseEntryIsAnsweredAndOneNamingNothingIsNot() {
         assertEquals(TypeSymbols.declared(new TypeKey("m", "A")),
-                (TypeSymbol) under(CONSTRUCTS, new Names.TypeAt(new SourcePos(6, 16, new SourceId(ID)))));
-        assertNull((TypeSymbol) under(CONSTRUCTS, new Names.TypeAt(new SourcePos(6, 19, new SourceId(ID)))),
+                (TypeSymbol) under(CONSTRUCTS, new Names.TypeAt(caret(CONSTRUCTS, 6, 16))));
+        assertNull((TypeSymbol) under(CONSTRUCTS, new Names.TypeAt(caret(CONSTRUCTS, 6, 19))),
                 "no declaration is named `Nowhere`, so the clause names none");
     }
 
@@ -100,5 +101,17 @@ class AnEditorIsNotToldAnIdentityNothingResolvedTest {
     void aBinderIsAnsweredAndANameNothingBindsIsNot() {
         assertInstanceOf(ValueName.Local.class, valueAt(4, 8));
         assertNull(valueAt(4, 13), "nothing binds `nowhere`, so the cursor is on no value");
+    }
+
+    /**
+     * The place an editor's caret is at line {@code line} column {@code column} of {@code source}.
+     *
+     * <p>A caret is a line and a column — it is where a reader put it — and which of the things
+     * written in that file that lands on is the file's to say. Spelled out of the two numbers, it
+     * is a place made up rather than read, and what is under it is nothing.
+     */
+    private static SourcePos caret(String source, int line, int column) {
+        SourceLayout laidOut = SourceLayout.of(source, new SourceId(ID));
+        return laidOut.placeAt(laidOut.lines().offsetOf(line - 1, column - 1));
     }
 }
