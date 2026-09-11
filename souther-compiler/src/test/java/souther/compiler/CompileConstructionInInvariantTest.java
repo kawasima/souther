@@ -226,6 +226,27 @@ class CompileConstructionInInvariantTest {
         assertEquals(14, ((Primary.InSource) e.diagnostic().primary()).place().region().start().column());
     }
 
+    /**
+     * And written in a clause that runs over several lines, where the two are as much one place as
+     * they are when the whole clause is written on one.
+     *
+     * <p>What decides this is the stretch the clause covers. A clause the author broke over three
+     * lines holds everything written inside it, and a reader shown the construction and then sent to
+     * the clause around it is being sent where they already are.
+     */
+    @Test
+    void aConstructionWrittenInAClauseThatRunsOverSeveralLinesIsLabelledOnce() {
+        CompileException e = err("""
+                module m
+                data Yen = Int invariant value >= 0
+                data Table = List<Int>
+                    invariant ok = List.all(
+                        x -> Yen(0).value <= x,
+                        value)
+                """);
+        assertTrue(e.diagnostic().secondary().isEmpty());
+    }
+
     /** Written in the clause itself there is one place, and labelling it twice says nothing. */
     @Test
     void aConstructionWrittenInTheClauseIsLabelledOnce() {

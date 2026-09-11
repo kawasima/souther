@@ -11,8 +11,7 @@ import souther.compiler.diag.msg.NameMessage;
 import souther.compiler.diag.msg.HelperMessage;
 import souther.compiler.diag.msg.InvariantMessage;
 import souther.compiler.diag.msg.BehaviorMessage;
-import souther.compiler.source.SourceId;
-import souther.compiler.diag.QuotedFrom;
+import souther.compiler.diag.Region;
 import souther.compiler.diag.SourcePos;
 import souther.compiler.types.Type;
 import souther.compiler.types.ValueName;
@@ -537,7 +536,7 @@ public final class HelperTyping {
                             ? new InvariantMessage.TheInvariantConstructsAData(data, constructed)
                             : new InvariantMessage.TheNamedClauseConstructsAData(data, constructed,
                                     named));
-            if (!onOneLine(nd.pos(), clause.pos())) {
+            if (!writtenInside(nd.pos(), clause.region())) {
                 b.secondary(clause.reportedAt(),
                         named == null
                                 ? new InvariantMessage.ThisClauseReachesThatConstruction()
@@ -558,7 +557,7 @@ public final class HelperTyping {
                             ? new BehaviorMessage.TheEnsuresConstructsAData(behavior, constructed)
                             : new BehaviorMessage.TheNamedEnsuresConstructsAData(
                                     behavior, constructed, named));
-            if (!onOneLine(nd.pos(), clause.pos())) {
+            if (!writtenInside(nd.pos(), clause.region())) {
                 b.secondary(clause.reportedAt(),
                         named == null
                                 ? new InvariantMessage.ThisClauseReachesThatConstruction()
@@ -570,16 +569,19 @@ public final class HelperTyping {
     }
 
     /**
-     * Whether two places are the one line a reader is being shown.
+     * Whether the construction is written inside the clause that reaches it, which is when naming
+     * the clause a second time says nothing.
      *
-     * <p>A line number on its own is not a place. Line 10 of the file a helper is written in and line
-     * 10 of the file the declaration is in are two lines, and reading the numbers alone drops the
-     * second marker from a report whose whole point is that the two are far apart. A position that
-     * was read from no source is nowhere and shares a line with nothing.
+     * <p>Asked of the stretch the clause covers and not of a line number. What the report is deciding
+     * is whether there are two places to show, and two places are two places whether or not they
+     * happen to share a line — a clause written over three lines holds everything in it, and a
+     * construction expanded in from a helper is elsewhere however the two files are laid out. A
+     * clause with no stretch to compare against is not somewhere a construction can be shown to be
+     * inside, so it is named.
      */
-    private static boolean onOneLine(SourcePos here, SourcePos there) {
-        return here.quotedFrom() instanceof QuotedFrom.ASourceThisCompileHolds(SourceId file)
-                && there.isIn(file) && here.line() == there.line();
+    private static boolean writtenInside(SourcePos construction, Region clause) {
+        return clause != null && clause.start() != null
+                && Region.encloses(clause, Region.point(construction));
     }
 
     /**
