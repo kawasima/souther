@@ -227,12 +227,20 @@ final class StatedApartness<A> {
      * denial shows nothing here either, so what is skipped is the walking and not a question.
      */
     Lacks<A> apartFromThemselves(Sameness<A> heldAsOne) {
-        List<Shown<A>> out = new ArrayList<>();
+        // The blocks and not the denials that named them. Several denials the reading came to hold
+        // between one block say one thing about it, and a lack is claimed once with every route
+        // that reached it — which the relation these come to says by being a set of pairs, and is
+        // said here because nothing builds one on the way to this.
+        Set<Sameness.Block<A>> itself = new LinkedHashSet<>();
         for (Denial<A> denial : denials()) {
             Sameness.Block<A> block = heldAsOne.blockOf(denial.one());
             if (block.equals(heldAsOne.blockOf(denial.other()))) {
-                out.add(Shown.of(new RelationalLack.ABlockApartFromItself<>(block)));
+                itself.add(block);
             }
+        }
+        List<Shown<A>> out = new ArrayList<>(itself.size());
+        for (Sameness.Block<A> block : itself) {
+            out.add(Shown.of(new RelationalLack.ABlockApartFromItself<>(block)));
         }
         return Lacks.of(out);
     }

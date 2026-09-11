@@ -152,6 +152,26 @@ class WhatAnAlternativeStatesIsReadOnceHoweverItWasComposedTest {
     }
 
     /**
+     * Several denials the reading came to hold between one block are one lack.
+     *
+     * <p>What they say is that the values of that block differ from themselves, which is one thing
+     * said once however many denials were read to reach it. A lack is claimed once, with every route
+     * that reached it, so this is not a tidying: what each denial holds is the same lack, and a
+     * reading that put them in one beside the other would be holding a route as a lack of its own.
+     */
+    @Test
+    void severalDenialsCollapsingOntoOneBlockShowOneLack() {
+        StatedApartness<String> stated =
+                StatedApartness.of("p", "q").and(StatedApartness.of("p", "r"));
+        Sameness<String> asOne = Sameness.<String>discrete().joining("p", "q").joining("p", "r");
+
+        assertEquals(Apartness.of("p", "q").and(Apartness.of("p", "r"))
+                        .filedIn(Refinement.of(Sameness.discrete(), asOne)).apartFromThemselves(),
+                stated.apartFromThemselves(asOne),
+                "which is what the relation they come to shows, and is what it showed before");
+    }
+
+    /**
      * The pair a denial comes to, between the blocks the reading holds its ends on.
      *
      * <p>Both ends landing on one block is kept: what it says there is that a value differs from
