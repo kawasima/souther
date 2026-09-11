@@ -67,8 +67,14 @@ class AClauseReadsTheSameWhicheverCompileBuiltTheTermTest {
                 invariant kept = ok
             """;
 
-    /** The same, written a line further down and saying nothing more. */
-    private static final String MOVED = "// what is held\n" + SOURCE;
+    /**
+     * The same, with a declaration written above it and saying nothing more about it.
+     *
+     * <p>A declaration and not a comment. A place is which of the things written in a text it is,
+     * so writing a comment moves none of them — and the two compiles below have to have written
+     * their terms at two places for the readings being equal to say anything.
+     */
+    private static final String MOVED = SOURCE.replace("data Held", "data Other\n\ndata Held");
 
     /**
      * The reading of one compile, handed what another compile published.

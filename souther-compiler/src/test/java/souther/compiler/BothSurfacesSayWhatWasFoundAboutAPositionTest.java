@@ -1,6 +1,5 @@
 package souther.compiler;
 
-import souther.compiler.diag.SourceLayouts;
 import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 
@@ -52,20 +51,27 @@ class BothSurfacesSayWhatWasFoundAboutAPositionTest {
             }
             """;
 
-    private static AdequacyReport reportOf(String source) {
+    /** A report and the texts the compile it is about was holding, which is what places it. */
+    private record Made(AdequacyReport report, SourceRendering sources) {
+    }
+
+    private static Made reportOf(String source) {
         Compilation compilation = Compilation.ofSource(source, "Main");
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
-        return AdequacyReport.of(compilation);
+        return new Made(AdequacyReport.of(compilation),
+                SourceRendering.namedByIdentity(compilation.texts()));
     }
 
     private static String humanOf(String source) {
-        return reportOf(source).human(SourceRendering.namedByIdentity(SourceLayouts.NONE));
+        Made made = reportOf(source);
+        return made.report().human(made.sources());
     }
 
     private static JsonNode partitionOf(String source) {
+        Made made = reportOf(source);
         JsonNode document = JsonMapper.builder().build()
-                .readTree(reportOf(source).json(SourceRendering.namedByIdentity(SourceLayouts.NONE)));
+                .readTree(made.report().json(made.sources()));
         return document.get("modules").get(0).get("behaviors").get(0).get("partition");
     }
 

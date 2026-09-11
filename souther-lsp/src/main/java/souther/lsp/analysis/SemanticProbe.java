@@ -253,8 +253,12 @@ final class SemanticProbe {
         // In the document it was inserted into, and said so: a place that names no text is in the
         // same text as nothing, and every extent would compare as being somewhere else — which
         // reads as "the author wrote this" about all of them.
+        //
+        // Laid out as repaired, because the extents it is compared against are places in the text
+        // that was compiled. Laid out as the author left it, the count would be of a text that does
+        // not parse and the two would be counting different things.
         return new Reading(compile, uri, repair.text(),
-                SourceLayout.of(text, new SourceId(uri)).placeAt(repair.firstInserted()));
+                SourceLayout.of(repair.text(), new SourceId(uri)).placeAt(repair.firstInserted()));
     }
 
     private static boolean parses(String text) {

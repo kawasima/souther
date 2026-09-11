@@ -332,16 +332,7 @@ public final class Analyzer {
             }
             return out;
         }
-        Map<String, SourceLayout> indexes = new LinkedHashMap<>();
-        java.util.function.Function<String, SourceLayout> linesOf = uri -> {
-            if (uri == null) {
-                return null;
-            }
-            return indexes.computeIfAbsent(uri, at -> {
-                String text = graph.text(at);
-                return text == null ? null : SourceLayout.of(text, new SourceId(at));
-            });
-        };
+        SourceLayouts texts = textsOf(graph);
         for (Map.Entry<SourceId, List<Located>> e : byUri.entrySet()) {
             abandonment.stopIfAsked();   // between two files' markers, before this one is laid out
             List<LspDiagnostic> list = out.get(e.getKey().value());
@@ -358,7 +349,7 @@ public final class Analyzer {
                 list.add(project(loc.diagnostic(),
                         ReportContext.of(loc.context().filedUnder().orElse(null),
                                 new SourceId(e.getKey().value())),
-                        linesOf, uri -> graph.text(uri) == null ? null : uri));
+                        texts, uri -> graph.text(uri) == null ? null : uri));
             }
         }
         return out;
@@ -1980,7 +1971,8 @@ public final class Analyzer {
         if (snapshot.isEmpty()) {
             return List.of();
         }
-        SourcePos at = SourceLayout.of(text, new SourceId(uri)).placeAt(cursor);
+        // Laid out as the probe finished it off, which is the text the snapshot's places are in.
+        SourcePos at = SourceLayout.of(reading.repaired(), new SourceId(uri)).placeAt(cursor);
         Optional<MemberReceiver> receiver = snapshot.get().memberReceiverAround(at);
         if (receiver.isEmpty() || !reading.mayBeRead(receiver.get().writtenAt())) {
             return List.of();
@@ -3371,7 +3363,7 @@ public final class Analyzer {
         // has real numbers and no file. Left unsaid, the marker fell to the head of the document.
         return project(d, ReportContext.ofTheTextItself(
                         new SourceContext(null, text, laidOut)),
-                id -> laidOut, id -> null);
+                _ -> laidOut, id -> null);
     }
 
     /**
@@ -3386,11 +3378,12 @@ public final class Analyzer {
      * @param context what the editor answers for this report: the file it lists it under, and the
      *        document it is reading — which is the one thing that knows which text a report parsed
      *        out of an unsaved buffer is in
-     * @param linesOf how a source is laid out, for turning the places in it into ranges
+     * @param texts how the documents this is reading are laid out, for turning the places in them
+     *        into ranges — asked of each place, because a report written in two files points at two
+     *        of them and a place read against the other file's layout is a place in nothing
      * @param uriOf the editor's name for a source, null when it has none to link to
      */
-    private LspDiagnostic project(Diagnostic d, ReportContext context,
-                                  java.util.function.Function<String, SourceLayout> linesOf,
+    private LspDiagnostic project(Diagnostic d, ReportContext context, SourceLayouts texts,
                                   java.util.function.Function<String, String> uriOf) {
         String message = DiagnosticRenderer.body(d, EDITOR_LANGUAGE);
         if (d.diff() != null) {
@@ -3416,20 +3409,18 @@ public final class Analyzer {
         for (Shown other : view.others()) {
             SourceId source = sourceOf(other.spot());
             String uri = source == null ? null : uriOf.apply(source.value());
-            SourceLayout lines = linesOf.apply(uriOf(source));
-            if (uri == null || lines == null) {
+            if (uri == null || texts.of(other.spot().region().start()) == null) {
                 continue;   // nothing the editor could open, so nothing to link to
             }
-            related.add(new LspDiagnostic.Related(uri, rangeOfRegion(place -> lines, other.spot().region()),
+            related.add(new LspDiagnostic.Related(uri, rangeOfRegion(texts, other.spot().region()),
                     other instanceof Shown.ALabel(Spot _, souther.compiler.diag.msg.Message said)
                             ? DiagnosticRenderer.qualified(
                                     Messages.render(said, EDITOR_LANGUAGE),
                                     other.spot().region().start(), EDITOR_LANGUAGE)
                             : aboutTheDiagnostic));
         }
-        SourceLayout here = linesOf.apply(uriOf(context.filedUnder().orElse(null)));
         Range range = view.anchor()
-                .map(shown -> rangeOfRegion(place -> here, shown.spot().region()))
+                .map(shown -> rangeOfRegion(texts, shown.spot().region()))
                 .orElseGet(Analyzer::theHeadOfTheDocument);
         return new LspDiagnostic(range, severity, d.code(), message, tagsOf(d), related);
     }

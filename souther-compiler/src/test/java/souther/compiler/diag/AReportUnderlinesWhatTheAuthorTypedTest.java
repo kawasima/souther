@@ -90,12 +90,14 @@ class AReportUnderlinesWhatTheAuthorTypedTest {
 
                 data Box = { v: %s . Missing }
                 """;
-        Diagnostic report = only(source.formatted(NFD));
+        String stands = source.formatted(NFD);
+        Diagnostic report = only(stands);
 
-        Region region = ((Primary.InSource) report.primary()).place().region();
-        assertEquals(WhereItSits.in(source, region).start().line(), WhereItSits.in(source, region).end().line());
+        PhysicalRegion underlined =
+                WhereItSits.in(stands, ((Primary.InSource) report.primary()).place().region());
+        assertEquals(underlined.start().line(), underlined.end().line());
         assertEquals((NFD + " . Missing").length(),
-                WhereItSits.in(source, region).end().column() - WhereItSits.in(source, region).start().column(),
+                underlined.end().column() - underlined.start().column(),
                 "the underline stops short of the name it is about");
     }
 

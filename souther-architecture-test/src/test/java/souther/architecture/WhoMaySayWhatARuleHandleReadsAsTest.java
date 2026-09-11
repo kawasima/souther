@@ -59,20 +59,20 @@ class WhoMaySayWhatARuleHandleReadsAsTest {
      */
     private static final List<String> SAYING_IT_IN_PROSE = List.of(
             "souther/compiler/report/AdequacyReport"
-                    + "#cited(Set, SourceNameResolver, SourceId, PublishedRuleHandle$WhereARuleIs)",
+                    + "#cited(Set, SourceRendering, SourceId, PublishedRuleHandle$WhereARuleIs)",
             "souther/compiler/report/AdequacyReport"
-                    + "#declared(StringBuilder, AdequacyReport$ModuleReport, SourceNameResolver,"
+                    + "#declared(StringBuilder, AdequacyReport$ModuleReport, SourceRendering,"
                     + " PublishedRuleHandle$WhereARuleIs)",
             "souther/compiler/report/AdequacyReport#partition lambda taking (StringBuilder,"
-                    + " BorderAssessment, PublishedRuleHandle$WhereARuleIs, SourceNameResolver,"
+                    + " BorderAssessment, PublishedRuleHandle$WhereARuleIs, SourceRendering,"
                     + " SourceId, PointRole, RoleAnswer)",
             "souther/compiler/report/AdequacyReport#partition(StringBuilder,"
-                    + " AdequacyReport$BehaviorReport, SourceId, SourceNameResolver,"
+                    + " AdequacyReport$BehaviorReport, SourceId, SourceRendering,"
                     + " PublishedRuleHandle$WhereARuleIs)",
             "souther/compiler/report/AdequacyReport"
-                    + "#said(Subject, SourceNameResolver, PublishedRuleHandle$WhereARuleIs)",
+                    + "#said(Subject, SourceRendering, PublishedRuleHandle$WhereARuleIs)",
             "souther/compiler/report/GeneratedRows"
-                    + "#about(Adequacy$Finding, PublishedRuleHandle$WhereARuleIs)");
+                    + "#about(Adequacy$Finding, SourceRendering, PublishedRuleHandle$WhereARuleIs)");
 
     /**
      * And every class that writes one into the document, which is one.

@@ -124,8 +124,10 @@ class WhatIsAskedOfAHalfWrittenLineIsAskedOfWhatItSaysNowTest {
         SemanticSnapshot snapshot = SemanticSnapshot.of(reading.compilation().db(), "m")
                 .orElseThrow(() -> new AssertionError("the repaired source has a snapshot"));
         int cursor = text.lastIndexOf(".\n") + 1;
+        // Laid out as the probe finished it off, because that is the text the snapshot is of.
         MemberReceiver receiver = snapshot
-                .memberReceiverAround(SourceLayout.of(text, new SourceId(URI)).placeAt(cursor))
+                .memberReceiverAround(
+                        SourceLayout.of(reading.repaired(), new SourceId(URI)).placeAt(cursor))
                 .orElseThrow(() -> new AssertionError("nothing is written at the cursor"));
         return List.copyOf(snapshot
                 .fieldsOf(assertInstanceOf(MemberReceiver.Value.class, receiver).type()).keySet());

@@ -44,7 +44,7 @@ public final class SourceLayout implements LaidOutText {
      * <p>Counted per construct and not over the whole text, which is what keeps an edit inside one
      * body from moving the places of every declaration under it ({@link SourcePos}).
      */
-    private final int[][] tokenStart;
+    private final List<List<Integer>> tokenStart;
 
     /** Which text this is, asked once — a placement answers it and does not publish it. */
     private final QuotedFrom text;
@@ -56,25 +56,21 @@ public final class SourceLayout implements LaidOutText {
      * comes to. Held rather than worked out on a comparison: what holds one of these compares it
      * against the one it replaces on every edit.
      */
-    private final long[] sits;
+    private final List<Long> sits;
 
-    private SourceLayout(String source, Placement read, int[][] tokenStart) {
+    private SourceLayout(String source, Placement read, List<List<Integer>> tokenStart) {
         this.source = source;
         this.read = read;
         this.text = read.at(0, 0).quotedFrom();
         this.lines = new LineIndex(source);
         this.tokenStart = tokenStart;
-        int count = 0;
-        for (int[] construct : tokenStart) {
-            count += construct.length;
-        }
-        this.sits = new long[count];
-        int at = 0;
-        for (int[] construct : tokenStart) {
+        List<Long> where = new ArrayList<>();
+        for (List<Integer> construct : tokenStart) {
             for (int offset : construct) {
-                sits[at++] = ((long) lines.lineOf(offset) << 32) | lines.columnOf(offset);
+                where.add(((long) lines.lineOf(offset) << 32) | lines.columnOf(offset));
             }
         }
+        this.sits = List.copyOf(where);
     }
 
     /**
@@ -92,13 +88,12 @@ public final class SourceLayout implements LaidOutText {
      */
     @Override
     public boolean equals(Object other) {
-        return other instanceof SourceLayout it && read.equals(it.read)
-                && java.util.Arrays.equals(sits, it.sits);
+        return other instanceof SourceLayout it && read.equals(it.read) && sits.equals(it.sits);
     }
 
     @Override
     public int hashCode() {
-        return java.util.Arrays.hashCode(sits) * 31 + read.hashCode();
+        return sits.hashCode() * 31 + read.hashCode();
     }
 
     /** The layout of {@code text}, parsed to find its tokens. */
@@ -128,7 +123,7 @@ public final class SourceLayout implements LaidOutText {
      * matched back to a construct that no longer stands in the same relation to it.
      */
     public static SourceLayout of(SyntaxNode root, String text, Placement read) {
-        List<int[]> constructs = new ArrayList<>();
+        List<List<Integer>> constructs = new ArrayList<>();
         for (SyntaxElement child : root.children()) {
             if (!(child instanceof SyntaxNode construct)) {
                 continue;   // a token at the top level is trivia between constructs
@@ -138,13 +133,9 @@ public final class SourceLayout implements LaidOutText {
             if (starts.isEmpty()) {
                 continue;   // nothing meaningful in it, so nothing to be at
             }
-            int[] offsets = new int[starts.size()];
-            for (int i = 0; i < offsets.length; i++) {
-                offsets[i] = starts.get(i);
-            }
-            constructs.add(offsets);
+            constructs.add(List.copyOf(starts));
         }
-        return new SourceLayout(text, read, constructs.toArray(new int[0][]));
+        return new SourceLayout(text, read, List.copyOf(constructs));
     }
 
     private static void collect(SyntaxNode node, List<Integer> into) {
@@ -196,13 +187,13 @@ public final class SourceLayout implements LaidOutText {
      * cannot land one token out.
      */
     public SourcePos placeAt(int offset) {
-        if (tokenStart.length == 0) {
+        if (tokenStart.isEmpty()) {
             return new SourcePos(0, 0, Math.max(0, offset), read);
         }
         int construct = constructAt(offset);
-        int[] tokens = tokenStart[construct];
+        List<Integer> tokens = tokenStart.get(construct);
         int token = tokenAt(tokens, offset);
-        return new SourcePos(construct, token, offset - tokens[token], read);
+        return new SourcePos(construct, token, offset - tokens.get(token), read);
     }
 
     /**
@@ -212,13 +203,13 @@ public final class SourceLayout implements LaidOutText {
      */
     public int offsetOf(SourcePos place) {
         refuseAnotherText(place);
-        if (tokenStart.length == 0) {
+        if (tokenStart.isEmpty()) {
             return Math.max(0, place.within());
         }
-        int construct = Math.min(Math.max(place.construct(), 0), tokenStart.length - 1);
-        int[] tokens = tokenStart[construct];
-        int token = Math.min(Math.max(place.token(), 0), tokens.length - 1);
-        return tokens[token] + place.within();
+        int construct = Math.min(Math.max(place.construct(), 0), tokenStart.size() - 1);
+        List<Integer> tokens = tokenStart.get(construct);
+        int token = Math.min(Math.max(place.token(), 0), tokens.size() - 1);
+        return tokens.get(token) + place.within();
     }
 
     /**
@@ -266,10 +257,10 @@ public final class SourceLayout implements LaidOutText {
     /** The last construct beginning at or before {@code offset}, and the first where none does. */
     private int constructAt(int offset) {
         int lo = 0;
-        int hi = tokenStart.length - 1;
+        int hi = tokenStart.size() - 1;
         while (lo < hi) {
             int mid = (lo + hi + 1) >>> 1;
-            if (tokenStart[mid][0] <= offset) {
+            if (tokenStart.get(mid).get(0) <= offset) {
                 lo = mid;
             } else {
                 hi = mid - 1;
@@ -278,12 +269,12 @@ public final class SourceLayout implements LaidOutText {
         return lo;
     }
 
-    private static int tokenAt(int[] tokens, int offset) {
+    private static int tokenAt(List<Integer> tokens, int offset) {
         int lo = 0;
-        int hi = tokens.length - 1;
+        int hi = tokens.size() - 1;
         while (lo < hi) {
             int mid = (lo + hi + 1) >>> 1;
-            if (tokens[mid] <= offset) {
+            if (tokens.get(mid) <= offset) {
                 lo = mid;
             } else {
                 hi = mid - 1;

@@ -154,18 +154,20 @@ class AReportAboutAModuleOffThePathIsSaidWhereItWasReachedTest {
                 """;
         Map<String, ClassFileImage> front = built(stands, and(held, deep()));
 
-        Compilation compilation = reading("""
+        String uses = """
                 module app.uses
 
 
                 import lib.front ( Front )
 
                 data Page = { front: Front }
-                """, and(held, front));
+                """;
+        Compilation compilation = reading(uses, and(held, front));
 
         SourcePos said = whereTheReportAboutIsSaid(compilation, "lib.held");
         assertEquals(new QuotedFrom.ASourceThisCompileHolds(new SourceId("0")), said.quotedFrom());
-        assertEquals(4, WhereItSits.in(stands, said).line(), "the import of the dependency that led to it");
+        assertEquals(4, WhereItSits.in(uses, said).line(),
+                "the import of the dependency that led to it");
     }
 
     /** The route this was found on. The report is about a module the caller has no file for, and it

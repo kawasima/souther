@@ -19,8 +19,8 @@ import java.util.List;
 public final class LineIndex {
 
     private final String source;
-    /** {@code lineStart[i]} is the offset at which line {@code i} (0-based) begins. */
-    private final int[] lineStart;
+    /** {@code lineStart.get(i)} is the offset at which line {@code i} (0-based) begins. */
+    private final List<Integer> lineStart;
 
     public LineIndex(String source) {
         this.source = source;
@@ -31,10 +31,7 @@ public final class LineIndex {
                 starts.add(i + 1);
             }
         }
-        this.lineStart = new int[starts.size()];
-        for (int i = 0; i < starts.size(); i++) {
-            lineStart[i] = starts.get(i);
-        }
+        this.lineStart = List.copyOf(starts);
     }
 
     /** The 1-based line containing {@code offset}. */
@@ -44,7 +41,7 @@ public final class LineIndex {
 
     /** The 1-based column of {@code offset} within its line. */
     public int columnOf(int offset) {
-        return offset - lineStart[lineIndex(offset)] + 1;
+        return offset - lineStart.get(lineIndex(offset)) + 1;
     }
 
     /** The 0-based line of {@code offset} (LSP). */
@@ -54,7 +51,7 @@ public final class LineIndex {
 
     /** The 0-based column of {@code offset} within its line (LSP, UTF-16 units). */
     public int lspColumn(int offset) {
-        return offset - lineStart[lineIndex(offset)];
+        return offset - lineStart.get(lineIndex(offset));
     }
 
     /** The offset of a 0-based (line, column) LSP position, clamped into the source. */
@@ -62,20 +59,32 @@ public final class LineIndex {
         if (lspLine < 0) {
             return 0;
         }
-        if (lspLine >= lineStart.length) {
+        if (lspLine >= lineStart.size()) {
             return source.length();
         }
-        int base = lineStart[lspLine];
-        int lineEnd = lspLine + 1 < lineStart.length ? lineStart[lspLine + 1] : source.length();
+        int base = lineStart.get(lspLine);
+        int lineEnd = lspLine + 1 < lineStart.size() ? lineStart.get(lspLine + 1) : source.length();
         return Math.min(base + Math.max(0, lspColumn), lineEnd);
+    }
+
+    /** Two indexes of one text are one index. Said because one of these travels in what a
+     *  compilation remembers, and what a compilation remembers is a value. */
+    @Override
+    public boolean equals(Object other) {
+        return other instanceof LineIndex it && source.equals(it.source);
+    }
+
+    @Override
+    public int hashCode() {
+        return source.hashCode();
     }
 
     private int lineIndex(int offset) {
         int lo = 0;
-        int hi = lineStart.length - 1;
+        int hi = lineStart.size() - 1;
         while (lo < hi) {
             int mid = (lo + hi + 1) >>> 1;
-            if (lineStart[mid] <= offset) {
+            if (lineStart.get(mid) <= offset) {
                 lo = mid;
             } else {
                 hi = mid - 1;

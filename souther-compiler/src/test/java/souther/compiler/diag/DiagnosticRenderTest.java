@@ -17,8 +17,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /** The diagnostic renderers: Elm-style human output, the JSON form, and locale selection. */
 class DiagnosticRenderTest {
 
-    private static final SourceContext SRC =
-            new SourceContext("demo.sou", "module demo\nlet f (n) = null\n", SourceLayout.of("module demo\nlet f (n) = null\n"));
+    private static final String TEXT = "module demo\nlet f (n) = null\n";
+
+    private static final SourceLayout LAID_OUT = SourceLayout.of(TEXT);
+
+    private static final SourceContext SRC = new SourceContext("demo.sou", TEXT, LAID_OUT);
+
+    /** The place at line {@code line} column {@code column} of the text above. */
+    private static SourcePos at(int line, int column) {
+        return LAID_OUT.placeAt(LAID_OUT.lines().offsetOf(line - 1, column - 1));
+    }
 
     /**
      * The JSON form carries the values the message is about, under the names its entry writes them
@@ -63,7 +71,7 @@ class DiagnosticRenderTest {
     @Test
     void humanRendererQuotesTheLineAndUnderlinesTheToken() {
         Diagnostic d = Diagnostic.say(new DeclarationMessage.NullIsNotPartOfTheLanguage())
-                .at(new SourcePos(2, 13), 4)
+                .at(at(2, 13), 4)
                 .build();
         String out = new HumanRenderer(false).render(d, SRC, Locale.ENGLISH);
         assertTrue(out.contains("E1301"), out);
@@ -97,7 +105,7 @@ class DiagnosticRenderTest {
     @Test
     void jsonRendererCarriesCodeAndRegion() {
         Diagnostic d = Diagnostic.say(new DeclarationMessage.NullIsNotPartOfTheLanguage())
-                .at(new SourcePos(2, 13), 4)
+                .at(at(2, 13), 4)
                 .build();
         String json = new JsonRenderer().render(d, SRC, Locale.JAPANESE);
         assertTrue(json.contains("\"code\":\"E1301\""), json);

@@ -166,7 +166,7 @@ class HowMuchOfARuleTheCheckReadsIsAskedPerCaseTest {
      */
     @Test
     void aRuleThroughAHelperIsAnsweredWhereItIsWritten() {
-        ContractDischarge discharge = of("""
+        String stands = """
                 module m.a exposing ( Id, Found, findIt )
 
                 let ranked (rank: Int, id: Id): Bool = rank > 0 && rank > id.value
@@ -179,11 +179,13 @@ class HowMuchOfARuleTheCheckReadsIsAskedPerCaseTest {
                     ensures ranked(value.rank, id)
 
                 let findIt (id) = Found { id = id, rank = 1 }
-                """, "findIt");
+                """;
+        ContractDischarge discharge = of(stands, "findIt");
 
         assertEquals(1, discharge.rules().size(),
                 "one rule, because the author wrote one — the `&&` is the helper's, not theirs");
-        assertEquals(10, WhereItSits.in(FINDS, discharge.rules().get(0).capability().owed().clause()).line(),
+        assertEquals(10,
+                WhereItSits.in(stands, discharge.rules().get(0).capability().owed().clause()).line(),
                 "the `ensures` line, not the `let` on line 3");
     }
 

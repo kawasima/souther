@@ -8,7 +8,7 @@ import souther.compiler.check.Scoping;
 import souther.compiler.check.Registry;
 import souther.compiler.codegen.Backend;
 import souther.compiler.diag.CompileException;
-import souther.compiler.diag.LaidOutText;
+import souther.compiler.cst.SourceLayout;
 import souther.compiler.diag.SourceProvenance;
 import souther.compiler.frontend.CstFrontend;
 import souther.compiler.check.BehaviorImplementation;
@@ -240,7 +240,7 @@ public final class ModuleReadback {
     record AsRead(Ast.Module module, Map<String, Ast.Def> declarations,
                   Map<String, BehaviorImplementation> behaviorImplementations,
                   java.util.List<Scoping.Claim> libraryClaims,
-                  LaidOutText laidOutText) implements ReadableModule {
+                  SourceLayout laidOutText) implements ReadableModule {
 
         /** Copied, because this is an answer a compilation remembers and an answer it remembers is
          *  a value. */

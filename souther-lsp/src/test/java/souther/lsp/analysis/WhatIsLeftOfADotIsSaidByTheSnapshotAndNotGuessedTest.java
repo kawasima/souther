@@ -373,7 +373,8 @@ class WhatIsLeftOfADotIsSaidByTheSnapshotAndNotGuessedTest {
         }
         SemanticSnapshot snapshot = SemanticSnapshot.of(reading.compilation().db(), "m")
                 .orElseThrow(() -> new AssertionError("the repaired source has a snapshot"));
-        SourceLayout lines = SourceLayout.of(text, new SourceId(MODEL_URI));
+        // The text the probe finished off, because that is the one the snapshot's places are in.
+        SourceLayout lines = SourceLayout.of(reading.repaired(), new SourceId(MODEL_URI));
         MemberReceiver receiver = snapshot.memberReceiverAround(lines.placeAt(cursor))
                 .orElseThrow(() -> new AssertionError("nothing is written at the cursor"));
         return new Probed(reading, snapshot, receiver);

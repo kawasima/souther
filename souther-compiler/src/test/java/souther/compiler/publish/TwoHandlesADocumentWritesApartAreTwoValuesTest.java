@@ -1,9 +1,9 @@
 package souther.compiler.publish;
 
-import souther.compiler.diag.SourceLayouts;
 import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 
+import souther.compiler.cst.SourceLayout;
 import souther.compiler.check.BehaviorContract;
 import souther.compiler.check.Clause;
 import souther.compiler.check.ClauseName;
@@ -58,7 +58,36 @@ class TwoHandlesADocumentWritesApartAreTwoValuesTest {
 
     private static final SourceId WHERE = new SourceId("0");
 
-    private static final Citation AT = Citation.of(new SourcePos(9, 1, WHERE));
+    /** The model the compilation below reads, and the file the places in it are places in. */
+    private static final String MODEL = """
+            module m
+
+            import lib ( big, small )
+
+            data Low
+            data Accepted = { at: Int }
+
+            behavior classify : (n: Int, m: Int) -> Accepted | Low
+                constructs Accepted
+
+            let classify (n, m) = {
+                guard big(n) else Low
+                guard small(m) else Low
+                Accepted { at = n }
+            }
+            """;
+
+    /**
+     * Two places in that file, read off it.
+     *
+     * <p>Which of the things written in a text a place is at is what the text is laid out as, so a
+     * pair spelled out of numbers is a pair that may well be one place. It was: two counts past the
+     * end of the first construct both named its last token, and the two sentences a document writes
+     * for them came out the same while the handles stayed two values.
+     */
+    private static final SourceLayout LAID_OUT = SourceLayout.of(MODEL, WHERE);
+
+    private static final Citation AT = Citation.of(LAID_OUT.placeAt(MODEL.indexOf("guard big")));
 
     /**
      * Where each way in this population uses leads, which is what a citation no longer carries.
@@ -68,6 +97,8 @@ class TwoHandlesADocumentWritesApartAreTwoValuesTest {
      * sight has one per call. So the population varies the place by varying which way in it is,
      * which is the only way a document can be given two places for one rule.
      */
+    private static final Reached REACHED = reachedFromHere();
+
     private static final List<Citation> WAYS_IN = waysIn();
 
     private static final PublishedRuleHandle.WhereARuleIs PLACES = cited -> switch (cited.anchor()) {
@@ -81,9 +112,9 @@ class TwoHandlesADocumentWritesApartAreTwoValuesTest {
     private static List<Citation> waysIn() {
         List<Citation> out = new ArrayList<>(List.of(
                 AT,
-                Citation.of(new SourcePos(10, 1, WHERE)),
+                Citation.of(LAID_OUT.placeAt(MODEL.indexOf("guard small"))),
                 Citation.of(new SourcePos(9, 1))));
-        out.addAll(reachedFromHere());
+        out.addAll(REACHED.ways());
         return List.copyOf(out);
     }
 
@@ -355,7 +386,10 @@ class TwoHandlesADocumentWritesApartAreTwoValuesTest {
      * citation at all. So the module is built here and put on the path, which is the shape the
      * domain actually has.
      */
-    private static List<Citation> reachedFromHere() {
+    private record Reached(List<Citation> ways, SourceRendering sources) {
+    }
+
+    private static Reached reachedFromHere() {
         Map<String, ClassFileImage> published = Compiler.compile("""
                 module lib exposing ( big, small )
 
@@ -363,25 +397,8 @@ class TwoHandlesADocumentWritesApartAreTwoValuesTest {
 
                 let small (n: Int): Bool = n < 3
                 """);
-        String model = """
-                module m
-
-                import lib ( big, small )
-
-                data Low
-                data Accepted = { at: Int }
-
-                behavior classify : (n: Int, m: Int) -> Accepted | Low
-                    constructs Accepted
-
-                let classify (n, m) = {
-                    guard big(n) else Low
-                    guard small(m) else Low
-                    Accepted { at = n }
-                }
-                """;
         Compilation compilation =
-                Compilation.ofSources(List.of(model), ModulePath.of(published));
+                Compilation.ofSources(List.of(MODEL), ModulePath.of(published));
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
         // Read off the page rather than off a reading, because a reading holds no place: what a
@@ -394,11 +411,20 @@ class TwoHandlesADocumentWritesApartAreTwoValuesTest {
                         out.add(where);
                     }
                 });
-        return out;
+        return new Reached(List.copyOf(out),
+                new SourceRendering(SourceNameResolver.identity(), compilation.texts()));
     }
 
+    /**
+     * A handle as a document writes it.
+     *
+     * <p>Written against the texts that compilation was holding, because a sentence names a line
+     * and a column and those are read off a text. Written against no texts, every place a sentence
+     * has comes out the same way and two handles a reader can tell apart are one string here —
+     * which makes the property below hold over a projection that says nothing.
+     */
     private static String said(PublishedRuleHandle handle) {
-        return RuleHandleProse.said(handle, new SourceRendering(SourceNameResolver.identity(), SourceLayouts.NONE), null);
+        return RuleHandleProse.said(handle, REACHED.sources(), null);
     }
 
     /**

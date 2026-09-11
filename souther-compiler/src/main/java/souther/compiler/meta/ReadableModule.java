@@ -3,7 +3,7 @@ package souther.compiler.meta;
 import souther.compiler.ast.Ast;
 import souther.compiler.check.BehaviorImplementation;
 import souther.compiler.check.Scoping;
-import souther.compiler.diag.LaidOutText;
+import souther.compiler.cst.SourceLayout;
 import java.util.List;
 
 import java.util.Map;
@@ -95,5 +95,5 @@ public sealed interface ReadableModule permits ModuleReadback.AsRead {
      * <p>What it is for is the code this module's bodies are spliced into elsewhere: the line a debug
      * table records for such an instruction is a line of this text.
      */
-    LaidOutText laidOutText();
+    SourceLayout laidOutText();
 }
