@@ -12,6 +12,7 @@ import souther.compiler.partition.InputClassifications;
 import souther.compiler.partition.ObservedInputs;
 import souther.compiler.partition.RowToRun;
 import souther.compiler.partition.RulesTaken;
+import souther.compiler.types.ValueName;
 import souther.compiler.partition.StandingAtAPoint;
 import souther.compiler.observe.Classification;
 
@@ -41,12 +42,17 @@ import java.util.Set;
  */
 public record Settlements(List<ObligationIdentity> requested,
                           SequencedMap<ObligationIdentity, RowKey> composedFor,
-                          SequencedMap<RowKey, Map<ObligationIdentity, Settlement>> byRow) {
+                          SequencedMap<RowKey, Map<ObligationIdentity, Settlement>> byRow,
+                          SequencedMap<ValueName.Behavior, Set<RowKey>> owners) {
 
     public Settlements {
         requested = List.copyOf(requested);
         composedFor = Collections.unmodifiableSequencedMap(new LinkedHashMap<>(composedFor));
         byRow = Collections.unmodifiableSequencedMap(new LinkedHashMap<>(byRow));
+        SequencedMap<ValueName.Behavior, Set<RowKey>> held = new LinkedHashMap<>();
+        owners.forEach((dependency, rows) ->
+                held.put(dependency, Collections.unmodifiableSet(new LinkedHashSet<>(rows))));
+        owners = Collections.unmodifiableSequencedMap(held);
     }
 
     /** What the row {@code rowKey} addresses would do about {@code item}, for a reader holding
@@ -107,6 +113,12 @@ public record Settlements(List<ObligationIdentity> requested,
      * later in the model does not move what is offered above it.
      */
     public Set<RowKey> keeping() {
+        // How many rows left are the ones each published table belongs to. A table is one row's
+        // whole environment and the block writes it beside the rows: with its last owner gone, the
+        // block publishes a table nothing in it runs against, and the row that was held back for
+        // wanting a different one was held back for nothing.
+        Map<ValueName.Behavior, Integer> owning = new LinkedHashMap<>();
+        owners.forEach((dependency, rows) -> owning.put(dependency, rows.size()));
         Map<ObligationIdentity, Integer> count = new LinkedHashMap<>();
         for (ObligationIdentity item : requested) {
             int settling = 0;
@@ -127,11 +139,17 @@ public record Settlements(List<ObligationIdentity> requested,
         Set<RowKey> kept = new LinkedHashSet<>(inOrder);
         for (int at = inOrder.size() - 1; at >= 0; at--) {
             RowKey rowKey = inOrder.get(at);
-            if (goes(rowKey, composedHere.getOrDefault(rowKey, List.of()), count)) {
+            if (goes(rowKey, composedHere.getOrDefault(rowKey, List.of()), count)
+                    && !theLastOwnerOfATable(rowKey, owning)) {
                 kept.remove(rowKey);
                 byRow.get(rowKey).forEach((item, settlement) -> {
                     if (settlement.settles()) {
                         count.merge(item, -1, Integer::sum);
+                    }
+                });
+                owners.forEach((dependency, rows) -> {
+                    if (rows.contains(rowKey)) {
+                        owning.merge(dependency, -1, Integer::sum);
                     }
                 });
             }
@@ -167,6 +185,29 @@ public record Settlements(List<ObligationIdentity> requested,
             }
         }
         return true;
+    }
+
+    /**
+     * Whether this row is the only one left that the block's table for some dependency belongs to.
+     *
+     * <p>A row that answers a dependency by what it was applied to brings a table, and the block
+     * publishes one of them per dependency — that row's, whole, because it is the environment the
+     * row was run in. What is offered is therefore not only the items a row settles: it is also
+     * what the block writes beside the rows, and a row nothing else stands in for is not one the
+     * offering offers as much without.
+     *
+     * <p>Which is why this sits beside the count of settlers rather than inside it. A row may be
+     * redundant about every item and still be the last thing a published table is true of, and a
+     * reduction that read the items alone would leave a block writing a table nothing in it runs
+     * against — and a row held back for wanting another held back for nothing.
+     */
+    private boolean theLastOwnerOfATable(RowKey rowKey, Map<ValueName.Behavior, Integer> owning) {
+        for (Map.Entry<ValueName.Behavior, Set<RowKey>> each : owners.entrySet()) {
+            if (each.getValue().contains(rowKey) && owning.get(each.getKey()) <= 1) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** The items some row of this offering settles, which is what a reduction has to keep answered. */
@@ -265,7 +306,29 @@ public record Settlements(List<ObligationIdentity> requested,
                 byRow.put(row.key(), Collections.unmodifiableMap(here));
             }
         });
-        return new Settlements(items, composedFor, byRow);
+        return new Settlements(items, composedFor, byRow, owning(offering));
+    }
+
+    /**
+     * Which rows each table the block publishes belongs to.
+     *
+     * <p>Read off the rows rather than taken from where the table was chosen. A table is published
+     * because some row was composed against it, and which rows those are is what the rows say —
+     * asked of the choice instead, a row that came to the same table by another road would not
+     * count as one of them.
+     */
+    private static SequencedMap<ValueName.Behavior, Set<RowKey>> owning(Composition offering) {
+        SequencedMap<ValueName.Behavior, Set<RowKey>> out = new LinkedHashMap<>();
+        offering.tables().forEach((dependency, table) -> {
+            Set<RowKey> rows = new LinkedHashSet<>();
+            offering.rowsByBehavior().values().forEach(here -> here.forEach(row -> {
+                if (table.equals(StandInTable.of(dependency, row.answers()))) {
+                    rows.add(row.key());
+                }
+            }));
+            out.put(dependency, rows);
+        });
+        return out;
     }
 
     /**
