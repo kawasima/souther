@@ -1086,7 +1086,7 @@ public final class InvariantChecker {
                         + " alternatives past a counted " + expansion;
         // And which of the clauses place an edge, asked once the positions have names to be
         // recognised by.
-        Reading reading = c.directsIn(accounted, at, numbers, typeAt, took,
+        Reading reading = c.directsIn(accounted, at, numbers, took,
                 new RulesRead(narrowedBy));
         ConstraintState<FactSubject> constraints = k.constraints()
                 .takingRead(answered.whole().confinement(), allowed, c.answers);
@@ -1890,7 +1890,6 @@ public final class InvariantChecker {
 
     private Reading directsIn(List<Written> stated, Denotations at,
                                    Map<FactSubject, Coordinate> byName,
-                                   Map<RuleKey, Type> typeAt,
                                    ReadingEvidence took, RulesRead rules) {
         List<Direct> out = new ArrayList<>();
         List<FieldDomains.NoLine> noLines = new ArrayList<>();
