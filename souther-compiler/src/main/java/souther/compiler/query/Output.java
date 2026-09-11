@@ -92,7 +92,8 @@ public final class Output {
                         in.typePackages(), in.sigs(), in.imported(),
                         in.injected(),
                         in.callees(), in.requirements(), in.checked(), in.compositions(),
-                        in.dischargeClauses(), in.shapes(), in.checks(), in.standingCalls());
+                        in.dischargeClauses(), in.invariantStatements(), in.shapes(), in.checks(),
+                        in.standingCalls());
                 publishDeclarations(db, emitted);
                 return Answer.of(emitted.seal());
             } catch (CompileException e) {
@@ -136,6 +137,7 @@ public final class Output {
                       Bodies.Elaborated checked,
                       Map<ValueName.Behavior, souther.compiler.core.Composition> compositions,
                       ExpandedClauseLookup dischargeClauses,
+                      souther.compiler.check.InvariantStatements invariantStatements,
                       Map<souther.compiler.types.TypeSymbol.AtModule,
                               souther.compiler.core.ValueShape> shapes,
                       Map<ValueName.Behavior, EnsuresEnforcement> checks,
@@ -189,6 +191,13 @@ public final class Output {
             // would agree only until one of them was edited.
             Answer<Map<String, souther.compiler.types.Type>> standing =
                     db.ask(new Bodies.RecursiveCallSigs(name, souther.compiler.check.InliningPolicy.FULL));
+            // What each conjunct of a declaration's rules states. The mapping onto a decoder's
+            // constraints is about what a rule says, and reading that off the tree recognises a rule
+            // written out and declines the same rule named through a helper.
+            Answer<souther.compiler.check.RuleReadingSource> reading = Shapes.ruleReading(db, name);
+            if (!reading.present()) {
+                return null;
+            }
             if (!checked.present() || !compositions.present()
                     || !lowering.present() || !scope.present() || !imported.present()
                     || !signatures.present() || !injected.present() || !callees.present()
@@ -200,7 +209,9 @@ public final class Output {
                     prepared.value().importedFrom(), signatures.value(), imported.value(),
                     injected.value(),
                     callees.value(), requirements.value(), checked.value(), compositions.value(),
-                    Shapes.expandedClauses(db), shapes.value(), checks.value(),
+                    Shapes.expandedClauses(db),
+                    souther.compiler.check.InvariantStatements.of(reading.value()),
+                    shapes.value(), checks.value(),
                     Set.copyOf(prepared.value().operandMethods().values()), standing.value());
         }
 
@@ -390,7 +401,8 @@ public final class Output {
                         in.typePackages(), in.sigs(), in.imported(),
                         in.injected(),
                         in.callees(), in.requirements(), in.checked(), in.compositions(),
-                        in.dischargeClauses(), in.shapes(), in.checks(), in.standingCalls(),
+                        in.dischargeClauses(), in.invariantStatements(), in.shapes(), in.checks(),
+                        in.standingCalls(),
                         instrumentation);
                 // The classes, what they implement and whose numbers a run through them leaves,
                 // from the one emission that decided all three.

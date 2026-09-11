@@ -131,27 +131,10 @@ class NothingHereStartsAReadingSomebodyElseHasAlreadyMadeTest {
             "souther/compiler/query/Shapes$InvariantCapabilities#compute("
                     + "Lsouther/compiler/query/Db;)Lsouther/compiler/query/Answer; -> "
                     + CHECK + "InvariantChecker#capabilityOf",
-            // The clauses a contract's rules are read from, and the overload that reaches them. It
-            // does both things a reader here can do: it makes the terms a rule is read in, and it
-            // asks what each conjunct may take.
+            // What each conjunct of a contract's rule may take, asked where the rule is read.
             CHECK + "ContractDischarge#of(L" + CHECK + "StatedContract;L" + CHECK
                     + "StatedContract$StatedRule;" + SOURCE_AND_POLICY + ")Ljava/util/List; -> "
-                    + NOTHING_TO_BORROW_FROM,
-            CHECK + "ContractDischarge#of(L" + CHECK + "StatedContract;L" + CHECK
-                    + "StatedContract$StatedRule;" + SOURCE_AND_POLICY + ")Ljava/util/List; -> "
-                    + CHECK + "InvariantChecker#capabilityOf",
-            CHECK + "ContractDischarge#of(L" + CHECK + "StatedContract;" + SOURCE_AND_POLICY
-                    + ")L" + CHECK + "ContractDischarge; -> " + CHECK + "ContractDischarge#of",
-            // The engine a body is run on, and the overload that reaches it.
-            CHECK + "PathReachability#of(Lsouther/compiler/core/Core;L" + CHECK + "Scope;"
-                    + "Lsouther/compiler/coverage/CoverageSites$Plan;"
-                    + "Lsouther/compiler/inputs/InputDomain;" + SOURCE_AND_POLICY + ")L"
-                    + CHECK + "PathReachability$Answers; -> " + NOTHING_TO_BORROW_FROM,
-            CHECK + "PathReachability#of(Lsouther/compiler/core/Core;L" + CHECK + "ReadingPolicy;L"
-                    + CHECK + "SpecImplementation$Implemented;"
-                    + "Lsouther/compiler/coverage/CoverageSites$Plan;"
-                    + "Lsouther/compiler/inputs/InputDomain;L" + CHECK + "RuleReadingSource;)L"
-                    + CHECK + "PathReachability$Answers; -> " + CHECK + "PathReachability#of");
+                    + CHECK + "InvariantChecker#capabilityOf");
 
     /**
      * Every pair: a static method taking the lending, and one of the same name on the same class

@@ -6,6 +6,9 @@ import souther.compiler.check.Elaborator;
 import souther.compiler.check.Lower;
 import souther.compiler.check.Derived;
 import souther.compiler.check.DerivedSymbols;
+import souther.compiler.check.InvariantStatement;
+import souther.compiler.check.PartId;
+import souther.compiler.check.RuleRef;
 import souther.compiler.ast.Hir;
 import souther.compiler.types.BindingId;
 import souther.compiler.types.MapKeyRepresentation;
@@ -684,12 +687,12 @@ final class CodecGen {
                 // Split again here, this would be a second answer to which parts a clause has,
                 // taken off a tree an expansion left.
                 for (AuthoredShape.Written conjunct : declared.get(i).parts()) {
-                    Optional<InvariantConstraints.Constraint> c =
-                            InvariantConstraints.against(symbols).of(conjunct.read(), base);
-                    if (c.isPresent()) {
-                        mapped.add(c.get());
-                    } else {
+                    List<InvariantConstraints.Constraint> states =
+                            constraintsOf(conjunct.id(), base);
+                    if (states == null) {
                         refine = true;
+                    } else {
+                        mapped.addAll(states);
                     }
                 }
             }
@@ -698,6 +701,37 @@ final class CodecGen {
                     refine));
         }
         return new Invariants(out);
+    }
+
+    /**
+     * The constraints one conjunct maps onto, or null where it keeps its own check.
+     *
+     * <p><b>Recognised statement by statement and committed conjunct by conjunct.</b> A conjunct
+     * states as many rules as the reading arrives at — a denied choice states one per branch — and
+     * each of them is mapped on its own. What is emitted is all of them or none: a conjunct half of
+     * whose rules became constraints would report one of its own statements as {@code too_short} and
+     * the other as {@code invariant_violation}, so one thing an author wrote would break in two
+     * different words depending on which half the value broke.
+     *
+     * <p>Null where the reading has no form for the clause, which is not a conjunct that constrains
+     * nothing: the rule still runs, and what it reaches the boundary as is the fallback.
+     */
+    private List<InvariantConstraints.Constraint> constraintsOf(
+            PartId<RuleRef.Invariant> conjunct, Type base) {
+        List<InvariantStatement> statements = ctx.invariantStatements().of(conjunct);
+        if (statements == null) {
+            return null;
+        }
+        List<InvariantConstraints.Constraint> out = new ArrayList<>();
+        for (InvariantStatement each : statements) {
+            Optional<InvariantConstraints.Constraint> c =
+                    InvariantConstraints.against(symbols, ctx.invariantStatements()).of(each, base);
+            if (c.isEmpty()) {
+                return null;
+            }
+            out.add(c.get());
+        }
+        return List.copyOf(out);
     }
 
     /**

@@ -52,7 +52,7 @@ class FollowingWhatANameWasGivenCostsTheChainOnceTest {
     private static long followedOver(int links) {
         PathEngine engine = new PathEngine(
                 RuleReadings.ofNoClauseFiled(Symbols.none(DefaultStdlib.get())),
-                DeclarationReadings.NONE, Terms.Of.THE_DISCHARGE_TREE,
+                Terms.Of.THE_DISCHARGE_TREE,
                 souther.compiler.query.ReadAs.THE_COMPILATION_DOES);
         Hir.Binders binders = new Hir.Binders(OWNER);
         Core.Binder first = CoreBinders.of(binders.binder("x0", POS));
