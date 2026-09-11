@@ -11,8 +11,14 @@ import java.util.List;
  * What settles whether a rule of a body's decision is owed a row.
  *
  * <p>The three states ADR-0091 fixes, and they do not reduce to one another. A rule something has
- * been shown to stand in is required; one the readings that already exist show no row takes is
- * excluded; one this compiler looked at without finding is neither, and stays where it was.
+ * been shown to stand in is required; one the model's own rules leave no value for is excluded;
+ * one this compiler looked at without finding is neither, and stays where it was.
+ *
+ * <p><b>None of them is about what the rows do.</b> Whether an authored row takes a rule is the
+ * coverage measure's question and is answered against the runs; this asks whether anything could
+ * take it at all. A rule every row misses may be required, and a rule no value can reach is
+ * excluded however the rows are written — the two questions are orthogonal, and a sentence here
+ * that said "no row takes it" would put the coverage answer in the requirement's mouth.
  *
  * <p><b>What answers this is not one thing.</b> A search answers the first and the last, and it
  * cannot answer the middle: what a search came back with is always this compiler having looked, and
@@ -28,19 +34,22 @@ import java.util.List;
 public sealed interface RuleRequirement {
 
     /**
-     * The readings that already exist show no row takes this rule.
+     * The model's own rules leave no value that takes this rule, so no run of it exists.
      *
      * <p>A fact about the model, and the one answer here that is not about what this compiler
      * managed. The way asks one position to be two things at once, which no value is —
      * {@link souther.compiler.partition.Reachability.NothingReaches} is where that is established
      * and this carries what it established rather than a word for it.
+     *
+     * <p>Not "no row takes it". That is what the rows happen to do and no author is refused over
+     * it here; this says no row anybody writes could.
      */
     record Excluded(Requirements.Merge.Conflict why) implements RuleRequirement {
 
         public Excluded {
             if (why == null) {
                 throw new IllegalArgumentException(
-                        "a way no row takes is one something showed no row takes");
+                        "a way nothing can take is one something showed nothing can take");
             }
         }
     }

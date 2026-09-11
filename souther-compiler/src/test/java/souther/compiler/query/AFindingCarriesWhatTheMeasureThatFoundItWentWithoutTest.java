@@ -96,7 +96,7 @@ class AFindingCarriesWhatTheMeasureThatFoundItWentWithoutTest {
             WeakeningSet owed = switch (each.about()) {
                 case About.ACaseNoRowExpects _, About.ACaseNothingWasSeenToProduce _ ->
                         signature.output().cases().weakening();
-                case About.ACaseNoRowAppliesItTo(var at, var _) ->
+                case About.ACaseNoRowAppliesItTo(var at, var _, var _) ->
                         signature.positions().get(at.at()).cases().weakening();
                 default -> null;
             };
@@ -154,7 +154,8 @@ class AFindingCarriesWhatTheMeasureThatFoundItWentWithoutTest {
         // finding means and nothing about the one line that decides which measurement each finding
         // is given — which is the line that was wrong.
         List<Adequacy.Finding> found = new ArrayList<>();
-        Adequacy.Findings.signatureFindings("sort", signature, found);
+        // What the declaration calls the two inputs, which is what a case of one is a class of.
+        Adequacy.Findings.signatureFindings("sort", List.of("a", "b"), signature, found);
         assertFalse(found.isEmpty(), "the producer says something about these cases");
 
         Adequacy.AdequacyBar held = Adequacy.AdequacyBar.SIMPLIFIED_DOMAIN;
@@ -190,7 +191,7 @@ class AFindingCarriesWhatTheMeasureThatFoundItWentWithoutTest {
             List<Adequacy.Finding> found, Adequacy.AdequacyBar held, int at,
             TypeSymbol missing) {
         for (Adequacy.Finding each : found) {
-            if (each.about() instanceof About.ACaseNoRowAppliesItTo(var input, var what)
+            if (each.about() instanceof About.ACaseNoRowAppliesItTo(var input, var what, var _)
                     && input.at() == at && what.equals(missing)) {
                 return each.disposition(held);
             }

@@ -1754,7 +1754,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             for (Adequacy.Finding f : behavior.findings()) {
                 // Told apart by the input the finding is about rather than by a number written
                 // beside it: which one it is, is the evidence's own answer on both sides.
-                if (f.about() instanceof About.ACaseNoRowAppliesItTo(var at, var missing)
+                if (f.about() instanceof About.ACaseNoRowAppliesItTo(var at, var missing, var _)
                         && at.at() == input.at()) {
                     out.append(String.format("      %s %suses `%s`%n",
                             mark(f), noRow(f), missing.name()));
@@ -4654,7 +4654,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             case About.AQuestionNothingAnswered(var asked) -> new PublishedSentence.AroundAHandle(
                     "", PublishedRuleHandle.of(handle(asked.cited(), places), places),
                     " — " + asked(asked.asked()) + " " + subjectOf(asked));
-            case About.ACaseNoRowAppliesItTo(var input, var missing) ->
+            case About.ACaseNoRowAppliesItTo(var input, var missing, var _) ->
                     words(missing.name() + " (in #" + (input.at() + 1) + ")");
             // The point and the line, and no quantity: a body's line is owed once wherever it is
             // read, so what joins this to a `partition.obligations` entry is the role, where on

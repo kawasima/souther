@@ -37,14 +37,14 @@ public record DecisionEvidence(DecisionReading read, Measure<RowsPlaced> took) {
     public DecisionEvidence {
         Objects.requireNonNull(read, "a decision is some body's");
         Objects.requireNonNull(took, "there is always an answer to what the rows took");
-        // A reading that came back with some of the body's ways is one whose coverage is of some of
-        // them, whatever the rows did. Folded in here and not left to each reader: the rules and
-        // the runs are one measurement, and a reading that walked half the body and placed every
-        // row it was given is complete about the half it saw and about nothing else.
+        // A reading that would not hold the body's ways apart comes back with none of them, so a
+        // run placed against those rules was placed against nothing. Folded in here and not left
+        // to each reader: the rules and the runs are one measurement, and a coverage that called
+        // itself complete over no rules would say every rule of the body is taken.
         //
         // Only where there is a value to weaken. A measure that was not made says so, and a
         // measure that could not be finished already carries what stopped it; neither claims
-        // anything about the rules this reading did not reach.
+        // anything about rules this reading never had.
         WeakeningSet unread = derivationOf(read);
         if (!unread.isEmpty() && took.made().isPresent()) {
             took = new Measurement.Partial<>(took.made().orElseThrow(),

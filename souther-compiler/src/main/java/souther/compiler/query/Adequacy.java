@@ -3546,7 +3546,7 @@ public final class Adequacy {
             List<GenerationDisposition> out = new ArrayList<>();
             for (Finding finding : findings) {
                 GenerationOutcome none = whereNoRowCouldAnswer(finding.about());
-                out.add(new GenerationDisposition(finding, itemOf(finding, composed, spec),
+                out.add(new GenerationDisposition(finding, itemOf(finding),
                         none != null ? none
                         : switch (finding.about()) {
                             // Asked of the module's account, which is where a row for a point is
@@ -3555,8 +3555,8 @@ public final class Adequacy {
                             // answers it.
                             case About.APointOfABorder(var point) ->
                                     account.outcomeForTheLine(point.point());
-                            case About.ACaseNoRowAppliesItTo(var input, var missing) ->
-                                    atCase(input, missing, composed, spec);
+                            case About.ACaseNoRowAppliesItTo(var _, var _, var owed) ->
+                                    atCase(owed, composed);
                             case About.AClassNoRowIsIn(var missing) -> atClass(missing, composed);
                             case About.AnArmNoRowGoesThrough(var arm) -> atArm(arm, composed);
                             case About.ARuleNoRowTakes(var _, var ruled) ->
@@ -3580,55 +3580,21 @@ public final class Adequacy {
         }
 
         /**
-         * What a row would be offered for, where the finding is something a row is offered for.
+         * What a row would be offered for, which the finding says of itself.
          *
-         * <p>Made where the outcome is and from the same reading. What tells two of them apart is
-         * the thing itself — a class of a position, an arm of a body, a point of a line — and a
-         * second walk that worked the identity out again would be free to name a different one than
-         * the search answered for.
+         * <p>Asked of the finding and worked out nowhere. Whether a finding is about something a
+         * row is owed for is the shape's own answer ({@link About.OfAnObligation}) and so is which
+         * thing it is, so there is nothing here to decide: a walk that named the obligation again
+         * would be a second identity for one thing, free to say something the account never said —
+         * which is what the case of an input had, and why a case and the class of its position
+         * could be two entries of one account.
          *
-         * <p>Empty for the rest. A case whose position this run has no axis at is not something a
-         * row is offered for, and neither is a measure this compiler could not make.
+         * <p>Empty for the rest, which are findings no row answers: a measure this compiler could
+         * not make, a position the model draws no line through, a row waiting for its answer.
          */
-        private static Optional<ObligationIdentity> itemOf(
-                Finding finding, souther.compiler.partition.FillResult composed,
-                Hir.SpecBehavior spec) {
-            return switch (finding.about()) {
-                case About.APointOfABorder(var point) -> Optional.of(
-                        new ObligationIdentity.OfALine(point.point()));
-                case About.AnArmNoRowGoesThrough(var arm) -> Optional.of(
-                        new ObligationIdentity.OfAnArm(arm.obligation()));
-                case About.ARuleNoRowTakes(var behavior, var ruled) -> Optional.of(
-                        new ObligationIdentity.OfADecisionRule(behavior, ruled.rule()));
-                case About.AClassNoRowIsIn(var missing) -> Optional.of(
-                        new ObligationIdentity.OfAClass(new ClassOfAPosition(missing.axis().at(),
-                                missing.name())));
-                case About.ACaseNoRowAppliesItTo(var input, var missing) ->
-                        classOfTheCase(input, missing, composed, spec)
-                                .map(ObligationIdentity.OfAClass::new);
-                default -> Optional.empty();
-            };
-        }
-
-        /**
-         * The class a case of an input is, where this run has an axis at that position.
-         *
-         * <p>Asked of the subject the search was made over, which is what says what this run had
-         * classes for — the same question {@link #atCase} puts, so that what is offered for the
-         * case and what it is called are one thing.
-         */
-        private static Optional<ClassOfAPosition> classOfTheCase(
-                InputCaseEvidence input, TypeSymbol case_,
-                souther.compiler.partition.FillResult composed, Hir.SpecBehavior spec) {
-            int at = input.at();
-            if (at < 0 || at >= spec.params().size()) {
-                return Optional.empty();
-            }
-            ClassOfAPosition owed = new ClassOfAPosition(
-                    new souther.compiler.partition.AxisId(spec.name(), spec.params().get(at).name()),
-                    case_.name());
-            return composed.plan().subject().divides(owed)
-                    ? Optional.of(owed) : Optional.empty();
+        private static Optional<ObligationIdentity> itemOf(Finding finding) {
+            return finding.about() instanceof About.OfAnObligation it
+                    ? Optional.of(it.obligationIdentity()) : Optional.empty();
         }
 
         /**
@@ -3920,15 +3886,14 @@ public final class Adequacy {
          * than off an empty row list, which would be the same as calling a search that found
          * nothing a fact about the model.
          */
-        private static GenerationOutcome atCase(InputCaseEvidence input, TypeSymbol case_,
-                                                souther.compiler.partition.FillResult composed,
-                                                Hir.SpecBehavior spec) {
+        private static GenerationOutcome atCase(ClassOfAPosition owed,
+                                                souther.compiler.partition.FillResult composed) {
             // Asked of the subject the search was made over, which is what says what this run had
-            // classes for. Worked out from a partition's axes beside it, the answer was a second
-            // reading of the search's own universe, and a case whose position the search divides
-            // could be told there was no axis there.
-            if (!(classOfTheCase(input, case_, composed, spec)
-                    .orElse(null) instanceof ClassOfAPosition owed)) {
+            // classes for. Which class of which position the case is, is the finding's own answer
+            // and is not worked out here: a second reading of it could name a class the account
+            // does not keep, and then a row would be offered for one thing and weighed against
+            // another.
+            if (!composed.plan().subject().divides(owed)) {
                 return new GenerationOutcome.NotSupported(
                         GenerationOutcome.NotSupported.Reason.NO_AXIS_AT_THIS_POSITION);
             }
@@ -4397,10 +4362,11 @@ public final class Adequacy {
         /**
          * A rule of the decision the body states that no row takes.
          *
-         * <p>Said of the rules something was seen standing in. A rule the readings show no row
-         * takes is not owed one, and a rule this compiler looked for and did not find is neither
-         * covered nor a gap — which is {@link RuleRequirement}'s three answers, and none of them is
-         * a finding except the first.
+         * <p>Said of the rules something was seen standing in. A rule the model's own rules leave
+         * no value for is not owed one, and a rule this compiler looked for and did not find is
+         * neither covered nor a gap — which is {@link RuleRequirement}'s three answers, and none of
+         * them is a finding except the first. What the rows did is the other question and is
+         * answered by the coverage this is counted against.
          *
          * <p>Beside {@link #ARM_UNREACHED} and not among it. An arm is what the author wrote and is
          * owed a row once however often a helper carrying it is called; a rule is a way through the
@@ -5301,7 +5267,7 @@ public final class Adequacy {
             List<Finding> out = new ArrayList<>();
             for (Hir.BehaviorDef behavior : prepared.value().behaviors()) {
                 unansweredRows(prepared.value().module(), behavior.name(), out);
-                signatureFindings(behavior.name(),
+                signatureFindings(behavior.name(), positionsOf(behavior),
                         signatures == null ? null : signatures.get(behavior.name()), out);
                 partitionFindings(behavior,
                         partitions == null ? null : partitions.get(behavior.name()),
@@ -5316,12 +5282,26 @@ public final class Adequacy {
         }
 
         /**
+         * What a declaration calls each of a behavior's inputs, in order.
+         *
+         * <p>Empty for a behavior that declares no parameters of its own, which is what a
+         * composition is. Its stages are where its inputs are measured, so nothing here names a
+         * position of it.
+         */
+        private static List<String> positionsOf(Hir.BehaviorDef behavior) {
+            return behavior instanceof Hir.SpecBehavior spec
+                    ? spec.params().stream().map(Hir.Param::name).toList() : List.of();
+        }
+
+        /**
          * The rules of one behavior's decision that no row takes and something can stand in.
          *
-         * <p>Three answers upstream and one of them is a finding. A rule the readings show no row
-         * takes is owed nothing; a rule the search looked for and did not find is neither covered
-         * nor a gap, and reporting it would be a shortfall of this compiler told to an author as
-         * work of theirs. Only a rule something was seen standing in is a row somebody can write.
+         * <p>Three answers upstream and one of them is a finding. A rule the model's own rules
+         * leave no value for is owed nothing; a rule the search looked for and did not find is
+         * neither covered nor a gap, and reporting it would be a shortfall of this compiler told to
+         * an author as work of theirs. Only a rule something was seen standing in is a row somebody
+         * can write. None of the three is about what the rows do, which is what the coverage these
+         * are asked over already answered.
          *
          * <p>The search is asked only where a rule is left. A behavior whose rows take every rule
          * settles the question without composing anything, which is what keeps this off the builds
@@ -5399,8 +5379,8 @@ public final class Adequacy {
          * one are states a fixture may or may not reach; handed the evidence, this can be shown the
          * state itself.
          */
-        static void signatureFindings(String behavior, SignatureEvidence signature,
-                                      List<Finding> out) {
+        static void signatureFindings(String behavior, List<String> positions,
+                                      SignatureEvidence signature, List<Finding> out) {
             if (signature == null || signature.counted().made().isEmpty()) {
                 return;
             }
@@ -5444,10 +5424,40 @@ public final class Adequacy {
                     // This input's own measurement. One position whose rows could not be classified
                     // says nothing about the position beside it, and a finding handed the signature's
                     // union would report both as undecided over one of them.
+                    //
+                    // And the class of that position the case is, which is the account's key for
+                    // the one thing this and the domain measure are both about. Named here, where
+                    // the position is in hand, so that the two halves of one obligation are two
+                    // readings of one entry rather than two entries that happen to coincide.
                     out.add(Finding.by(behavior, input.cases(),
-                            new About.ACaseNoRowAppliesItTo(input, missing)));
+                            new About.ACaseNoRowAppliesItTo(input, missing,
+                                    new ClassOfAPosition(positionOf(behavior, positions,
+                                            input.at()), missing.name()))));
                 }
             }
+        }
+
+        /**
+         * Which position of {@code behavior} an input measure is of, as the account names it.
+         *
+         * <p>The declaration's answer, handed in rather than read here. What the signature measure
+         * holds is which of the inputs it is of, and the account keys a class on the position it is
+         * a class of — so the crossing is made once, against the declaration both measures were
+         * read from.
+         *
+         * @param positions what the declaration calls each of this behavior's inputs, in order
+         * @throws IllegalStateException where the signature measured a position the declaration
+         *         does not have, which is one declaration read two ways rather than a state a model
+         *         can be in
+         */
+        private static souther.compiler.partition.AxisId positionOf(String behavior,
+                                                                    List<String> positions,
+                                                                    int at) {
+            if (at < 0 || at >= positions.size()) {
+                throw new IllegalStateException("the cases of input " + at + " of `" + behavior
+                        + "` were measured at a position its declaration does not have");
+            }
+            return new souther.compiler.partition.AxisId(behavior, positions.get(at));
         }
 
         /**
@@ -5824,7 +5834,7 @@ public final class Adequacy {
                         case About.ACaseNoRowExpects(var missing) ->
                                 new ExampleMessage.NoRowExpectsThatCase(
                                         missing.name(), finding.named());
-                        case About.ACaseNoRowAppliesItTo(var input, var missing) ->
+                        case About.ACaseNoRowAppliesItTo(var input, var missing, var _) ->
                                 new ExampleMessage.NoRowAppliesItToThatCase(missing.name(),
                                         // How a person is told which input, which is one-based and
                                         // is this sentence's to spell.

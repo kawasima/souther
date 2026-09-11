@@ -56,12 +56,33 @@ public sealed interface About {
         }
     }
 
-    /** A case of an input no row applies the behavior to. The evidence names which input, so that a
-     *  case and the position it is a case of arrive together. */
-    record ACaseNoRowAppliesItTo(InputCaseEvidence input, TypeSymbol missing) implements About {
+    /**
+     * A case of an input no row applies the behavior to.
+     *
+     * <p>The evidence names which input, so that a case and the position it is a case of arrive
+     * together.
+     *
+     * <p><b>One obligation with the class of that position, and the same one.</b> A case of a sum
+     * an input ranges over and the class that sum makes of the position are one thing a row is
+     * owed for, reached by two derivations: the signature counts the cases a row applies the
+     * behavior to, and the partition counts the classes a row sits in. The identity is what says
+     * they are one — carried here, where the position is known, rather than worked out again by
+     * whoever needs it, which is how a second identity for one obligation came to exist at the one
+     * consumer that needed one.
+     *
+     * @param owed the class of the position this case is, which is the account's own key for it
+     */
+    record ACaseNoRowAppliesItTo(InputCaseEvidence input, TypeSymbol missing,
+                                 ClassOfAPosition owed) implements OfAnObligation {
         public ACaseNoRowAppliesItTo {
             java.util.Objects.requireNonNull(input, "a finding is about something");
             java.util.Objects.requireNonNull(missing, "a finding is about something");
+            java.util.Objects.requireNonNull(owed, "a case of an input is a class of a position");
+        }
+
+        @Override
+        public ObligationIdentity obligationIdentity() {
+            return new ObligationIdentity.OfAClass(owed);
         }
     }
 
@@ -401,9 +422,9 @@ public sealed interface About {
      * is not part of it, so a body stating one rule at two places states one rule.
      *
      * <p>Said only of the rules something was seen standing in. Whether a rule is owed a row at all
-     * is settled before this, and the two answers that are not "yes" are not findings: a rule the
-     * readings show no row takes is owed nothing, and one this compiler looked for and did not find
-     * is neither covered nor a gap.
+     * is settled before this and is not about the rows: a rule the model's own rules leave no value
+     * for is owed nothing however the rows are written, and one this compiler looked for and did
+     * not find is neither covered nor a gap.
      *
      * @param behavior whose decision it is a rule of, which the rule itself does not say
      * @param ruled    the rule and what a run down its path would be seen doing, which is what a

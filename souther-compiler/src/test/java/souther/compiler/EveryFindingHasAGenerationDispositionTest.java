@@ -792,7 +792,7 @@ class EveryFindingHasAGenerationDispositionTest {
         return filling(compilation, module, behavior).generation().stream()
                 .filter(each -> each.finding().about()
                         instanceof souther.compiler.query.About.ACaseNoRowAppliesItTo(
-                                var input, var case_)
+                                var input, var case_, var _)
                         && case_.name().equals(missing) && input.at() + 1 == at)
                 .map(Adequacy.GenerationDisposition::outcome)
                 .findFirst().orElseThrow(() -> new AssertionError("no gap for " + missing));
