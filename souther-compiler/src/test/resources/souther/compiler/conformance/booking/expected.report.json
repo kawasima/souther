@@ -1,5 +1,5 @@
 {
-  "schemaVersion" : 19,
+  "schemaVersion" : 20,
   "compilerVersion" : "<version>",
   "status" : "partial",
   "weakening" : [ "bodies_not_elaborated", "rule_unread" ],
@@ -725,11 +725,13 @@
         "inputs" : [ {
           "declared" : [ ],
           "excluded" : [ ],
+          "obligations" : [ ],
           "status" : "unavailable",
           "reason" : "not_a_sum"
         }, {
           "declared" : [ ],
           "excluded" : [ ],
+          "obligations" : [ ],
           "status" : "unavailable",
           "reason" : "not_a_sum"
         } ]
@@ -1231,11 +1233,13 @@
         "inputs" : [ {
           "declared" : [ ],
           "excluded" : [ ],
+          "obligations" : [ ],
           "status" : "unavailable",
           "reason" : "not_a_sum"
         }, {
           "declared" : [ ],
           "excluded" : [ ],
+          "obligations" : [ ],
           "status" : "unavailable",
           "reason" : "not_a_sum"
         } ]
@@ -2468,11 +2472,13 @@
         "inputs" : [ {
           "declared" : [ ],
           "excluded" : [ ],
+          "obligations" : [ ],
           "status" : "unavailable",
           "reason" : "not_a_sum"
         }, {
           "declared" : [ ],
           "excluded" : [ ],
+          "obligations" : [ ],
           "status" : "unavailable",
           "reason" : "not_a_sum"
         } ]
@@ -3198,6 +3204,7 @@
         "inputs" : [ {
           "declared" : [ ],
           "excluded" : [ ],
+          "obligations" : [ ],
           "status" : "unavailable",
           "reason" : "not_a_sum"
         } ]
@@ -3266,6 +3273,7 @@
         "inputs" : [ {
           "declared" : [ ],
           "excluded" : [ ],
+          "obligations" : [ ],
           "status" : "unavailable",
           "reason" : "not_a_sum"
         } ]

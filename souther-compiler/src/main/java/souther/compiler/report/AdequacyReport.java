@@ -194,7 +194,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
         };
     }
 
-    public static final int SCHEMA_VERSION = 19;
+    public static final int SCHEMA_VERSION = 20;
 
     /**
      * Where the schema this writes documents ships.
@@ -3175,6 +3175,14 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                 into.put("axis", owed.at().toString());
                 into.put("class", owed.classId());
             }
+            // The behavior, which of its inputs and which case — what a case of an input is owed at
+            // where nothing divides that input into classes. The input by its number, because a
+            // behavior that declares no parameters has no name to call it by.
+            case ObligationIdentity.OfAnInputCase(var behavior, var at, var missing) -> {
+                into.put("behavior", behavior);
+                into.put("input", at);
+                into.put("case", missing.name());
+            }
             case ObligationIdentity.OfADecisionRule(var behavior, var rule) ->
                     ruleId(into, behavior, rule);
         }
@@ -3698,7 +3706,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                 behavior.pending().ifPresent(count -> b.put("pending", count));
                 b.put("status", wire(behavior.status()));
                 weakening(b, behavior.weakenedBy());
-                signature(b, behavior.signature());
+                signature(b, behavior.name(), behavior.signature(), sources);
                 partition(b, behavior.partition(), behavior.boundaryReadings(),
                         behavior.account(), behavior.claimed(), sources,
                         behavior.rulePlace());
@@ -3833,7 +3841,8 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
         };
     }
 
-    private static void signature(ObjectNode behavior, Adequacy.SignatureEvidence signature) {
+    private static void signature(ObjectNode behavior, String named,
+                                  Adequacy.SignatureEvidence signature, DocumentSources sources) {
         if (signature == null) {
             return;
         }
@@ -3867,6 +3876,14 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             ObjectNode in = inputs.addObject();
             names(in.putArray("declared"), input.declared());
             names(in.putArray("excluded"), input.excluded());
+            // What a row is owed at here, where this measure's account is the one that holds it: a
+            // case of an input of a behavior with no position of its own. Where it has one, the
+            // axes carry that entry and this array is empty — one obligation is one entry, and a
+            // second array listing it would be the same thing for a consumer to reconcile.
+            ArrayNode owed = in.putArray("obligations");
+            for (ObligationIdentity each : signature.owned(named, input)) {
+                obligationId(owed.addObject().putObject("obligationId"), each, sources);
+            }
             measured(in, input.cases(), (node, cases) -> {
                 names(node.putArray("specified"), cases.specified());
                 names(node.putArray("executed"), cases.executed());

@@ -333,10 +333,19 @@ class EveryFindingAboutAnObligationJoinsToItsAccountTest {
             }
             return out;
         }
-        // A case of an input and the class its position divides into are one thing a row is owed
-        // for, so a finding of either kind joins to the one entry the axes publish.
+        // A case of an input is owed at one of two entries, and which is not this reader's to
+        // decide: where the behavior has a position of its own the case and the class its position
+        // divides into are one thing a row is owed for and the axes publish it; where it has none
+        // the signature publishes the case itself. So both are in hand and the identity on the
+        // finding says which it lands on.
         if ("input_case_unspecified".equals(kind)) {
-            return entriesOf(behavior, module, "axis_class_uncovered");
+            out.addAll(entriesOf(behavior, module, "axis_class_uncovered"));
+            if (behavior.has("signature")) {
+                for (JsonNode input : behavior.get("signature").get("inputs")) {
+                    input.get("obligations").forEach(out::add);
+                }
+            }
+            return out;
         }
         JsonNode from = switch (kind) {
             case "decision_rule_uncovered" -> behavior.get("decision").get("obligations");
