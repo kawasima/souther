@@ -1594,7 +1594,7 @@ public final class Partitions {
                                                                     RuleReadingContext reading,
                                                                     NumericDomain.Bounds within) {
         RuleReadingSource ruleSource = reading.source();
-        DeclaredBounds.Range own = DeclaredBounds.of(view, ruleSource);
+        DeclaredBounds.Range own = DeclaredBounds.of(view, reading);
         if (own == null) {
             return List.of();   // nothing here reads a number of this position at all
         }
@@ -1858,12 +1858,12 @@ public final class Partitions {
      * are: {@link DeclaredBounds#leastCountOf}. Of the position as it was read, since how many a
      * value holds is what the rules of every name it wears say. */
     static int leastHeld(TypeView view, RuleReadingContext reading) {
-        return DeclaredBounds.leastCountOf(view, reading.source());
+        return DeclaredBounds.leastCountOf(view, reading);
     }
 
     /** The same, where the record the position sits in has a rule about it too. */
     static int leastHeld(TypeView view, RuleReadingContext reading, FieldDomains.Held held) {
-        return DeclaredBounds.leastCountOf(view, reading.source(), held);
+        return DeclaredBounds.leastCountOf(view, reading, held);
     }
 
     /**
@@ -1879,8 +1879,8 @@ public final class Partitions {
      */
     static DeclaredBounds.CountRange heldRange(Type type, RuleReadingContext reading,
                                                FieldDomains.Held held) {
-        RuleReadingSource ruleSource = reading.source();
-        return DeclaredBounds.countsHeld(TypeView.of(type, ruleSource.symbols()), ruleSource, held);
+        return DeclaredBounds.countsHeld(TypeView.of(type, reading.source().symbols()), reading,
+                held);
     }
 
     /**
@@ -1924,7 +1924,7 @@ public final class Partitions {
             return null;
         }
         NumericDomain.Bounds range =
-                TypeBounds.admissible(DeclaredBounds.of(view, reading.source()), null);
+                TypeBounds.admissible(DeclaredBounds.of(view, reading), null);
         Place from = inside(range, carrier);
         if (from == null || !(carrier instanceof Carrier.Whole)) {
             return from != null && index == 0 ? from : null;
@@ -2051,7 +2051,7 @@ public final class Partitions {
             return List.copyOf(base);
         }
         NumericDomain.Bounds range =
-                TypeBounds.admissible(DeclaredBounds.of(view, ruleSource), within);
+                TypeBounds.admissible(DeclaredBounds.of(view, reading), within);
         Place step = displaced(range, carrier);
         if (step == null) {
             return List.copyOf(base);
@@ -2157,7 +2157,7 @@ public final class Partitions {
         if (!view.isWrapped()) {
             return List.of();
         }
-        DeclaredBounds.Range own = DeclaredBounds.of(view, ruleSource);
+        DeclaredBounds.Range own = DeclaredBounds.of(view, reading);
         NumericDomain.Bounds bounds = TypeBounds.admissible(own, within);
         // The far end has to be a value the position holds. Where the range stops short of it there
         // is nothing there to hold back, and a dense order has no value beside it to hold back

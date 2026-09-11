@@ -99,7 +99,7 @@ final class ContainersAddingUp {
             // value of whatever shape is there.
             return none(Generator.UnresolvedCombination.Reason.NOTHING_COMPOSES_ONE);
         }
-        DeclaredBounds.CountRange howMany = howMany(view, target.writeRoot(), within, ruleSource);
+        DeclaredBounds.CountRange howMany = howMany(view, target.writeRoot(), within, reading);
         NumericDomain.Bounds runs =
                 within.runsBetween(new NumericTerm.ValueOf(occurrences(target)));
         Ends ends = Ends.of(runs == null ? NumericDomain.Bounds.OPEN : runs, elements);
@@ -442,10 +442,10 @@ final class ContainersAddingUp {
      */
     private static DeclaredBounds.CountRange howMany(TypeView container, TermPath root,
                                                      SearchRegion within,
-                                                     RuleReadingSource ruleSource) {
-        Symbols symbols = ruleSource.symbols();
+                                                     RuleReadingContext reading) {
+        Symbols symbols = reading.source().symbols();
         DeclaredBounds.CountRange declared =
-                DeclaredBounds.countsHeld(container, ruleSource, null);
+                DeclaredBounds.countsHeld(container, reading, null);
         ValueName.Stdlib counts = NumericMeasures.takenOf(container.declared(), symbols);
         NumericTerm.FromOnePosition term = counts == null ? null
                 : NumericTerm.TakenOf.of(counts, root, container.declared(), symbols);

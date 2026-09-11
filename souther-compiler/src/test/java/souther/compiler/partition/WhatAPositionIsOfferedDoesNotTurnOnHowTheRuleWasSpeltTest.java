@@ -42,16 +42,20 @@ class WhatAPositionIsOfferedDoesNotTurnOnHowTheRuleWasSpeltTest {
                     rules.symbols());
         }
 
+        /** The world these readings are made in, with nothing to borrow from. */
+        RuleReadingContext reading() {
+            return RuleReadingContext.unshared(rules,
+                    souther.compiler.query.ReadAs.THE_COMPILATION_DOES);
+        }
+
         /** How many a value of the position has to hold. */
         int least(String type) {
-            return Partitions.leastHeld(view(type),
-                    RuleReadingContext.unshared(rules,
-                            souther.compiler.query.ReadAs.THE_COMPILATION_DOES));
+            return Partitions.leastHeld(view(type), reading());
         }
 
         /** And how many it may. */
         int most(String type) {
-            return DeclaredBounds.mostCountOf(view(type), rules);
+            return DeclaredBounds.mostCountOf(view(type), reading());
         }
     }
 
@@ -134,6 +138,25 @@ class WhatAPositionIsOfferedDoesNotTurnOnHowTheRuleWasSpeltTest {
 
                 data Bag = List<Int>
                     invariant notThree = List.length(value) /= 3
+                """).least("Bag"));
+    }
+
+    /**
+     * And the same rule written at the bottom of the range does place one.
+     *
+     * <p>The pair of the case above, and what tells the two apart is where the hole is rather than
+     * what the rule says. A disequality states no end and the values still stop somewhere: refused
+     * at three, a list starts where it started; refused at none, the fewest it holds is one. So the
+     * floor above is the rules leaving the bottom where it was and not this reader failing to reach
+     * a rule, which a case that only ever answered zero could not tell an author.
+     */
+    @Test
+    void aRuleRefusingTheEmptyOneIsAFloorOfOne() {
+        assertEquals(1, modelOf("""
+                module example.bag
+
+                data Bag = List<Int>
+                    invariant notEmpty = List.length(value) /= 0
                 """).least("Bag"));
     }
 }
