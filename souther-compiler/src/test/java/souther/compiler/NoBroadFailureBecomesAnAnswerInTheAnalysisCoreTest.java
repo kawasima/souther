@@ -281,7 +281,8 @@ class NoBroadFailureBecomesAnAnswerInTheAnalysisCoreTest {
                             + " pattern the engine refused"),
             new Permission("souther.compiler.query.Adequacy$ARowBuiltAndRun", "attempt",
                     "(Ljava/lang/String;Ljava/util/Map;"
-                            + "Lsouther/compiler/partition/Reachability$Reaching;)"
+                            + "Lsouther/compiler/partition/Reachability$Reaching;"
+                            + "Lsouther/compiler/partition/AnswersDemanded;)"
                             + "Lsouther/compiler/partition/Generator$BoundaryAttempt;",
                     "java.lang.LinkageError",
                     "whether the classes generated for this model link, asked by building a row"

@@ -1943,11 +1943,12 @@ public final class Adequacy {
                             runningRowsOf(trialling(db, name), behavior, sig,
                                     numberingOf(db, name),
                                     RequiredDependencies.of(db, name, behavior)),
-                            supplyingFor(db, name, behavior));
+                            answering(db, name, behavior, subject));
             if (probe == null) {
-                // Nothing builds the values, so no candidate goes through anything. Absent rather
-                // than an answer saying nothing stands anywhere, which is what a search that ran
-                // and found nothing says and is not this.
+                // Nothing builds the values, or nothing says what the behavior has to be stood in
+                // for, so no candidate goes through anything. Absent rather than an answer saying
+                // nothing stands anywhere, which is what a search that ran and found nothing says
+                // and is not this.
                 return Answer.absent();
             }
             // The one placement of this module, which the account's coverage was read with. Built
@@ -1961,19 +1962,6 @@ public final class Adequacy {
                 return Answer.absent();
             }
             souther.compiler.inputs.SearchRegion declared = subject.quantities().region();
-            RequiredDependencies requires = RequiredDependencies.of(db, name, behavior);
-            if (requires == null) {
-                // Nothing says what the behavior has to be stood in for, so no row of it can be
-                // run. Absent rather than every rule reported as one nothing composed: what a
-                // search that ran found is not what a search that could not be set up did.
-                return Answer.absent();
-            }
-            // One of these for the whole behavior. What a row stands the dependencies in with
-            // differs per rule; which dependencies there are and how a value for one is read does
-            // not, and asking it per rule would read every declaration once per way through the
-            // body.
-            AnswersForARule answers = new AnswersForARule(requires,
-                    standingForEach(db, name, subject, requires));
             // Asked once, because what it answers is one list and asking it per rule would walk the
             // rules once for every rule.
             Set<DecisionRule> toSettle = new LinkedHashSet<>(evidence.notTakenByRows());
@@ -1983,7 +1971,7 @@ public final class Adequacy {
                 if (!toSettle.contains(ruled.rule())) {
                     continue;
                 }
-                out.put(ruled.rule(), whatSettles(ruled, probe, taken, declared, answers));
+                out.put(ruled.rule(), whatSettles(ruled, probe, taken, declared));
             }
             return Answer.of(Ordered.map(out));
         }
@@ -2005,12 +1993,12 @@ public final class Adequacy {
         private static RuleRequirement whatSettles(
                 souther.compiler.partition.DecisionReading.Ruled ruled, Coverages.Probe probe,
                 souther.compiler.partition.RulesTaken taken,
-                souther.compiler.inputs.SearchRegion declared, AnswersForARule answers) {
+                souther.compiler.inputs.SearchRegion declared) {
             return switch (souther.compiler.partition.Reachability.of(ruled.states(), declared)) {
                 case souther.compiler.partition.Reachability.NothingReaches nothing ->
                         new RuleRequirement.Excluded(nothing.why());
                 case souther.compiler.partition.Reachability.Reaching reaching ->
-                        whatASearchFinds(ruled, probe, taken, reaching, answers);
+                        whatASearchFinds(ruled, probe, taken, reaching);
             };
         }
 
@@ -2021,35 +2009,41 @@ public final class Adequacy {
          * reach: which values were tried is this search's choice, and a reading anywhere in the
          * chain from a condition to a class may have steered them wrong.
          *
-         * <p>The values first and the answers after them, because an argument of an asking may be a
-         * position the row writes at: which call a table row answers for is the one that reached
-         * the dependency, and that is the value this row put there. Composed the other way round,
-         * a table would be keyed to a call nothing makes.
+         * <p>What the way asks of the answers goes in with the request, so the row is composed in
+         * the environment it is about. Composed against whatever the behavior answers generally and
+         * corrected after, a way whose own answer composes was refused for a generic one that did
+         * not — an answer of a union is chosen case by case, and the case a way names need not be
+         * the case chosen for a way that names none.
+         *
+         * <p>And in the words the search came back with, whichever of them it is: nothing stood in
+         * for a dependency, a way that wants a table, a budget that stopped the composing. Folded
+         * to one word, an author reading the rule was told a search came to nothing and not what it
+         * came to nothing on.
          */
         private static RuleRequirement whatASearchFinds(
                 souther.compiler.partition.DecisionReading.Ruled ruled, Coverages.Probe probe,
                 souther.compiler.partition.RulesTaken taken,
-                souther.compiler.partition.Reachability.Reaching reaching,
-                AnswersForARule answers) {
-            if (!(probe.attempt("a rule of the decision", Map.of(), reaching)
-                    instanceof Generator.BoundaryAttempt.Built built)) {
-                return new RuleRequirement.Unsettled.NothingComposedARow(
-                        new Generator.UnresolvedCombination(List.of(),
-                                Generator.UnresolvedCombination.Reason.NOTHING_COMPOSES_ONE));
-            }
-            // In the words the composition came back with, which say which of the things that
-            // stop a row stopped this one: nothing answered for a dependency, or the row asks one
-            // of them twice at one call. Folded to one word, an author reading the rule would be
-            // told a search came to nothing and not what it came to nothing on.
-            AnswersStoodIn stood = answers.of(ruled.demands());
-            if (stood instanceof AnswersStoodIn.NothingComposed(var why)) {
-                return new RuleRequirement.Unsettled.NothingComposedARow(
-                        new Generator.UnresolvedCombination(List.of(), why));
-            }
-            List<souther.compiler.partition.StoodInAnswer> stoodIn =
-                    ((AnswersStoodIn.Stood) stood).answers();
-            souther.compiler.partition.RowToRun composed =
-                    new souther.compiler.partition.RowToRun(built.row().inputs(), stoodIn);
+                souther.compiler.partition.Reachability.Reaching reaching) {
+            return switch (probe.attempt("a rule of the decision", Map.of(), reaching,
+                    ruled.demands())) {
+                case Generator.BoundaryAttempt.NoRow none ->
+                        new RuleRequirement.Unsettled.NothingComposedARow(none.why());
+                case Generator.BoundaryAttempt.Built built ->
+                        whereItWent(built.row().toRun(), probe, taken, ruled);
+            };
+        }
+
+        /**
+         * Where the composed row turned out to go.
+         *
+         * <p>The row as it was composed, run as it is. Rebuilt here from its values and an
+         * environment worked out beside it, the row that ran would be a row the search never
+         * composed — and what it did would be recorded against the one that is offered.
+         */
+        private static RuleRequirement whereItWent(
+                souther.compiler.partition.RowToRun composed, Coverages.Probe probe,
+                souther.compiler.partition.RulesTaken taken,
+                souther.compiler.partition.DecisionReading.Ruled ruled) {
             if (!(probe.read(composed).watched() instanceof Generator.Watched.Ran(var seen))) {
                 return new RuleRequirement.Unsettled.NothingWatchedTheRow();
             }
@@ -2137,7 +2131,7 @@ public final class Adequacy {
                             runningRowsOf(trialling(db, name), behavior, sig,
                                     numberingOf(db, name),
                                     RequiredDependencies.of(db, name, behavior)),
-                            supplyingFor(db, name, behavior)),
+                            answering(db, name, behavior, subject)),
                     divided.reaching())));
         }
 
@@ -2158,9 +2152,9 @@ public final class Adequacy {
      */
     static Coverages.Probe probing(Sig sig, souther.compiler.partition.MeasuredInput subject,
                                    BoundaryValues building, Generator.Trial trial,
-                                   AnswersStoodIn standing) {
-        return building == null ? null
-                : new ARowBuiltAndRun(sig, subject, building, trial, standing);
+                                   AnswersForARule answers) {
+        return building == null || answers == null ? null
+                : new ARowBuiltAndRun(sig, subject, building, trial, answers);
     }
 
     /**
@@ -2182,35 +2176,39 @@ public final class Adequacy {
         private final Generator.Trial trial;
 
         /**
-         * What every row built here stands the behavior's dependencies in with.
+         * What composes the stand-ins a row built here goes out with.
          *
-         * <p>Handed to the composer, so that a candidate holds it from the moment it is composed. A
-         * row of a behavior that requires a dependency is a row nothing applies, so a candidate
-         * without one is a candidate nothing can run — and a reader that took a built row apart and
-         * put the stand-ins on afterwards would be composing a second row beside the one the search
-         * had measured.
+         * <p>The composer and not one composition of it. What a row stands the dependencies in
+         * with differs between the things this behavior is searched for — a point asks nothing of
+         * them, a rule asks what the body read — and only the request knows which it is. Held as
+         * one answer, every search of this behavior composed its row under the answers of a way
+         * that asks nothing, and a caller wanting others put them on afterwards: the row that was
+         * run and the row that was built were two rows, and a way whose own answer composes was
+         * refused for the generic one that did not.
          */
-        private final AnswersStoodIn standing;
+        private final AnswersForARule answers;
 
         private ARowBuiltAndRun(Sig sig, souther.compiler.partition.MeasuredInput subject,
                                 BoundaryValues building, Generator.Trial trial,
-                                AnswersStoodIn standing) {
+                                AnswersForARule answers) {
             this.sig = sig;
             this.subject = subject;
             this.building = building;
             this.trial = trial;
-            this.standing = standing;
+            this.answers = answers;
         }
 
         @Override
         public Generator.BoundaryAttempt attempt(String label,
                 java.util.Map<souther.compiler.partition.RealizationTarget,
                         souther.compiler.numeric.Place> fixing,
-                souther.compiler.partition.Reachability.Reaching reaching) {
+                souther.compiler.partition.Reachability.Reaching reaching,
+                souther.compiler.partition.AnswersDemanded demands) {
             Generator.CandidateCheck check =
                     (at, candidate) -> built(building.build(sig.ins().get(at), candidate.value()));
             try {
-                return Generator.probeFixing(subject, label, fixing, reaching, check, standing);
+                return Generator.probeFixing(subject, label, fixing, reaching, check,
+                        answers.of(demands));
             } catch (LinkageError _) {
                 // The generated classes would not link, so nothing can be built to find out what a
                 // model admits. Nothing was tried, which is not the same as everything tried being
@@ -2561,22 +2559,20 @@ public final class Adequacy {
     }
 
     /**
-     * What one behavior's rows stand its dependencies in with.
+     * What composes the stand-ins for one behavior's rows, or nothing where the module did not
+     * build far enough to say what it requires.
      *
-     * <p>Asked of whichever behavior has rows, and not of a list assembled beforehand. A behavior
-     * with nothing of its own to fill can still be the one reading that composed the row a
-     * declaration's line is owed, and such a row is a row of that behavior — applied the way every
-     * other row of it is, and no more applicable without a stand-in.
-     *
-     * <p>Once per behavior rather than once per row: what a dependency answers where nothing asks
-     * anything of it does not depend on which row is being composed.
+     * <p>The composer and not a composition. What a row stands the dependencies in with depends on
+     * what the thing it is composed for asks of them, and that is the request's — so this is asked
+     * once for the behavior and each search hands it its own demand. Made per demand instead, every
+     * asker would read the declarations again for the part of the answer that does not vary: which
+     * dependencies there are, and where a value for each is read.
      */
-    private static AnswersStoodIn supplyingFor(Db db, String module, String behavior) {
-        souther.compiler.partition.MeasuredInput subject = subjectOf(db, module, behavior);
-        return subject == null
-                ? new AnswersStoodIn.NothingComposed(Generator.UnresolvedCombination.Reason
-                        .NOTHING_STANDS_IN_FOR_A_DEPENDENCY)
-                : Generated.supplying(db, module, behavior, subject);
+    private static AnswersForARule answering(Db db, String module, String behavior,
+                                             souther.compiler.partition.MeasuredInput subject) {
+        RequiredDependencies requires = RequiredDependencies.of(db, module, behavior);
+        return requires == null ? null
+                : new AnswersForARule(requires, standingForEach(db, module, subject, requires));
     }
 
     /**
@@ -3859,14 +3855,11 @@ public final class Adequacy {
         private static AnswersStoodIn supplying(
                 Db db, String module, String behavior,
                 souther.compiler.partition.MeasuredInput subject) {
-            RequiredDependencies requires = RequiredDependencies.of(db, module, behavior);
-            if (requires == null) {
-                return new AnswersStoodIn.NothingComposed(Generator
-                        .UnresolvedCombination.Reason.NOTHING_STANDS_IN_FOR_A_DEPENDENCY);
-            }
-            return new AnswersForARule(requires,
-                    standingForEach(db, module, subject, requires))
-                    .of(souther.compiler.partition.AnswersDemanded.NOTHING);
+            AnswersForARule answers = answering(db, module, behavior, subject);
+            return answers == null
+                    ? new AnswersStoodIn.NothingComposed(Generator
+                            .UnresolvedCombination.Reason.NOTHING_STANDS_IN_FOR_A_DEPENDENCY)
+                    : answers.of(souther.compiler.partition.AnswersDemanded.NOTHING);
         }
 
         /**

@@ -436,11 +436,10 @@ public final class GeneratedRows {
     /**
      * The {@code with} clause a row carries, or nothing where it stands nothing in.
      *
-     * <p>A projection and not a decision. What each answer is for was settled where the row was
-     * composed: one answering every call is what a row writes as a {@code with}, and one answering
-     * a single call is a row of the table beside the block ({@link #blocks}). So this writes the
-     * first and never the second, and a row that answers by what it was applied to carries no
-     * clause at all — the table it reads is the one written above it.
+     * <p>A projection and not a decision. Every answer a row carries is one value answering every
+     * call that row makes, which is what a {@code with} states — settled where the row was composed
+     * and not read back out here. A way needing a dependency to answer by what it was applied to is
+     * one nothing composed a row for at all, so no row reaching this is short of a clause it needed.
      *
      * <p>The dependency spelled the way a person writes one, asked of the rule that answers it
      * ({@link Requirements#writtenIn}). A behavior another module declares is reachable through
@@ -789,9 +788,6 @@ public final class GeneratedRows {
             case A_TABLE_IS_WHAT_THIS_NEEDS ->
                     "it needs a behavior the target depends on to answer by what it was applied to,"
                             + " which is a table written for the module and not a line on a row";
-            case TWO_ANSWERS_AT_ONE_CALL ->
-                    "it asks one behavior the target depends on for two answers at one call the"
-                            + " row makes, and a table answers by what it was applied to";
             // As above: one of the two ways a search leaves something untried has a number in it
             // and the other has none, so neither is said as a halt here.
             case THE_SEARCH_LEFT_SOMETHING_UNTRIED -> "the search left something untried";

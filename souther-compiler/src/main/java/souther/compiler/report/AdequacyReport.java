@@ -2962,17 +2962,11 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             case NOTHING_STANDS_IN_FOR_A_DEPENDENCY ->
                     "nothing here could answer for a behavior " + at + " depends on, and a row"
                             + " that stands none in is a row nothing applies";
-            // Which of the two rows goes out is what was composed first, so what an author is told
-            // is that the block holds one of them and not that this one cannot be written.
+            // What this compiler does not write, and not what the model cannot have. An author
+            // writes such an environment by hand, so the sentence says what it would be.
             case A_TABLE_IS_WHAT_THIS_NEEDS ->
                     at + " needs a behavior it depends on to answer by what it was applied to,"
                             + " which is a table written for the module and not a line on a row";
-            // The two asks are one call because this row writes one value at both, which is about
-            // the row. Said as that, so an author reads it as a row to write differently rather
-            // than as a way nothing reaches.
-            case TWO_ANSWERS_AT_ONE_CALL ->
-                    at + " asks one behavior it depends on for two answers at one call this row"
-                            + " makes, and a table answers by what it was applied to";
             // Not "stopped", which is one of the two ways a search leaves something untried and is
             // the only one with a number in it. Said as a stop, a walk that went to the end of what
             // this compiler writes is reported as one that halted, and an author looks for the

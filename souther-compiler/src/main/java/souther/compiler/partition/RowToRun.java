@@ -9,10 +9,10 @@ import java.util.List;
  * in with. Both, because a row is one row: a behavior that depends on another is applied with an
  * instance per dependency, so values at the positions are not yet something to run.
  *
- * <p>Beside {@link ComposedRow} and not the same thing. That one is a line of a file — what tells
- * two offered rows apart is what they are written as — and this is what a run is handed. Held as
- * one, the identity of a line would turn on what a dependency was stood in with, and two rows that
- * a person would read as one line would be two.
+ * <p>Beside {@link ComposedRow} and not the same thing. That one is a line of a file, read for what
+ * tells two lines apart; this is what a run is handed, read for what it takes to apply the
+ * behavior. The two hold the same facts and are asked different questions, and a run handed a line
+ * would be a run reading an identity for the values to apply.
  *
  * <p>One value rather than two lists passed side by side. The inputs and the answers are two halves
  * of one account of what a row is, and a call taking them apart is a place where half of one row

@@ -127,13 +127,13 @@ public final class Generator {
      * <p><b>And what it stands the behavior's dependencies in with.</b> A row is offered to be
      * completed and run, and a row with nothing standing in for a dependency its target requires is
      * one nothing can run — which is true of every dependency the target has, not only of the ones
-     * the body decides on. Which of them each answer is about is
-     * {@link StoodInAnswer}'s, and what a block writes it as — a {@code with} on the row or a row
-     * of a table beside it — is a projection of these rather than a second account of them.
+     * the body decides on. Which dependency each answer is about is {@link StoodInAnswer}'s, and
+     * the {@code with} a block writes is a projection of these rather than a second account of
+     * them.
      *
      * @param purposes what the row was composed for, in the order the things were taken
      * @param inputs   one value per parameter, in the order the behavior takes them
-     * @param answers  what it stands each asking of a dependency in with
+     * @param answers  what it stands each dependency its target requires in with
      */
     public record GeneratedRow(List<Purpose> purposes, List<FixtureTemplate> inputs,
                                List<StoodInAnswer> answers) {
@@ -340,18 +340,6 @@ public final class Generator {
              */
             NOTHING_STANDS_IN_FOR_A_DEPENDENCY,
             /**
-             * The row asks one dependency for two answers at one call it makes.
-             *
-             * <p>A body asking a dependency two things draws two distinctions, and a row that
-             * writes the same arguments at both is a row where the two are one call — which one
-             * answer has to serve, and the way needs two. No table tells them apart, since a table
-             * answers by what it was applied to.
-             *
-             * <p>About the row and not about the model. A row writing different arguments at the
-             * two asks two calls, and the way may well be reachable by one.
-             */
-            TWO_ANSWERS_AT_ONE_CALL,
-            /**
              * The row needs a dependency to answer by what it was applied to, and nothing here
              * writes a table.
              *
@@ -534,8 +522,7 @@ public final class Generator {
                     // Every one of these is this compiler falling short, and none of them is the
                     // model saying anything: another value of the same classes may well build.
                     case NOTHING_COMPOSES_ONE, ALL_CANDIDATES_REJECTED, THE_SEARCH_LEFT_SOMETHING_UNTRIED,
-                         NOTHING_STANDS_IN_FOR_A_DEPENDENCY, TWO_ANSWERS_AT_ONE_CALL,
-                         A_TABLE_IS_WHAT_THIS_NEEDS,
+                         NOTHING_STANDS_IN_FOR_A_DEPENDENCY, A_TABLE_IS_WHAT_THIS_NEEDS,
                          NOTHING_TO_BUILD_AGAINST, NO_VALUES_WERE_ASKED_FOR, LINKAGE_FAILED,
                          NO_CERTIFIED_WITNESS, THE_GROUP_WAS_NOT_OFFERED,
                          THE_POSITION_WAS_WITHHELD, THE_ROWS_WERE_NOT_READ,
@@ -619,8 +606,7 @@ public final class Generator {
                     // what somebody else did: the model settling the point, a candidate refused, a
                     // module with no classes, a position held back, a group never offered.
                     case ALL_CANDIDATES_REJECTED, THE_RULES_LEAVE_NOTHING_THERE,
-                         NOTHING_STANDS_IN_FOR_A_DEPENDENCY, TWO_ANSWERS_AT_ONE_CALL,
-                         A_TABLE_IS_WHAT_THIS_NEEDS,
+                         NOTHING_STANDS_IN_FOR_A_DEPENDENCY, A_TABLE_IS_WHAT_THIS_NEEDS,
                          ONE_POSITION_CANNOT_BE_BOTH, NOTHING_TO_BUILD_AGAINST,
                          NO_VALUES_WERE_ASKED_FOR, LINKAGE_FAILED, NO_CERTIFIED_WITNESS,
                          THE_GROUP_WAS_NOT_OFFERED, THE_POSITION_WAS_WITHHELD,
@@ -2572,9 +2558,25 @@ public final class Generator {
             }
         }
 
+        /**
+         * The attempts no row came of, each of which says what it came to.
+         *
+         * <p>What differs between them is what a reader may do about it — raise a figure, widen
+         * what this compiler writes, or nothing — and each of those is its own shape. What they
+         * share is the word, which every one of them has and no two of them have for the same
+         * cause. Held here so that a caller with no use for the difference reads the word without
+         * choosing one of them to stand for the rest: folded to a word of the caller's own, a
+         * search this compiler stopped reached an author as a model admitting no row.
+         */
+        sealed interface NoRow extends BoundaryAttempt {
+
+            /** What the search came to, in the words the search came back with. */
+            UnresolvedCombination why();
+        }
+
         /** No row came of it, and why. Never a statement that none exists. */
         record Unresolved(UnresolvedCombination why, List<ReachabilityGap.Uncomposed> unrepresented)
-                implements BoundaryAttempt {
+                implements NoRow {
 
             public Unresolved {
                 unrepresented = List.copyOf(unrepresented);
@@ -2595,7 +2597,7 @@ public final class Generator {
         record Stopped(UnresolvedCombination why, java.util.Set<CompositionBudget> by,
                        java.util.Set<CompositionRepertoire> notAllOf,
                        List<ReachabilityGap.Uncomposed> unrepresented)
-                implements BoundaryAttempt {
+                implements NoRow {
 
             public Stopped {
                 unrepresented = List.copyOf(unrepresented);
@@ -2646,7 +2648,7 @@ public final class Generator {
          */
         record Unexhausted(UnresolvedCombination why, java.util.Set<CompositionRepertoire> writes,
                            List<ReachabilityGap.Uncomposed> unrepresented)
-                implements BoundaryAttempt {
+                implements NoRow {
 
             public Unexhausted {
                 unrepresented = List.copyOf(unrepresented);
@@ -2683,7 +2685,7 @@ public final class Generator {
          */
         record Limited(UnresolvedCombination why, Set<CompositionBudget> by,
                        List<ReachabilityGap.Uncomposed> unrepresented)
-                implements BoundaryAttempt {
+                implements NoRow {
 
             public Limited {
                 unrepresented = List.copyOf(unrepresented);
@@ -2712,7 +2714,7 @@ public final class Generator {
          */
         record Unplanned(UnresolvedCombination why, Set<CompositionBudget> by,
                          List<ReachabilityGap.Uncomposed> unrepresented)
-                implements BoundaryAttempt {
+                implements NoRow {
 
             public Unplanned {
                 unrepresented = List.copyOf(unrepresented);
