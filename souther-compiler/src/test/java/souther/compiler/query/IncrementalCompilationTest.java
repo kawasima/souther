@@ -4,6 +4,7 @@ import souther.compiler.diag.SourcePos;
 import souther.compiler.cst.SourceLayout;
 import souther.compiler.source.SourceId;
 
+import souther.compiler.ast.Ast;
 import souther.compiler.check.Symbols;
 import souther.compiler.meta.ModulePath;
 
@@ -325,7 +326,7 @@ class IncrementalCompilationTest {
     }
 
     /** The module the front end reads out of {@code source}, places and regions and all. */
-    private static Object parsed(String source) {
+    private static Ast.Module parsed(String source) {
         Map<String, String> byId = new LinkedHashMap<>();
         byId.put("orders.sou", source);
         Compilation c = Compilation.ofDocuments(byId, Set.of(), ModulePath.EMPTY);
