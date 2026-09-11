@@ -3,6 +3,7 @@ package souther.compiler.codegen;
 import souther.compiler.query.Bodies;
 
 import souther.compiler.check.ExpandedClauseLookup;
+import souther.compiler.check.InvariantStatements;
 import souther.compiler.check.Boundary;
 import souther.compiler.check.DerivedSymbols;
 import souther.compiler.diag.CompileException;
@@ -155,13 +156,14 @@ public final class Backend {
                                                Bodies.Elaborated checked,
                                                Map<ValueName.Behavior, Composition> compositions,
                                                ExpandedClauseLookup dischargeInvariants,
+                                               InvariantStatements invariantStatements,
                                                Map<TypeSymbol.AtModule, ValueShape> shapes,
                                                Map<ValueName.Behavior, EnsuresEnforcement> checks,
                                                Map<String, Type> standingCalls,
                                                SourceLayouts layouts) {
         return generate(module, symbols, kernels, typePackage, sigs, importedSigs, importedInjected,
-                calleeSigs, requirements, checked, compositions, dischargeInvariants, shapes, checks,
-                standingCalls, layouts, Instrumentation.NONE);
+                calleeSigs, requirements, checked, compositions, dischargeInvariants,
+                invariantStatements, shapes, checks, standingCalls, layouts, Instrumentation.NONE);
     }
 
     /**
@@ -188,6 +190,7 @@ public final class Backend {
                                                Bodies.Elaborated checked,
                                                Map<ValueName.Behavior, Composition> compositions,
                                                ExpandedClauseLookup dischargeInvariants,
+                                               InvariantStatements invariantStatements,
                                                Map<TypeSymbol.AtModule, ValueShape> shapes,
                                                Map<ValueName.Behavior, EnsuresEnforcement> checks,
                                                Map<String, Type> standingCalls,
@@ -196,7 +199,8 @@ public final class Backend {
         try {
             return generating(module, symbols, kernels, typePackage, sigs, importedSigs,
                     importedInjected, calleeSigs, requirements, checked, compositions,
-                    dischargeInvariants, shapes, checks, standingCalls, layouts, instrumentation);
+                    dischargeInvariants, invariantStatements, shapes, checks, standingCalls,
+                    layouts, instrumentation);
         } catch (IllegalArgumentException e) {
             // Something the writer would not hold, from a member no definition here claimed — a
             // synthesised class, a shared one. It belongs to the module, which is as near as anything
@@ -216,6 +220,7 @@ public final class Backend {
                                                   Bodies.Elaborated checked,
                                                   Map<ValueName.Behavior, Composition> compositions,
                                                   ExpandedClauseLookup dischargeInvariants,
+                                                  InvariantStatements invariantStatements,
                                                   Map<TypeSymbol.AtModule, ValueShape> shapes,
                                                   Map<ValueName.Behavior, EnsuresEnforcement> checks,
                                                   Map<String, Type> standingCalls,
@@ -250,6 +255,7 @@ public final class Backend {
         CodegenContext ctx = new CodegenContext(module.name(), symbols, kernels, caseToSums, typePackage,
                 module.exposing().isEmpty(), exposed, standingCalls, layouts);
         ctx.setDischargeInvariants(dischargeInvariants);
+        ctx.setInvariantStatements(invariantStatements);
         ctx.setValueShapes(shapes);
         ctx.setEnsuresChecks(checks);
         // The one place a coverage plan is made, and it is made from the bodies about to be emitted.

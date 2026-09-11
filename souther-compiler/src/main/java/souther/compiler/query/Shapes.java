@@ -287,7 +287,7 @@ public final class Shapes {
             Answer<Normalized.Def> mine = db.ask(new NormalizedDef(named));
             if (mine.present()) {
                 return Answer.of(DeclarationMeaning.of(mine.value().node(),
-                        db.ruleReadingFor(named.module()), db.readings()));
+                        db.ruleReadingFor(named.module())));
             }
             Answer<Stdlib> library = db.ask(new Front.Library());
             Hir.Def declared =

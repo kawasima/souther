@@ -58,7 +58,6 @@ class AnArmSaysWhichCaseAValueIsAndDoesNotMakeASecondOneTest {
     private final Hir.Binders binders = new Hir.Binders(OWNER);
     private final PathEngine engine =
             new PathEngine(RuleReadings.ofNoClauseFiled(Symbols.none(DefaultStdlib.get())),
-                DeclarationReadings.NONE,
                 Terms.Of.THE_DISCHARGE_TREE,
                 souther.compiler.query.ReadAs.THE_COMPILATION_DOES);
 
@@ -192,7 +191,6 @@ class AnArmSaysWhichCaseAValueIsAndDoesNotMakeASecondOneTest {
         Core.Binder y = CoreBinders.of(binders.binder("y", POS));
         PathEngine reading = new PathEngine(
                 RuleReadings.ofNoClauseFiled(Symbols.none(DefaultStdlib.get())),
-                DeclarationReadings.NONE,
                 Map.of(FIND, statesThatTheIntIsPositive()), Terms.Of.THE_DISCHARGE_TREE,
                 souther.compiler.query.ReadAs.THE_COMPILATION_DOES);
 
@@ -284,7 +282,7 @@ class AnArmSaysWhichCaseAValueIsAndDoesNotMakeASecondOneTest {
     void aRuleHoldsOfAnArmWhoseValuesAreAllOnesItIsAbout() {
         Symbols symbols = symbolsOf(NESTED);
         PathEngine reading = new PathEngine(RuleReadings.ofNoClauseFiled(symbols),
-                DeclarationReadings.NONE, Terms.Of.THE_DISCHARGE_TREE,
+                Terms.Of.THE_DISCHARGE_TREE,
                 souther.compiler.query.ReadAs.THE_COMPILATION_DOES);
         TypeSymbol once = named(symbols, "OnceKind");
         TypeSymbol station = named(symbols, "Station");
@@ -304,7 +302,7 @@ class AnArmSaysWhichCaseAValueIsAndDoesNotMakeASecondOneTest {
     void anArmNamingSeveralTakesARuleThatIsAboutAllOfThem() {
         Symbols symbols = symbolsOf(NESTED);
         PathEngine reading = new PathEngine(RuleReadings.ofNoClauseFiled(symbols),
-                DeclarationReadings.NONE, Terms.Of.THE_DISCHARGE_TREE,
+                Terms.Of.THE_DISCHARGE_TREE,
                 souther.compiler.query.ReadAs.THE_COMPILATION_DOES);
         TypeSymbol once = named(symbols, "OnceKind");
         TypeSymbol station = named(symbols, "Station");

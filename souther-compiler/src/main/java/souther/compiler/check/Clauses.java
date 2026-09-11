@@ -35,7 +35,6 @@ final class Clauses {
     private final Symbols symbols;
     private final ExpandedClauseLookup expandedClauses;
     private final ClauseLocations written;
-    private final DeclarationReadings machines;
     /** Where what each clause of a declaration states is answered from — the declaration's own
      *  reading of it, and not one this reader makes out of the tree it was handed. */
     private final ClauseMeanings meanings;
@@ -58,16 +57,12 @@ final class Clauses {
      *        is read here and what a reading made here is filed under are the one source
      *        ({@link RuleReadingSource#origin}); handed the parts, a reader below could be given a
      *        scope from one and an origin from another.
-     * @param machines where the answers about a declaration's string machines are asked for,
-     *        handed on to every reading of a declaration made through here and kept by none of
-     *        what those readings answer with.
      */
-    Clauses(RuleReadingSource source, DeclarationReadings machines) {
+    Clauses(RuleReadingSource source) {
         this.source = source;
         this.symbols = source.symbols();
         this.expandedClauses = source.invariants();
         this.written = source.written();
-        this.machines = machines;
         this.meanings = source.states();
     }
 
@@ -92,12 +87,6 @@ final class Clauses {
      *  points and read by nothing here. */
     ClauseLocations written() {
         return written;
-    }
-
-    /** Where the answers about a declaration's string machines are asked for, for the same
-     *  reader. */
-    DeclarationReadings machines() {
-        return machines;
     }
 
     /** Every rule that applies to {@code named}, in the expanded representation, with whether every
@@ -219,6 +208,23 @@ final class Clauses {
     }
 
     /**
+     * The parts of a stated clause, each as a subtree of the one reading of the whole.
+     *
+     * <p>The clause read into its shape, which is done here for every reader of a declaration's
+     * rules. Which parts there are was settled where the clause was split and nothing here decides
+     * it; what this adds is that they are subtrees of one reading, so what a reader says about an
+     * occurrence is said in the numbering the whole clause hands out rather than in one that starts
+     * wherever a part does.
+     *
+     * <p>One place, because reading a clause into its shape is answering what its author wrote. Two
+     * readers doing it for themselves are two answers to that, arrived at under whatever polarity
+     * each of them wrote down.
+     */
+    List<StatedPart> partsOf(AsStated stated) {
+        return stated.parts().onto(ClauseExpr.of(stated.states(), true));
+    }
+
+    /**
      * What {@code clause} states, or {@code null} where its declaration has no form for it.
      *
      * <p>For the reader that seeds a declaration's own fields, where each field stands for itself
@@ -281,8 +287,7 @@ final class Clauses {
                 // The clause as one reading, and the parts its author wrote as subtrees of that
                 // very reading. Read apart instead, a conjunct would be read without the conjunct
                 // beside it, and a branch one of them rules out would stand.
-                stated.add(new Stated(clause, one.states(),
-                        one.parts().onto(ClauseExpr.of(one.states(), true))));
+                stated.add(new Stated(clause, one.states(), partsOf(one)));
             } else {
                 lost.add(new RuleRef.Invariant(clause));
             }
