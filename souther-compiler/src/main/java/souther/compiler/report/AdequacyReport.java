@@ -2962,14 +2962,14 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             case NOTHING_STANDS_IN_FOR_A_DEPENDENCY ->
                     "nothing here could answer for a behavior " + at + " depends on, and a row"
                             + " that stands none in is a row nothing applies";
-            // The two asks are one call because this row writes one value at both, which is about
-            // the row. Said as that, so an author reads it as a row to write differently rather
-            // than as a way nothing reaches.
             // Which of the two rows goes out is what was composed first, so what an author is told
             // is that the block holds one of them and not that this one cannot be written.
             case A_TABLE_IS_WRITTEN_ONCE_FOR_A_MODULE ->
                     "a row already in this block needs a different table for a behavior " + at
                             + " depends on, and a table is written once for a module";
+            // The two asks are one call because this row writes one value at both, which is about
+            // the row. Said as that, so an author reads it as a row to write differently rather
+            // than as a way nothing reaches.
             case TWO_ANSWERS_AT_ONE_CALL ->
                     at + " asks one behavior it depends on for two answers at one call this row"
                             + " makes, and a table answers by what it was applied to";

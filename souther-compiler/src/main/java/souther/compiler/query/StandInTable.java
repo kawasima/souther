@@ -43,11 +43,19 @@ public record StandInTable(ValueName.Behavior dependency, List<Entry> entries) {
      *
      * <p>The one place a row's answers become a table. Read again anywhere else, what a run goes
      * against and what a block writes would be two readings of one row's answers.
+     *
+     * <p><b>Of the dependency named, out of whatever it is given.</b> A row stands every dependency
+     * its target requires in, so what it carries is the answers of all of them; taking the whole of
+     * that for one dependency's table makes a table of somebody else's answers as well. Left to the
+     * caller to select, the two that did and the two that did not were four readings of which
+     * answers belong to a dependency, and the ones that did not built a table nothing ever runs
+     * against — after which the row it belongs to is a row nothing recognises as its owner.
      */
     public static StandInTable of(ValueName.Behavior dependency, List<StoodInAnswer> stood) {
         List<Entry> entries = new ArrayList<>();
         for (StoodInAnswer each : stood) {
-            if (each.asking() instanceof StoodInAnswer.Asking.OfOne(var _, var appliedTo)) {
+            if (each.dependency().equals(dependency)
+                    && each.asking() instanceof StoodInAnswer.Asking.OfOne(var _, var appliedTo)) {
                 entries.add(new Entry(appliedTo, each.value()));
             }
         }

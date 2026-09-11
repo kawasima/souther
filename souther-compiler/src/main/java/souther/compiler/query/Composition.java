@@ -205,9 +205,8 @@ public record Composition(OfferingRequest request,
         private Generator.UnresolvedCombination take(Generator.GeneratedRow row) {
             Map<ValueName.Behavior, StandInTable> mine = new LinkedHashMap<>();
             for (StoodInAnswer each : row.answers()) {
-                mine.computeIfAbsent(each.dependency(), dependency ->
-                        StandInTable.of(dependency, row.answers().stream()
-                                .filter(one -> one.dependency().equals(dependency)).toList()));
+                mine.computeIfAbsent(each.dependency(),
+                        dependency -> StandInTable.of(dependency, row.answers()));
             }
             for (Map.Entry<ValueName.Behavior, StandInTable> each : mine.entrySet()) {
                 StandInTable table = each.getValue();

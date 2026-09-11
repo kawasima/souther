@@ -43,6 +43,39 @@ class ARowIsPublishedBesideTheTableItWasRunAgainstTest {
             data Answer = Yes | No
 
             behavior lookup : (id: Int) -> Sighting
+            behavior marking : (id: Int) -> Sighting
+
+            behavior decides : (id: Int) -> Answer
+                depends on lookup, marking
+            let decides (id, lookup, marking) =
+                if id > 5 then
+                    match lookup(id) with
+                        | Found -> match lookup(0) with
+                            | Found -> match marking(id) with
+                                | Found -> match marking(0) with
+                                    | Found -> Yes
+                                    | Missing -> No
+                                | Missing -> No
+                            | Missing -> Yes
+                        | Missing -> No
+                else No
+            """;
+
+    /**
+     * One dependency asked at two calls, answered crosswise, so two of the ways want it to answer
+     * the two calls differently — which is two rows wanting two tables for one dependency.
+     */
+    private static final String TWO_TABLES = """
+            module example.wanted
+
+            data Found
+            data Missing
+            data Sighting = Found | Missing
+            data Yes
+            data No
+            data Answer = Yes | No
+
+            behavior lookup : (id: Int) -> Sighting
 
             behavior decides : (id: Int) -> Answer
                 depends on lookup
@@ -100,7 +133,7 @@ class ARowIsPublishedBesideTheTableItWasRunAgainstTest {
      */
     @Test
     void andTheRowThatWantedAnotherIsSaidRatherThanDropped() {
-        Compilation compilation = Compilation.ofSource(TWO_CALLS, "Main");
+        Compilation compilation = Compilation.ofSource(TWO_TABLES, "Main");
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
 

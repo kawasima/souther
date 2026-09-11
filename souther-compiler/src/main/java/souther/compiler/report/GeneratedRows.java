@@ -8,6 +8,7 @@ import souther.compiler.diag.SourceRendering;
 import souther.compiler.fmt.Formatter;
 import souther.compiler.publish.PublishedIncompleteness;
 import souther.compiler.publish.PublishedRuleHandle;
+import souther.compiler.check.Requirements;
 import souther.compiler.publish.RuleHandleProse;
 import souther.compiler.query.Sites;
 import souther.compiler.partition.BorderObligationPoint;
@@ -429,7 +430,8 @@ public final class GeneratedRows {
             Map<ArmProbe, String> arms = armNames(offering.searched().get(behavior));
             List<Offered> here = new ArrayList<>();
             for (OfferedRow row : rows) {
-                Offered offered = new Offered(row.key().inputs(), standingIn(row), List.of());
+                Offered offered = new Offered(row.key().inputs(),
+                        standingIn(offering.request().module(), row), List.of());
                 for (String name : named(row.namedFor(), arms)) {
                     offered = offered.and(name);
                 }
@@ -449,16 +451,18 @@ public final class GeneratedRows {
      * first and never the second, and a row that answers by what it was applied to carries no
      * clause at all — the table it reads is the one written above it.
      *
-     * <p>The dependency by its own name, which is how a row names one. A dependency this module
-     * reaches under another spelling is written the way every other value this composes is written
-     * — by the name the declaration carries — and a block naming one that does not resolve here is
-     * a row a person edits rather than pastes.
+     * <p>The dependency spelled the way a person writes one, asked of the rule that answers it
+     * ({@link Requirements#writtenIn}). A behavior another module declares is reachable through
+     * that module whether or not an import brought its bare name in, so a block that wrote the bare
+     * name would hand a person a row naming a behavior nothing resolves — and the hint that says
+     * what to type and the skeleton that types it would be two answers to one question.
      */
-    private static String standingIn(OfferedRow row) {
+    private static String standingIn(String module, OfferedRow row) {
         List<String> written = new ArrayList<>();
         for (StoodInAnswer each : row.answers()) {
             if (each.asking() instanceof StoodInAnswer.Asking.ForEveryCall) {
-                written.add(each.dependency().name() + " = " + each.value().text());
+                written.add(Requirements.writtenIn(module, each.dependency())
+                        + " = " + each.value().text());
             }
         }
         return written.isEmpty() ? "" : " with " + String.join(", ", written);
@@ -479,7 +483,8 @@ public final class GeneratedRows {
         // rows a table holds was settled where the rows were ({@link Offering}), so there is
         // nothing here but the writing.
         for (StandInTable table : tables.values()) {
-            source.append("\n").append("fake ").append(table.dependency().name()).append("\n");
+            source.append("\n").append("fake ")
+                    .append(Requirements.writtenIn(module, table.dependency())).append("\n");
             for (StandInTable.Entry entry : table.entries()) {
                 source.append("    | (").append(String.join(", ", entry.writtenAs()))
                         .append(") -> ").append(entry.answers().text()).append("\n");
@@ -521,14 +526,24 @@ public final class GeneratedRows {
      * <p>Matched by position rather than by reading the line. The rows go in in one order and come
      * out in it, and a row the formatter wrapped is still one row — its continuations are indented
      * past the {@code |} that starts it, so what starts a row is what a row starts with.
+     *
+     * <p><b>Inside a block of rows, which is the other half of what a row is.</b> A block writes
+     * more than rows: a table beside them states what a dependency answers, and its entries start
+     * the way a row does. Counted among them, every note after the first table lands over somebody
+     * else's line — so which block a line is in is read here rather than assumed, and a line that
+     * starts like a row somewhere else is not one.
      */
     private static String fills(String rows, Map<String, List<Offered>> offered) {
         List<Offered> inOrder = new ArrayList<>();
         offered.values().forEach(inOrder::addAll);
         StringBuilder out = new StringBuilder();
         int at = 0;
+        boolean amongRows = false;
         for (String line : rows.lines().toList()) {
-            if (line.startsWith(ROW) && at < inOrder.size()) {
+            if (line.startsWith(EXAMPLE) || line.startsWith(TABLE)) {
+                amongRows = line.startsWith(EXAMPLE);
+            }
+            if (amongRows && line.startsWith(ROW) && at < inOrder.size()) {
                 for (String each : inOrder.get(at++).saidOver()) {
                     out.append("// fills ").append(each).append(System.lineSeparator());
                 }
@@ -541,6 +556,12 @@ public final class GeneratedRows {
     /** How a row starts, which is how one is told from the lines a wrapped one continues on: those
      *  are indented past it. */
     private static final String ROW = "    | ";
+
+    /** What opens the rows of one behavior, and what opens the table beside them. Read from the
+     *  block this writes rather than spelled twice: both are what {@link #blocks} puts there. */
+    private static final String EXAMPLE = "example ";
+
+    private static final String TABLE = "fake ";
 
     /**
      * The clauses each behavior carries, put over the rows they are about.
