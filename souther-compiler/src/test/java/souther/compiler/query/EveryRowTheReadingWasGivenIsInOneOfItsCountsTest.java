@@ -9,7 +9,6 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -47,7 +46,7 @@ class EveryRowTheReadingWasGivenIsInOneOfItsCountsTest {
     /** A row something watched and nothing could place is counted beside the placed one. */
     @Test
     void aRowWatchedAndNotPlacedIsCountedBesideThePlacedOne() {
-        DecisionEvidence.Taken.Read read = readOf(compiled());
+        DecisionEvidence.RowsPlaced read = readOf(compiled());
         assertEquals(2, read.rowsRead(), () -> "both rows were read: " + read);
         assertEquals(read.rowsRead(),
                 read.rowsPlaced() + read.rowsNotPlaced() + read.rowsNotWatched(),
@@ -69,11 +68,11 @@ class EveryRowTheReadingWasGivenIsInOneOfItsCountsTest {
      */
     @Test
     void andARowNothingWatchedIsCountedAsOne() {
-        DecisionEvidence.Taken.Read read = assertInstanceOf(DecisionEvidence.Taken.Read.class,
-                DecisionEvidence.of("classify", rulesTakenOf(compiled()),
+        DecisionEvidence.RowsPlaced read = DecisionEvidence.of("classify", rulesTakenOf(compiled()),
                         List.of(new Generator.Watched.NoAccount()),
-                        souther.compiler.query.WeakeningSet.none()),
-                "a row is read whether or not anything watched it");
+                        WeakeningSet.none())
+                .made().orElseThrow(
+                        () -> new AssertionError("a row is read whether or not anything watched it"));
         assertEquals(1, read.rowsRead(), () -> "the row is one the reading was given: " + read);
         assertEquals(1, read.rowsNotWatched(), () -> "and nothing watched it: " + read);
         assertEquals(0, read.rowsPlaced() + read.rowsNotPlaced(),
@@ -89,11 +88,11 @@ class EveryRowTheReadingWasGivenIsInOneOfItsCountsTest {
         return compilation;
     }
 
-    private static DecisionEvidence.Taken.Read readOf(Compilation compilation) {
+    private static DecisionEvidence.RowsPlaced readOf(Compilation compilation) {
         DecisionEvidence evidence = compilation.db()
                 .ask(new Adequacy.Decides(compilation.modules().get(0))).value().get("decides");
-        return assertInstanceOf(DecisionEvidence.Taken.Read.class, evidence.taken(),
-                "the rows were read");
+        return evidence.took().made()
+                .orElseThrow(() -> new AssertionError("the rows were read"));
     }
 
     /** What the rules of this body are matched against, which a reading of no runs never asks. */

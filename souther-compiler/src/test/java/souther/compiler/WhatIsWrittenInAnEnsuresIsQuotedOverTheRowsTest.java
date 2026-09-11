@@ -281,6 +281,6 @@ class WhatIsWrittenInAnEnsuresIsQuotedOverTheRowsTest {
                         new souther.compiler.partition.GenerationPlan(subject, List.of(),
                                 List.of())),
                 souther.compiler.partition.Generator.GenerationResult.NONE,
-                java.util.Map.of(), List.of());
+                Adequacy.Generated.RowsForRules.NOTHING, List.of());
     }
 }

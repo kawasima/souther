@@ -318,6 +318,32 @@ public sealed interface Weakening {
     }
 
     /**
+     * A row of the behavior ran and nothing recorded where it went.
+     *
+     * <p>Its own word beside {@link DecisionOfRowUnreadable}, which is the nearest thing and is not
+     * this: there a run was watched and no rule could be told of it, here there is nothing to tell
+     * a rule of. Both leave a rule nothing was seen taking as one a row may already take, and they
+     * are different shortfalls — a reader of the first goes looking at the rules, and a reader of
+     * this at what read the run.
+     *
+     * <p>Said by the reading of the runs rather than taken from the reading of the rows. A row with
+     * no account may sit in a reading of the rows that finished, so a reading that borrowed the
+     * row reading's words for it had nothing to say exactly where it went without the most.
+     */
+    record DecisionRunNotWatched(String behavior) implements Weakening {
+
+        public DecisionRunNotWatched {
+            java.util.Objects.requireNonNull(behavior, "a row is a row of some behavior");
+        }
+
+        /** What watched a run is what this build recorded, and a wider one records no more. */
+        @Override
+        public RunSensitivity runSensitivity() {
+            return RunSensitivity.UNAFFECTED;
+        }
+    }
+
+    /**
      * The ways through a body could not all be written down, so what rules its decision has is not
      * known.
      *

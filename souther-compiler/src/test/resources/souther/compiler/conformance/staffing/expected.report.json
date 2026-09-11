@@ -2900,6 +2900,50 @@
         "status" : "unavailable",
         "reason" : "no_rows"
       },
+      "decision" : {
+        "coverage" : {
+          "status" : "complete"
+        },
+        "obligations" : [ {
+          "obligationId" : {
+            "behavior" : "grantLeave",
+            "conditions" : [ {
+              "kind" : "comparison",
+              "condition" : "GE LinearForm[constant=-0.8, coefs={rate=1}]",
+              "outcome" : "held"
+            }, {
+              "kind" : "comparison",
+              "condition" : "GE LinearForm[constant=-5, coefs={worked=1}]",
+              "outcome" : "held"
+            } ]
+          },
+          "taken" : false
+        }, {
+          "obligationId" : {
+            "behavior" : "grantLeave",
+            "conditions" : [ {
+              "kind" : "comparison",
+              "condition" : "GE LinearForm[constant=-0.8, coefs={rate=1}]",
+              "outcome" : "held"
+            }, {
+              "kind" : "comparison",
+              "condition" : "GE LinearForm[constant=-5, coefs={worked=1}]",
+              "outcome" : "denied"
+            } ]
+          },
+          "taken" : false
+        }, {
+          "obligationId" : {
+            "behavior" : "grantLeave",
+            "conditions" : [ {
+              "kind" : "comparison",
+              "condition" : "GE LinearForm[constant=-0.8, coefs={rate=1}]",
+              "outcome" : "denied"
+            } ]
+          },
+          "taken" : false
+        } ]
+      },
       "findings" : [ {
         "kind" : "decision_rule_uncovered",
         "disposition" : "reported",
@@ -3911,6 +3955,68 @@
       "branch" : {
         "status" : "unavailable",
         "reason" : "no_rows"
+      },
+      "decision" : {
+        "coverage" : {
+          "status" : "complete"
+        },
+        "obligations" : [ {
+          "obligationId" : {
+            "behavior" : "judgeHours",
+            "conditions" : [ {
+              "kind" : "comparison",
+              "condition" : "GT LinearForm[constant=-100, coefs={hours=1}]",
+              "outcome" : "held"
+            }, {
+              "kind" : "position",
+              "condition" : "agreement",
+              "outcome" : "Extended"
+            } ]
+          },
+          "taken" : false
+        }, {
+          "obligationId" : {
+            "behavior" : "judgeHours",
+            "conditions" : [ {
+              "kind" : "comparison",
+              "condition" : "GT LinearForm[constant=-100, coefs={hours=1}]",
+              "outcome" : "denied"
+            }, {
+              "kind" : "position",
+              "condition" : "agreement",
+              "outcome" : "Extended"
+            } ]
+          },
+          "taken" : false
+        }, {
+          "obligationId" : {
+            "behavior" : "judgeHours",
+            "conditions" : [ {
+              "kind" : "comparison",
+              "condition" : "GT LinearForm[constant=-45, coefs={hours=1}]",
+              "outcome" : "held"
+            }, {
+              "kind" : "position",
+              "condition" : "agreement",
+              "outcome" : "Standard"
+            } ]
+          },
+          "taken" : false
+        }, {
+          "obligationId" : {
+            "behavior" : "judgeHours",
+            "conditions" : [ {
+              "kind" : "comparison",
+              "condition" : "GT LinearForm[constant=-45, coefs={hours=1}]",
+              "outcome" : "denied"
+            }, {
+              "kind" : "position",
+              "condition" : "agreement",
+              "outcome" : "Standard"
+            } ]
+          },
+          "taken" : false
+        } ]
       },
       "findings" : [ {
         "kind" : "decision_rule_uncovered",

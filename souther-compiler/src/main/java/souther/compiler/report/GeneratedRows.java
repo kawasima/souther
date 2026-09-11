@@ -580,9 +580,13 @@ public final class GeneratedRows {
                 // first says what the attempt came to, and whether a row can be written at all is
                 // its reason's to say; the second says no run of this will offer one until
                 // something is written for it.
-                case GenerationOutcome.NotSupported none -> say(out, said,
-                        String.format("// nothing offers a row for `%s` in `%s`: %s%n",
-                                about(each.finding(), places), behavior, none.reason().said()));
+                // Each of what is missing, for the reason the attempts above are each said: a
+                // thing that stands in two places is read at both, and what is missing at one of
+                // them is not what is missing at the other.
+                case GenerationOutcome.NotSupported none -> none.reasons().forEach(why ->
+                        say(out, said,
+                                String.format("// nothing offers a row for `%s` in `%s`: %s%n",
+                                        about(each.finding(), places), behavior, why.said())));
                 // Said rather than passed over, because the report counts this coordinate among
                 // what is missing and no row is offered for it. Left out, an author reads a gap
                 // above and no account of why nothing was written for it; the account is that the
@@ -761,6 +765,11 @@ public final class GeneratedRows {
             case THE_WAY_IN_PLACES_AT_NO_CLASS ->
                     "the way to it holds a decision that no class of any position stands for, so"
                             + " nothing here can steer a row along it";
+            // Nothing was left untried here and nothing is unwritable: the value is in hand and
+            // the block is full. What lifts it is the number of rows a block offers, which is not
+            // what any of the words above are about.
+            case THE_BLOCK_IS_AS_LONG_AS_IT_MAY_BE ->
+                    "a value was found for it and this block already offers as many rows as it may";
             case THE_RULES_LEAVE_NOTHING_THERE ->
                     "the rules leave no value here, and every combination they do leave was tried";
             case ONE_POSITION_CANNOT_BE_BOTH ->

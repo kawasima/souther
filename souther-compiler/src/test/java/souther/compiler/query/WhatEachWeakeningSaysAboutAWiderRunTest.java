@@ -82,6 +82,9 @@ class WhatEachWeakeningSaysAboutAWiderRunTest {
         table.put("PairSpaceTruncated", "answers/MAY_CHANGE");
         // A run this reading cannot place among the rules is not placed by allowing more.
         table.put("DecisionOfRowUnreadable", "answers/UNAFFECTED");
+        // And a run nothing recorded is not recorded by allowing more either: what watched it is
+        // what this build ran, and a wider run of the same build watches the same rows.
+        table.put("DecisionRunNotWatched", "answers/UNAFFECTED");
         // A reading held to a larger figure gets further, so this one a wider run can answer.
         table.put("DecisionReadingIncomplete", "answers/MAY_CHANGE");
         return table;
@@ -199,7 +202,7 @@ class WhatEachWeakeningSaysAboutAWiderRunTest {
                  Weakening.BodiesNotElaborated _, Weakening.BoundaryNotDerived _,
                  Weakening.InputNotRead _, Weakening.PairSpaceTruncated _,
                  Weakening.ProofContradicted _, Weakening.ArmsUnsettled _,
-                 Weakening.DecisionOfRowUnreadable _,
+                 Weakening.DecisionOfRowUnreadable _, Weakening.DecisionRunNotWatched _,
                  Weakening.DecisionReadingIncomplete _ -> "answers";
         };
     }
@@ -234,6 +237,7 @@ class WhatEachWeakeningSaysAboutAWiderRunTest {
         out.add(new Weakening.PairSpaceTruncated("b", 9, 4));
         out.add(new Weakening.DecisionOfRowUnreadable("b",
                 souther.compiler.partition.RulesTaken.WhichRule.Why.NO_RECOGNISABLE_RULE_MATCHES));
+        out.add(new Weakening.DecisionRunNotWatched("b"));
         out.add(new Weakening.DecisionReadingIncomplete("b",
                 new souther.compiler.partition.DecisionReading.Enumeration.StoppedAtAFigure(
                         souther.compiler.partition.CompositionBudget

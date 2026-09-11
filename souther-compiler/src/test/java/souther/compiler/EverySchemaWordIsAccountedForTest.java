@@ -321,6 +321,13 @@ class EverySchemaWordIsAccountedForTest {
             new Vocabulary("status", List.of("$defs", "status"), STATUS_WORDS),
             Vocabulary.of("branch.reason", List.of("$defs", "branch", "properties", "reason"),
                     Adequacy.BranchEvidence.class),
+            // Why nobody read which rules of a body's decision the rows took. Its own field beside
+            // the branch's, because the two measures fall short of different things: an arm is one
+            // branch of the body and a rule is one way through it, and a reading that placed no run
+            // has said nothing about the rules while the arms may be counted in full.
+            Vocabulary.of("decision.coverage.reason",
+                    List.of("$defs", "decision", "properties", "coverage", "properties", "reason"),
+                    souther.compiler.query.DecisionEvidence.class),
             new Vocabulary("findings[].kind",
                     List.of("$defs", "findings", "items", "properties", "kind"),
                     Adequacy.Kind.class),

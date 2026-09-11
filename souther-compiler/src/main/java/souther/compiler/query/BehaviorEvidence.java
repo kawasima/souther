@@ -106,6 +106,12 @@ public record BehaviorEvidence(Adequacy.RowReading reading,
         parts.put("partition", partition == null ? null : partition.partitioned());
         parts.put("border", boundaryReadings);
         parts.put("branch", branch == null ? null : branch.measured());
+        // Which rules of the body's decision the rows took, which is a measure of this behavior
+        // like the rest of them. A reading that placed only some of the rows leaves every rule
+        // nothing was seen taking as one a row may already take, and this is the one way that
+        // reaches a status, a verdict and a document without each of them asking the decision
+        // itself.
+        parts.put("decision", decision == null ? null : decision.took());
         return java.util.Collections.unmodifiableMap(parts);
     }
 

@@ -62,11 +62,13 @@ import souther.compiler.types.Type;
 import souther.compiler.types.TypeSymbol;
 
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.SequencedSet;
 import java.util.Set;
 
 /** How well a module's {@code example} rows cover what it declares. */
@@ -991,6 +993,100 @@ public final class Adequacy {
     }
 
     /**
+     * The rules each of one module's bodies states, read off the body alone.
+     *
+     * <p>The half of {@link Decides} that no run is involved in. Its own key because two other
+     * questions are asked of it — how a run is placed among the rules ({@link Placements}), and
+     * what a search can stand in one ({@link DecisionSearch}) — and a reading made again at each
+     * of them would be free to hold one body's rules beside another's answer about them.
+     */
+    public record DecisionReadings(String name)
+            implements Key<Map<String, souther.compiler.partition.DecisionReading>> {
+
+        @Override
+        public String module() {
+            return name;
+        }
+
+        @Override
+        public Answer<Map<String, souther.compiler.partition.DecisionReading>> compute(Db db) {
+            Answer<CheckSurface> prepared = db.ask(new Shapes.CheckSurface(name));
+            Answer<RuleReadingSource> reading = Shapes.ruleReading(db, name);
+            Answer<Map<String, Sig>> sigs = db.ask(new Bodies.Signatures(name));
+            Answer<Bodies.Elaborated> checked = db.ask(new Bodies.Checked(name));
+            if (!prepared.present() || !reading.present() || !sigs.present()
+                    || !checked.present()) {
+                return Answer.absent();
+            }
+            Map<String, InputDomain> readInputs = db.ask(new Inputs(name)).value();
+            Map<String, souther.compiler.partition.DecisionReading> out = new LinkedHashMap<>();
+            for (Hir.BehaviorDef behavior : prepared.value().behaviors()) {
+                // A composition has no body of its own, and a behavior whose input this compilation
+                // could not read is one whose conditions name no position. Both are read off the one
+                // classification the other readers of this walk read.
+                if (!(BoundaryForMeasurement.of(sigs.value(), readInputs, behavior)
+                        instanceof BoundaryForMeasurement.Derived(
+                                Sig _, InputForMeasurement.Local(Hir.SpecBehavior spec,
+                                        InputDomain read)))) {
+                    continue;
+                }
+                AnalysisBody analysis = checked.value().analysisBodies().get(spec.name());
+                if (analysis == null) {
+                    continue;
+                }
+                out.put(spec.name(), souther.compiler.partition.DecisionReading.of(spec.name(),
+                        analysis.core(), read.reading(reading.value()),
+                        InputReads.ofParametersWhereCallsStand(read.parameterReads(),
+                                ElementBindings.of(analysis.core(), analysis.elements(),
+                                        reading.value().symbols()))));
+            }
+            return Answer.of(Ordered.map(out));
+        }
+    }
+
+    /**
+     * How a run of each body is placed among the rules its decision states.
+     *
+     * <p>One answer for the three readers of it: the coverage the account keeps, the search that
+     * settles whether anything can stand in a rule, and the settlement table a proposal is weighed
+     * in. Built from the rules and the emitted body, which is work proportional to both — asked
+     * where each of them stood, one module paid for it three times over and the three were free to
+     * place one run in three different rules.
+     *
+     * <p>A behavior whose body was not lowered has no entry. There is nothing to place a run
+     * against, which is not a placement that found nothing.
+     */
+    public record Placements(String name)
+            implements Key<Map<String, souther.compiler.partition.RulesTaken>> {
+
+        @Override
+        public String module() {
+            return name;
+        }
+
+        @Override
+        public Answer<Map<String, souther.compiler.partition.RulesTaken>> compute(Db db) {
+            Answer<Map<String, souther.compiler.partition.DecisionReading>> read =
+                    db.ask(new DecisionReadings(name));
+            Answer<Bodies.Elaborated> checked = db.ask(new Bodies.Checked(name));
+            if (!read.present() || !checked.present()) {
+                return Answer.absent();
+            }
+            CoverageSites.Plan plan = checked.value().plan();
+            Map<String, souther.compiler.partition.RulesTaken> out = new LinkedHashMap<>();
+            read.value().forEach((behavior, rules) -> {
+                souther.compiler.core.Core emitted =
+                        checked.value().behaviorBodies().get(behavior);
+                if (emitted != null) {
+                    out.put(behavior,
+                            souther.compiler.partition.RulesTaken.of(rules, emitted, plan));
+                }
+            });
+            return Answer.of(Ordered.map(out));
+        }
+    }
+
+    /**
      * The decision each of one module's bodies states, as the rules of it.
      *
      * <p>Its own key beside {@link PathReached}. That one asks where a run can get to and answers
@@ -1020,70 +1116,69 @@ public final class Adequacy {
 
         @Override
         public Answer<Map<String, DecisionEvidence>> compute(Db db) {
-            Answer<CheckSurface> prepared = db.ask(new Shapes.CheckSurface(name));
-            Answer<RuleReadingSource> reading = Shapes.ruleReading(db, name);
-            Answer<Map<String, Sig>> sigs = db.ask(new Bodies.Signatures(name));
-            if (!prepared.present() || !reading.present() || !sigs.present()) {
-                return Answer.absent();
-            }
+            Answer<Map<String, souther.compiler.partition.DecisionReading>> read =
+                    db.ask(new DecisionReadings(name));
             Answer<Bodies.Elaborated> checked = db.ask(new Bodies.Checked(name));
-            if (!checked.present()) {
+            if (!read.present() || !checked.present()) {
                 return Answer.absent();
             }
             boolean instrumented = levelOf(db).runsInstrumentedRows();
-            CoverageSites.Plan plan = checked.value().plan();
             Optional<SiteNumbering> numbering =
                     Optional.of(SiteNumbering.of(checked.value().numberingIdentity()));
             Map<String, RowReading> byTarget = db.ask(new RowReadings(name)).value();
-            Map<String, InputDomain> readInputs = db.ask(new Inputs(name)).value();
+            Map<String, souther.compiler.partition.RulesTaken> placed =
+                    db.ask(new Placements(name)).value();
             Map<String, DecisionEvidence> out = new LinkedHashMap<>();
-            for (Hir.BehaviorDef behavior : prepared.value().behaviors()) {
-                // A composition has no body of its own, and a behavior whose input this compilation
-                // could not read is one whose conditions name no position. Both are read off the one
-                // classification the other readers of this walk read.
-                if (!(BoundaryForMeasurement.of(sigs.value(), readInputs, behavior)
-                        instanceof BoundaryForMeasurement.Derived(
-                                Sig _, InputForMeasurement.Local(Hir.SpecBehavior spec,
-                                        InputDomain read)))) {
-                    continue;
-                }
-                AnalysisBody analysis = checked.value().analysisBodies().get(spec.name());
-                if (analysis == null) {
-                    continue;
-                }
-                souther.compiler.partition.DecisionReading rules =
-                        souther.compiler.partition.DecisionReading.of(spec.name(),
-                                analysis.core(), read.reading(reading.value()),
-                                InputReads.ofParametersWhereCallsStand(read.parameterReads(),
-                                        ElementBindings.of(analysis.core(), analysis.elements(),
-                                                reading.value().symbols())));
-                out.put(spec.name(), new DecisionEvidence(rules,
-                        whatTheRowsTook(rules, checked.value().behaviorBodies().get(spec.name()),
-                                plan, instrumented,
-                                RowReadings.readingFor(byTarget, spec.name()), numbering)));
-            }
+            read.value().forEach((behavior, rules) -> out.put(behavior, new DecisionEvidence(rules,
+                    whatTheRowsTook(name, rules,
+                            placed == null ? null : placed.get(behavior), instrumented,
+                            RowReadings.readingFor(byTarget, behavior), numbering))));
             return Answer.of(Ordered.map(out));
         }
 
         /**
-         * Which rules the rows of one behavior took, or why nothing was read.
+         * Which rules the rows of one behavior took, or why none of them could be placed.
          *
          * <p>The gates in the order the work happens in, so what comes back is what stopped it
          * rather than whichever condition an expression happened to test first: a build that does
          * not instrument its rows records no place, and rows nobody wrote run nowhere.
+         *
+         * <p><b>Two nothings and they are not one.</b> A behavior nobody wrote a row for has its
+         * rules uncovered and a build may be held to that; a behavior whose rows nothing came back
+         * from has rules nothing was read about, and what they are owed is unknown. Asked of the
+         * reading's own answer rather than of how many rows it happened to hand over, because that
+         * hands back the same empty list for both — which is what let a rule a row may already take
+         * be reported as one no row takes (issue #996).
          */
-        private static DecisionEvidence.Taken whatTheRowsTook(
-                souther.compiler.partition.DecisionReading rules, souther.compiler.core.Core emitted,
-                CoverageSites.Plan plan, boolean instrumented, RowReading observed,
-                Optional<SiteNumbering> numbering) {
+        private static Measure<DecisionEvidence.RowsPlaced> whatTheRowsTook(String module,
+                souther.compiler.partition.DecisionReading rules,
+                souther.compiler.partition.RulesTaken against, boolean instrumented,
+                RowReading observed, Optional<SiteNumbering> numbering) {
             if (!instrumented) {
-                return new DecisionEvidence.Taken.NothingWasRead(
-                        DecisionEvidence.Taken.Why.THE_ROWS_ARE_NOT_INSTRUMENTED);
+                return new Measurement.NotMeasured<>(DecisionEvidence.NotAsked.NOT_ASKED);
+            }
+            if (against == null) {
+                // The model says this behavior writes a body and nothing lowered it. What its rows
+                // take is unknown rather than none, and reads identically without this.
+                return new Measurement.FailedToMeasure<>(
+                        DecisionEvidence.Unreadable.THE_BODY_WAS_NOT_READ,
+                        WeakeningSet.of(new Weakening.BodiesNotElaborated(module)));
+            }
+            if (observed.armsUnseen()) {
+                // The rows ran and carry no account of where they went, so nothing can be put
+                // against a rule. Started and not finished, which says what it went without.
+                return new Measurement.FailedToMeasure<>(
+                        DecisionEvidence.Unreadable.THE_ROWS_CARRY_NO_ACCOUNT,
+                        observed.measured().weakening());
             }
             List<RowOutcome> rows = observed.rowsSeen();
-            if (emitted == null || rows.isEmpty()) {
-                return new DecisionEvidence.Taken.NothingWasRead(
-                        DecisionEvidence.Taken.Why.NO_ROWS);
+            // Nothing read is not the same as nothing written. Where a source could not be
+            // evaluated at all, the rows taking these rules may be sitting in it, and calling the
+            // rules uncovered would tell an author to write what is already there.
+            if (rows.isEmpty() && observed.someRowsUnseen()) {
+                return new Measurement.FailedToMeasure<>(
+                        DecisionEvidence.Unreadable.NO_ROW_CAME_BACK,
+                        observed.measured().weakening());
             }
             // One entry per row, whether or not anything watched it. Taking only the accounts would
             // leave a row nothing watched out of every number the reading answers with, which is a
@@ -1092,8 +1187,7 @@ public final class Adequacy {
             for (RowOutcome row : rows) {
                 watched.add(ObservedInputs.of(row, numbering).watched());
             }
-            return DecisionEvidence.of(rules.behavior(),
-                    souther.compiler.partition.RulesTaken.of(rules, emitted, plan), watched,
+            return DecisionEvidence.of(rules.behavior(), against, watched,
                     observed.measured().weakening());
         }
     }
@@ -1782,8 +1876,16 @@ public final class Adequacy {
                 // and found nothing says and is not this.
                 return Answer.absent();
             }
-            souther.compiler.partition.RulesTaken taken = souther.compiler.partition.RulesTaken.of(
-                    evidence.read(), emitted, checked.value().plan());
+            // The one placement of this module, which the account's coverage was read with. Built
+            // again here, a candidate this search ran would be put in a rule the account has no
+            // entry for.
+            Map<String, souther.compiler.partition.RulesTaken> placed =
+                    db.ask(new Placements(name)).value();
+            souther.compiler.partition.RulesTaken taken =
+                    placed == null ? null : placed.get(behavior);
+            if (taken == null) {
+                return Answer.absent();
+            }
             souther.compiler.inputs.SearchRegion declared = subject.quantities().region();
             // Asked once, because what it answers is one list and asking it per rule would walk the
             // rules once for every rule.
@@ -3217,11 +3319,10 @@ public final class Adequacy {
      */
     public record Filling(souther.compiler.partition.FillResult composed,
                           Generator.GenerationResult boundaries,
-                          Map<DecisionRule, Generator.GeneratedRow> rules,
+                          Generated.RowsForRules rules,
                           List<GenerationDisposition> generation) {
 
         public Filling {
-            rules = Ordered.map(rules);
             generation = List.copyOf(generation);
         }
 
@@ -3321,7 +3422,7 @@ public final class Adequacy {
 
             // The whole account. A generation is a surface with a reader: what it offers rows for
             // is everything the model is owed, and a rule of a decision is one of those.
-            List<Finding> findings = accountOf(db, name, true);
+            List<Finding> findings = accountOf(db, name);
             Map<String, PartitionEvidence> partitions = coverage.value();
 
             Hir.SpecBehavior spec = specOf(prepared.value(), behavior);
@@ -3406,7 +3507,7 @@ public final class Adequacy {
             RowsForRules rules = rowsForRules(db, name, behavior, owed,
                     RowReadings.readingFor(byTarget, behavior),
                     db.ask(new Front.Adequacy()).value().generation(), composed.rows().size());
-            return Answer.of(new Filling(composed, offeredHere(behavior, edges), rules.byRule(),
+            return Answer.of(new Filling(composed, offeredHere(behavior, edges), rules,
                     dispositions(owed, rules,
                             // This behavior's readings and no others. What a finding of this
                             // behavior is about is a line its own rules drew, and such a line is
@@ -3561,19 +3662,19 @@ public final class Adequacy {
                 }
             }
             if (asked.isEmpty()) {
-                return new RowsForRules(Map.of(), null);
+                return new RowsForRules(asked, Map.of(), null);
             }
             // Rows exist that nothing read, so what is left uncovered is unknown and a row handed
             // to a person may already be sitting in the file that could not be evaluated. The same
             // answer the fill gives, for the same reason: a row for a rule is a row.
             if (observed.someRowsUnseen()) {
-                return new RowsForRules(Map.of(),
+                return new RowsForRules(asked, Map.of(),
                         Generator.UnresolvedCombination.Reason.THE_ROWS_WERE_NOT_READ);
             }
             Map<DecisionRule, RuleRequirement> settled =
                     db.ask(new DecisionSearch(module, behavior)).value();
             if (settled == null) {
-                return new RowsForRules(Map.of(), null);
+                return new RowsForRules(asked, Map.of(), null);
             }
             Map<DecisionRule, Generator.GeneratedRow> out = new LinkedHashMap<>();
             boolean stopped = false;
@@ -3594,27 +3695,47 @@ public final class Adequacy {
                 out.put(each.getKey(), new Generator.GeneratedRow(
                         List.of(new Generator.Purpose.ForADecisionRule(each.getKey())), stoodBy));
             }
-            return new RowsForRules(out, stopped
-                    ? Generator.UnresolvedCombination.Reason.THE_SEARCH_LEFT_SOMETHING_UNTRIED
+            return new RowsForRules(asked, out, stopped
+                    ? Generator.UnresolvedCombination.Reason.THE_BLOCK_IS_AS_LONG_AS_IT_MAY_BE
                     : null);
         }
 
         /**
-         * The rows a run offers for this behavior's rules, and why there is none for the rest.
+         * The rules a run was asked to offer a row for, the rows it offers, and why the rest have
+         * none.
          *
-         * <p>The two together because a rule with no row here is not a rule nothing stood in: the
+         * <p>The three together because a rule with no row here is not a rule nothing stood in: the
          * requirement search stood something in every one of these, and what is missing is a row in
          * this block. Held apart, whoever answered for such a rule would have an absence to make a
          * sentence out of.
          *
-         * @param byRule         the row a person is handed for each rule that has one
-         * @param whyNotTheRest null where every rule this behavior is owed a row for has one
+         * <p><b>Asked for and composed are two sets.</b> What this run was set is every rule the
+         * account reports missing; what it composed is as many of those as the block has room for.
+         * Read off the second, a rule the limit stopped at would be a rule nobody weighs a row
+         * against — and a row composed for a class that happens to take that rule as well would
+         * discharge it with nothing in a position to notice, which is the whole of what one
+         * identity for the two was introduced to make possible.
+         *
+         * @param asked         every rule this behavior is owed a row for
+         * @param byRule        the row a person is handed for each rule that has one
+         * @param whyNotTheRest null where every rule asked for has one
          */
-        private record RowsForRules(Map<DecisionRule, Generator.GeneratedRow> byRule,
-                                    Generator.UnresolvedCombination.Reason whyNotTheRest) {
+        public record RowsForRules(Set<DecisionRule> asked,
+                                   Map<DecisionRule, Generator.GeneratedRow> byRule,
+                                   Generator.UnresolvedCombination.Reason whyNotTheRest) {
 
-            RowsForRules {
+            /** A run that was asked for no rule's row, which is what a behavior nothing searched
+             *  has. An answer and not an empty map standing in for one. */
+            public static final RowsForRules NOTHING =
+                    new RowsForRules(Set.of(), Map.of(), null);
+
+            public RowsForRules {
+                asked = Ordered.set(asked);
                 byRule = Ordered.map(byRule);
+                if (!asked.containsAll(byRule.keySet())) {
+                    throw new IllegalArgumentException(
+                            "a row was composed for a rule this run was not asked about");
+                }
             }
         }
 
@@ -3631,12 +3752,12 @@ public final class Adequacy {
             if (row != null) {
                 return new GenerationOutcome.Generated(List.of(row));
             }
-            // A rule the account cannot call missing, which is not a search that came to nothing.
-            // What is in the way is the reading of the runs rather than anything about the rule,
-            // and a row is not offered against an obligation nobody has established.
+            // A rule the account cannot call missing, which is not a measure nobody made. The
+            // reading of the runs is what is in the way rather than anything about the rule, and a
+            // row is not offered against an obligation nothing has established.
             if (!finding.weakenedBy().isEmpty()) {
-                return new GenerationOutcome.NotApplicable(
-                        GenerationOutcome.NotApplicable.Reason.NOTHING_WAS_MEASURED);
+                return new GenerationOutcome.NotApplicable(GenerationOutcome.NotApplicable.Reason
+                        .THE_MEASURE_DOES_NOT_ESTABLISH_THIS);
             }
             if (rules.whyNotTheRest() == null) {
                 throw new IllegalStateException(
@@ -3689,7 +3810,7 @@ public final class Adequacy {
                 case souther.compiler.partition.ArmDisposition.Unresolved none ->
                         new GenerationOutcome.CannotGenerate(none.why());
                 case souther.compiler.partition.ArmDisposition.NoWayIn none ->
-                        nothingReaches(none.access());
+                        nothingReaches(none);
             };
         }
 
@@ -3703,31 +3824,37 @@ public final class Adequacy {
          * them after a row that cannot exist. Everything else is this compiler falling short of
          * saying what steers a row there, and a row for such an arm may be the easiest one in the
          * file to write by hand.
+         *
+         * <p>Over every place the arm stands in, and the model has to settle all of them. One place
+         * this compiler could not read the way to leaves a row for the arm writable, so the arm is
+         * our shortfall however many of its other places the model refuses — and what is missing at
+         * each of those places is carried whole, since they are not one fact and do not order
+         * against each other.
          */
         private static GenerationOutcome nothingReaches(
-                souther.compiler.reading.PathAccess access) {
-            return switch (access) {
-                case souther.compiler.reading.PathAccess.Ways _ ->
-                        throw new IllegalStateException(
-                                "an arm with ways into it was somewhere a row was looked for");
-                case souther.compiler.reading.PathAccess.Unreachable _ ->
-                        new GenerationOutcome.NotApplicable(
-                                GenerationOutcome.NotApplicable.Reason.A_FACT_ABOUT_THE_MODEL);
-                case souther.compiler.reading.PathAccess.Unsupported(var why) ->
-                        new GenerationOutcome.NotSupported(switch (why) {
-                            case NO_WAY_IN_CAN_BE_NAMED -> GenerationOutcome.NotSupported.Reason
-                                    .NO_WAY_INTO_THIS_ARM_CAN_BE_NAMED;
-                            case WAYS_NOT_ENUMERABLE -> GenerationOutcome.NotSupported.Reason
-                                    .THE_WAYS_INTO_THIS_ARM_ARE_NOT_ENUMERABLE;
-                            case MORE_WAYS_IN_THAN_ARE_READ -> GenerationOutcome.NotSupported.Reason
-                                    .MORE_WAYS_IN_THAN_THE_READING_HOLDS;
-                            case RUNS_WHERE_SOMETHING_CALLS_IT ->
-                                    GenerationOutcome.NotSupported.Reason
-                                            .THE_ARM_RUNS_WHERE_SOMETHING_CALLS_IT;
-                            case THE_CONSTRUCTION_DECIDES_IT -> GenerationOutcome.NotSupported.Reason
-                                    .A_CONSTRUCTION_DECIDES_THIS_ARM;
-                        });
-            };
+                souther.compiler.partition.ArmDisposition.NoWayIn none) {
+            if (none.theModelSettlesIt()) {
+                return new GenerationOutcome.NotApplicable(
+                        GenerationOutcome.NotApplicable.Reason.A_FACT_ABOUT_THE_MODEL);
+            }
+            SequencedSet<GenerationOutcome.NotSupported.Reason> missing = new LinkedHashSet<>();
+            for (souther.compiler.reading.PathAccess access : none.access()) {
+                if (access instanceof souther.compiler.reading.PathAccess.Unsupported(var why)) {
+                    missing.add(switch (why) {
+                        case NO_WAY_IN_CAN_BE_NAMED -> GenerationOutcome.NotSupported.Reason
+                                .NO_WAY_INTO_THIS_ARM_CAN_BE_NAMED;
+                        case WAYS_NOT_ENUMERABLE -> GenerationOutcome.NotSupported.Reason
+                                .THE_WAYS_INTO_THIS_ARM_ARE_NOT_ENUMERABLE;
+                        case MORE_WAYS_IN_THAN_ARE_READ -> GenerationOutcome.NotSupported.Reason
+                                .MORE_WAYS_IN_THAN_THE_READING_HOLDS;
+                        case RUNS_WHERE_SOMETHING_CALLS_IT -> GenerationOutcome.NotSupported.Reason
+                                .THE_ARM_RUNS_WHERE_SOMETHING_CALLS_IT;
+                        case THE_CONSTRUCTION_DECIDES_IT -> GenerationOutcome.NotSupported.Reason
+                                .A_CONSTRUCTION_DECIDES_THIS_ARM;
+                    });
+                }
+            }
+            return new GenerationOutcome.NotSupported(missing);
         }
 
         /**
@@ -4360,6 +4487,53 @@ public final class Adequacy {
         public Optional<DiagnosticCode> code() {
             return Optional.ofNullable(code);
         }
+
+        /**
+         * Which question of the account answers about findings of this kind.
+         *
+         * <p>Here so that a surface reading part of the account names the kinds it has a reader for
+         * and is handed the questions those come out of. Written at each surface instead, which
+         * query answers about which kind was a condition somebody had to keep true by hand, and a
+         * surface that got it wrong would gate on an account missing exactly the kinds it was
+         * gating on.
+         *
+         * <p>A {@code switch} with nothing to fall through to: a kind added below is a kind some
+         * question has to be named for.
+         */
+        public AccountPart answeredBy() {
+            return switch (this) {
+                case DECISION_RULE_UNCOVERED -> AccountPart.THE_DECISION;
+                case OUTPUT_CASE_UNSPECIFIED, INPUT_CASE_UNSPECIFIED, BOUNDARY_UNMET,
+                     ARM_UNREACHED, UNANSWERED_ROW, OUTPUT_CASE_UNVERIFIED, AXIS_CLASS_UNCOVERED,
+                     DOMAIN_POINT_UNCOVERED, PARTITION_NOT_DERIVABLE, PARTITION_NOT_READ,
+                     RULE_UNACCOUNTED, PARTITION_RULES_NOT_REACHED,
+                     PARTITION_VALUES_NOT_SEPARATED -> AccountPart.THE_MEASURES;
+            };
+        }
+    }
+
+    /**
+     * Which question of this compiler's the account is answered by.
+     *
+     * <p>Two questions and one account. What a surface acts on is the account; what it costs to
+     * answer is a question about this compiler's work, and the two are told apart here so that
+     * neither is spelled as the other. A surface with a reader for the whole of it asks for the
+     * whole of it; one that will say nothing about a part names the kinds it reads and pays for
+     * what those come out of.
+     */
+    public enum AccountPart {
+
+        /** {@link Findings}: everything the measures over a behavior's rows and its model found. */
+        THE_MEASURES,
+
+        /**
+         * {@link DecisionFindings}: the rules of the decision each body states.
+         *
+         * <p>Apart from the rest because of what settling one costs. The rules of a body are its
+         * ways, which multiply, and each one nothing was seen taking has a value composed and run
+         * against it — so a build that will say nothing about them is not asked to pay for them.
+         */
+        THE_DECISION
     }
 
     /**
@@ -5156,7 +5330,12 @@ public final class Adequacy {
          */
         private static void decisionFindings(Db db, String module, String behavior,
                                              DecisionEvidence decision, List<Finding> out) {
-            if (decision == null || decision.notTakenByRows().isEmpty()) {
+            // Only where a reading of the runs was made. A measure with no value has not found a
+            // rule nothing takes — it has found nothing — and the arms measure answers the same way
+            // for the same reason: what is missing where nothing was read is not a set of gaps, and
+            // what the build is told instead is the measure's own word for why there is no number.
+            if (decision == null || decision.took().made().isEmpty()
+                    || decision.notTakenByRows().isEmpty()) {
                 return;
             }
             Map<DecisionRule, RuleRequirement> settled =
@@ -5493,32 +5672,65 @@ public final class Adequacy {
     }
 
     /**
-     * Everything the account is owed, for a surface that has a reader.
+     * Everything one module is owed a row for, which is what a surface acts on.
      *
-     * <p>The one place the two queries are put together. What a surface acts on is the account,
-     * and which of this compiler's queries each part of it comes out of is not something a report,
-     * a warning or a generation decides — asked apart at each of them, a surface that joined one
-     * list and forgot the other would be gating on half an account and saying so nowhere.
+     * <p>The account, and it means one thing. Every question it is answered by is asked here, so
+     * that what this module is owed is the same list whoever asked — a value that came out
+     * differently for two callers is not an account of anything, and a consumer comparing two
+     * surfaces of one run would be comparing two definitions.
      *
-     * @param demandTheDecision whether this surface has a reader for what a body's decision is
-     *                          owed. A build held to a bar that refuses over none of it is told
-     *                          nothing about it, and paying to settle what it will not be told is
-     *                          work nobody asked for
+     * <p>What it costs to answer is a separate question and is asked by {@link
+     * #whatAWarningCouldBeAbout}, which is not this and does not claim to be.
      */
-    public static List<Finding> accountOf(Db db, String module, boolean demandTheDecision) {
-        List<Finding> found = db.ask(new Findings(module)).value();
-        if (found == null) {
-            return null;
+    public static List<Finding> accountOf(Db db, String module) {
+        return partsOfTheAccount(db, module, EnumSet.allOf(AccountPart.class));
+    }
+
+    /**
+     * The findings a build held to {@code held} could be warned about, and no more of the account.
+     *
+     * <p><b>Not the account.</b> A warning is said about a finding a build refuses over, so the
+     * kinds no bar here refuses are kinds this surface will say nothing about whatever they hold —
+     * and what answers those kinds is work this build would pay for and never read. Which
+     * questions those are is not decided here: each kind says which question answers it, and the
+     * ones the bar refuses name the questions this asks.
+     *
+     * <p>So the laziness is about which queries are demanded and never about what an account
+     * means. A caller that wants the account asks {@link #accountOf}, which asks all of them.
+     */
+    public static List<Finding> whatAWarningCouldBeAbout(Db db, String module, AdequacyBar held) {
+        EnumSet<AccountPart> asked = EnumSet.noneOf(AccountPart.class);
+        for (Kind kind : Kind.values()) {
+            if (held.refuses(kind)) {
+                asked.add(kind.answeredBy());
+            }
         }
-        if (!demandTheDecision) {
-            return found;
+        return partsOfTheAccount(db, module, asked);
+    }
+
+    /**
+     * What {@code asked} of the account comes to, put together in one place.
+     *
+     * <p>Private, because which parts of it a caller gets is not a caller's to choose: the two
+     * above are the two questions anybody here asks, and a third would be a third meaning of the
+     * word account.
+     */
+    private static List<Finding> partsOfTheAccount(Db db, String module,
+                                                   Set<AccountPart> asked) {
+        List<Finding> out = new ArrayList<>();
+        for (AccountPart part : asked) {
+            List<Finding> found = switch (part) {
+                case THE_MEASURES -> db.ask(new Findings(module)).value();
+                case THE_DECISION -> db.ask(new DecisionFindings(module)).value();
+            };
+            // A question this compile could not answer leaves the account unanswered rather than
+            // short by one part of it. Read as an empty list, a surface would gate on the rest and
+            // say nothing about the half nobody could read.
+            if (found == null) {
+                return null;
+            }
+            out.addAll(found);
         }
-        List<Finding> decided = db.ask(new DecisionFindings(module)).value();
-        if (decided == null || decided.isEmpty()) {
-            return found;
-        }
-        List<Finding> out = new ArrayList<>(found);
-        out.addAll(decided);
         return List.copyOf(out);
     }
 
@@ -5551,11 +5763,11 @@ public final class Adequacy {
             if (!asked.warn()) {
                 return Answer.of(true);
             }
-            // What the account holds, and the decision half of it only where this build is held
-            // to a bar that refuses over one. A build told nothing about a rule of a decision has
-            // no reader for it, and settling what will not be said is work nobody asked for.
-            List<Finding> found = accountOf(db, name,
-                    asked.held().refuses(Kind.DECISION_RULE_UNCOVERED));
+            // What a warning here could be about, which is a projection of the account and not the
+            // account. Asked for the whole of it, this build would settle what it is held to say
+            // nothing about; read off part of it and called the account, the word would mean two
+            // things in one compiler.
+            List<Finding> found = whatAWarningCouldBeAbout(db, name, asked.held());
             if (found == null) {
                 return Answer.absent();
             }

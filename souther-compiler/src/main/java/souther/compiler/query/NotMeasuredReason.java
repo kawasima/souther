@@ -19,6 +19,7 @@ public sealed interface NotMeasuredReason extends MeasureReason
         permits Adequacy.BranchEvidence.NotAsked,
                 Adequacy.RowReading.NotAsked,
                 Adequacy.SignatureEvidence.NoRows,
+                DecisionEvidence.NotAsked,
                 InputCaseEvidence.NoRows,
                 ItemAssessment.Coverage.NotAsked,
                 NothingWasAsked,

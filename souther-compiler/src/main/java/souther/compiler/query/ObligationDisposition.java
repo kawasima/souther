@@ -242,6 +242,9 @@ public sealed interface ObligationDisposition {
                      // nothing about a point of a line: which rule a row took and where its value
                      // stands are two questions, and this sentence is about the second.
                      Weakening.DecisionOfRowUnreadable _,
+                     // The same of a run nothing watched at all, which is short of the run rather
+                     // than of the rules and is about neither of this sentence's questions.
+                     Weakening.DecisionRunNotWatched _,
                      // And a decision whose ways could not all be written down, which is about
                      // what obligations there are and not about a point of a line.
                      Weakening.DecisionReadingIncomplete _ -> { }

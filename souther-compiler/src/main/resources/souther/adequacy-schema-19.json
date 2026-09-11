@@ -231,7 +231,8 @@
           "proof_contradicted",
           "arms_unsettled",
           "decision_not_fully_read",
-          "decision_of_row_unreadable"
+          "decision_of_row_unreadable",
+          "decision_run_not_watched"
         ]
       }
     },
@@ -1587,6 +1588,9 @@
         "branch": {
           "$ref": "#/$defs/branch"
         },
+        "decision": {
+          "$ref": "#/$defs/decision"
+        },
         "findings": {
           "$ref": "#/$defs/findings"
         }
@@ -1998,6 +2002,67 @@
                 "type": "integer",
                 "minimum": 0,
                 "description": "Which block of whatever `writtenBy` names the rule is, by the reader's own count over that. Where `writtenBy` is absent the document is an earlier one and this counts the blocks of the whole source."
+              }
+            }
+          }
+        }
+      }
+    },
+    "decision": {
+      "type": "object",
+      "description": "The rules of the decision this behavior's body states, and which of them a row was seen taking. Beside `branch` and not among it: an arm is one branch the author wrote and a rule is one way through the body, so two rules can go through one arm. One entry per rule the reading of the body reached, whatever the rows did — a `decision_rule_uncovered` finding names one of these by its `obligationId`.",
+      "required": [
+        "coverage",
+        "obligations"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "coverage": {
+          "type": "object",
+          "description": "How far the reading of which rules the rows took got. Its own object because it is about the runs and the entries beside it are about the body: a build that read no row still states the rules it states.",
+          "required": [
+            "status"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "status": {
+              "$ref": "#/$defs/status"
+            },
+            "reason": {
+              "description": "Why there is no number, present exactly where `status` is `unavailable`. `not_asked` is a build that does not record where a run goes, which is a measure nobody made. The rest are a measure that was started and could not be finished, and each leaves what the rows take unknown rather than none: `the_body_was_not_read` is the model saying a body is written here and nothing having made it, `no_row_came_back` is rows written for this behavior that nothing could evaluate, `the_rows_carry_no_account` is rows that ran without the instrumentation a place is recorded by, and `no_rule_is_recognisable` is every rule of the body carrying a condition no run through it is recorded at. A behavior no row names is none of these: a reading over no rows was made, placed none and found no rule taken.",
+              "enum": [
+                "not_asked",
+                "the_body_was_not_read",
+                "no_row_came_back",
+                "the_rows_carry_no_account",
+                "no_rule_is_recognisable"
+              ]
+            },
+            "weakening": {
+              "$ref": "#/$defs/weakening"
+            }
+          }
+        },
+        "weakening": {
+          "$ref": "#/$defs/weakening",
+          "description": "What the reading of the rules themselves went without, which is about this list rather than about any entry: a reading that stopped states the ways it reached and the rest are in no document."
+        },
+        "obligations": {
+          "type": "array",
+          "description": "One entry per rule the body states.",
+          "items": {
+            "type": "object",
+            "required": [
+              "obligationId"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "obligationId": {
+                "$ref": "#/$defs/ruleObligationId"
+              },
+              "taken": {
+                "type": "boolean",
+                "description": "Whether a row was seen taking this rule. Absent where `coverage.status` is `unavailable`: a rule nothing was read about is not a rule no row takes, and `false` for both would be one word for two states."
               }
             }
           }
@@ -3718,7 +3783,8 @@
                 "signature",
                 "branch",
                 "boundary",
-                "partition"
+                "partition",
+                "decision"
               ],
               "description": "Which of the measurements a behavior has exactly one of. What the rows reach of a position is measured once per position and is named by that position instead (`axis_measure`)."
             }

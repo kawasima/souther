@@ -112,6 +112,16 @@ public enum WeakeningWord {
     DECISION_OF_ROW_UNREADABLE,
 
     /**
+     * A row ran and nothing recorded where it went, so which rule it took is not a question this
+     * build can put.
+     *
+     * <p>Apart from the word above because the two are short of different things: that one is a run
+     * in hand the rules could not place, and this is no run to place. What they take away is the
+     * same claim, and what a reader looks at to fix them is not.
+     */
+    DECISION_RUN_NOT_WATCHED,
+
+    /**
      * The ways through a body could not all be written down, so what rules its decision has is not
      * known.
      *

@@ -391,6 +391,20 @@ public final class Generator {
              * told the search reached it and stopped.
              */
             THE_ROWS_WERE_NOT_READ,
+            /**
+             * A value was found for it and the block a person is handed has no room left.
+             *
+             * <p>The one word here that says nothing was tried and nothing is missing. What stood
+             * in this was already found — the search that settled the obligation ran a value and
+             * saw it take the way — and what stopped is the number of rows one block offers.
+             *
+             * <p>Its own word beside {@link #THE_SEARCH_LEFT_SOMETHING_UNTRIED}, which is the
+             * nearest thing and is not this: that one says a search stopped before it had an
+             * answer, and a reader acts on it by raising what the search may walk. This says the
+             * answer is in hand and the list was cut, which is a different limit and a different
+             * thing to raise.
+             */
+            THE_BLOCK_IS_AS_LONG_AS_IT_MAY_BE,
             /** The generated classes would not link, so the decoders could not be reached. Told
              * apart from the one above it because they were there, which is not what that says. */
             LINKAGE_FAILED,
@@ -464,6 +478,7 @@ public final class Generator {
                          NOTHING_TO_BUILD_AGAINST, NO_VALUES_WERE_ASKED_FOR, LINKAGE_FAILED,
                          NO_CERTIFIED_WITNESS, THE_GROUP_WAS_NOT_OFFERED,
                          THE_POSITION_WAS_WITHHELD, THE_ROWS_WERE_NOT_READ,
+                         THE_BLOCK_IS_AS_LONG_AS_IT_MAY_BE,
                          THE_WAY_IN_PLACES_AT_NO_CLASS, NO_CANDIDATE_WAS_OFFERED,
                          NO_READING_OF_THE_LINE_COULD_BE_SEARCHED -> false;
                 };
@@ -547,6 +562,7 @@ public final class Generator {
                          NO_VALUES_WERE_ASKED_FOR, LINKAGE_FAILED, NO_CERTIFIED_WITNESS,
                          THE_GROUP_WAS_NOT_OFFERED, THE_POSITION_WAS_WITHHELD,
                          THE_ROWS_WERE_NOT_READ, THE_WAY_IN_PLACES_AT_NO_CLASS,
+                         THE_BLOCK_IS_AS_LONG_AS_IT_MAY_BE,
                          NO_CANDIDATE_WAS_OFFERED, NO_READING_OF_THE_LINE_COULD_BE_SEARCHED ->
                             throw new IllegalStateException(
                                     "no walk of a coverage item comes back with this: " + this);
@@ -943,9 +959,12 @@ public final class Generator {
      * may be unreachable there, one nothing can steer a row to says this compiler fell short, and a
      * reader handed whichever came first was handed the order the walk took.
      *
-     * <p>And where nothing was tried anywhere, the reading of the first place, which is what an arm
-     * with nowhere to be looked for has. Where the places differ, one of them will have been tried
-     * and this is not reached.
+     * <p>And where nothing was tried anywhere, what the reading made of every place — which is what
+     * an arm with nowhere to be looked for has, and is not one answer. One splice of a helper may
+     * be somewhere the model proves no run reaches while another is somewhere this compiler cannot
+     * state the way to, and those are a fact about the model and a shortfall of ours. Read off
+     * whichever place came first, the same body with its two call sites swapped answered one and
+     * then the other.
      */
     private static ArmDisposition armAnswer(ArmOwed asked, Map<ArmProbe, RowId> built,
                                             Map<ArmProbe, List<UnresolvedCombination>> failed,
@@ -968,7 +987,14 @@ public final class Generator {
         if (!why.isEmpty()) {
             return new ArmDisposition.Unresolved(why);
         }
-        return new ArmDisposition.NoWayIn(read.armAt(asked.occurrences().getFirst()));
+        List<PathAccess> nowhere = new ArrayList<>();
+        for (ArmProbe probe : asked.occurrences()) {
+            PathAccess access = read.armAt(probe);
+            if (!nowhere.contains(access)) {
+                nowhere.add(access);
+            }
+        }
+        return new ArmDisposition.NoWayIn(nowhere);
     }
 
     /**

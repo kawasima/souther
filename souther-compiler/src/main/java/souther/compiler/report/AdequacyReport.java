@@ -20,6 +20,7 @@ import souther.compiler.partition.ConditionReportAnchor;
 import souther.compiler.partition.CompositionBudget;
 import souther.compiler.partition.CompositionRepertoire;
 import souther.compiler.partition.DecidedCondition;
+import souther.compiler.partition.DecisionReading;
 import souther.compiler.partition.DecisionRule;
 import souther.compiler.partition.DomainPoint;
 import souther.compiler.partition.FarEnd;
@@ -676,7 +677,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
         // The lines this report prints and the warnings a build is given are the same list, asked for
         // once here. A second reading of the evidence would be a second statement of what a gap is.
         List<Adequacy.Finding> findings =
-                Adequacy.accountOf(compilation.db(), name, true);
+                Adequacy.accountOf(compilation.db(), name);
         List<BehaviorReport> behaviors = new ArrayList<>();
         for (Hir.BehaviorDef behavior : module.behaviors()) {
             // Asked of the answer, and not chosen between its states from what the answer did not
@@ -1410,6 +1411,15 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                 if (behavior.branch() != null && refuses(Adequacy.Kind.ARM_UNREACHED)) {
                     add(measures, new Subject.OfAMeasure(module.module(), behavior.name(),
                             MeasureWord.BRANCH), behavior.branch().measured());
+                }
+                // Which rules of the decision the rows took, which one bar refuses over and no
+                // other does. A reading that could place none of the rows has every rule of the
+                // body left as one a row may already take, and a verdict resting on the findings
+                // alone would call the model satisfied over exactly the rules nothing read.
+                if (behavior.evidence().decision() != null
+                        && refuses(Adequacy.Kind.DECISION_RULE_UNCOVERED)) {
+                    add(measures, new Subject.OfAMeasure(module.module(), behavior.name(),
+                            MeasureWord.DECISION), behavior.evidence().decision().took());
                 }
                 if (behavior.partition() == null) {
                     continue;
@@ -2409,12 +2419,13 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
         }
         // Absent where nothing was read, which is not a count of none: a build that ran no row did
         // not see the rows take none of the rules, it saw nothing. Said the way every other
-        // measure here says it.
-        out.append(decision.covered().isPresent()
-                ? String.format("    decision    rules %d   taken %d%n",
-                        decision.rules().size(), decision.covered().getAsInt())
-                : String.format("    decision    rules %d   %s%n",
-                        decision.rules().size(), whyNothingWasRead(decision)));
+        // measure here says it, in the words the reason itself carries.
+        Measure<DecisionEvidence.RowsPlaced> took = decision.took();
+        out.append(took.made()
+                .map(placed -> String.format("    decision    rules %d   taken %d%n",
+                        decision.rules().size(), placed.rules().size()))
+                .orElseGet(() -> String.format("    decision    rules %d   %s%n",
+                        decision.rules().size(), ReasonProse.of(took.why()).sentence())));
         for (ReportedFinding f : behavior.reported()) {
             if (!(f.finding().about() instanceof About.ARuleNoRowTakes rule)) {
                 continue;
@@ -2429,18 +2440,6 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                 out.append(String.format("          · %s%n", said(read, declaredIn, names)));
             }
         }
-    }
-
-    /** Why nothing was read about which rules the rows took, in the reading's own words. */
-    private static String whyNothingWasRead(DecisionEvidence decision) {
-        return decision.taken() instanceof DecisionEvidence.Taken.NothingWasRead(var why)
-                ? switch (why) {
-                    case THE_ROWS_ARE_NOT_INSTRUMENTED -> "what the rows take was not measured";
-                    case NO_ROWS -> "no row names this behavior";
-                    case NO_RULE_IS_RECOGNISABLE ->
-                            "no run through any of them can be recognised";
-                }
-                : "what the rows take was not measured";
     }
 
     /**
@@ -2975,6 +2974,11 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             case THE_WAY_IN_PLACES_AT_NO_CLASS ->
                     "the way to " + at + " holds a decision that no class of any position stands"
                             + " for, so nothing here can steer a row along it";
+            // The value is in hand and the list is as long as one block gets. Not said as a search
+            // that stopped: nothing about this one was left untried, and an author who raised what
+            // the search may walk would see the same line again.
+            case THE_BLOCK_IS_AS_LONG_AS_IT_MAY_BE ->
+                    "a value was found for " + at + " and this block offers as many rows as it may";
             case THE_RULES_LEAVE_NOTHING_THERE ->
                     "the rules leave no value at " + at;
             // What the model settles, said as that. A class under one case of a sum and a class
@@ -3699,6 +3703,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                         behavior.account(), behavior.claimed(), sources,
                         behavior.rulePlace());
                 branch(b, behavior, sources);
+                decision(b, behavior);
                 findings(b, behavior, sources);
             }
         }
@@ -4199,6 +4204,40 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             // said of the account and never of an entry.
             node.put("denominatorSettled", arms.census().settled());
         });
+    }
+
+    /**
+     * The rules of one body's decision, and which of them a row was seen taking.
+     *
+     * <p>The account itself and not the findings about it. A finding names the rule it is about by
+     * an identity, and a consumer acting on one looks the rule up here — published only as
+     * findings, there would be nothing to look up, and a rule some row takes would be absent from
+     * this document exactly as a rule this compiler never read is.
+     *
+     * <p>One entry per rule the body states, whatever the rows did. Which of them a row took is the
+     * entry's own answer and is absent where the coverage has no value: a rule nothing was read
+     * about is not a rule no row takes, and a consumer handed {@code false} for both could not tell
+     * them apart.
+     *
+     * <p>How far the rules themselves were read is beside them, because it is about the list rather
+     * than about any entry. A reading that stopped comes back with some of the body's ways, so the
+     * entries here are of those and the ones it did not reach are in no document.
+     */
+    static void decision(ObjectNode into, BehaviorReport behavior) {
+        DecisionEvidence decision = behavior.evidence().decision();
+        if (decision == null) {
+            return;
+        }
+        ObjectNode out = into.putObject("decision");
+        measured(out.putObject("coverage"), decision.took());
+        weakening(out, decision.derivation());
+        ArrayNode all = out.putArray("obligations");
+        Optional<DecisionEvidence.RowsPlaced> placed = decision.took().made();
+        for (DecisionReading.Ruled ruled : decision.read().found()) {
+            ObjectNode one = all.addObject();
+            ruleId(one.putObject("obligationId"), behavior.name(), ruled.rule());
+            placed.ifPresent(rows -> one.put("taken", rows.rules().contains(ruled.rule())));
+        }
     }
 
     /**
@@ -5212,6 +5251,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             // them the same way — a rule nothing was seen taking may be where an unplaced row went
             // — and which of them it was is the reason the fact carries.
             case Weakening.DecisionOfRowUnreadable _ -> WeakeningWord.DECISION_OF_ROW_UNREADABLE;
+            case Weakening.DecisionRunNotWatched _ -> WeakeningWord.DECISION_RUN_NOT_WATCHED;
             // What stopped the reading is the figure beside it. One word, because what a consumer
             // acts on is that the rules are not known — which figure it was is this compiler's
             // policy and travels as the reason.

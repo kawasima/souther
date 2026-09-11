@@ -36,5 +36,9 @@ public enum MeasureWord {
 
     /** Which positions the model divides the behavior's input into. Not what the rows reach of any
      *  one of them, which is measured once per position and named by that position. */
-    PARTITION
+    PARTITION,
+
+    /** The rules the body's decision states, and which of them a row was seen taking. Beside the
+     *  arms rather than among them: two rules can go through one arm. */
+    DECISION
 }

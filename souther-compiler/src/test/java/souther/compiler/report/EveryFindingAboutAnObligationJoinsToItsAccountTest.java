@@ -97,10 +97,42 @@ class EveryFindingAboutAnObligationJoinsToItsAccountTest {
                 | "both say yes" : (Yes, Yes) -> Res { n = 1 }
             """;
 
+    /**
+     * Two rules through one arm, one of which no row takes.
+     *
+     * <p>The corpus reaches no rule no row takes, so the join for one would hold over nothing. Both
+     * rules go through the one {@code then}, so the arm account says nothing is missing and the
+     * decision account says one rule is — which is the pair the two measures were told apart for.
+     */
+    private static final String TWO_RULES_ONE_ARM = """
+            module example.rule
+
+            data Safe
+            data Risky
+            data Level = Safe | Risky
+            data On
+            data Off
+            data Switch = On | Off
+            data Verdict = { n: Int }
+
+            behavior act : (level: Level, power: Switch) -> Verdict
+                constructs Verdict
+
+            let act (level, power) =
+                if level == Safe then
+                    if power == On then Verdict { n = 1 } else Verdict { n = 2 }
+                else
+                    Verdict { n = 3 }
+
+            example act
+                | "safe and on"  : (Safe, On) -> Verdict { n = 1 }
+                | "risky"        : (Risky, On) -> Verdict { n = 3 }
+            """;
+
     /** The kinds that are about something a row is owed for, and the account each is counted in. */
     private static final List<String> ABOUT_AN_OBLIGATION =
             List.of("boundary_unmet", "domain_point_uncovered", "arm_unreached",
-                    "axis_class_uncovered");
+                    "axis_class_uncovered", "decision_rule_uncovered");
 
     @Test
     void everyFindingAboutAnObligationNamesOneEntryOfItsAccount() {
@@ -237,6 +269,7 @@ class EveryFindingAboutAnObligationJoinsToItsAccountTest {
             return out;
         }
         JsonNode from = switch (kind) {
+            case "decision_rule_uncovered" -> behavior.get("decision").get("obligations");
             case "arm_unreached" -> behavior.get("branch").get("obligations");
             case "boundary_unmet", "domain_point_uncovered" ->
                     behavior.get("partition").get("obligations");
@@ -274,6 +307,7 @@ class EveryFindingAboutAnObligationJoinsToItsAccountTest {
         }
         out.add(reportOf(TWO_RULES_AT_ONE_FORK));
         out.add(reportOf(TWO_POSITIONS_ONE_CLASS_NAME));
+        out.add(reportOf(TWO_RULES_ONE_ARM));
         return out;
     }
 }

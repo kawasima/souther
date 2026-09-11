@@ -1,6 +1,7 @@
 package souther.compiler.publish;
 
 import souther.compiler.query.Adequacy;
+import souther.compiler.query.DecisionEvidence;
 import souther.compiler.query.InputCaseEvidence;
 import souther.compiler.query.ItemAssessment;
 import souther.compiler.query.NotMeasuredReason;
@@ -61,6 +62,9 @@ public enum NotMeasuredWord {
             // so there is no word for it, and giving it one would promise a word nothing writes.
             case Adequacy.RowReading.NotAsked it -> throw new IllegalArgumentException(
                     "a reading nobody asked for does not hold a verdict open: " + it);
+            case DecisionEvidence.NotAsked it -> switch (it) {
+                case NOT_ASKED -> NOT_ASKED;
+            };
             case NothingWasAsked _ -> NOT_ASKED;
             case Adequacy.SignatureEvidence.NoRows _ -> NO_ROWS;
             case InputCaseEvidence.NoRows _ -> NO_ROWS;

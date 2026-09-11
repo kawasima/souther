@@ -78,7 +78,7 @@ public record Composition(OfferingRequest request,
             // purpose would be work a person is handed under half of what it does.
             take(byBehavior, behavior.getKey(), behavior.getValue().composed().rows(),
                     request.boundaries() ? atTheLines(owed.get(behavior.getKey())) : List.of(),
-                    behavior.getValue().rules().values());
+                    behavior.getValue().rules().byRule().values());
         }
         // A behavior with nothing of its own to fill can still be the one reading that composed the
         // row a declaration is owed. Left out, that row would be resolved and then dropped on the
@@ -107,6 +107,16 @@ public record Composition(OfferingRequest request,
             here.put(key, here.computeIfAbsent(key,
                     _ -> new OfferedRow(key, row.inputs(), List.of())).and(row.purposes()));
         }
+        // The lines, joined on the stimulus and never on what they were composed for. A row at a
+        // point carries a purpose no offered row may be named after — {@link OfferedRow} refuses
+        // one, because what a line is owed is answered in the account under the declaration that
+        // owes it rather than by a word over a row — so there is nothing here to union, and the
+        // entry a stimulus already has keeps the purposes it has.
+        //
+        // Which is not a purpose going missing. A row a line and a rule arrive at alike is one row,
+        // and the rules below add their purpose to whatever entry this left: what a person is shown
+        // is that the row is for the rule, and that it also stands at a line is the account's
+        // answer and not this row's label.
         for (Generator.GeneratedRow row : lines) {
             RowKey key = RowKey.of(behavior, row);
             here.putIfAbsent(key, new OfferedRow(key, row.inputs(), List.of()));
