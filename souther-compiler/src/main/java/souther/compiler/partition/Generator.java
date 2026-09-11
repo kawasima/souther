@@ -186,6 +186,31 @@ public final class Generator {
         }
 
         /**
+         * One rule of the decision a body states: the row a way nothing takes is owed.
+         *
+         * <p>The rule and not where it was found. What a reader is owed a row for is the way
+         * through the body, and a search that stood a value in it stood it somewhere the rule
+         * admits — which is one of the values the rule takes and not the rule.
+         *
+         * <p>No words. What a rule is called is a report's question and is answered by sending a
+         * reader to each condition the way turns on; a name made here would be a second vocabulary
+         * for one thing, free to drift from the one the finding is written in.
+         */
+        record ForADecisionRule(DecisionRule rule) implements Purpose {
+
+            public ForADecisionRule {
+                if (rule == null) {
+                    throw new IllegalArgumentException("a row for a rule is for some rule");
+                }
+            }
+
+            @Override
+            public List<String> labels() {
+                return List.of();
+            }
+        }
+
+        /**
          * One point of one border: the row an edge nothing sits on is owed.
          *
          * <p>What it was composed for, which is not the same as what a reader may be shown. A

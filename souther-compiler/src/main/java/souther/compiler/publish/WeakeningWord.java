@@ -100,5 +100,23 @@ public enum WeakeningWord {
     PROOF_CONTRADICTED,
 
     /** Two decisions of one body could not be told apart. */
-    ARMS_UNSETTLED
+    ARMS_UNSETTLED,
+
+    /**
+     * A row ran and which rule of the body's decision it took could not be told.
+     *
+     * <p>What it takes away is the claim that a rule nothing was seen taking is a rule no row
+     * takes. One word for the shortfalls the reading can meet, since a consumer acts on all of them
+     * the same way; which of them it was is the reason beside it.
+     */
+    DECISION_OF_ROW_UNREADABLE,
+
+    /**
+     * The ways through a body could not all be written down, so what rules its decision has is not
+     * known.
+     *
+     * <p>Apart from the word above, and a consumer acts on them differently: that one leaves a rule
+     * undecided, and this one leaves the account without the rules to be undecided about.
+     */
+    DECISION_NOT_FULLY_READ
 }

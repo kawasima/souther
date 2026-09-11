@@ -89,9 +89,6 @@ class WhatIsWrittenInAnEnsuresIsQuotedOverTheRowsTest {
 
                 example echo
                     | (TodoId(1)) -> <?>
-                // nothing offers a row for `a decision rule of findTodo` in `findTodo`: something \
-                was seen standing in this rule while it was being settled, and nothing turns what \
-                a search stood there into a row an author can complete
                 """, block(TODO));
     }
 
@@ -283,6 +280,7 @@ class WhatIsWrittenInAnEnsuresIsQuotedOverTheRowsTest {
                 souther.compiler.partition.FillResult.nothingAskedOf(
                         new souther.compiler.partition.GenerationPlan(subject, List.of(),
                                 List.of())),
-                souther.compiler.partition.Generator.GenerationResult.NONE, List.of());
+                souther.compiler.partition.Generator.GenerationResult.NONE,
+                java.util.Map.of(), List.of());
     }
 }

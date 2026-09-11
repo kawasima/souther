@@ -676,7 +676,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
         // The lines this report prints and the warnings a build is given are the same list, asked for
         // once here. A second reading of the evidence would be a second statement of what a gap is.
         List<Adequacy.Finding> findings =
-                compilation.db().ask(new Adequacy.Findings(name)).value();
+                Adequacy.accountOf(compilation.db(), name, true);
         List<BehaviorReport> behaviors = new ArrayList<>();
         for (Hir.BehaviorDef behavior : module.behaviors()) {
             // Asked of the answer, and not chosen between its states from what the answer did not
@@ -2392,7 +2392,19 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
     void decision(StringBuilder out, BehaviorReport behavior,
                   SourceId declaredIn, SourceNameResolver names) {
         DecisionEvidence decision = behavior.evidence().decision();
-        if (decision == null || decision.rules().isEmpty()) {
+        if (decision == null) {
+            return;
+        }
+        // A reading that stopped comes back with none of the body's rules rather than some of
+        // them, so an empty list is two facts — a body that decides nothing, and a body whose ways
+        // this compiler would not hold apart. Said before the count, because a reader shown
+        // `rules 0` under a body of many ways has been told the opposite of what happened.
+        if (!decision.derivation().isEmpty()) {
+            out.append("    decision    not fully read (the ways through this body could not all"
+                    + " be written down)\n");
+            return;
+        }
+        if (decision.rules().isEmpty()) {
             return;
         }
         // Absent where nothing was read, which is not a count of none: a build that ran no row did
@@ -5196,6 +5208,14 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             case Weakening.PairSpaceTruncated _ -> WeakeningWord.PAIR_SPACE_TRUNCATED;
             case Weakening.ProofContradicted _ -> WeakeningWord.PROOF_CONTRADICTED;
             case Weakening.ArmsUnsettled _ -> WeakeningWord.ARMS_UNSETTLED;
+            // One word for the three shortfalls the reading can meet. A consumer acts on all of
+            // them the same way — a rule nothing was seen taking may be where an unplaced row went
+            // — and which of them it was is the reason the fact carries.
+            case Weakening.DecisionOfRowUnreadable _ -> WeakeningWord.DECISION_OF_ROW_UNREADABLE;
+            // What stopped the reading is the figure beside it. One word, because what a consumer
+            // acts on is that the rules are not known — which figure it was is this compiler's
+            // policy and travels as the reason.
+            case Weakening.DecisionReadingIncomplete _ -> WeakeningWord.DECISION_NOT_FULLY_READ;
         };
     }
 

@@ -233,23 +233,25 @@ class ARowIsOfferedForEveryCombinationOfTheDecisionsOneValueIsMadeOfTest {
             """;
 
     /**
-     * A group's combinations cost no rows of their own.
+     * A group's combinations cost no rows of their own, and the body's own rules do.
      *
-     * <p>Three outcomes against four used to be twelve rows — the product of the group's factors,
-     * which is the space the search walked and which nothing reports. What is offered is the
-     * classes, and fewer rows than there are of those: a row composed for a class of one position
-     * holds some class of the other, so the two whose rows would have been the third position's
-     * are answered where they stand. No row is written for a combination, and this model writes
-     * none either — it has no `example` block, so nothing read its rows and no arm is established
-     * as unreached for one to be owed at.
+     * <p>The twelve rows here are not the group's twelve cells. A combination is where the search
+     * looks and is owed nothing; what is owed is what the model states, and this body states twelve
+     * rules — one per way through it, which is what three outcomes against four make when both are
+     * decided on. Five of them are answered by the rows the classes are offered, and the other
+     * seven are rows of their own.
+     *
+     * <p>So what a group costs is bounded by the ways the author wrote rather than by the space the
+     * search walks, which is the same sentence the arms are held to one measure over. That the
+     * difference is real is the sibling above: a group whose cells nothing is owed at costs
+     * nothing, however many cells it has.
      */
     @Test
     void aGroupsCombinationsCostNoRowsOfTheirOwn() {
         String block = block(TWELVE);
 
-        assertEquals(5, rows(block),
-                "five rows for the seven classes — not the twelve combinations they make, and not "
-                        + "one row apiece: " + block);
+        assertEquals(12, rows(block),
+                "one row per rule of the decision, five of them the classes' own: " + block);
         assertTrue(!block.contains("generation stopped"),
                 "and nothing was left for a limit to cut off: " + block);
     }

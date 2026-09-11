@@ -92,7 +92,7 @@ class AGenerationThatWentOnDoesNotSayItStoppedTest {
                         souther.compiler.query.Composition.composed(
                         souther.compiler.query.OfferingRequest.overTheModule("example.trip", false),
                         Map.of("submit", new Adequacy.Filling(result,
-                                Generator.GenerationResult.NONE, List.of())), null)),
+                                Generator.GenerationResult.NONE, Map.of(), List.of())), null)),
                 Map.of(), SourceNameResolver.identity(), COMPILED.db()).text();
     }
 

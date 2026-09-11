@@ -76,13 +76,25 @@ public record DecisionEvidence(DecisionReading read, Taken taken) {
          * @param rules       the rules some row was seen taking
          * @param rowsPlaced  how many rows were placed at one of them
          * @param rowsNotPlaced rows something watched whose rule this reading could not tell
+         * @param wentWithout what this reading of the runs went without, in the vocabulary the
+         *                    account keeps such facts in. Carried and not counted away: a run no
+         *                    recognisable rule matches and a run more than one matches are
+         *                    different shortfalls of this compiler, and a reader told only that
+         *                    some row went unplaced has the count and no way to act on it. Empty
+         *                    exactly where every watched row was placed
          * @param rowsNotWatched rows nothing watched, which is this compiler's shortfall and not
          *                       anything about the model
          */
         record Read(int rowsRead, Set<DecisionRule> rules, int rowsPlaced, int rowsNotPlaced,
+                    WeakeningSet wentWithout,
                     int rowsNotWatched) implements Taken {
 
             public Read {
+                if (wentWithout.isEmpty() != (rowsNotPlaced == 0)) {
+                    throw new IllegalArgumentException("a row this reading could not place says"
+                            + " what stopped it: " + rowsNotPlaced + " unplaced, "
+                            + wentWithout.causes().size() + " reasons");
+                }
                 // Sealed and not only copied. What the account answers about a behavior is read
                 // off this — which rules were covered, which were not — and a set a caller can add
                 // to is a value whose answers change after it was made.
@@ -125,6 +137,22 @@ public record DecisionEvidence(DecisionReading read, Taken taken) {
     }
 
     /**
+     * What the derivation of the rules went without, which is not what the rows went without.
+     *
+     * <p>A reading that stopped at a figure comes back with none of the body's rules rather than
+     * some of them, so an empty list is two different facts — a body that decides nothing, and a
+     * body whose ways this compiler would not hold apart. Carried here so that a reader asking the
+     * account is told which, rather than reading it off a count that is zero either way.
+     */
+    public WeakeningSet derivation() {
+        return read.enumeration() instanceof DecisionReading.Enumeration.StoppedAtAFigure
+                ? WeakeningSet.of(
+                        new Weakening.DecisionReadingIncomplete(read.behavior(),
+                                read.enumeration()))
+                : WeakeningSet.none();
+    }
+
+    /**
      * How many rules some row was seen taking, where anything was read.
      *
      * <p>Absent where nothing was: a number of zero says the rows took none of the rules, which is
@@ -144,8 +172,9 @@ public record DecisionEvidence(DecisionReading read, Taken taken) {
      *
      * @param watched what watched each row, which is an account or the fact that there is none
      */
-    public static Taken of(RulesTaken against, List<Generator.Watched> watched) {
+    public static Taken of(String behavior, RulesTaken against, List<Generator.Watched> watched) {
         Set<DecisionRule> took = new LinkedHashSet<>();
+        List<Weakening> whyNotPlaced = new java.util.ArrayList<>();
         int placed = 0;
         int notPlaced = 0;
         int notWatched = 0;
@@ -165,12 +194,15 @@ public record DecisionEvidence(DecisionReading read, Taken taken) {
                             if (it.why() == RulesTaken.WhichRule.Why.NO_RULE_IS_RECOGNISABLE) {
                                 return new Taken.NothingWasRead(Taken.Why.NO_RULE_IS_RECOGNISABLE);
                             }
+                            whyNotPlaced.add(
+                                    new Weakening.DecisionOfRowUnreadable(behavior, it.why()));
                             notPlaced++;
                         }
                     }
                 }
             }
         }
-        return new Taken.Read(watched.size(), took, placed, notPlaced, notWatched);
+        return new Taken.Read(watched.size(), took, placed, notPlaced,
+                WeakeningSet.ofAll(whyNotPlaced), notWatched);
     }
 }

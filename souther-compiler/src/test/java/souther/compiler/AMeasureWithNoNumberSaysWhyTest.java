@@ -206,6 +206,7 @@ class AMeasureWithNoNumberSaysWhyTest {
                     border      not applicable (the rules of this behavior draw no line)
                     branch      not applicable (this body owes no arm)
                     decision    rules 1   no row names this behavior
+                      · no row takes a decision rule
                   narrow                   implemented   rows 0    pending 0
                     signature   not applicable (this behavior's output is not a sum)
                     partition   not applicable (the rules of this behavior divide no position)
@@ -213,6 +214,7 @@ class AMeasureWithNoNumberSaysWhyTest {
                     border      not applicable (the rules of this behavior draw no line)
                     branch      not applicable (this body owes no arm)
                     decision    rules 1   no row names this behavior
+                      · no row takes a decision rule
                   both                     implemented   rows 1    pending 0
                     signature   not applicable (this behavior's output is not a sum)
                     partition   not applicable (this behavior is measured at its stages)
@@ -237,6 +239,7 @@ class AMeasureWithNoNumberSaysWhyTest {
                       · no OUT point is owed at r.cost = 1000 (invariant Amount #1): excluded — the rules leave no value there
                     branch      not applicable (this body owes no arm)
                     decision    rules 1   no row names this behavior
+                      · no row takes a decision rule
                   classify                 implemented   rows 1    pending 0
                     signature   not applicable (this behavior's output is not a sum)
                     partition   axes 1   equivalence partitions 1/2

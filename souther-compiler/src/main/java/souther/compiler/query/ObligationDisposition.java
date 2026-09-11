@@ -237,7 +237,14 @@ public sealed interface ObligationDisposition {
                      Weakening.InputNotRead _,
                      Weakening.PairSpaceTruncated _,
                      Weakening.ProofContradicted _,
-                     Weakening.ArmsUnsettled _ -> { }
+                     Weakening.ArmsUnsettled _,
+                     // A run this compiler could not place among the rules of a decision says
+                     // nothing about a point of a line: which rule a row took and where its value
+                     // stands are two questions, and this sentence is about the second.
+                     Weakening.DecisionOfRowUnreadable _,
+                     // And a decision whose ways could not all be written down, which is about
+                     // what obligations there are and not about a point of a line.
+                     Weakening.DecisionReadingIncomplete _ -> { }
             }
         }
         return met;

@@ -905,7 +905,7 @@ class EveryFindingHasAGenerationDispositionTest {
                         souther.compiler.query.Composition.composed(
                         souther.compiler.query.OfferingRequest.overTheModule("example.kind", true),
                         Map.of("pick", new Adequacy.Filling(stopped(why),
-                                atTheEdges(alsoAtTheEdges), List.of())), null)),
+                                atTheEdges(alsoAtTheEdges), Map.of(), List.of())), null)),
                 Map.of(), SourceNameResolver.identity(), compiled(KIND).db()).text();
     }
 

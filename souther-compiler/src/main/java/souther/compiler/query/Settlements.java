@@ -307,6 +307,9 @@ public record Settlements(List<ObligationIdentity> requested,
                                List<ClassOfAPosition> classes, List<Generator.ArmOwed> arms,
                                Map<ArmProbe, CoverageSites.Obligation> armsOf,
                                Map<CoverageSites.Obligation, List<ArmProbe>> occurrencesOf,
+                               souther.compiler.partition.RulesTaken rules,
+                               Map<souther.compiler.partition.DecisionRule,
+                                       Generator.GeneratedRow> ruleRows,
                                Map<ObligationIdentity.OfALine, List<AtAPoint>> reads) {
 
         /**
@@ -394,7 +397,27 @@ public record Settlements(List<ObligationIdentity> requested,
                                     Adequacy.numberingOf(db, module)),
                     filling == null ? List.of() : filling.composed().plan().classesOwed(),
                     filling == null ? List.of() : filling.composed().plan().armsOwed(),
-                    armsOf, occurrencesOf, reads);
+                    armsOf, occurrencesOf, rulesOf(db, module, behavior, checked),
+                    filling == null ? Map.of() : filling.rules(), reads);
+        }
+
+        /**
+         * How a run of this behavior is placed among the rules of its decision, or null where the
+         * body's decision could not be read.
+         *
+         * <p>Asked of the reading the account is kept in rather than made here. Which rules a body
+         * states is one answer, and a second walk to meet a run would be free to place it in a rule
+         * the account has no entry for.
+         */
+        private static souther.compiler.partition.RulesTaken rulesOf(
+                Db db, String module, String behavior, Bodies.Elaborated checked) {
+            Map<String, DecisionEvidence> decisions = db.ask(new Adequacy.Decides(module)).value();
+            DecisionEvidence decision = decisions == null ? null : decisions.get(behavior);
+            souther.compiler.core.Core emitted =
+                    checked == null ? null : checked.behaviorBodies().get(behavior);
+            return decision == null || emitted == null ? null
+                    : souther.compiler.partition.RulesTaken.of(
+                            decision.read(), emitted, checked.plan());
         }
 
         /**
@@ -421,6 +444,9 @@ public record Settlements(List<ObligationIdentity> requested,
                             RowKey.of(behavior, filling.composed().rowFor(built.rowId())));
                 }
             }
+            filling.rules().forEach((rule, row) ->
+                    out.put(new ObligationIdentity.OfADecisionRule(behavior, rule),
+                            RowKey.of(behavior, row)));
             return out;
         }
 
@@ -446,6 +472,11 @@ public record Settlements(List<ObligationIdentity> requested,
                 }
                 out.add(new ObligationIdentity.OfAnArm(arm));
             }
+            // And the rules of this behavior's decision a row was stood in. What is asked for is
+            // what the searches answered, so a rule nothing could stand in is not here — the same
+            // way a class the plan never named is not.
+            ruleRows.keySet().forEach(rule ->
+                    out.add(new ObligationIdentity.OfADecisionRule(behavior, rule)));
             return out;
         }
 
@@ -459,13 +490,38 @@ public record Settlements(List<ObligationIdentity> requested,
                 case ObligationIdentity.OfAClass(var owed) -> inClass(asRead, owed);
                 case ObligationIdentity.OfAnArm(var owed) -> throughArm(asRead, owed);
                 case ObligationIdentity.OfALine at -> atThePoint(asRead, at);
-                // Nothing puts a rule of a decision into the universe a run is asked about, so
-                // nothing reaches here with one. Refused rather than answered that the row does
-                // not settle it: what a row does about a rule is which rule its run took, and an
-                // answer of "no" from a reader that never asked would be a row silently offered
-                // for work it does.
-                case ObligationIdentity.OfADecisionRule owed -> throw new IllegalArgumentException(
-                        "a run was asked what it does about a rule of a decision: " + owed);
+                case ObligationIdentity.OfADecisionRule owed -> takingTheRule(asRead, owed);
+            };
+        }
+
+        /**
+         * Whether running the row takes the rule.
+         *
+         * <p>Not something the values answer. A rule is a way through the body and what a row does
+         * is where its run went, so the account of the run is the whole of the evidence — and where
+         * there is none, this says so rather than reading the absence as a row that went elsewhere.
+         *
+         * <p>Of this behavior's rules only. A rule is written in the terms of one body's positions,
+         * so a rule of another behavior is not something a row written here goes down.
+         */
+        private Settlement takingTheRule(RowAsRead asRead,
+                                         ObligationIdentity.OfADecisionRule owed) {
+            if (!behavior.equals(owed.behavior()) || rules == null) {
+                return new Settlement.DoesNotSettle();
+            }
+            return switch (asRead.watched()) {
+                case Generator.Watched.Ran(var account) -> switch (rules.takenBy(account)) {
+                    case souther.compiler.partition.RulesTaken.WhichRule.TookThis took ->
+                            took.rule().equals(owed.rule())
+                                    ? new Settlement.Settles() : new Settlement.DoesNotSettle();
+                    // A run this reading could not place says nothing about where the row went,
+                    // which is this compiler falling short rather than the row missing.
+                    case souther.compiler.partition.RulesTaken.WhichRule.CouldNotTell _ ->
+                            new Settlement.Undetermined(
+                                    Settlement.Reason.THE_VALUES_COULD_NOT_BE_READ);
+                };
+                case Generator.Watched.NoAccount _ ->
+                        new Settlement.Undetermined(Settlement.Reason.NO_ACCOUNT_OF_THE_RUN);
             };
         }
 
