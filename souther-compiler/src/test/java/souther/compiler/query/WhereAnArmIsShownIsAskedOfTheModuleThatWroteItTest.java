@@ -101,14 +101,18 @@ class WhereAnArmIsShownIsAskedOfTheModuleThatWroteItTest {
         Compilation before = started(LIMITS);
         CoverageSites.ArmSite was = importedArms(before).get(0);
         Citation shownBefore = Sites.placeOf(before.db(), was.anchor());
+        souther.compiler.diag.PhysicalPos wasAt = before.texts()
+                .resolve(assertInstanceOf(Citation.Written.class, shownBefore).at());
 
         Compilation after = started(LIMITS_MOVED);
         CoverageSites.ArmSite now = importedArms(after).get(0);
         Citation shownAfter = Sites.placeOf(after.db(), now.anchor());
+        souther.compiler.diag.PhysicalPos nowAt = after.texts()
+                .resolve(assertInstanceOf(Citation.Written.class, shownAfter).at());
 
         assertEquals(was.anchor(), now.anchor(),
                 "the caller is holding the same fork: what it says did not change");
-        assertNotEquals(shownBefore, shownAfter,
+        assertNotEquals(wasAt, nowAt,
                 "and the file it is written in says it is a line further down");
     }
 

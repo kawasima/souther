@@ -88,8 +88,11 @@ class AReportAboutAnImportedClauseNamesWhereItIsNowTest {
                 for (DiagnosticPlace place : places) {
                     if (place instanceof DiagnosticPlace.InSource there
                             && !there.source().equals(at.getKey())) {
+                        // Where a reader is sent, which is what the file is laid out as now: the
+                        // place is what the clause is, and writing above it leaves that alone.
                         said.add(at.getKey() + " " + diagnostic.code() + " points at "
-                                + there.source() + " " + there.region().start());
+                                + there.source() + " "
+                                + compilation.texts().resolve(there.region().start()));
                     }
                 }
             }
