@@ -16,6 +16,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * What a position is offered, of a rule written several ways.
@@ -56,6 +57,14 @@ class WhatAPositionIsOfferedDoesNotTurnOnHowTheRuleWasSpeltTest {
         /** And how many it may. */
         int most(String type) {
             return DeclaredBounds.mostCountOf(view(type), reading());
+        }
+
+        /** What the position is offered, written as a row would write it. */
+        List<String> offered(String type) {
+            return Partitions.representativesOf(
+                            new Type.Ref(TypeSymbols.declared(new TypeKey(module, type))),
+                            reading())
+                    .stream().map(FixtureTemplate::text).toList();
         }
     }
 
@@ -122,6 +131,59 @@ class WhatAPositionIsOfferedDoesNotTurnOnHowTheRuleWasSpeltTest {
                 data Inner = List<Int>
                     invariant atLeastOne = List.length(value) >= 1
                 """).most("Kids"));
+    }
+
+    /**
+     * The same equivalence of a rule about the value itself, rather than about a count of it.
+     *
+     * <p>A separate case because the two are separate arms of the reading. What a rule is about is
+     * the position's own value or some number an operation answers of it, and every case above is
+     * of the second — a floor read through {@code List.length}. A reading that reached the
+     * statements for counts and not for values would pass all of them and still offer a number the
+     * position's own rule refuses.
+     *
+     * <p>Against what the rule written out offers, which is what makes this about the spelling. The
+     * value a position stands for is the reading's to choose and is not this test's to fix; that
+     * the choice does not turn on whether the author wrote the comparison or called something that
+     * makes it is.
+     */
+    @Test
+    void aBoundOnTheValueItselfIsTheSameBoundThroughAHelper() {
+        List<String> written = modelOf("""
+                module example.positive
+
+                data Positive = Int
+                    invariant atLeastTen = value >= 10
+                """).offered("Positive");
+        assertTrue(written.contains("Positive(10)"),
+                () -> "the rule written out offers the floor it places: " + written);
+        assertEquals(written, modelOf("""
+                module example.positive
+
+                let atLeastTen (x: Int): Bool = x >= 10
+
+                data Positive = Int
+                    invariant ok = atLeastTen(value)
+                """).offered("Positive"));
+    }
+
+    /** And under a denial, for the same reason the count's is. */
+    @Test
+    void aBoundOnTheValueItselfIsTheSameBoundUnderADenial() {
+        List<String> written = modelOf("""
+                module example.positive
+
+                data Positive = Int
+                    invariant atLeastTen = value >= 10
+                """).offered("Positive");
+        assertTrue(written.contains("Positive(10)"),
+                () -> "the rule written out offers the floor it places: " + written);
+        assertEquals(written, modelOf("""
+                module example.positive
+
+                data Positive = Int
+                    invariant ok = Bool.not(value < 10)
+                """).offered("Positive"));
     }
 
     /**

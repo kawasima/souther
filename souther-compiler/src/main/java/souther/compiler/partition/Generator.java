@@ -4555,6 +4555,10 @@ public final class Generator {
     private static Outcome over(MeasuredInput subject, int p, ConstructionPlan plan, List<TermPath> at,
                                 List<List<FixtureTemplate>> values, CandidateCheck check) {
         int positions = at.size();
+        // The world every assignment below is composed in, taken once. Each of them writes the same
+        // row out of the same declarations, so a walk that asked the subject again per assignment
+        // would be saying the world it reads in is a thing that turns on which assignment it is.
+        RuleReadingContext reading = subject.ruleReading();
         ArrayDeque<int[]> next = new ArrayDeque<>();
         Set<String> seen = new LinkedHashSet<>();
         int[] first = new int[positions];
@@ -4577,7 +4581,7 @@ public final class Generator {
             for (int i = 0; i < positions; i++) {
                 chosen.put(at.get(i), values.get(i).get(assignment[i]));
             }
-            FixtureTemplate built = compose(plan.root(), chosen, subject.ruleReading());
+            FixtureTemplate built = compose(plan.root(), chosen, reading);
             if (built != null && check.refuse(p, built).isEmpty()) {
                 return new Outcome.Built(built);
             }

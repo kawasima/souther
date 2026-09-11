@@ -415,13 +415,15 @@ public final class FieldDomains {
     /**
      * The same, read without borrowing anything anybody else has made of the declaration.
      *
-     * <p><b>Where a reading cannot be reached rather than where none would help.</b> The callers
-     * here are inside the composing of a value, which is handed a plan and a strategy for filling
-     * it and is handed nothing that could say where a reading comes from — so what borrowing would
-     * take is a capability carried through the composing, and whether it belongs there is not
-     * settled. This keeps what those callers did before while saying that is what it is: named, so
-     * that what is unsettled can be found by looking for it, and separate from
-     * {@link DeclarationReadings#NONE}, which is what a reader with no store says.
+     * <p><b>For a caller that genuinely has nowhere to borrow from.</b> Not for one that has
+     * somewhere and did not carry it: the composing of a value takes the world it reads in
+     * ({@link RuleReadingContext}) and hands the same one down, so a reading reached from several
+     * positions of one row is made once. A caller here is saying there is no store to lend from at
+     * all, which is a different thing from a caller that was handed one and read past it.
+     *
+     * <p>Named for that, and separate from {@link DeclarationReadings#NONE}, which is what a reader
+     * with no store says. Which callers are entitled to it is checked rather than described: the
+     * ways into a reading nobody else made are written down, and a new one is a finding.
      */
     public static FieldDomains unshared(TypeSymbol.AtModule named, RuleReadingSource source,
                                         ReadingPolicy policy, Map<RuleKey, Count> settled) {
