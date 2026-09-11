@@ -229,7 +229,9 @@
           "behavior_input_not_read",
           "pair_space_truncated",
           "proof_contradicted",
-          "arms_unsettled"
+          "arms_unsettled",
+          "decision_not_fully_read",
+          "decision_of_row_unreadable"
         ]
       }
     },
