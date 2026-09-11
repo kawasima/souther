@@ -182,8 +182,8 @@ public sealed interface RuleReasons {
      */
     private static RuleReasons inOneText(List<Placed> these) {
         List<Placed> sorted = new ArrayList<>(these);
-        sorted.sort(Comparator.comparingInt((Placed each) -> each.writtenAt().line())
-                .thenComparingInt(each -> each.writtenAt().column())
+        sorted.sort(Comparator.comparing((Placed each) -> each.writtenAt(),
+                        SourcePos.IN_WRITTEN_ORDER)
                 .thenComparingInt(each -> canonical(each.reason())));
         return new AsWritten(AuthoredOrder.asWritten(said(sorted)));
     }

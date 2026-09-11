@@ -2,6 +2,7 @@ package souther.compiler.diag;
 
 import souther.compiler.source.SourceId;
 
+import java.util.Comparator;
 import java.util.Objects;
 
 /**
@@ -111,6 +112,22 @@ public record SourcePos(int line, int column, Placement placement) {
     public boolean isBefore(SourcePos other) {
         return line != other.line ? line < other.line : column < other.column;
     }
+
+    /**
+     * Two places in the order they are written, for a caller sorting what it holds into the order an
+     * author reads it.
+     *
+     * <p>{@link #isBefore} is the answer and this is the shape a sort wants it in. Written here for
+     * the reason that one is: a caller turning the question back into a line and a column to hand a
+     * comparator two numbers has written the order down a second time, and the two go on answering
+     * separately. Which text the two are in is the caller's to have settled, as it is there.
+     */
+    public static final Comparator<SourcePos> IN_WRITTEN_ORDER = (one, other) -> {
+        if (one.isBefore(other)) {
+            return -1;
+        }
+        return other.isBefore(one) ? 1 : 0;
+    };
 
     /** Whether the code at this position was copied here rather than written at it — what sizes an
      *  underline, and what tells an empty literal the author wrote from one that arrived inside a

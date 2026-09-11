@@ -238,12 +238,12 @@ public record WrittenName(String canonical, String spelling, List<Region> segmen
     /** Whether the character at {@code at} is in {@code region}: from its start, up to but not
      *  including its end, in the file it begins in. */
     private static boolean containsCharacter(Region region, SourcePos at) {
-        return placed(region, at) && before(at, region.end());
+        return placed(region, at) && at.isBefore(region.end());
     }
 
     /** The same, and the boundary at the end — where a caret rests after the last character. */
     private static boolean containsCharacterOrEnd(Region region, SourcePos at) {
-        return placed(region, at) && !before(region.end(), at);
+        return placed(region, at) && !region.end().isBefore(at);
     }
 
     /** Whether {@code at} is a place in {@code region}'s file, at or after its start. */
@@ -251,7 +251,7 @@ public record WrittenName(String canonical, String spelling, List<Region> segmen
         SourcePos start = region.start();
         return start != null && region.end() != null && at != null
                 && at.isInTheSameTextAs(start)
-                && !before(at, start);
+                && !at.isBefore(start);
     }
 
     /** Whether {@code inner} lies within {@code outer}, ends allowed to meet. */
@@ -260,12 +260,7 @@ public record WrittenName(String canonical, String spelling, List<Region> segmen
                 || !inner.start().isInTheSameTextAs(outer.start())) {
             return false;
         }
-        return !before(inner.start(), outer.start()) && !before(outer.end(), inner.end());
-    }
-
-    /** Whether {@code a} comes before {@code b} in the file they share. */
-    private static boolean before(SourcePos a, SourcePos b) {
-        return a.line() != b.line() ? a.line() < b.line() : a.column() < b.column();
+        return !inner.start().isBefore(outer.start()) && !outer.end().isBefore(inner.end());
     }
 
     /**
