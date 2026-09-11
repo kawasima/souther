@@ -5,6 +5,7 @@ import souther.compiler.coverage.ArmProbe;
 import souther.compiler.coverage.ControlClaim;
 import souther.compiler.coverage.ControlPlace;
 import souther.compiler.check.ReadingPolicy;
+import souther.compiler.check.RuleReadingContext;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.RuleKey;
 import souther.compiler.check.DeclaredBounds;
@@ -3157,8 +3158,8 @@ public final class Generator {
         // there is measured on as well, and the two are one value only for as long as no term
         // arrives where they part.
         souther.compiler.inputs.TermOrders on = subject.quantities().ordersOf(target.term());
-        return edgeFrom(TermRealizations.at(writtenAt, on, at, within, subject.rules(),
-                subject.inputs().policy()), target, at);
+        return edgeFrom(TermRealizations.at(writtenAt, on, at, within, subject.ruleReading()),
+                target, at);
     }
 
     /**
@@ -3797,7 +3798,7 @@ public final class Generator {
                 subject.inputs().policy(), under(root, settled), subject.machines());
         ConstructionPlan.Result planned = ConstructionPlan.of(subject.types().get(p), root,
                 subject.symbols(), decided.keySet(), additional,
-                (at, building) -> heldRange(under, at, building, subject.rules()));
+                (at, building) -> heldRange(under, at, building, subject.ruleReading()));
         ConstructionPlan plan;
         switch (planned) {
             case ConstructionPlan.Result.Planned made -> plan = made.plan();
@@ -4029,9 +4030,9 @@ public final class Generator {
      */
     private static DeclaredBounds.CountRange heldRange(FieldDomains rules, TermPath path,
                                                        Type building,
-                                                       RuleReadingSource ruleSource) {
+                                                       RuleReadingContext reading) {
         RuleKey field = fieldUnder(path);
-        return Partitions.heldRange(building, ruleSource,
+        return Partitions.heldRange(building, reading,
                 field == null ? null : rules.heldAt(field));
     }
 
@@ -4055,8 +4056,8 @@ public final class Generator {
                 java.util.EnumSet.noneOf(CompositionBudget.class);
         for (ConstructionPlan.Slot each : plan.slots()) {
             RuleKey field = fieldUnder(each.at());
-            budgets.addAll(Partitions.notBuilt(each.type(), subject.rules(),
-                    subject.inputs().policy(), field == null ? null : rules.heldAt(field)));
+            budgets.addAll(Partitions.notBuilt(each.type(), subject.ruleReading(),
+                    field == null ? null : rules.heldAt(field)));
         }
         return new HeldBack(budgets, plan.cutBy());
     }
@@ -4179,7 +4180,7 @@ public final class Generator {
             if (!budget.spend()) {
                 return null;
             }
-            FixtureTemplate whole = compose(plan.root(), chosen, subject.rules(), subject.inputs().policy());
+            FixtureTemplate whole = compose(plan.root(), chosen, subject.ruleReading());
             return whole != null && check.refuse(p, whole).isEmpty() ? whole : null;
         }
         ConstructionPlan.Slot position = positions.get(index);
@@ -4217,8 +4218,8 @@ public final class Generator {
         FieldDomains left = rulesOf(subject.types().get(p), subject.rules(),
                 subject.inputs().policy(), under(at, settled), subject.machines());
         RuleKey field = fieldUnder(position.at());
-        return Partitions.displacedRepresentativesOf(position.type(), subject.rules(),
-                subject.inputs().policy(), field == null ? null : left.at(field).bounds(),
+        return Partitions.displacedRepresentativesOf(position.type(), subject.ruleReading(),
+                field == null ? null : left.at(field).bounds(),
                 field == null ? null : left.heldAt(field));
     }
 
@@ -4282,8 +4283,9 @@ public final class Generator {
     private static Choices choicesOf(MeasuredInput subject, int p, ConstructionPlan plan,
                                      Map<TermPath, List<FixtureTemplate>> decided,
                                      Map<TermPath, Place> settled) {
-        RuleReadingSource ruleSource = subject.rules();
-        ReadingPolicy policy = subject.inputs().policy();
+        RuleReadingContext reading = subject.ruleReading();
+        RuleReadingSource ruleSource = reading.source();
+        ReadingPolicy policy = reading.policy();
         TermPath at = TermPath.of(subject.parameters().get(p));
         List<TermPath> paths = new ArrayList<>(decided.keySet());
         List<List<FixtureTemplate>> values = new ArrayList<>(decided.values());
@@ -4299,8 +4301,8 @@ public final class Generator {
             RuleKey field = fieldUnder(slot.at());
             souther.compiler.numeric.NumericDomain.Bounds here =
                     field == null ? null : left.at(field).bounds();
-            List<FixtureTemplate> stands = Partitions.representativesHolding(slot.type(), ruleSource,
-                    policy, here, field == null ? null : left.heldAt(field));
+            List<FixtureTemplate> stands = Partitions.representativesHolding(slot.type(), reading,
+                    here, field == null ? null : left.heldAt(field));
             if (stands.isEmpty()) {
                 // Nothing could be written at all: a position of a type nothing stands for. Which is
                 // not the same as a value that was written and refused, and reporting it as one sends
@@ -4317,7 +4319,7 @@ public final class Generator {
             }
             paths.add(slot.at());
             values.add(stands);
-            reserves.add(Partitions.inReserve(slot.type(), ruleSource, policy, here));
+            reserves.add(Partitions.inReserve(slot.type(), reading, here));
         }
         return new Choices(plan, paths, values, reserves, null, java.util.Set.of());
     }
@@ -4677,6 +4679,10 @@ public final class Generator {
     private static Outcome over(MeasuredInput subject, int p, ConstructionPlan plan, List<TermPath> at,
                                 List<List<FixtureTemplate>> values, CandidateCheck check) {
         int positions = at.size();
+        // The world every assignment below is composed in, taken once. Each of them writes the same
+        // row out of the same declarations, so a walk that asked the subject again per assignment
+        // would be saying the world it reads in is a thing that turns on which assignment it is.
+        RuleReadingContext reading = subject.ruleReading();
         ArrayDeque<int[]> next = new ArrayDeque<>();
         Set<String> seen = new LinkedHashSet<>();
         int[] first = new int[positions];
@@ -4699,7 +4705,7 @@ public final class Generator {
             for (int i = 0; i < positions; i++) {
                 chosen.put(at.get(i), values.get(i).get(assignment[i]));
             }
-            FixtureTemplate built = compose(plan.root(), chosen, subject.rules(), subject.inputs().policy());
+            FixtureTemplate built = compose(plan.root(), chosen, reading);
             if (built != null && check.refuse(p, built).isEmpty()) {
                 return new Outcome.Built(built);
             }
@@ -4742,9 +4748,9 @@ public final class Generator {
      * Composed without that, the row carries a value of a type the parameter does not declare.
      */
     private static FixtureTemplate compose(ConstructionPlan.Node node,
-                                           Map<TermPath, FixtureTemplate> chosen, RuleReadingSource ruleSource,
-                                           ReadingPolicy policy) {
-        return PlanComposer.compose(node, new FromTheAssignment(chosen), ruleSource, policy);
+                                           Map<TermPath, FixtureTemplate> chosen,
+                                           RuleReadingContext reading) {
+        return PlanComposer.compose(node, new FromTheAssignment(chosen), reading);
     }
 
     /**

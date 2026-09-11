@@ -31,11 +31,12 @@ import java.util.List;
  * its own counter would call one authored line two the day the two disagreed about which conjuncts
  * there are.
  *
- * <p>Nothing is read out of a conjunct here. Which number a side of one names is
- * {@link ClauseSubject}'s and where it leaves the values is {@link InvariantBound}'s, and both are
- * projections of the same text rather than steps of one reading. What a conjunct is <em>about</em>
- * is neither of those: it is the canonical quantity its arithmetic came to, which the reading that
- * turns clauses into constraints works out.
+ * <p>Nothing is read out of a conjunct here. What a conjunct is <em>about</em> is the canonical
+ * quantity its arithmetic came to, which the reading that turns clauses into constraints works out,
+ * and where it leaves the values is that same reading's. A reader taking a conjunct's own outermost
+ * node for what it states answers about fewer of them than the author wrote — a rule reached
+ * through a helper, one written as the denial of its opposite, one naming the value twice — so what
+ * is handed out here is the text, for readers whose question is which rule it is.
  */
 public final class DeclaredClauses {
 
@@ -74,16 +75,6 @@ public final class DeclaredClauses {
         List<OnAName> out = new ArrayList<>();
         for (TypeSymbol wears : worn) {
             out.add(new OnAName(wears, writtenOn(wears, source)));
-        }
-        return List.copyOf(out);
-    }
-
-    /** Every conjunct written on every one of them, which is what a reader that has no use for
-     *  where a rule was written asks for. */
-    public static List<Conjunct> allOf(List<TypeSymbol> worn, RuleReadingSource source) {
-        List<Conjunct> out = new ArrayList<>();
-        for (OnAName each : of(worn, source)) {
-            out.addAll(each.conjuncts());
         }
         return List.copyOf(out);
     }

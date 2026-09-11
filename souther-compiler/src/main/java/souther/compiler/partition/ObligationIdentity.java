@@ -1,6 +1,7 @@
 package souther.compiler.partition;
 
 import souther.compiler.coverage.CoverageSites;
+import souther.compiler.types.TypeSymbol;
 
 import java.util.Objects;
 
@@ -25,7 +26,9 @@ import java.util.Objects;
  * this, and the two of them that cannot see the account would each have had a vocabulary of their
  * own — which is the parallel bookkeeping this is here to have none of.
  */
-public sealed interface ObligationIdentity {
+public sealed interface ObligationIdentity
+        permits ObligationIdentity.OfALine, ObligationIdentity.OfAnArm,
+                ObligationIdentity.OfADecisionRule, WhereACaseOfAnInputIsOwed {
 
     /** A point of a line, which is what the border accounts are owed at. */
     record OfALine(BorderObligationPoint point) implements ObligationIdentity {
@@ -50,10 +53,40 @@ public sealed interface ObligationIdentity {
     }
 
     /** A class of a position, which is what the domain account is owed at. */
-    record OfAClass(ClassOfAPosition classOfAPosition) implements ObligationIdentity {
+    record OfAClass(ClassOfAPosition classOfAPosition) implements WhereACaseOfAnInputIsOwed {
 
         public OfAClass {
             Objects.requireNonNull(classOfAPosition, "an obligation is told apart by something");
+        }
+    }
+
+    /**
+     * A case of an input, where nothing divides that input into classes.
+     *
+     * <p>Beside {@link OfAClass} and not instead of it. A case of a sum an input ranges over and
+     * the class that sum makes of the position are one thing a row is owed for — where both
+     * derivations are about one behavior's own position. A behavior with no input of its own has
+     * the first and not the second: its stages are where its input is read, and each of them is a
+     * behavior with positions of its own. Keyed on a stage's axis, this behavior's finding would
+     * borrow that behavior's account entry, which is a reader rebuilding an identity somewhere
+     * other than where the obligation is.
+     *
+     * <p>So what tells one of these from another is the behavior, which of its inputs, and which
+     * case — the input by its number, because a behavior that declares no parameters has no name to
+     * call it by and borrowing a stage's parameter name is the same borrowing said in words.
+     *
+     * @param at which input of the signature, in the order the signature takes them
+     */
+    record OfAnInputCase(String behavior, int at, TypeSymbol caseOfTheInput)
+            implements WhereACaseOfAnInputIsOwed {
+
+        public OfAnInputCase {
+            Objects.requireNonNull(behavior, "a case of an input is some behavior's");
+            Objects.requireNonNull(caseOfTheInput, "an obligation is told apart by something");
+            if (at < 0) {
+                throw new IllegalArgumentException(
+                        "a case of an input is at one of the inputs: " + at);
+            }
         }
     }
 

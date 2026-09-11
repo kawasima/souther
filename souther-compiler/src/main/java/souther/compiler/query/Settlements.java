@@ -485,6 +485,14 @@ public record Settlements(List<ObligationIdentity> requested,
         Settlement settlementOf(RowAsRead asRead, ObligationIdentity item) {
             return switch (item) {
                 case ObligationIdentity.OfAClass(var owed) -> inClass(asRead, owed);
+                // A case of an input of a behavior that divides no position of its own. Nothing
+                // asks for a row at one — what is offered comes from the classes a position
+                // divides into — and what discharges it is what a row states at that input, which
+                // the signature measure counts off the row's own text. Answered here as well, that
+                // would be a second reading of one relation, made from the values a row builds
+                // rather than from what it states.
+                case ObligationIdentity.OfAnInputCase owed -> throw new IllegalStateException(
+                        "no row is offered for " + owed + ", so none is weighed against it");
                 case ObligationIdentity.OfAnArm(var owed) -> throughArm(asRead, owed);
                 case ObligationIdentity.OfALine at -> atThePoint(asRead, at);
                 case ObligationIdentity.OfADecisionRule owed -> takingTheRule(asRead, owed);

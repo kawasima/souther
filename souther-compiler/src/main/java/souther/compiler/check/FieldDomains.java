@@ -415,13 +415,15 @@ public final class FieldDomains {
     /**
      * The same, read without borrowing anything anybody else has made of the declaration.
      *
-     * <p><b>Where a reading cannot be reached rather than where none would help.</b> The callers
-     * here are inside the composing of a value, which is handed a plan and a strategy for filling
-     * it and is handed nothing that could say where a reading comes from — so what borrowing would
-     * take is a capability carried through the composing, and whether it belongs there is not
-     * settled. This keeps what those callers did before while saying that is what it is: named, so
-     * that what is unsettled can be found by looking for it, and separate from
-     * {@link DeclarationReadings#NONE}, which is what a reader with no store says.
+     * <p><b>For a caller that genuinely has nowhere to borrow from.</b> Not for one that has
+     * somewhere and did not carry it: the composing of a value takes the world it reads in
+     * ({@link RuleReadingContext}) and hands the same one down, so a reading reached from several
+     * positions of one row is made once. A caller here is saying there is no store to lend from at
+     * all, which is a different thing from a caller that was handed one and read past it.
+     *
+     * <p>Named for that, and separate from {@link DeclarationReadings#NONE}, which is what a reader
+     * with no store says. Which callers are entitled to it is checked rather than described: the
+     * ways into a reading nobody else made are written down, and a new one is a finding.
      */
     public static FieldDomains unshared(TypeSymbol.AtModule named, RuleReadingSource source,
                                         ReadingPolicy policy, Map<RuleKey, Count> settled) {
@@ -1343,11 +1345,10 @@ public final class FieldDomains {
      * conjunct they belong to needs no working out. What the other list holds is the ends the rules
      * leave together, attributed by asking what they would leave without each conjunct.
      *
-     * <p>For a reader that has its own way to the first kind and wants only what that way cannot
-     * see. A newtype's own comparisons are read off the clauses as they are written
-     * ({@link DeclaredBounds#of}), and a rule stating no comparison is invisible there — so such a
-     * reader takes these and drops what it already has, which two ends at one value with one rule
-     * behind them come to anyway ({@link DeclaredBounds.End#tighter}).
+     * <p>Apart for a reader that names lines. Which conjunct an end is owed to is what a row is
+     * written against, and the two lists answer that differently: an end here is owed to the
+     * conjunct it is written in, and one there to whichever conjuncts account for it. A reader
+     * asking only how wide the values are wants neither answer and takes {@link #placed}.
      */
     public List<Placed> stated() {
         return directs.stream()
@@ -1360,10 +1361,10 @@ public final class FieldDomains {
     /**
      * The surviving ends, each written down against the conjuncts that account for it.
      *
-     * <p>Apart from the ends an ordering placed, because one reader wants them apart. A newtype's
-     * own value has its ends read off the clauses as they are written ({@link DeclaredBounds#of}),
-     * and an end that reader cannot see is exactly one no comparison places — so what is handed to
-     * it is these, and handing it the whole list would state every other end twice.
+     * <p>Apart from the ends an ordering placed, because a reader naming lines wants them apart:
+     * these are attributed by asking what the rules leave without each conjunct, which is a
+     * different kind of answer from an end a conjunct states. Where the values actually stop is the
+     * same fact either way, which is why a reader asking only that takes {@link #placed}.
      *
      * <p>Worked out once. Each of them costs a reading of the declaration, and both the readers
      * that want them apart and the ones that want them together ask through here.

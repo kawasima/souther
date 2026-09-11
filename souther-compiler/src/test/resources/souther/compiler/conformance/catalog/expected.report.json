@@ -1,5 +1,5 @@
 {
-  "schemaVersion" : 20,
+  "schemaVersion" : 21,
   "compilerVersion" : "<version>",
   "status" : "partial",
   "weakening" : [ "rule_unread", "decision_of_row_unreadable" ],
@@ -594,11 +594,13 @@
         "inputs" : [ {
           "declared" : [ ],
           "excluded" : [ ],
+          "obligations" : [ ],
           "status" : "unavailable",
           "reason" : "not_a_sum"
         }, {
           "declared" : [ ],
           "excluded" : [ ],
+          "obligations" : [ ],
           "status" : "unavailable",
           "reason" : "not_a_sum"
         } ]
@@ -1051,6 +1053,7 @@
         "inputs" : [ {
           "declared" : [ ],
           "excluded" : [ ],
+          "obligations" : [ ],
           "status" : "unavailable",
           "reason" : "not_a_sum"
         } ]
@@ -1301,6 +1304,7 @@
         "inputs" : [ {
           "declared" : [ ],
           "excluded" : [ ],
+          "obligations" : [ ],
           "status" : "unavailable",
           "reason" : "not_a_sum"
         } ]
@@ -1512,6 +1516,7 @@
         "inputs" : [ {
           "declared" : [ ],
           "excluded" : [ ],
+          "obligations" : [ ],
           "status" : "unavailable",
           "reason" : "not_a_sum"
         } ]

@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import souther.compiler.ast.Hir;
 import souther.compiler.check.Prepared;
+import souther.compiler.check.RuleReadingContext;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.RuleReadings;
 import souther.compiler.core.Core;
@@ -96,7 +97,9 @@ class ABoundaryRowWearsEveryNameThePositionDeclaresTest {
         Partitions.Partitioning p = Partitions.withThresholds(
                 Partitions.of(spec.name(), domain, rules, souther.compiler.query.ReadAs.THE_COMPILATION_DOES),
                 reading,
-                guards.thresholds(), rules, souther.compiler.query.ReadAs.THE_COMPILATION_DOES,
+                guards.thresholds(),
+                RuleReadingContext.unshared(rules,
+                        souther.compiler.query.ReadAs.THE_COMPILATION_DOES),
                 souther.compiler.values.Allowance.of(souther.compiler.regex.PatternPlan.Budget.OF_BEHAVIOR_DISTINCTIONS));
 
         List<String> names = new ArrayList<>();

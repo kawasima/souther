@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://souther-lang.org/schema/adequacy-20.json",
+  "$id": "https://souther-lang.org/schema/adequacy-21.json",
   "title": "Souther adequacy report",
   "description": "How well a model's `example`s cover it. Emitted by `souther examples --format json`. A reader keys on `schemaVersion`: a change that removes or renames anything here raises it, and something added since does not — a key added since is optional, and a word added to an enumerated field is one no earlier document carried, so a document written before either existed is still a document of this version. That is one direction: every object here is closed, so an older copy of this schema refuses a document carrying a key added since. A reader that has to accept newer documents wants the newer schema, not a higher number.",
   "type": "object",
@@ -45,7 +45,7 @@
   "properties": {
     "schemaVersion": {
       "type": "integer",
-      "const": 20
+      "const": 21
     },
     "compilerVersion": {
       "type": "string",
@@ -1908,10 +1908,11 @@
             "additionalProperties": false,
             "properties": {
               "kind": {
-                "description": "`comparison` is a comparison the arithmetic took in, `position` a fork on a sum read as the position its scrutinee stands at, and `not_read` a condition this compiler has no words for — told apart by the occurrence that met it, because two conditions nothing could read mean nothing to be told apart by.",
+                "description": "Which distinction the column is, over whatever the body decided on: a position of the input, or what a dependency answered — the two are written the same way and `condition` says which. `comparison` is a comparison the arithmetic took in, `truth` a value read for whether it holds, `case` a fork read as the case the subject turned out to be, and `not_read` a condition this compiler has no words for — told apart by the occurrence that met it, because two conditions nothing could read mean nothing to be told apart by.",
                 "enum": [
                   "comparison",
-                  "position",
+                  "truth",
+                  "case",
                   "not_read"
                 ]
               },
@@ -1921,7 +1922,7 @@
               },
               "outcome": {
                 "type": "string",
-                "description": "What the path came out as: `held` or `denied` for a comparison and for a condition nothing read, and the case the position was read as for a fork."
+                "description": "What the path came out as: `held` or `denied` for a comparison, a truth and a condition nothing read, and the case the subject was read as for a fork."
               }
             }
           }

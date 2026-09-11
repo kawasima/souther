@@ -74,14 +74,12 @@ class EveryBudgetOfThisCompilerIsReadWhereItIsDeclaredToBeTest {
                     "how many elements and characters a proposal holds, and how many pairings"),
             Map.entry("souther.compiler.partition.Witnesses#sized("
                             + "Lsouther/compiler/check/Shape;I"
-                            + "Lsouther/compiler/check/RuleReadingSource;"
-                            + "Lsouther/compiler/check/ReadingPolicy;Ljava/util/Set;)"
+                            + "Lsouther/compiler/check/RuleReadingContext;Ljava/util/Set;)"
                             + "Lsouther/compiler/partition/Witnesses$Built;",
                     "stops at the elements and the characters, and says which"),
             Map.entry("souther.compiler.partition.Witnesses#ofMapping("
                             + "Lsouther/compiler/check/Shape$Mapping;I"
-                            + "Lsouther/compiler/check/RuleReadingSource;"
-                            + "Lsouther/compiler/check/ReadingPolicy;Ljava/util/Set;)"
+                            + "Lsouther/compiler/check/RuleReadingContext;Ljava/util/Set;)"
                             + "Lsouther/compiler/partition/Witnesses$Built;",
                     "stops at the pairings a map is built from at once, and says which"),
             // A total's two, one consumer each. The figure is asked for twice per consumer and for

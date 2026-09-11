@@ -2,6 +2,7 @@ package souther.compiler.partition;
 
 import org.junit.jupiter.api.Test;
 
+import souther.compiler.check.RuleReadingContext;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.RuleReadings;
 import souther.compiler.check.DeclaredSig;
@@ -179,10 +180,12 @@ class WhatARuleOnAStringIsMeasuredAtTest {
         InputDomain read = InputDomain.of(sigs.get("f"), rules,
                 souther.compiler.query.ReadAs.THE_COMPILATION_DOES);
         souther.compiler.inputs.Quantities reading = read.quantities(rules);
+        RuleReadingContext ruleReading = RuleReadingContext.unshared(rules,
+                souther.compiler.query.ReadAs.THE_COMPILATION_DOES);
         Partitions.Partitioning p = Partitions.withThresholds(
                 Partitions.of("f", read, rules, souther.compiler.query.ReadAs.THE_COMPILATION_DOES),
                 reading,
-                guards.thresholds(), rules, souther.compiler.query.ReadAs.THE_COMPILATION_DOES,
+                guards.thresholds(), ruleReading,
                 souther.compiler.inputs.RulesWithNoLine.NONE, guards.singled(),
                 souther.compiler.values.Allowance.of(souther.compiler.regex.PatternPlan.Budget.OF_BEHAVIOR_DISTINCTIONS));
 
@@ -193,7 +196,8 @@ class WhatARuleOnAStringIsMeasuredAtTest {
             for (PartitionClass each : axis.classes()) {
                 classes.add(each.label());
                 List<FixtureTemplate> made =
-                        Partitions.standingFor(each.representatives(), rules, souther.compiler.query.ReadAs.THE_COMPILATION_DOES, java.util.Set.of());
+                        Partitions.standingFor(each.representatives(), ruleReading,
+                                java.util.Set.of());
                 stands.add(made.isEmpty() ? "none"
                         : made.stream().map(FixtureTemplate::text)
                                 .map(WhatARuleOnAStringIsMeasuredAtTest::bare).toList().toString());

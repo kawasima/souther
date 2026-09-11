@@ -126,6 +126,9 @@ class WhatAnOfferedRowWouldSettleIsMeasuredOverTheCorpusTest {
             // universe a run is asked about. Worded rather than refused, so that the day one is
             // offered the count below says so instead of this failing somewhere else.
             case ObligationIdentity.OfADecisionRule _ -> "rule";
+            // Nor for a case of an input nothing divides into classes, for the same reason: what
+            // this run composes rows from is the classes of a position.
+            case ObligationIdentity.OfAnInputCase _ -> "input case";
         };
     }
 

@@ -2,6 +2,7 @@ package souther.compiler.partition;
 
 import org.junit.jupiter.api.Test;
 
+import souther.compiler.check.RuleReadingContext;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.RuleReadings;
 import souther.compiler.query.ReadAs;
@@ -39,7 +40,9 @@ class APositionIsProposedForAlikeWhetherOrNotItWearsANameTest {
             """);
 
     private static List<String> proposedFor(Type type) {
-        return Partitions.representativesOf(type, RULES, ReadAs.THE_COMPILATION_DOES, null, Set.of())
+        return Partitions.representativesOf(type,
+                        RuleReadingContext.unshared(RULES, ReadAs.THE_COMPILATION_DOES),
+                        null, Set.of())
                 .stream().map(FixtureTemplate::text).toList();
     }
 

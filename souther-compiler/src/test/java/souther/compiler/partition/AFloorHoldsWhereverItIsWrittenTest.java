@@ -3,6 +3,7 @@ package souther.compiler.partition;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.ast.Hir;
+import souther.compiler.check.RuleReadingContext;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.RuleReadings;
 import souther.compiler.check.FieldDomains;
@@ -42,14 +43,20 @@ class AFloorHoldsWhereverItIsWrittenTest {
             return new Type.Ref(TypeSymbols.declared(new TypeKey(module, type)));
         }
 
+        /** The world these readings are made in, with nothing to borrow from. */
+        RuleReadingContext reading() {
+            return RuleReadingContext.unshared(rules,
+                    souther.compiler.query.ReadAs.THE_COMPILATION_DOES);
+        }
+
         /** The floor of a position of {@code type}, read as this model's rules leave it. */
         int floorOf(Type type) {
-            return Partitions.leastHeld(TypeView.of(type, rules.symbols()), rules);
+            return Partitions.leastHeld(TypeView.of(type, rules.symbols()), reading());
         }
 
         /** The same, where the record the position sits in has a rule about it too. */
         int floorOf(Type type, FieldDomains.Held held) {
-            return Partitions.leastHeld(TypeView.of(type, rules.symbols()), rules, held);
+            return Partitions.leastHeld(TypeView.of(type, rules.symbols()), reading(), held);
         }
     }
 
