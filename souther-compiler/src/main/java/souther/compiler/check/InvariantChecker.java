@@ -285,10 +285,7 @@ public final class InvariantChecker {
                              DeclarationReadings machines,
                              Map<ValueName.Behavior, AssumedContract> contracts,
                              ReadingPolicy policy) {
-        // Where the answers about a declaration's string machines are asked for, for every
-        // declaration this check reads: a capability handed on to the engine, which hands it to
-        // every reading made through it, and kept by nothing any of them answers with.
-        this.engine = new PathEngine(source, machines, contracts, policy);
+        this.engine = new PathEngine(source, contracts, policy);
         // Borrowing nothing, since no declaration is being seeded yet, and knowing what the
         // revision knows: where a set stops is the same answer whoever met it.
         this.answers = StringMachineAnswers.unborrowed(machines.extents());
@@ -896,8 +893,7 @@ public final class InvariantChecker {
             // The shape of the whole clause, read out of the tree once. The parts are subtrees of
             // it, so what a reader says about an occurrence of one is said in the numbering the
             // clause hands out rather than in a numbering that starts wherever a part does.
-            ClauseView view = reach.withoutParts()
-                    .viewOf(states.parts().onto(ClauseExpr.of(stated, true)));
+            ClauseView view = reach.withoutParts().viewOf(c.clauses.partsOf(states));
             // A part at a time, and the ones this world holds. Which parts a clause has was settled
             // where it was split, so a part left out is one left out of the list — never a node a
             // walk was told to step over.
@@ -1090,7 +1086,7 @@ public final class InvariantChecker {
                         + " alternatives past a counted " + expansion;
         // And which of the clauses place an edge, asked once the positions have names to be
         // recognised by.
-        Reading reading = c.directsIn(accounted, at, numbers, typeAt, took,
+        Reading reading = c.directsIn(accounted, at, numbers, took,
                 new RulesRead(narrowedBy));
         ConstraintState<FactSubject> constraints = k.constraints()
                 .takingRead(answered.whole().confinement(), allowed, c.answers);
@@ -1894,7 +1890,6 @@ public final class InvariantChecker {
 
     private Reading directsIn(List<Written> stated, Denotations at,
                                    Map<FactSubject, Coordinate> byName,
-                                   Map<RuleKey, Type> typeAt,
                                    ReadingEvidence took, RulesRead rules) {
         List<Direct> out = new ArrayList<>();
         List<FieldDomains.NoLine> noLines = new ArrayList<>();
@@ -1915,12 +1910,15 @@ public final class InvariantChecker {
                 // part begins, and an answer filed by the reading that seeded it would be asked
                 // for under a number this walk made up.
                 //
-                // A counter apiece, because a statement is which of its own conjunct's it is: two
-                // conjuncts each have a statement numbered nought, and what pairs the number with
-                // the conjunct is the identity the two go into.
-                direct(part.of(), each, part.id(), new int[1], at, byName, out, noLines,
-                        withoutAnEnd, aboutOneCoordinate, narrowers,
-                        raised, took, typeAt, rules, raisedByPart, standing)));
+                // Which statements the conjunct states, and what each is called, come from the one
+                // walk that numbers them ({@link ConjunctStatements}). Counted here, this would be a
+                // second answer to what a conjunct states, and a reading that made less of a clause
+                // than another would name the same rule differently.
+                ConjunctStatements.of(part.of(), part.id()).forEach(reached ->
+                        direct(reached.said(), reached.statement(), each, part.id(),
+                                inside(reached.crossed(), at), byName, out, noLines,
+                                withoutAnEnd, aboutOneCoordinate, narrowers,
+                                raised, took, rules, raisedByPart, standing))));
         // Insertion order, kept: `Map.copyOf` iterates in an order salted once per JVM run, and
         // what a report prints for a position is these in the order the declaration writes them.
         return new Reading(List.copyOf(out), List.copyOf(noLines),
@@ -2018,6 +2016,23 @@ public final class InvariantChecker {
     }
 
     /**
+     * Where a statement stands: the reading at the conjunct, entered into each binding the walk
+     * crossed to reach it.
+     *
+     * <p>What crossing a binding means is this reading's and is spent here. The walk that numbers
+     * the statements hands the bindings over rather than entering them, because a reading that has
+     * no environment to carry crosses the same binding by doing nothing — said there, one reader's
+     * answer would be every reader's.
+     */
+    private Denotations inside(List<ClauseExpr.Scoped> crossed, Denotations at) {
+        Denotations here = at;
+        for (ClauseExpr.Scoped each : crossed) {
+            here = terms.inside(each.binding(), here);
+        }
+        return here;
+    }
+
+    /**
      * One part of a clause: its ends and what it relates, read where it stands.
      *
      * <p>Both answers from one reading of the part. A comparison either places an end on a
@@ -2025,25 +2040,26 @@ public final class InvariantChecker {
      * asked once — read apart, the second would be a walk that had to agree with this one about which
      * comparisons it had already accounted for.
      *
-     * <p>Which part of which rule this is arrives with it. Which parts a clause has is what its
-     * author wrote and is settled where the clause was split, so nothing here recognises a
-     * connective or counts anything: a second walk with a counter of its own calls one authored
-     * part two the day the two disagree about which parts there are.
+     * <p>Which part of which rule this is arrives with it, and so does which statement of that part
+     * ({@link ConjunctStatements}). Which parts a clause has is what its author wrote and is settled
+     * where the clause was split, and which statements a part states is settled where they are
+     * numbered, so nothing here recognises a connective or counts anything: a second walk with a
+     * counter of its own calls one authored part two the day the two disagree about which parts
+     * there are.
      *
-     * <p>A binding is crossed and never descended into as a part. The body is what the part states,
-     * read inside it (ADR-0106) — so a rule stating its end through a helper places the line the
-     * same rule written out places — and a helper calling a helper is bindings all the way down.
-     * What a helper's body joined is still this one part, and this reading has one end for it.
+     * <p>A binding is crossed before this and never descended into as a part. The body is what the
+     * part states, read inside it (ADR-0106) — so a rule stating its end through a helper places the
+     * line the same rule written out places — and a helper calling a helper is bindings all the way
+     * down. What a helper's body joined is still this one part, and this reading has one end for it.
      */
-    private void direct(ClauseExpr saidAs, Written of, PartId<RuleRef.Invariant> part,
-                        int[] statements, Denotations at,
+    private void direct(ClauseExpr.Part said, InvariantStatementId statement,
+                        Written of, PartId<RuleRef.Invariant> part, Denotations at,
                         Map<FactSubject, Coordinate> byName, List<Direct> out,
                         List<FieldDomains.NoLine> noLines,
                         SequencedMap<HandOver, FieldDomains.WithoutAnEnd> withoutAnEnd,
                         SequencedMap<Candidate, Set<InvariantStatementId>> naming,
                         Map<RuleKey, List<TypeSymbol.AtModule>> narrowers,
                         Map<RuleRef.Invariant, Required> raised, ReadingEvidence took,
-                        Map<RuleKey, Type> typeAt,
                         RulesRead rules,
                         Map<ReadingPlace, Required> raisedByPart,
                         Map<FieldDomains.BoundaryQuestion,
@@ -2051,55 +2067,6 @@ public final class InvariantChecker {
         // Which rule this is a part of, asked of the part. Carried beside it, a reading could be
         // given a part of one rule and told it was reading another.
         RuleRef.Invariant from = part.rule();
-        // A binding, which is where the environment changes and the one shape that is not a part.
-        // Whether a denial stands above it decides nothing here: the denial is carried to the
-        // leaves as the clause is read, so the body under a binding already states what the binding
-        // states, and a helper's rule denied is read as the rule it denies rather than left as a
-        // form this reader has no word for.
-        if (saidAs instanceof ClauseExpr.Scoped scoped) {
-            direct(scoped.body(), of, part, statements, terms.inside(scoped.binding(), at),
-                    byName, out,
-                    noLines, withoutAnEnd, naming, narrowers, raised, took, typeAt, rules,
-                    raisedByPart, standing);
-            return;
-        }
-        // What one part states may be more than one rule: a part that names a rule is that rule's
-        // body written here, and a body joining two of them states both. Each is read where it
-        // stands and both are this part's, which is what telling a clause's shape from its parts is
-        // worth — the parts are the author's and the rules under one of them are the language's.
-        //
-        // Asked of the shape and never of the operator, so that what a connective composes is
-        // recognised in one place ({@link ClauseExpr}).
-        //
-        // And asked of what the connective composes alone. How the whole of it stands is a separate
-        // answer, and it is already inside this one: the denial a clause was read under is applied
-        // to what the connective composes where the shape is made, so a choice denied arrives here
-        // saying it composes both, and both of the parts it hands over are the denied ones. Asked
-        // together with how the whole stands, the denial is applied a second time and a conjunction
-        // an author wrote as a denied choice is a part this reading never descends into.
-        if (saidAs instanceof ClauseExpr.Joined joined
-                && joined.how() == ConditionJoin.BOTH) {
-            direct(joined.left(), of, part, statements, at, byName, out, noLines, withoutAnEnd,
-                    naming, narrowers, raised, took, typeAt, rules, raisedByPart, standing);
-            direct(joined.right(), of, part, statements, at, byName, out, noLines, withoutAnEnd,
-                    naming, narrowers, raised, took, typeAt, rules, raisedByPart, standing);
-            return;
-        }
-        // A binding is crossed above and a conjunction is descended into, so what is left is a part
-        // of the clause: a leaf, or a choice this reading takes whole.
-        ClauseExpr.Part said = (ClauseExpr.Part) saidAs;
-        // Which statement of the conjunct this is, numbered here and handed to everything below
-        // that records an answer about it. A conjunct states as many of these as the reading
-        // arrives at, so a reader naming the conjunct alone calls the second of them the first said
-        // again.
-        //
-        // Here, where a statement is recognised and before anything is made of it. A binding is
-        // crossed above and a conjunction expanded into the part is descended into, and neither is
-        // a statement: what is left is one, whatever this reading goes on to read from it. Numbered
-        // where an end or a hand-over is written down instead, the number would say which of the
-        // outcomes this was rather than which of the statements, and the same rule read by a
-        // reading that made more of it would be a different line.
-        InvariantStatementId statement = new InvariantStatementId(part, statements[0]++);
         // The rule this part states, which is what every reading below is of. Under a denial that
         // is what the denial denies, and the denial itself is spent where the comparison is read
         // ({@link StatedComparison#of}) rather than carried down as a flag each reader applies.

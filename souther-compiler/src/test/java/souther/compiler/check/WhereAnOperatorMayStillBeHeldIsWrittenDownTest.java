@@ -174,8 +174,6 @@ class WhereAnOperatorMayStillBeHeldIsWrittenDownTest {
             // Recognising a comparison, which is what carries the claim to everything below.
             new Held("souther.compiler.check.Comparison.of",
                     "asks what the operator places, for a binary of a checked body"),
-            new Held("souther.compiler.check.ClauseComparison.of",
-                    "the same, for a clause of a data"),
             new Held("souther.compiler.inputs.ComparedNumber.of",
                     "the same, for any binary a walk over the input space met"),
             // Reading a term for what it says, where the operator is part of what it says.

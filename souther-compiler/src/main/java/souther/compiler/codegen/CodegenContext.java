@@ -1,6 +1,7 @@
 package souther.compiler.codegen;
 
 import souther.compiler.check.ExpandedClauseLookup;
+import souther.compiler.check.InvariantStatements;
 import souther.compiler.check.AtomSpace;
 import souther.compiler.check.ReqSig;
 import souther.compiler.core.EnsuresEnforcement;
@@ -128,6 +129,30 @@ final class CodegenContext {
      */
     EnsuresEnforcement ensuresCheckOf(ValueName.Behavior behavior) {
         return EnsuresEnforcement.in(ensuresChecks, pkg, behavior);
+    }
+
+    /**
+     * What each conjunct of this module's declarations states, statement by statement.
+     *
+     * <p>The reading the front end made, handed over rather than repeated. What a rule states is
+     * settled where the clause's shape was read — a binding crossed, a denial spent — and a backend
+     * that read the tree for itself would recognise a rule written out and decline the same rule
+     * named through a helper, which is a difference in what a decoder reports and not in the model.
+     *
+     * <p>Null until it is set, for the reason {@link #dischargeInvariants} gives.
+     */
+    private InvariantStatements invariantStatements;
+
+    void setInvariantStatements(InvariantStatements statements) {
+        this.invariantStatements = statements;
+    }
+
+    InvariantStatements invariantStatements() {
+        if (invariantStatements == null) {
+            throw new IllegalStateException(
+                    "what " + pkg + "'s clauses state was never handed over");
+        }
+        return invariantStatements;
     }
 
     void setDischargeInvariants(ExpandedClauseLookup clauses) {

@@ -71,13 +71,13 @@ final class PathEngine {
     /** What each behavior a body may call states about its answer, by the name it is called under. */
     private final Map<ValueName.Behavior, AssumedContract> contracts;
 
-    PathEngine(RuleReadingSource source, DeclarationReadings machines, ReadingPolicy policy) {
-        this(source, machines, Map.of(), Terms.Of.THE_DISCHARGE_TREE, policy);
+    PathEngine(RuleReadingSource source, ReadingPolicy policy) {
+        this(source, Map.of(), Terms.Of.THE_DISCHARGE_TREE, policy);
     }
 
-    PathEngine(RuleReadingSource source, DeclarationReadings machines,
+    PathEngine(RuleReadingSource source,
                Map<ValueName.Behavior, AssumedContract> contracts, ReadingPolicy policy) {
-        this(source, machines, contracts, Terms.Of.THE_DISCHARGE_TREE, policy);
+        this(source, contracts, Terms.Of.THE_DISCHARGE_TREE, policy);
     }
 
     /**
@@ -88,16 +88,16 @@ final class PathEngine {
      * recorded the fold as a shape this compiler has no term for would be answering about the
      * representation under the name of a gap.
      */
-    PathEngine(RuleReadingSource source, DeclarationReadings machines, Terms.Of reading,
+    PathEngine(RuleReadingSource source, Terms.Of reading,
                ReadingPolicy policy) {
-        this(source, machines, Map.of(), reading, policy);
+        this(source, Map.of(), reading, policy);
     }
 
-    PathEngine(RuleReadingSource source, DeclarationReadings machines,
+    PathEngine(RuleReadingSource source,
                Map<ValueName.Behavior, AssumedContract> contracts,
                Terms.Of reading, ReadingPolicy policy) {
         this.symbols = source.symbols();
-        this.clauses = new Clauses(source, machines);
+        this.clauses = new Clauses(source);
         this.terms = new Terms(reading, policy, clauses);
         this.predicates = terms.predicates();
         this.guarantees = terms.guarantees();

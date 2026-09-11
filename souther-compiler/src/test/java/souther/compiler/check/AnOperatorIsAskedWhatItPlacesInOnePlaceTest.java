@@ -50,9 +50,6 @@ class AnOperatorIsAskedWhatItPlacesInOnePlaceTest {
             new Licence("souther.compiler.check.Comparison.of", 1,
                     "the one place a node becomes a comparison, which is what carries the claim to"
                             + " every reader below it"),
-            new Licence("souther.compiler.check.ClauseComparison.of", 1,
-                    "the one place a clause of a data becomes a comparison, which is what carries"
-                            + " the claim to the readings of what it bounds"),
             new Licence("souther.compiler.inputs.ComparedNumber.of", 1,
                     "reads any binary a walk met, so an operator that places nothing arrives here"
                             + " and is answered rather than excluded"),
