@@ -1,6 +1,6 @@
 package souther.compiler.partition;
 
-import souther.compiler.check.ReadingPolicy;
+import souther.compiler.check.RuleReadingContext;
 import souther.compiler.check.Carrier;
 import souther.compiler.numeric.Place;
 import souther.compiler.check.RuleReadingSource;
@@ -97,7 +97,7 @@ final class Witnesses {
      * proposal for a floor and are not the count asked for here, and offering them would put a row of
      * two under a line drawn at three.
      */
-    static Sized ofSize(Shape carrier, int size, RuleReadingSource ruleSource, ReadingPolicy policy,
+    static Sized ofSize(Shape carrier, int size, RuleReadingContext reading,
                         Set<TypeSymbol> expanding) {
         if (size == 0) {
             // The same shapes {@link #sized} builds for, and for the same reason they are written
@@ -113,7 +113,7 @@ final class Witnesses {
                      Shape.Undecided _ -> List.<FixtureTemplate>of();
             });
         }
-        Built built = sized(carrier, size, ruleSource, policy, expanding);
+        Built built = sized(carrier, size, reading, expanding);
         return new Sized(built.exactly(size), built.heldBack());
     }
 
@@ -130,9 +130,8 @@ final class Witnesses {
      * with, for readers that have only ever wanted that.
      */
     static Generator.UnresolvedCombination.Reason reasonForSize(Shape carrier, int size,
-                                                                ReadingPolicy policy,
-                                                                RuleReadingSource ruleSource) {
-        Sized made = ofSize(carrier, size, ruleSource, policy, Set.of());
+                                                                RuleReadingContext reading) {
+        Sized made = ofSize(carrier, size, reading, Set.of());
         if (!made.values().isEmpty()) {
             return null;
         }
@@ -161,10 +160,9 @@ final class Witnesses {
      * too few values for comes back as nothing at all. The two read one build and neither is written
      * in terms of the other, so a cheaper value for a floor cannot move a line.
      */
-    static List<FixtureTemplate> holding(Shape carrier, int least, RuleReadingSource ruleSource,
-                                         ReadingPolicy policy,
+    static List<FixtureTemplate> holding(Shape carrier, int least, RuleReadingContext reading,
                                          Set<TypeSymbol> expanding) {
-        return least <= 0 ? List.of() : sized(carrier, least, ruleSource, policy, expanding).all();
+        return least <= 0 ? List.of() : sized(carrier, least, reading, expanding).all();
     }
 
     /**
@@ -179,10 +177,10 @@ final class Witnesses {
      * floor nothing was built for is a position offering what it ordinarily offers, and naming a
      * reason there would put "nothing composes one" under every position that has no floor at all.
      */
-    static Set<CompositionBudget> heldBackFor(Shape carrier, int least, RuleReadingSource ruleSource,
-                                              ReadingPolicy policy) {
+    static Set<CompositionBudget> heldBackFor(Shape carrier, int least,
+                                              RuleReadingContext reading) {
         return least <= 0 ? Set.of()
-                : sized(carrier, least, ruleSource, policy, Set.of()).heldBack();
+                : sized(carrier, least, reading, Set.of()).heldBack();
     }
 
     /**
@@ -222,7 +220,7 @@ final class Witnesses {
         }
     }
 
-    private static Built sized(Shape carrier, int least, RuleReadingSource ruleSource, ReadingPolicy policy,
+    private static Built sized(Shape carrier, int least, RuleReadingContext reading,
                                Set<TypeSymbol> expanding) {
         if (least <= 0) {
             return Built.NONE;
@@ -241,10 +239,10 @@ final class Witnesses {
                                     new Made(FixtureTemplate.string("x".repeat(least)), least)));
             case Shape.Sequence sequence -> least > MOST_ELEMENTS
                     ? Built.stoppedBy(CompositionBudget.ELEMENTS_A_PROPOSAL_HOLDS)
-                    : ofSequence(sequence, least, ruleSource, policy, expanding);
+                    : ofSequence(sequence, least, reading, expanding);
             case Shape.Mapping mapping -> least > MOST_ELEMENTS
                     ? Built.stoppedBy(CompositionBudget.ELEMENTS_A_PROPOSAL_HOLDS)
-                    : ofMapping(mapping, least, ruleSource, policy, expanding);
+                    : ofMapping(mapping, least, reading, expanding);
             // Nothing else has a count this builds to. A number is one value however many the rules
             // ask for, a record holds its fields and not a number of them, and the shapes that are
             // not value shapes have no value to count.
@@ -261,11 +259,11 @@ final class Witnesses {
      * <p>A list may hold the same element as many times as it needs to. A set of three is three
      * elements no two of which are equal, which the element's own values have to supply.
      */
-    private static Built ofSequence(Shape.Sequence carrier, int least, RuleReadingSource ruleSource,
-                                    ReadingPolicy policy, Set<TypeSymbol> expanding) {
+    private static Built ofSequence(Shape.Sequence carrier, int least, RuleReadingContext reading,
+                                    Set<TypeSymbol> expanding) {
         List<Made> out = new ArrayList<>();
         for (FixtureTemplate seed
-                : proposalsFor(carrier.element(), ruleSource, policy, expanding)) {
+                : proposalsFor(carrier.element(), reading, expanding)) {
             List<FixtureTemplate> elements = new ArrayList<>();
             if (carrier.kind() == Shape.Sequence.Kind.LIST) {
                 for (int i = 0; i < least; i++) {
@@ -273,7 +271,7 @@ final class Witnesses {
                 }
             } else {
                 elements.addAll(
-                        distinctFrom(seed, carrier.element(), least, policy, ruleSource, expanding));
+                        distinctFrom(seed, carrier.element(), least, reading, expanding));
             }
             out.add(new Made(FixtureTemplate.collection(elements), elements.size()));
         }
@@ -282,10 +280,10 @@ final class Witnesses {
 
     /** A map of that many entries, no two of which share a key. The values under the keys are free
      *  to repeat. */
-    private static Built ofMapping(Shape.Mapping map, int least, RuleReadingSource ruleSource,
-                                   ReadingPolicy policy, Set<TypeSymbol> expanding) {
-        List<FixtureTemplate> keys = proposalsFor(map.key(), ruleSource, policy, expanding);
-        List<FixtureTemplate> values = proposalsFor(map.value(), ruleSource, policy, expanding);
+    private static Built ofMapping(Shape.Mapping map, int least, RuleReadingContext reading,
+                                   Set<TypeSymbol> expanding) {
+        List<FixtureTemplate> keys = proposalsFor(map.key(), reading, expanding);
+        List<FixtureTemplate> values = proposalsFor(map.value(), reading, expanding);
         if (keys.isEmpty() || values.isEmpty()) {
             return Built.NONE;
         }
@@ -311,7 +309,7 @@ final class Witnesses {
                 FixtureTemplate value = values.get(apart - i);
                 List<FixtureTemplate> entries = new ArrayList<>();
                 for (FixtureTemplate key
-                        : distinctFrom(keys.get(i), map.key(), least, policy, ruleSource, expanding)) {
+                        : distinctFrom(keys.get(i), map.key(), least, reading, expanding)) {
                     entries.add(FixtureTemplate.entry(key, value));
                 }
                 out.add(new Made(FixtureTemplate.collection(entries), entries.size()));
@@ -330,10 +328,9 @@ final class Witnesses {
      * this list drops a candidate on the strength of how many rules were read before it. The minimum's
      * is added last of those, which is exactly the one such a budget takes away.
      */
-    private static List<FixtureTemplate> proposalsFor(Type type, RuleReadingSource ruleSource,
-                                                      ReadingPolicy policy,
+    private static List<FixtureTemplate> proposalsFor(Type type, RuleReadingContext reading,
                                                       Set<TypeSymbol> expanding) {
-        return Partitions.representativesOf(type, ruleSource, policy, null, expanding);
+        return Partitions.representativesOf(type, reading, null, expanding);
     }
 
     /**
@@ -352,7 +349,7 @@ final class Witnesses {
      */
     static FixtureTemplate holdingAlso(souther.compiler.check.Shape.Sequence carrier,
                                        FixtureTemplate chosen, int needed,
-                                       RuleReadingSource ruleSource, ReadingPolicy policy) {
+                                       RuleReadingContext reading) {
         if (needed < 1) {
             throw new IllegalArgumentException(
                     "a collection built around a value holds it: " + needed);
@@ -365,7 +362,7 @@ final class Witnesses {
             return FixtureTemplate.collection(elements);
         }
         List<FixtureTemplate> elements =
-                distinctFrom(chosen, carrier.element(), needed, policy, ruleSource, Set.of());
+                distinctFrom(chosen, carrier.element(), needed, reading, Set.of());
         // Fewer than asked for is a type with too few values, which is a set the rules want and
         // nothing can build — said as nothing built rather than as a set of the wrong size.
         return elements.size() < needed ? null : FixtureTemplate.collection(elements);
@@ -379,14 +376,14 @@ final class Witnesses {
      * answers the way it answers any other.
      */
     private static List<FixtureTemplate> distinctFrom(FixtureTemplate seed, Type type, int least,
-                                                      ReadingPolicy policy,
-                                                      RuleReadingSource ruleSource, Set<TypeSymbol> expanding) {
+                                                      RuleReadingContext reading,
+                                                      Set<TypeSymbol> expanding) {
         Set<String> written = new LinkedHashSet<>();
         List<FixtureTemplate> out = new ArrayList<>();
         written.add(seed.text());
         out.add(seed);
         // One more than needed, since the seed is likely to be among them.
-        for (FixtureTemplate each : distinctValuesOf(type, least + 1, ruleSource, policy, expanding)) {
+        for (FixtureTemplate each : distinctValuesOf(type, least + 1, reading, expanding)) {
             if (out.size() >= least) {
                 break;
             }
@@ -412,12 +409,12 @@ final class Witnesses {
      * them is refused for its elements — which is still better than a collection short of its size,
      * and is all there is where the carrier neither divides nor steps.
      */
-    private static List<FixtureTemplate> distinctValuesOf(Type type, int many, RuleReadingSource ruleSource,
-                                                          ReadingPolicy policy,
+    private static List<FixtureTemplate> distinctValuesOf(Type type, int many,
+                                                          RuleReadingContext reading,
                                                           Set<TypeSymbol> expanding) {
         Set<String> written = new LinkedHashSet<>();
         List<FixtureTemplate> out = new ArrayList<>();
-        for (FixtureTemplate each : dividesInto(type, ruleSource, policy, expanding)) {
+        for (FixtureTemplate each : dividesInto(type, reading, expanding)) {
             if (out.size() >= many) {
                 return List.copyOf(out);
             }
@@ -426,7 +423,7 @@ final class Witnesses {
             }
         }
         for (int i = 0; out.size() < many; i++) {
-            FixtureTemplate each = varied(type, i, ruleSource);
+            FixtureTemplate each = varied(type, i, reading);
             if (each == null) {
                 break;
             }
@@ -434,7 +431,7 @@ final class Witnesses {
                 out.add(each);
             }
         }
-        for (FixtureTemplate each : Partitions.representativesOf(type, ruleSource, policy, null, expanding)) {
+        for (FixtureTemplate each : Partitions.representativesOf(type, reading, null, expanding)) {
             if (out.size() >= many) {
                 break;
             }
@@ -455,12 +452,11 @@ final class Witnesses {
      * into was written here as well, and the two could differ about how far to look. The reading
      * goes through the names now and hands the values back written under them.
      */
-    private static List<FixtureTemplate> dividesInto(Type type, RuleReadingSource ruleSource,
-                                                     ReadingPolicy policy,
+    private static List<FixtureTemplate> dividesInto(Type type, RuleReadingContext reading,
                                                      Set<TypeSymbol> expanding) {
         List<FixtureTemplate> out = new ArrayList<>();
-        for (PartitionClass each : PartitionClasses.of(type, ruleSource, policy, expanding)) {
-            out.addAll(Partitions.standingFor(each.representatives(), ruleSource, policy, expanding));
+        for (PartitionClass each : PartitionClasses.of(type, reading, expanding)) {
+            out.addAll(Partitions.standingFor(each.representatives(), reading, expanding));
         }
         return out;
     }
@@ -474,14 +470,15 @@ final class Witnesses {
      * position carries, and inventing one would put a value in a row the type's own chooser had reason
      * not to offer — which is what the values a type divides into are for, above.
      */
-    private static FixtureTemplate varied(Type type, int index, RuleReadingSource ruleSource) {
+    private static FixtureTemplate varied(Type type, int index, RuleReadingContext reading) {
+        RuleReadingSource ruleSource = reading.source();
         TypeView view = TypeView.of(type, ruleSource.symbols());
         if (view.shape() instanceof Shape.Scalar scalar && scalar.prim() == Type.Prim.STRING) {
             return WornNames.under(view.wrappers(), FixtureTemplate.string(
-                    "x".repeat(Math.max(1, Partitions.leastHeld(view, ruleSource)) + index)),
+                    "x".repeat(Math.max(1, Partitions.leastHeld(view, reading)) + index)),
                     ruleSource);
         }
-        Place at = Partitions.numberInside(view, ruleSource, index);
+        Place at = Partitions.numberInside(view, reading, index);
         if (at == null) {
             return null;
         }

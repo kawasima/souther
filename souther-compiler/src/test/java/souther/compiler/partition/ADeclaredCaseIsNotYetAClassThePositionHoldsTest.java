@@ -2,6 +2,7 @@ package souther.compiler.partition;
 
 import org.junit.jupiter.api.Test;
 
+import souther.compiler.check.RuleReadingContext;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.RuleReadings;
 import souther.compiler.query.Adequacy;
@@ -55,7 +56,8 @@ class ADeclaredCaseIsNotYetAClassThePositionHoldsTest {
     @Test
     void theTypeDeclaresEveryCaseWhateverItsRulesSay() {
         assertEquals(List.of("Prospecting", "Qualified", "Won"),
-                PartitionClasses.of(Type.ref(TypeSymbols.declared(new TypeKey(rules.symbols().module(), "StageI"))), rules, souther.compiler.query.ReadAs.THE_COMPILATION_DOES, java.util.Set.of()).stream()
+                PartitionClasses.of(Type.ref(TypeSymbols.declared(new TypeKey(rules.symbols().module(), "StageI"))), RuleReadingContext.unshared(rules,
+                        souther.compiler.query.ReadAs.THE_COMPILATION_DOES), java.util.Set.of()).stream()
                         .map(PartitionClass::id).toList());
     }
 

@@ -3,6 +3,7 @@ package souther.compiler.partition;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.check.DeclaredSig;
+import souther.compiler.check.RuleReadingContext;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.RuleReadings;
 import souther.compiler.core.Core;
@@ -92,8 +93,8 @@ class AClassThatNarrowsStatesTheNarrowingAndNotAValueTest {
                     checked.plan(),
                     compilation.db().ask(new Adequacy.Inputs(module)).value().get("use"), rules);
             axes = Partitions.withThresholds(axes, domain.quantities(rules), guards.thresholds(),
-                    rules, ReadAs.THE_COMPILATION_DOES, guards.noLine(), guards.singled(),
-                    guards.between(),
+                    RuleReadingContext.unshared(rules, ReadAs.THE_COMPILATION_DOES),
+                    guards.noLine(), guards.singled(), guards.between(),
                 souther.compiler.values.Allowance.of(souther.compiler.regex.PatternPlan.Budget.OF_BEHAVIOR_DISTINCTIONS));
         }
         FillResult filled = Generator.fill(

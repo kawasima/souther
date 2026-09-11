@@ -1,6 +1,7 @@
 package souther.compiler.partition;
 
 import org.junit.jupiter.api.Test;
+import souther.compiler.check.RuleReadingContext;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.RuleReadings;
 import souther.compiler.check.TypeView;
@@ -49,6 +50,8 @@ class ACaseComposedForOneReaderIsComposedForEveryReaderTest {
             """;
 
     private final RuleReadingSource rules = RuleReadings.ofSource(MODULE);
+    private final RuleReadingContext reading = RuleReadingContext.unshared(rules,
+            souther.compiler.query.ReadAs.THE_COMPILATION_DOES);
 
     private Type named(String name) {
         return Type.ref(TypeSymbols.declared(new TypeKey(rules.symbols().module(), name)));
@@ -72,11 +75,11 @@ class ACaseComposedForOneReaderIsComposedForEveryReaderTest {
      */
     @Test
     void theSomeOfAnOptionalSumOfRecordsStandsForAComposedCase() {
-        PartitionClass some = PartitionClasses.of(new Type.OptionOf(sum()), rules, souther.compiler.query.ReadAs.THE_COMPILATION_DOES, Set.of()).stream()
+        PartitionClass some = PartitionClasses.of(new Type.OptionOf(sum()), reading, Set.of()).stream()
                 .filter(each -> each.id().equals("Some")).findFirst().orElseThrow();
 
         List<FixtureTemplate> stands =
-                Partitions.standingFor(some.representatives(), rules, souther.compiler.query.ReadAs.THE_COMPILATION_DOES, Set.of());
+                Partitions.standingFor(some.representatives(), reading, Set.of());
 
         assertTrue(stands.stream().anyMatch(each -> each.text().startsWith("Boxed {")),
                 () -> "`Some` stands for a case of the element: " + stands);
@@ -87,7 +90,7 @@ class ACaseComposedForOneReaderIsComposedForEveryReaderTest {
     void aCollectionRequiredToHoldOneOfASumOfRecordsIsBuilt() {
         List<FixtureTemplate> held =
                 Witnesses.holding(TypeView.of(new Type.ListOf(sum()), rules.symbols()).shape(),
-                        1, rules, souther.compiler.query.ReadAs.THE_COMPILATION_DOES, Set.of());
+                        1, reading, Set.of());
 
         assertFalse(held.isEmpty(), "a list of one is built from a case of the sum");
     }
@@ -98,7 +101,7 @@ class ACaseComposedForOneReaderIsComposedForEveryReaderTest {
     void aSetOfTwoIsBuiltFromTwoCasesOfASumOfRecords() {
         List<FixtureTemplate> held =
                 Witnesses.holding(TypeView.of(new Type.SetOf(sum()), rules.symbols()).shape(),
-                        2, rules, souther.compiler.query.ReadAs.THE_COMPILATION_DOES, Set.of());
+                        2, reading, Set.of());
 
         assertFalse(held.isEmpty(), "the two cases are two distinct values");
     }
@@ -106,7 +109,7 @@ class ACaseComposedForOneReaderIsComposedForEveryReaderTest {
     /** A name round the sum is a name round what stands for it. */
     @Test
     void aNewtypeOverASumOfRecordsHasARepresentative() {
-        List<FixtureTemplate> stands = Partitions.representativesOf(named("Wrapped"), rules, souther.compiler.query.ReadAs.THE_COMPILATION_DOES);
+        List<FixtureTemplate> stands = Partitions.representativesOf(named("Wrapped"), reading);
 
         assertTrue(stands.stream().anyMatch(each -> each.text().startsWith("Wrapped(")),
                 () -> "written under the name the position wears: " + stands);
@@ -118,8 +121,8 @@ class ACaseComposedForOneReaderIsComposedForEveryReaderTest {
      *  value for. */
     @Test
     void everyCaseOfTheSumStandsForSomething() {
-        for (PartitionClass each : PartitionClasses.of(sum(), rules, souther.compiler.query.ReadAs.THE_COMPILATION_DOES, Set.of())) {
-            assertFalse(Partitions.representativesOf(named(each.id()), rules, souther.compiler.query.ReadAs.THE_COMPILATION_DOES).isEmpty(),
+        for (PartitionClass each : PartitionClasses.of(sum(), reading, Set.of())) {
+            assertFalse(Partitions.representativesOf(named(each.id()), reading).isEmpty(),
                     () -> "a record case stands for a value: " + each.id());
         }
     }
@@ -135,7 +138,7 @@ class ACaseComposedForOneReaderIsComposedForEveryReaderTest {
      */
     @Test
     void aCaseWhoseFieldsConstrainEachOtherIsComposedAgainstThatRule() {
-        List<FixtureTemplate> stands = Partitions.representativesOf(named("Boxed"), rules, souther.compiler.query.ReadAs.THE_COMPILATION_DOES);
+        List<FixtureTemplate> stands = Partitions.representativesOf(named("Boxed"), reading);
 
         assertTrue(stands.stream().anyMatch(each -> each.text().equals("Boxed { a = 0, b = 1 }")),
                 () -> "each field against what the rules leave it: " + stands);
@@ -151,7 +154,7 @@ class ACaseComposedForOneReaderIsComposedForEveryReaderTest {
      */
     @Test
     void aComposedRecordHoldsWhatItsOwnRuleAsksFor() {
-        List<FixtureTemplate> stands = Partitions.representativesOf(named("Bag"), rules, souther.compiler.query.ReadAs.THE_COMPILATION_DOES);
+        List<FixtureTemplate> stands = Partitions.representativesOf(named("Bag"), reading);
 
         assertTrue(stands.stream().anyMatch(each -> each.text().contains("xs = [")
                         && !each.text().contains("xs = []")),

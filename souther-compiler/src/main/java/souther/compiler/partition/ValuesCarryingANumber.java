@@ -1,7 +1,6 @@
 package souther.compiler.partition;
 
-import souther.compiler.check.ReadingPolicy;
-import souther.compiler.check.RuleReadingSource;
+import souther.compiler.check.RuleReadingContext;
 import souther.compiler.check.TypeView;
 import souther.compiler.inputs.TermPath;
 import souther.compiler.types.TypeSymbol;
@@ -29,8 +28,8 @@ import java.util.Map;
  * @param fixed the position the number is written at, which is the one the plan was made against
  * @param value the number, as the position's own carrier writes it
  */
-record ValuesCarryingANumber(TermPath fixed, FixtureTemplate value, RuleReadingSource ruleSource,
-                             ReadingPolicy policy) implements PlanComposer.Values {
+record ValuesCarryingANumber(TermPath fixed, FixtureTemplate value, RuleReadingContext reading)
+        implements PlanComposer.Values {
 
     @Override
     public FixtureTemplate at(ConstructionPlan.Slot slot) {
@@ -39,8 +38,8 @@ record ValuesCarryingANumber(TermPath fixed, FixtureTemplate value, RuleReadingS
         // plan's `worn` is what a value already wearing those is still missing, which is what a
         // value chosen at a slot by a search is.
         return slot.at().equals(fixed)
-                ? WornNames.under(TypeView.of(slot.type(), ruleSource.symbols()).wrappers(),
-                        value, ruleSource)
+                ? WornNames.under(TypeView.of(slot.type(), reading.source().symbols()).wrappers(),
+                        value, reading.source())
                 : null;
     }
 
@@ -54,7 +53,7 @@ record ValuesCarryingANumber(TermPath fixed, FixtureTemplate value, RuleReadingS
         if (inner == null || !(built.of() instanceof TypeSymbol.AtModule record)) {
             return null;
         }
-        return Partitions.fieldsOf(record, ruleSource, policy, java.util.Set.of(),
+        return Partitions.fieldsOf(record, reading, java.util.Set.of(),
                 Map.of(down.getKey(), inner));
     }
 

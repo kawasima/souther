@@ -6,9 +6,6 @@ import souther.compiler.numeric.Place;
 import souther.compiler.numeric.Endpoint;
 import souther.compiler.numeric.Granularity;
 import souther.compiler.numeric.Towards;
-import souther.compiler.types.ValueName;
-
-import java.math.BigDecimal;
 
 /**
  * Where one conjunct of a numeric newtype's invariant leaves its value able to stop.
@@ -67,63 +64,14 @@ public record InvariantBound(boolean lower, Endpoint end) {
     private static final Read PAST_THE_END = new Read.PastWhereTheOrderStops();
 
     /**
-     * What {@code clause} says about a value on {@code carrier}.
-     *
-     * <p>The one reading of an ordered rule. Which literals a rule may be bounded by and how its
-     * values are spaced are facts about the order the value sits on, so both come from the carrier; the
-     * shape of the clause, which side of it the value is on, and where a strict comparison leaves the
-     * end are the same questions whatever the values are.
-     *
-     * <p>A second reader used to answer this for the sites that generate code, keyed on a list of
-     * types that did not include the temporal ones. So a bound a report read perfectly was a rule
-     * another reader called unreadable, and every boundary of the value it sat in — its siblings'
-     * included — was downgraded to one nothing promises is writable.
-     */
-    public static Read of(Hir.Expr clause, Carrier carrier) {
-        // Which number the clause is about is recognised above this, so `0 <= value` arrives
-        // saying what `value >= 0` says and this reads one shape.
-        ClauseSubject about = carrier == null ? null : ClauseSubject.of(clause, null);
-        // An equality states both ends at once and a disequality states neither, so neither is an
-        // end this has anywhere to put. Which is not that they say nothing: what such a rule is
-        // about is the recognition's answer and is there for the readers that want it.
-        if (about == null || !(about.comparison().claim() instanceof ComparisonClaim.Cut cut)) {
-            return NO_END;
-        }
-        Place bound = carrier.literalOf(about.comparison().right());
-        return bound == null ? NO_END : ordered(cut, bound, carrier);
-    }
-
-    /**
-     * What {@code clause} says about the number {@code measure} takes of the value.
-     *
-     * <p>The same reading one operand in. A size is a whole number, so a strict bound names the
-     * adjacent one exactly as an {@code Int}'s does, and which size call this is does not come into
-     * it — every one of them counts something.
-     */
-    public static Read ofSize(Hir.Expr clause, ValueName measure) {
-        ClauseSubject about = ClauseSubject.of(clause, measure);
-        if (about == null
-                || !(about.number() instanceof NumberAt.OfWhatNumber.OfWhatAnOperationAnswers)
-                || !(about.comparison().claim() instanceof ComparisonClaim.Cut cut)) {
-            return NO_END;
-        }
-        BigDecimal count = NumericLiterals.wholeLiteralOf(about.comparison().right());
-        // A size is a whole number whatever it is a size of, so it steps like an `Int` and stops
-        // where one does.
-        return count == null ? NO_END : ordered(cut, Count.of(count), Carrier.WHOLE);
-    }
-
-    /**
      * The end an ordering places on a coordinate already recognised, or empty where the comparison
      * places none.
      *
-     * <p>The same reading {@link #of} finishes with, entered one step later. {@link #of} recognises
-     * its coordinate by the word {@code value}, which is the only name a newtype's own clause can use
-     * for it; a clause written on the record holding a field names the field, or a size of it, or a
-     * field of a field, and which of those it named is settled before this by the naming the
-     * discharge check already does. What is left is where the comparison leaves the end, and that is
-     * one question with one answer whatever recognised the coordinate — asked again here, a strict
-     * bound would land on the neighbour in one reader and on the literal in the other.
+     * <p>Entered with the coordinate settled. Which number a clause is about, and whether what it
+     * states of that number is a cut at all, is the walk's answer: it goes inside the conjunct, so a
+     * rule stated through a helper and one written as the denial of its opposite arrive here as the
+     * cut they state. What is left is where the comparison leaves the end, which is one question
+     * with one answer whatever recognised the coordinate.
      *
      * @param cut   what the comparison placed, stated of the coordinate
      * @param bound what the coordinate is compared against
