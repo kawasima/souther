@@ -2,10 +2,7 @@ package souther.compiler.query;
 
 import souther.compiler.partition.Generator;
 import souther.compiler.partition.ObligationIdentity;
-import souther.compiler.partition.StoodInAnswer;
-import souther.compiler.types.ValueName;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -37,24 +34,15 @@ import java.util.Set;
  * @param account every point of a line this request answers for, whosever it is — a body's own and
  *                 its declarations' alike — or null where the request asked for no boundary rows,
  *                 which is not the same as a request that asked and found none
- * @param tables  what a block publishes so a dependency answers by what it was applied to, one per
- *                 dependency that needs one. Settled here and not after the rows are asked what
- *                 they settle: a row this cannot hold is a row nothing should have counted
- * @param withheld the rows this could not hold and why, which is what a block says instead of going
- *                 quiet about work it composed
  */
 public record Composition(OfferingRequest request,
                           SequencedMap<String, List<OfferedRow>> rowsByBehavior,
-                          SequencedMap<String, Adequacy.Filling> searched, BorderAccount account,
-                          SequencedMap<ValueName.Behavior, StandInTable> tables,
-                          List<Generator.UnresolvedCombination> withheld) {
+                          SequencedMap<String, Adequacy.Filling> searched, BorderAccount account) {
 
     public Composition {
         rowsByBehavior =
                 Collections.unmodifiableSequencedMap(new LinkedHashMap<>(rowsByBehavior));
         searched = Collections.unmodifiableSequencedMap(new LinkedHashMap<>(searched));
-        tables = Collections.unmodifiableSequencedMap(new LinkedHashMap<>(tables));
-        withheld = List.copyOf(withheld);
     }
 
     /**
@@ -80,11 +68,6 @@ public record Composition(OfferingRequest request,
                                     WhatStandsIn supplies) {
         Map<String, List<Generator.GeneratedRow>> owed = account == null
                 ? Map.of() : account.rowsByCarrier();
-        // What the block can publish for each dependency, settled as the rows are taken and before
-        // anything asks what a row settles. Held here and not after: a row this cannot hold is a
-        // row nothing should have been asked about, and asking first leaves the count of what is
-        // answered standing on rows that never went out.
-        Tables tables = new Tables();
         SequencedMap<String, Map<RowKey, OfferedRow>> byBehavior = new LinkedHashMap<>();
         // Every behavior with rows, its own and the ones it carries for a declaration alike. Walked
         // as one list because a row of either kind is a row of that behavior, and a walk that took
@@ -94,7 +77,12 @@ public record Composition(OfferingRequest request,
         generated.keySet().forEach(name -> behaviors.put(name, name));
         owed.keySet().forEach(name -> behaviors.put(name, name));
         for (String behavior : behaviors.keySet()) {
-            AnswersStoodIn stands = supplies.of(behavior);
+            // A behavior whose stand-ins nothing composed has no rows to offer. What is wrong with
+            // them is not their values — it is that nothing applies the behavior they are written
+            // for — so offering them would hand a person work that cannot be run.
+            if (!(supplies.of(behavior) instanceof AnswersStoodIn.Stood)) {
+                continue;
+            }
             Adequacy.Filling filling = generated.get(behavior);
             // The fill's rows and the ones the requirement search stood in the rules, which is a
             // second search of this behavior's own the way the lines are a third. Taken as rows
@@ -112,22 +100,10 @@ public record Composition(OfferingRequest request,
             // go out. What is wrong with them is not their values — it is that nothing applies the
             // behavior they are written for — so offering them would hand a person work that
             // cannot be run, and what stopped it is said beside the block.
-            List<Generator.GeneratedRow> own =
-                    filling == null ? List.of() : filling.composed().rows();
-            List<Generator.GeneratedRow> lines =
-                    request.boundaries() ? atTheLines(owed.get(behavior)) : List.of();
-            if (stands instanceof AnswersStoodIn.Stood(var answers)) {
-                own = standingIn(own, answers);
-                lines = standingIn(lines, answers);
-            } else if (!own.isEmpty() || !lines.isEmpty()) {
-                tables.withhold(behavior, own, lines,
-                        ((AnswersStoodIn.NothingComposed) stands).why());
-                own = List.of();
-                lines = List.of();
-            }
-            take(byBehavior, behavior, tables.holding(own), tables.holding(lines),
-                    tables.holding(filling == null ? List.of()
-                            : List.copyOf(filling.rules().byRule().values())));
+            take(byBehavior, behavior,
+                    filling == null ? List.of() : filling.composed().rows(),
+                    request.boundaries() ? atTheLines(owed.get(behavior)) : List.of(),
+                    filling == null ? List.of() : filling.rules().byRule().values());
         }
         SequencedMap<String, List<OfferedRow>> out = new LinkedHashMap<>();
         byBehavior.forEach((behavior, here) -> {
@@ -135,8 +111,7 @@ public record Composition(OfferingRequest request,
                 out.put(behavior, List.copyOf(here.values()));
             }
         });
-        return new Composition(request, out, new LinkedHashMap<>(generated), account,
-                tables.published(), tables.withheld());
+        return new Composition(request, out, new LinkedHashMap<>(generated), account);
     }
 
     /**
@@ -161,112 +136,6 @@ public record Composition(OfferingRequest request,
          * published rows nothing applies.
          */
         WhatStandsIn REQUIRING_NOTHING = _ -> new AnswersStoodIn.Stood(List.of());
-    }
-
-    /**
-     * What a block may publish for each dependency, and the rows it cost.
-     *
-     * <p>One table per dependency, and it is one row's whole table rather than several merged. A
-     * row is run against its own table and published beside what this holds, and those have to be
-     * the one thing: merged, the published table answers calls neither row was run against, which
-     * is exactly what a fallback is there for and so exactly where they would part.
-     *
-     * <p>So a row whose table is not the one already held is a row the block cannot hold. Which one
-     * is held is what was composed first, and the rest say why they are not there.
-     */
-    private static final class Tables {
-
-        private final SequencedMap<ValueName.Behavior, StandInTable> published =
-                new LinkedHashMap<>();
-
-        private final List<Generator.UnresolvedCombination> withheld = new ArrayList<>();
-
-        /** Of {@code rows}, the ones this block can hold, with the rest written down as it goes. */
-        List<Generator.GeneratedRow> holding(List<Generator.GeneratedRow> rows) {
-            List<Generator.GeneratedRow> out = new ArrayList<>(rows.size());
-            for (Generator.GeneratedRow row : rows) {
-                Generator.UnresolvedCombination cost = take(row);
-                if (cost == null) {
-                    out.add(row);
-                } else {
-                    withheld.add(cost);
-                }
-            }
-            return List.copyOf(out);
-        }
-
-        /**
-         * {@code row}'s tables taken into what the block publishes, or why they cannot be.
-         *
-         * <p>A row answering every call of a dependency states no table and always fits: what it
-         * writes is its own {@code with}, which the run prefers to whatever a module says. What
-         * does not fit is a row whose table for some dependency is not the one already published.
-         */
-        private Generator.UnresolvedCombination take(Generator.GeneratedRow row) {
-            Map<ValueName.Behavior, StandInTable> mine = new LinkedHashMap<>();
-            for (StoodInAnswer each : row.answers()) {
-                mine.computeIfAbsent(each.dependency(),
-                        dependency -> StandInTable.of(dependency, row.answers()));
-            }
-            for (Map.Entry<ValueName.Behavior, StandInTable> each : mine.entrySet()) {
-                StandInTable table = each.getValue();
-                StandInTable already = published.get(each.getKey());
-                if (table != null && already != null && !already.equals(table)) {
-                    return new Generator.UnresolvedCombination(row.labels(),
-                            Generator.UnresolvedCombination.Reason
-                                    .A_TABLE_IS_WRITTEN_ONCE_FOR_A_MODULE);
-                }
-            }
-            // Put in after every one of them was looked at, so a row the block cannot hold leaves
-            // what is published as it was — half of one taken in would answer calls for a row
-            // nobody is offered.
-            mine.forEach((dependency, table) -> {
-                if (table != null) {
-                    published.putIfAbsent(dependency, table);
-                }
-            });
-            return null;
-        }
-
-        /** What a behavior's rows cost where nothing stood its dependencies in. */
-        void withhold(String behavior, List<Generator.GeneratedRow> own,
-                      List<Generator.GeneratedRow> lines,
-                      Generator.UnresolvedCombination.Reason why) {
-            for (Generator.GeneratedRow row : own) {
-                withheld.add(new Generator.UnresolvedCombination(row.labels(), why, behavior));
-            }
-            for (Generator.GeneratedRow row : lines) {
-                withheld.add(new Generator.UnresolvedCombination(row.labels(), why, behavior));
-            }
-        }
-
-        SequencedMap<ValueName.Behavior, StandInTable> published() {
-            return Collections.unmodifiableSequencedMap(published);
-        }
-
-        List<Generator.UnresolvedCombination> withheld() {
-            return List.copyOf(withheld);
-        }
-    }
-
-    /**
-     * {@code rows} standing the dependencies in with {@code supplies}.
-     *
-     * <p>Only where a row stands nothing in of its own. A row composed against what a way asks of a
-     * dependency carries that answer, and a supply written over it would offer a row that no longer
-     * takes the way it was composed for.
-     */
-    private static List<Generator.GeneratedRow> standingIn(List<Generator.GeneratedRow> rows,
-                                                           List<StoodInAnswer> supplies) {
-        if (supplies.isEmpty()) {
-            return rows;
-        }
-        List<Generator.GeneratedRow> out = new ArrayList<>(rows.size());
-        for (Generator.GeneratedRow row : rows) {
-            out.add(row.answers().isEmpty()
-                    ? new Generator.GeneratedRow(row.purposes(), row.inputs(), supplies) : row);
-        }
-        return List.copyOf(out);
     }
 
     /** One behavior's rows, joined onto whatever it already offers. */
@@ -360,10 +229,6 @@ public record Composition(OfferingRequest request,
                 out.put(behavior, left);
             }
         });
-        // What is published and what it cost are carried through untouched. Which rows a block can
-        // hold was settled before anything asked what a row settles, so the count of what is
-        // answered stands on the rows that go out — settled here instead, a row taken away
-        // afterwards would leave a finding marked as answered by work nobody is handed.
-        return new Offering(request, out, searched, account, answered, tables, withheld);
+        return new Offering(request, out, searched, account, answered);
     }
 }

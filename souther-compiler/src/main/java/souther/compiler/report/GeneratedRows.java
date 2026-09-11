@@ -27,8 +27,6 @@ import souther.compiler.partition.ObligationIdentity;
 import souther.compiler.query.OfferedRow;
 import souther.compiler.query.Offering;
 import souther.compiler.query.OfferingRequest;
-import souther.compiler.query.StandInTable;
-import souther.compiler.types.ValueName;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -219,14 +217,7 @@ public final class GeneratedRows {
                     rows, rows == 1 ? "row" : "rows"));
             out.append(String.format(
                     "// Replace each `%s` with what the system actually answers.%n", UNANSWERED));
-            out.append(stated(blocks(module, offered, offering.tables()), ensures));
-        }
-        // What the block could not hold, said rather than left out. A row composed and then not
-        // offered is work this run did, and a block that printed neither the row nor the reason
-        // reads as a run that never looked.
-        for (Generator.UnresolvedCombination each : offering.withheld()) {
-            out.append(String.format("// no row for (%s) in this block: %s%n",
-                    String.join(", ", each.classes()), saidOf(each)));
+            out.append(stated(blocks(module, offered), ensures));
         }
         for (Map.Entry<String, Adequacy.Filling> behavior : offering.searched().entrySet()) {
             notes(out, behavior.getKey(), behavior.getValue(), boundaries, rendering, offering,
@@ -460,10 +451,8 @@ public final class GeneratedRows {
     private static String standingIn(String module, OfferedRow row) {
         List<String> written = new ArrayList<>();
         for (StoodInAnswer each : row.answers()) {
-            if (each.asking() instanceof StoodInAnswer.Asking.ForEveryCall) {
-                written.add(Requirements.writtenIn(module, each.dependency())
-                        + " = " + each.value().text());
-            }
+            written.add(Requirements.writtenIn(module, each.dependency())
+                    + " = " + each.value().text());
         }
         return written.isEmpty() ? "" : " with " + String.join(", ", written);
     }
@@ -475,26 +464,9 @@ public final class GeneratedRows {
      * file that {@code souther fmt} then runs over. A block that came out in a shape the formatter
      * would change turns a paste into a diff on the next commit.
      */
-    private static String blocks(String module, Map<String, List<Offered>> offered,
-                                 Map<ValueName.Behavior, StandInTable> tables) {
+    private static String blocks(String module, Map<String, List<Offered>> offered) {
         StringBuilder source = new StringBuilder();
         source.append("examples for ").append(module).append("\n");
-        // Before the rows, because a table is written for the module and the rows read it. Which
-        // rows a table holds was settled where the rows were ({@link Offering}), so there is
-        // nothing here but the writing.
-        for (StandInTable table : tables.values()) {
-            source.append("\n").append("fake ")
-                    .append(Requirements.writtenIn(module, table.dependency())).append("\n");
-            for (StandInTable.Entry entry : table.entries()) {
-                source.append("    | (").append(String.join(", ", entry.writtenAs()))
-                        .append(") -> ").append(entry.answers().text()).append("\n");
-            }
-            // What a call none of the entries states is answered by, asked of the table rather than
-            // chosen here. The run that certified the row answered such a call too, and a fallback
-            // decided in two places is where a row run against one table is published beside
-            // another.
-            source.append("    | _ -> ").append(table.fallback().text()).append("\n");
-        }
         for (Map.Entry<String, List<Offered>> behavior : offered.entrySet()) {
             if (behavior.getValue().isEmpty()) {
                 continue;
@@ -527,23 +499,14 @@ public final class GeneratedRows {
      * out in it, and a row the formatter wrapped is still one row — its continuations are indented
      * past the {@code |} that starts it, so what starts a row is what a row starts with.
      *
-     * <p><b>Inside a block of rows, which is the other half of what a row is.</b> A block writes
-     * more than rows: a table beside them states what a dependency answers, and its entries start
-     * the way a row does. Counted among them, every note after the first table lands over somebody
-     * else's line — so which block a line is in is read here rather than assumed, and a line that
-     * starts like a row somewhere else is not one.
      */
     private static String fills(String rows, Map<String, List<Offered>> offered) {
         List<Offered> inOrder = new ArrayList<>();
         offered.values().forEach(inOrder::addAll);
         StringBuilder out = new StringBuilder();
         int at = 0;
-        boolean amongRows = false;
         for (String line : rows.lines().toList()) {
-            if (line.startsWith(EXAMPLE) || line.startsWith(TABLE)) {
-                amongRows = line.startsWith(EXAMPLE);
-            }
-            if (amongRows && line.startsWith(ROW) && at < inOrder.size()) {
+            if (line.startsWith(ROW) && at < inOrder.size()) {
                 for (String each : inOrder.get(at++).saidOver()) {
                     out.append("// fills ").append(each).append(System.lineSeparator());
                 }
@@ -556,12 +519,6 @@ public final class GeneratedRows {
     /** How a row starts, which is how one is told from the lines a wrapped one continues on: those
      *  are indented past it. */
     private static final String ROW = "    | ";
-
-    /** What opens the rows of one behavior, and what opens the table beside them. Read from the
-     *  block this writes rather than spelled twice: both are what {@link #blocks} puts there. */
-    private static final String EXAMPLE = "example ";
-
-    private static final String TABLE = "fake ";
 
     /**
      * The clauses each behavior carries, put over the rows they are about.
@@ -829,9 +786,9 @@ public final class GeneratedRows {
             case NOTHING_STANDS_IN_FOR_A_DEPENDENCY ->
                     "nothing here could answer for a behavior the target depends on, and a row"
                             + " that stands none in is a row nothing applies";
-            case A_TABLE_IS_WRITTEN_ONCE_FOR_A_MODULE ->
-                    "a row already in this block needs a different table for a behavior the target"
-                            + " depends on, and a table is written once for a module";
+            case A_TABLE_IS_WHAT_THIS_NEEDS ->
+                    "it needs a behavior the target depends on to answer by what it was applied to,"
+                            + " which is a table written for the module and not a line on a row";
             case TWO_ANSWERS_AT_ONE_CALL ->
                     "it asks one behavior the target depends on for two answers at one call the"
                             + " row makes, and a table answers by what it was applied to";

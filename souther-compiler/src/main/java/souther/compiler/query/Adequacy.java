@@ -1972,7 +1972,7 @@ public final class Adequacy {
             // not, and asking it per rule would read every declaration once per way through the
             // body.
             AnswersForARule answers = new AnswersForARule(requires,
-                    standingForEach(db, name, subject, requires), subject.parameters());
+                    standingForEach(db, name, subject, requires));
             // Asked once, because what it answers is one list and asking it per rule would walk the
             // rules once for every rule.
             Set<DecisionRule> toSettle = new LinkedHashSet<>(evidence.notTakenByRows());
@@ -2040,7 +2040,7 @@ public final class Adequacy {
             // stop a row stopped this one: nothing answered for a dependency, or the row asks one
             // of them twice at one call. Folded to one word, an author reading the rule would be
             // told a search came to nothing and not what it came to nothing on.
-            AnswersStoodIn stood = answers.of(ruled.demands(), built.row().inputs());
+            AnswersStoodIn stood = answers.of(ruled.demands());
             if (stood instanceof AnswersStoodIn.NothingComposed(var why)) {
                 return new RuleRequirement.Unsettled.NothingComposedARow(
                         new Generator.UnresolvedCombination(List.of(), why));
@@ -3892,8 +3892,8 @@ public final class Adequacy {
                         .UnresolvedCombination.Reason.NOTHING_STANDS_IN_FOR_A_DEPENDENCY);
             }
             return new AnswersForARule(requires,
-                    standingForEach(db, module, subject, requires), subject.parameters())
-                    .of(souther.compiler.partition.AnswersDemanded.NOTHING, List.of());
+                    standingForEach(db, module, subject, requires))
+                    .of(souther.compiler.partition.AnswersDemanded.NOTHING);
         }
 
         /**

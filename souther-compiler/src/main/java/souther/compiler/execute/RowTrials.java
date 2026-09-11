@@ -52,44 +52,19 @@ public interface RowTrials {
      * it: that is settled where the body is read, and what reaches here is a row's value — so this
      * layer never has to be taught a vocabulary that belongs to the reading.
      *
-     * <p>{@code answers} in the order they are to be tried, which is the rule a written table
-     * dispatches by. An entry naming no arguments answers every call, which is what a row's
-     * {@code with} states.
+     * <p>One value, for every call the row makes, which is what a row's {@code with} states.
      *
      * @param dependency which behavior this stands in for
-     * @param signature  what that behavior takes and answers, which is what the values here are
-     *                   built through and what decides what an instance of it can be. The
-     *                   dependency's own and not the target's: a stand-in stands where the
-     *                   dependency does
-     * @param answers    the entries, tried in order
+     * @param signature  what that behavior takes and answers, which is what the value here is built
+     *                   through and what decides what an instance of it can be. The dependency's
+     *                   own and not the target's: a stand-in stands where the dependency does
+     * @param answers    the value
      */
-    record AnsweredWith(ValueName.Behavior dependency, Sig signature, List<Answer> answers) {
+    record AnsweredWith(ValueName.Behavior dependency, Sig signature, Hir.Expr answers) {
 
         public AnsweredWith {
-            if (dependency == null || signature == null || answers == null || answers.isEmpty()) {
+            if (dependency == null || signature == null || answers == null) {
                 throw new IllegalArgumentException("a dependency stood in answers something");
-            }
-            answers = List.copyOf(answers);
-        }
-
-        /**
-         * One answer, and the call it is the answer for.
-         *
-         * @param whenAppliedTo the arguments this answers for, or null where it answers every call
-         * @param answers       the value
-         */
-        public record Answer(List<Hir.Expr> whenAppliedTo, Hir.Expr answers) {
-
-            public Answer {
-                if (answers == null) {
-                    throw new IllegalArgumentException("an answer is some value");
-                }
-                whenAppliedTo = whenAppliedTo == null ? null : List.copyOf(whenAppliedTo);
-            }
-
-            /** Whether this answers whatever it is asked, which is a {@code with}'s answer. */
-            public boolean forEveryCall() {
-                return whenAppliedTo == null;
             }
         }
     }

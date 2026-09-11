@@ -1,8 +1,6 @@
 package souther.compiler.query;
 
-import souther.compiler.partition.Generator;
 import souther.compiler.partition.ObligationIdentity;
-import souther.compiler.types.ValueName;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -41,8 +39,6 @@ public final class Offering {
     private final SequencedMap<String, Adequacy.Filling> searched;
     private final BorderAccount account;
     private final Set<ObligationIdentity> answered;
-    private final SequencedMap<ValueName.Behavior, StandInTable> tables;
-    private final List<Generator.UnresolvedCombination> withheld;
 
     /**
      * @param request  what was asked for, which is what settles which rows are here
@@ -54,34 +50,16 @@ public final class Offering {
      *                 rows, which is not the same as a request that asked and found none
      * @param answered what the rows here settle: every item one of them would answer if it were
      *                 written, whichever row it was composed for
-     * @param tables   what the block writes beside the rows so a dependency answers by what it was
-     *                 applied to, one per dependency that needs one
-     * @param withheld the rows this could not hold and why, which is what a block says instead of
-     *                 going quiet about work it composed
      */
     Offering(OfferingRequest request, SequencedMap<String, List<OfferedRow>> rowsByBehavior,
              SequencedMap<String, Adequacy.Filling> searched, BorderAccount account,
-             Set<ObligationIdentity> answered,
-             SequencedMap<ValueName.Behavior, StandInTable> tables,
-             List<Generator.UnresolvedCombination> withheld) {
-        this.tables = Collections.unmodifiableSequencedMap(new LinkedHashMap<>(tables));
-        this.withheld = List.copyOf(withheld);
+             Set<ObligationIdentity> answered) {
         this.request = request;
         this.rowsByBehavior =
                 Collections.unmodifiableSequencedMap(new LinkedHashMap<>(rowsByBehavior));
         this.searched = Collections.unmodifiableSequencedMap(new LinkedHashMap<>(searched));
         this.account = account;
         this.answered = Collections.unmodifiableSet(new LinkedHashSet<>(answered));
-    }
-
-    /** What the block writes beside the rows, one table per dependency that needs one. */
-    public SequencedMap<ValueName.Behavior, StandInTable> tables() {
-        return tables;
-    }
-
-    /** The rows this could not hold, and why. */
-    public List<Generator.UnresolvedCombination> withheld() {
-        return withheld;
     }
 
     /** What was asked for. */

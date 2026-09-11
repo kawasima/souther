@@ -346,18 +346,19 @@ public final class Generator {
              */
             TWO_ANSWERS_AT_ONE_CALL,
             /**
-             * Another row already needs the table this one would need.
+             * The row needs a dependency to answer by what it was applied to, and nothing here
+             * writes a table.
              *
-             * <p>A row answers a dependency for itself with a {@code with}, and one that needs the
-             * dependency to vary by what it was applied to needs a table — which is written once
-             * for a module. Two rows wanting two tables for one dependency are two blocks, and two
-             * blocks are not rows of one table, so writing the second recovers nothing.
+             * <p>A row answers a dependency for itself with a {@code with}, which is row-local and
+             * answers every call that row makes. A way that needs two answers at two calls needs a
+             * table, and a table is written once for a module — it is part of the environment
+             * several rows share rather than part of a row, and what a module already states about
+             * that environment is not read here.
              *
-             * <p>About what a block can hold and not about the model or about either row. Each of
-             * them is a row somebody can write; what cannot be written is both at once, and which
-             * one goes out is settled by what was composed first.
+             * <p>A fact about this compiler and not about the model. The way may well be reachable,
+             * and an author who writes the table by hand reaches it.
              */
-            A_TABLE_IS_WRITTEN_ONCE_FOR_A_MODULE,
+            A_TABLE_IS_WHAT_THIS_NEEDS,
             /**
              * The search left something untried.
              *
@@ -528,7 +529,7 @@ public final class Generator {
                     // model saying anything: another value of the same classes may well build.
                     case NOTHING_COMPOSES_ONE, ALL_CANDIDATES_REJECTED, THE_SEARCH_LEFT_SOMETHING_UNTRIED,
                          NOTHING_STANDS_IN_FOR_A_DEPENDENCY, TWO_ANSWERS_AT_ONE_CALL,
-                         A_TABLE_IS_WRITTEN_ONCE_FOR_A_MODULE,
+                         A_TABLE_IS_WHAT_THIS_NEEDS,
                          NOTHING_TO_BUILD_AGAINST, NO_VALUES_WERE_ASKED_FOR, LINKAGE_FAILED,
                          NO_CERTIFIED_WITNESS, THE_GROUP_WAS_NOT_OFFERED,
                          THE_POSITION_WAS_WITHHELD, THE_ROWS_WERE_NOT_READ,
@@ -613,7 +614,7 @@ public final class Generator {
                     // module with no classes, a position held back, a group never offered.
                     case ALL_CANDIDATES_REJECTED, THE_RULES_LEAVE_NOTHING_THERE,
                          NOTHING_STANDS_IN_FOR_A_DEPENDENCY, TWO_ANSWERS_AT_ONE_CALL,
-                         A_TABLE_IS_WRITTEN_ONCE_FOR_A_MODULE,
+                         A_TABLE_IS_WHAT_THIS_NEEDS,
                          ONE_POSITION_CANNOT_BE_BOTH, NOTHING_TO_BUILD_AGAINST,
                          NO_VALUES_WERE_ASKED_FOR, LINKAGE_FAILED, NO_CERTIFIED_WITNESS,
                          THE_GROUP_WAS_NOT_OFFERED, THE_POSITION_WAS_WITHHELD,

@@ -52,25 +52,13 @@ public record RowKey(String behavior, List<String> written, List<String> stoodIn
     /**
      * One answer a row states, as what tells it from another.
      *
-     * <p>What it answers <em>for</em> as well as what it answers. Two rows may state one set of
-     * values for one dependency at two different calls — a table keyed on one pair of calls and a
-     * table keyed on another — and those are two rows with two environments. Spelled by the value
-     * alone they are one key, and the second is folded into the first before anything reads the
-     * table it needed.
-     *
      * <p>The dependency under the module that declares it, because two modules may declare
      * behaviors of one name and a key that left the module off would join two rows standing two
      * dependencies in.
      */
     private static String spelled(StoodInAnswer stood) {
-        String dependency = stood.dependency().module() + "." + stood.dependency().name();
-        return switch (stood.asking()) {
-            case StoodInAnswer.Asking.ForEveryCall _ ->
-                    dependency + " = " + stood.value().text();
-            case StoodInAnswer.Asking.OfOne one ->
-                    dependency + "(" + String.join(", ", one.writtenAs()) + ") = "
-                            + stood.value().text();
-        };
+        return stood.dependency().module() + "." + stood.dependency().name()
+                + " = " + stood.value().text();
     }
 
     /** The values as one line, which is how a row reads where it is written. */

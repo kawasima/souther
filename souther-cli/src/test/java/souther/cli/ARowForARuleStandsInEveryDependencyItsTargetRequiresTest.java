@@ -160,29 +160,27 @@ class ARowForARuleStandsInEveryDependencyItsTargetRequiresTest {
             """;
 
     /**
-     * A row that needs one dependency to answer two calls differently is written with a table, and
-     * the table is keyed on what the row applied it to.
+     * A way that needs one dependency to answer two calls differently is one nothing composes a row
+     * for, and the block says so.
      *
-     * <p>Which is what the asking's own identity is for. Folded to one answer per dependency, the
-     * row would have nothing left to key a table on by the time anything wrote one — and the block
-     * would have to choose between a row that answers the wrong call and saying the way cannot be
-     * composed for, neither of which is so.
+     * <p>What such a way needs is a table, which is written once for a module — it belongs to the
+     * environment several rows share rather than to a row, and what a module already states about
+     * that environment is not read here. A row offered with a table beside it would be a row
+     * certified against an environment the module it is pasted into does not have.
+     *
+     * <p>So the way stays where it was: neither covered nor a gap, which is what a way this
+     * compiler looked at and could not compose for is. What goes out is every row that could be
+     * composed, each of them runnable on its own.
      */
     @Test
-    void aRowNeedingTwoAnswersAtTwoCallsIsWrittenWithATableKeyedOnThem() {
+    void aWayNeedingTwoAnswersAtTwoCallsIsNotOfferedARow() {
         String block = generated(TWO_CALLS);
 
-        assertTrue(block.contains("fake lookup"),
-                () -> "the block writes a table for the dependency: " + block);
-        assertTrue(block.contains("| (6) -> Found"),
-                () -> "keyed on the call the row writes at the position: " + block);
-        assertTrue(block.contains("| (0) -> Missing"),
-                () -> "and on the call the body writes the number at: " + block);
-        // The row that reads the table carries no clause of its own: a `with` answers every call
-        // the row makes, which is the one thing this row must not do.
-        assertTrue(block.contains("| (6)                                   -> <?>")
-                        || block.lines().anyMatch(each -> each.trim().equals("| (6) -> <?>")),
-                () -> "and the row that needs it writes no `with` of its own: " + block);
+        assertFalse(block.contains("fake "),
+                () -> "nothing here writes a table beside the rows: " + block);
+        assertTrue(block.lines().filter(each -> each.trim().startsWith("| "))
+                        .allMatch(each -> each.contains(" with lookup = ")),
+                () -> "and every row that did go out stands the dependency in: " + block);
     }
 
     private static String generated(String model) {

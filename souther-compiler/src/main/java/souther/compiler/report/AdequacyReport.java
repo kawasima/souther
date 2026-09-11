@@ -2964,9 +2964,9 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                             + " that stands none in is a row nothing applies";
             // Which of the two rows goes out is what was composed first, so what an author is told
             // is that the block holds one of them and not that this one cannot be written.
-            case A_TABLE_IS_WRITTEN_ONCE_FOR_A_MODULE ->
-                    "a row already in this block needs a different table for a behavior " + at
-                            + " depends on, and a table is written once for a module";
+            case A_TABLE_IS_WHAT_THIS_NEEDS ->
+                    at + " needs a behavior it depends on to answer by what it was applied to,"
+                            + " which is a table written for the module and not a line on a row";
             // The two asks are one call because this row writes one value at both, which is about
             // the row. Said as that, so an author reads it as a row to write differently rather
             // than as a way nothing reaches.
