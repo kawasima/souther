@@ -599,7 +599,16 @@ public final class ValueArrivals<P> {
      */
     private final class Gathered {
 
-        private final List<Arrival<P>> ways = new ArrayList<>();
+        /**
+         * The ways, once each, in the order they arrived.
+         *
+         * <p>A set and not a list asked whether it holds one. What is kept is the same — an
+         * insertion-ordered set is the order the walk met them — and what goes is a search over
+         * everything gathered so far for every candidate: a naming whose equality is worked out
+         * from what the way consulted pays that search once per pair, and the cost of gathering
+         * one body's ways grew with their square.
+         */
+        private final java.util.SequencedSet<Arrival<P>> ways = new java.util.LinkedHashSet<>();
         private boolean beyond;
 
         boolean isBeyond() {
@@ -620,7 +629,7 @@ public final class ValueArrivals<P> {
                 ways.clear();
                 return;
             }
-            ways.add(way);
+            ways.addLast(way);
         }
 
         /** Each arrival held to what already holds along the way to it. */
@@ -638,7 +647,7 @@ public final class ValueArrivals<P> {
         }
 
         Paths<P> paths() {
-            return beyond ? new Paths.Beyond<>() : new Paths.Held<>(ways);
+            return beyond ? new Paths.Beyond<>() : new Paths.Held<>(List.copyOf(ways));
         }
     }
 
