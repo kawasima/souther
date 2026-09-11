@@ -36,10 +36,16 @@ public final class SourceLayout implements LaidOutText {
 
     private final LineIndex lines;
 
-    /** {@code tokenStart[i]} is the offset of the {@code i}-th meaningful token. Ascending. */
-    private final int[] tokenStart;
+    /**
+     * {@code tokenStart[c][t]} is the offset of the {@code t}-th meaningful token of the
+     * {@code c}-th top-level construct. Ascending in both.
+     *
+     * <p>Counted per construct and not over the whole text, which is what keeps an edit inside one
+     * body from moving the places of every declaration under it ({@link SourcePos}).
+     */
+    private final int[][] tokenStart;
 
-    private SourceLayout(String source, Placement read, int[] tokenStart) {
+    private SourceLayout(String source, Placement read, int[][] tokenStart) {
         this.source = source;
         this.read = read;
         this.lines = new LineIndex(source);
@@ -84,15 +90,33 @@ public final class SourceLayout implements LaidOutText {
                 : Placement.aFileOfThisCompile(sourceId));
     }
 
-    /** The same, for a caller that has already parsed the text and holds the tree. */
+    /**
+     * The same, for a caller that has already parsed the text and holds the tree.
+     *
+     * <p>What a construct is is read off the syntax and not off what the constructs come to mean:
+     * a module header, an import line, a declaration and an {@code example} block each get one, and
+     * so does anything the grammar grows later. Read off the semantic declarations instead, a place
+     * in something the front end rewrites — an implicit unit, a desugared clause — would have to be
+     * matched back to a construct that no longer stands in the same relation to it.
+     */
     public static SourceLayout of(SyntaxNode root, String text, Placement read) {
-        List<Integer> starts = new ArrayList<>();
-        collect(root, starts);
-        int[] offsets = new int[starts.size()];
-        for (int i = 0; i < offsets.length; i++) {
-            offsets[i] = starts.get(i);
+        List<int[]> constructs = new ArrayList<>();
+        for (SyntaxElement child : root.children()) {
+            if (!(child instanceof SyntaxNode construct)) {
+                continue;   // a token at the top level is trivia between constructs
+            }
+            List<Integer> starts = new ArrayList<>();
+            collect(construct, starts);
+            if (starts.isEmpty()) {
+                continue;   // nothing meaningful in it, so nothing to be at
+            }
+            int[] offsets = new int[starts.size()];
+            for (int i = 0; i < offsets.length; i++) {
+                offsets[i] = starts.get(i);
+            }
+            constructs.add(offsets);
         }
-        return new SourceLayout(text, read, offsets);
+        return new SourceLayout(text, read, constructs.toArray(new int[0][]));
     }
 
     private static void collect(SyntaxNode node, List<Integer> into) {
@@ -103,6 +127,11 @@ public final class SourceLayout implements LaidOutText {
                 into.add(token.start());
             }
         }
+    }
+
+    /** The text itself. */
+    public String text() {
+        return source;
     }
 
     /** Which text this is the layout of. */
@@ -140,10 +169,12 @@ public final class SourceLayout implements LaidOutText {
      */
     public SourcePos placeAt(int offset) {
         if (tokenStart.length == 0) {
-            return new SourcePos(0, Math.max(0, offset), read);
+            return new SourcePos(0, 0, Math.max(0, offset), read);
         }
-        int token = tokenAt(offset);
-        return new SourcePos(token, offset - tokenStart[token], read);
+        int construct = constructAt(offset);
+        int[] tokens = tokenStart[construct];
+        int token = tokenAt(tokens, offset);
+        return new SourcePos(construct, token, offset - tokens[token], read);
     }
 
     /** Where {@code place} is in this text, in UTF-16 code units from its start. */
@@ -151,8 +182,10 @@ public final class SourceLayout implements LaidOutText {
         if (tokenStart.length == 0) {
             return Math.max(0, place.within());
         }
-        int token = Math.min(Math.max(place.token(), 0), tokenStart.length - 1);
-        return tokenStart[token] + place.within();
+        int construct = Math.min(Math.max(place.construct(), 0), tokenStart.length - 1);
+        int[] tokens = tokenStart[construct];
+        int token = Math.min(Math.max(place.token(), 0), tokens.length - 1);
+        return tokens[token] + place.within();
     }
 
     /**
@@ -164,15 +197,31 @@ public final class SourceLayout implements LaidOutText {
     @Override
     public PhysicalPos resolve(SourcePos place) {
         int offset = offsetOf(place);
-        return new PhysicalPos(lines.lineOf(offset), lines.columnOf(offset));
+        int at = Math.max(0, Math.min(offset, source.length()));
+        return new PhysicalPos(lines.lineOf(at), lines.columnOf(at));
     }
 
-    private int tokenAt(int offset) {
+    /** The last construct beginning at or before {@code offset}, and the first where none does. */
+    private int constructAt(int offset) {
         int lo = 0;
         int hi = tokenStart.length - 1;
         while (lo < hi) {
             int mid = (lo + hi + 1) >>> 1;
-            if (tokenStart[mid] <= offset) {
+            if (tokenStart[mid][0] <= offset) {
+                lo = mid;
+            } else {
+                hi = mid - 1;
+            }
+        }
+        return lo;
+    }
+
+    private static int tokenAt(int[] tokens, int offset) {
+        int lo = 0;
+        int hi = tokens.length - 1;
+        while (lo < hi) {
+            int mid = (lo + hi + 1) >>> 1;
+            if (tokens[mid] <= offset) {
                 lo = mid;
             } else {
                 hi = mid - 1;

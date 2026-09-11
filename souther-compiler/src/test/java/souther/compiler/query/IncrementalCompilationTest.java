@@ -1,5 +1,7 @@
 package souther.compiler.query;
 
+import souther.compiler.diag.SourcePos;
+import souther.compiler.cst.SourceLayout;
 import souther.compiler.source.SourceId;
 
 import souther.compiler.check.Symbols;
@@ -243,6 +245,62 @@ class IncrementalCompilationTest {
                 constructs Amount
             let thrice (n) = Amount(n.value * 3)
             """;
+
+    /**
+     * Where a place is said from decides what an edit reaches, and these are the three shapes that
+     * settle it.
+     *
+     * <p>A place is which meaningful token of which top-level construct it is at. So writing a
+     * token moves the places after it <b>in that construct</b> and no further; writing whitespace,
+     * a line break or a comment moves nothing at all; and writing a construct moves the constructs
+     * after it. Held here because the first of the three was lost once: counted over the whole
+     * text rather than from the construct, a token typed into one body moved every declaration
+     * under it, which is the commonest edit an author makes and the one this is all for.
+     */
+    @Test
+    void aTokenWrittenInOneBodyLeavesThePlacesOfTheNextDeclarationWhereTheyWere() {
+        SourceLayout before = SourceLayout.of(ORDERS, new SourceId("orders.sou"));
+        SourceLayout after = SourceLayout.of(
+                twiceOver("doubled(n.value + 0)").get("orders.sou"), new SourceId("orders.sou"));
+
+        assertEquals(placeOf(before, "n.value * 3"), placeOf(after, "n.value * 3"),
+                "`thrice` is written after the edit and says what it said");
+        assertNotEquals(placeOf(before, "doubled"), placeOf(after, "n.value + 0"),
+                "and the edit did move what follows it inside `twice`");
+    }
+
+    /** A comment or a line break is not a token, so nothing in the file is anywhere else. */
+    @Test
+    void aCommentWrittenInOneBodyLeavesEveryPlaceInTheFileWhereItWas() {
+        SourceLayout before = SourceLayout.of(ORDERS, new SourceId("orders.sou"));
+        SourceLayout after = SourceLayout.of(
+                ORDERS.replace("let twice (n)", "// doubling\n\nlet twice (n)"),
+                new SourceId("orders.sou"));
+
+        assertEquals(placeOf(before, "doubled(n.value)"), placeOf(after, "doubled(n.value)"),
+                "the body the comment was written above");
+        assertEquals(placeOf(before, "n.value * 3"), placeOf(after, "n.value * 3"),
+                "and the declaration after it");
+    }
+
+    /** Writing a construct moves the constructs after it, which is the conservative half. */
+    @Test
+    void aDeclarationWrittenInTheMiddleMovesThePlacesOfTheOnesAfterIt() {
+        SourceLayout before = SourceLayout.of(ORDERS, new SourceId("orders.sou"));
+        SourceLayout after = SourceLayout.of(
+                ORDERS.replace("behavior thrice", "data Other = Int\n\nbehavior thrice"),
+                new SourceId("orders.sou"));
+
+        assertNotEquals(placeOf(before, "n.value * 3"), placeOf(after, "n.value * 3"),
+                "`thrice` is one construct further down than it was");
+        assertEquals(placeOf(before, "doubled(n.value)"), placeOf(after, "doubled(n.value)"),
+                "and what was written above it is where it was");
+    }
+
+    /** The place the first character of {@code written} is at in {@code laidOut}'s text. */
+    private static SourcePos placeOf(SourceLayout laidOut, String written) {
+        return laidOut.placeAt(laidOut.text().indexOf(written));
+    }
 
     /** One behavior calling another, both requiring nothing. */
     private static final String CALLS = """

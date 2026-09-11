@@ -56,6 +56,8 @@ import java.util.Objects;
  */
 public final class SourcePos {
 
+    private final int construct;
+
     private final int token;
 
     private final int within;
@@ -64,20 +66,32 @@ public final class SourcePos {
 
     /**
      * The place {@code within} UTF-16 code units past the start of the {@code token}-th meaningful
-     * token of {@code placement}'s text, counting from zero.
+     * token of the {@code construct}-th top-level construct of {@code placement}'s text, each
+     * counted from zero.
+     *
+     * <p>Two counts and not one. Counted over the whole text, a token written anywhere moves every
+     * token after it — so typing inside one body moved the places of every declaration below it,
+     * which is the commonest edit there is and the one a compilation most wants to keep local.
+     * Counted from the construct it is in, what such an edit moves stops at that construct's end.
      *
      * <p>Made where a text becomes places and nowhere else, which is {@code SourceLayout}. A caller
-     * spelling one out of two numbers it worked out for itself has counted the tokens of that text a
+     * spelling one out of numbers it worked out for itself has counted the tokens of that text a
      * second time, and the two go on counting separately.
      */
-    public SourcePos(int token, int within, Placement placement) {
+    public SourcePos(int construct, int token, int within, Placement placement) {
+        this.construct = construct;
         this.token = token;
         this.within = within;
         this.placement = Objects.requireNonNull(placement,
                 "a position is in some text and says which");
     }
 
-    /** Which meaningful token of its text this is at or after, counting from zero. */
+    /** Which top-level construct of its text this is in, counting from zero. */
+    public int construct() {
+        return construct;
+    }
+
+    /** Which meaningful token of that construct this is at or after, counting from zero. */
     public int token() {
         return token;
     }
@@ -93,25 +107,37 @@ public final class SourcePos {
 
     @Override
     public boolean equals(Object other) {
-        return other instanceof SourcePos it && token == it.token && within == it.within
-                && placement.equals(it.placement);
+        return other instanceof SourcePos it && construct == it.construct && token == it.token
+                && within == it.within && placement.equals(it.placement);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(token, within, placement);
+        return Objects.hash(construct, token, within, placement);
     }
 
     /** A place a source was read for, where the code it names is written — or a text with no
      *  identity where {@code sourceId} is none. */
-    public SourcePos(int token, int within, SourceId sourceId) {
-        this(token, within, sourceId == null ? Placement.aTextWithNoIdentity()
+    public SourcePos(int construct, int token, int within, SourceId sourceId) {
+        this(construct, token, within, sourceId == null ? Placement.aTextWithNoIdentity()
                 : Placement.aFileOfThisCompile(sourceId));
+    }
+
+    /** A place in the first top-level construct of a file this compile holds — what a caller
+     *  spelling a place out by hand writes, where which construct it is in is not what it is
+     *  about. */
+    public SourcePos(int token, int within, SourceId sourceId) {
+        this(0, token, within, sourceId);
+    }
+
+    /** The same, in some text this compilation has no name for. */
+    public SourcePos(int token, int within, Placement placement) {
+        this(0, token, within, placement);
     }
 
     /** A position read from no source. */
     public SourcePos(int token, int within) {
-        this(token, within, Placement.aTextWithNoIdentity());
+        this(0, token, within, Placement.aTextWithNoIdentity());
     }
 
     /**
@@ -164,6 +190,9 @@ public final class SourcePos {
      * to be written the other way round.
      */
     public boolean isBefore(SourcePos other) {
+        if (construct != other.construct) {
+            return construct < other.construct;
+        }
         return token != other.token ? token < other.token : within < other.within;
     }
 
@@ -207,7 +236,7 @@ public final class SourcePos {
      *
      */
     public SourcePos standingInFor(DeclaringCode declaring) {
-        return new SourcePos(token, within, placement.standingInFor(declaring));
+        return new SourcePos(construct, token, within, placement.standingInFor(declaring));
     }
 
     /**
@@ -246,13 +275,14 @@ public final class SourcePos {
     /** The same place, {@code units} of text further on — the other end of a region of that width.
      *  It stands in for whatever this stands in for: the two ends are one place. */
     public SourcePos along(int units) {
-        return new SourcePos(token, within + units, placement);
+        return new SourcePos(construct, token, within + units, placement);
     }
 
     /** What this is, for a reader of a stack trace or a message about the compiler itself. Not
      *  something to show an author: where they would be sent is a {@link PhysicalPos}. */
     @Override
     public String toString() {
-        return "token " + token + (within == 0 ? "" : "+" + within);
+        return "construct " + construct + " token " + token
+                + (within == 0 ? "" : "+" + within);
     }
 }
