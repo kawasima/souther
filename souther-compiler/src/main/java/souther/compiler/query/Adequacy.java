@@ -1941,7 +1941,8 @@ public final class Adequacy {
                     : probing(sig, subject, constructing(db, name),
                             runningRowsOf(trialling(db, name), behavior, sig,
                                     numberingOf(db, name),
-                                    RequiredDependencies.of(db, name, behavior)));
+                                    RequiredDependencies.of(db, name, behavior)),
+                            supplyingFor(db, name, behavior));
             if (probe == null) {
                 // Nothing builds the values, so no candidate goes through anything. Absent rather
                 // than an answer saying nothing stands anywhere, which is what a search that ran
@@ -2134,7 +2135,8 @@ public final class Adequacy {
                     probing(sig, subject, constructing(db, name),
                             runningRowsOf(trialling(db, name), behavior, sig,
                                     numberingOf(db, name),
-                                    RequiredDependencies.of(db, name, behavior))),
+                                    RequiredDependencies.of(db, name, behavior)),
+                            supplyingFor(db, name, behavior)),
                     divided.reaching())));
         }
 
@@ -2154,8 +2156,10 @@ public final class Adequacy {
      * candidate goes through.
      */
     static Coverages.Probe probing(Sig sig, souther.compiler.partition.MeasuredInput subject,
-                                   BoundaryValues building, Generator.Trial trial) {
-        return building == null ? null : new ARowBuiltAndRun(sig, subject, building, trial);
+                                   BoundaryValues building, Generator.Trial trial,
+                                   AnswersStoodIn standing) {
+        return building == null ? null
+                : new ARowBuiltAndRun(sig, subject, building, trial, standing);
     }
 
     /**
@@ -2176,12 +2180,24 @@ public final class Adequacy {
 
         private final Generator.Trial trial;
 
+        /**
+         * What every row built here stands the behavior's dependencies in with.
+         *
+         * <p>Put on the row where the row is made, and not by whoever receives it. A row of a
+         * behavior that requires a dependency is a row nothing applies, so a candidate without one
+         * is a candidate nothing can run — and a search that ran one anyway measured a row in an
+         * environment the row it hands over does not have.
+         */
+        private final AnswersStoodIn standing;
+
         private ARowBuiltAndRun(Sig sig, souther.compiler.partition.MeasuredInput subject,
-                                BoundaryValues building, Generator.Trial trial) {
+                                BoundaryValues building, Generator.Trial trial,
+                                AnswersStoodIn standing) {
             this.sig = sig;
             this.subject = subject;
             this.building = building;
             this.trial = trial;
+            this.standing = standing;
         }
 
         @Override
@@ -2192,13 +2208,41 @@ public final class Adequacy {
             Generator.CandidateCheck check =
                     (at, candidate) -> built(building.build(sig.ins().get(at), candidate.value()));
             try {
-                return Generator.probeFixing(subject, label, fixing, reaching, check);
+                return standingIn(Generator.probeFixing(subject, label, fixing, reaching, check));
             } catch (LinkageError _) {
                 // The generated classes would not link, so nothing can be built to find out what a
                 // model admits. Nothing was tried, which is not the same as everything tried being
                 // refused, and neither of them says the row cannot be written.
                 return null;
             }
+        }
+
+        /**
+         * The attempt with what it built standing the dependencies in, or the attempt as it stands
+         * where nothing was built.
+         *
+         * <p>Here rather than in the composer. What a row writes at its positions is what the
+         * composer answers; what it stands a dependency in with is what this run was given, and a
+         * composer taught to carry it would be asking a question about the environment a run
+         * brings.
+         *
+         * <p>A row whose stand-ins nothing composed is not completed and not offered — the attempt
+         * comes back as one that composed nothing, which is what a row nothing can run is.
+         */
+        private Generator.BoundaryAttempt standingIn(Generator.BoundaryAttempt attempt) {
+            if (!(attempt instanceof Generator.BoundaryAttempt.Built(var row, var unrepresented))) {
+                return attempt;
+            }
+            if (!(standing instanceof AnswersStoodIn.Stood(var answers))) {
+                return new Generator.BoundaryAttempt.Unresolved(
+                        new Generator.UnresolvedCombination(row.labels(),
+                                Generator.UnresolvedCombination.Reason
+                                        .NOTHING_STANDS_IN_FOR_A_DEPENDENCY),
+                        unrepresented);
+            }
+            return new Generator.BoundaryAttempt.Built(
+                    new Generator.GeneratedRow(row.purposes(), row.inputs(), answers),
+                    unrepresented);
         }
 
         @Override
