@@ -1,5 +1,6 @@
 package souther.compiler.publish;
 
+import souther.compiler.diag.Placement;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.diag.Citation;
@@ -91,8 +92,8 @@ class WhatWentUnreadIsWrittenInOneOrderHoweverItWasMetTest {
         assertEquals(PublicationOrders.placeFor(List.of(first, later)),
                 PublicationOrders.placeFor(List.of(later, first)),
                 "which of them a reader met first decides nothing");
-        assertEquals(Optional.of(2),
-                PublicationOrders.placeFor(List.of(later, first)).map(PublishedAt::line));
+        assertEquals(Optional.of(pos(2, 1)),
+                PublicationOrders.placeFor(List.of(later, first)).map(PublishedAt::at));
     }
 
     /** And a citation with nowhere to send a reader takes no part in the choosing. */
@@ -132,7 +133,7 @@ class WhatWentUnreadIsWrittenInOneOrderHoweverItWasMetTest {
     }
 
     private static SourcePos pos(int line, int column) {
-        return new SourcePos(line, column, new SourceId("0"));
+        return Placement.aFileOfThisCompile(new SourceId("0")).at(line, column);
     }
 
     /** Every order the facts could be met in, so that nothing here is asked of one of them. */

@@ -101,14 +101,18 @@ class WhereAnArmIsShownIsAskedOfTheModuleThatWroteItTest {
         Compilation before = started(LIMITS);
         CoverageSites.ArmSite was = importedArms(before).get(0);
         Citation shownBefore = Sites.placeOf(before.db(), was.anchor());
+        souther.compiler.diag.PhysicalPos wasAt = before.texts()
+                .resolve(assertInstanceOf(Citation.Written.class, shownBefore).at());
 
         Compilation after = started(LIMITS_MOVED);
         CoverageSites.ArmSite now = importedArms(after).get(0);
         Citation shownAfter = Sites.placeOf(after.db(), now.anchor());
+        souther.compiler.diag.PhysicalPos nowAt = after.texts()
+                .resolve(assertInstanceOf(Citation.Written.class, shownAfter).at());
 
         assertEquals(was.anchor(), now.anchor(),
                 "the caller is holding the same fork: what it says did not change");
-        assertNotEquals(shownBefore, shownAfter,
+        assertNotEquals(wasAt, nowAt,
                 "and the file it is written in says it is a line further down");
     }
 
@@ -150,7 +154,7 @@ class WhereAnArmIsShownIsAskedOfTheModuleThatWroteItTest {
         Citation shown = Sites.placeOf(c.db(), importedArms(c).get(0).anchor());
         Citation.Written written = assertInstanceOf(Citation.Written.class, shown,
                 "the helper is in a file the reader holds");
-        assertEquals(4, written.at().line(),
+        assertEquals(4, c.texts().resolve(written.at()).line(),
                 "which is the line the `if` is on in limits.sou, not the call in orders.sou");
     }
 }

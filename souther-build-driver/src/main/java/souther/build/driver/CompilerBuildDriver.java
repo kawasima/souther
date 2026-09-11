@@ -13,6 +13,7 @@ import souther.compiler.diag.DiagnosticRenderer;
 import souther.compiler.diag.HumanRenderer;
 import souther.compiler.diag.Located;
 import souther.compiler.diag.Messages;
+import souther.compiler.cst.SourceLayout;
 import souther.compiler.diag.SourceContext;
 import souther.compiler.diag.SourceContextResolver;
 import souther.compiler.diag.SourceNames;
@@ -99,7 +100,8 @@ public final class CompilerBuildDriver implements SoutherBuildDriver {
                 sources.stream().map(source -> source.path().toString()).toList());
         return SourceContextResolver.memoized(id -> {
             int at = indexOf(sources, id);
-            return at < 0 ? null : new SourceContext(names.get(at), sources.get(at).text());
+            return at < 0 ? null : new SourceContext(names.get(at), sources.get(at).text(),
+                    SourceLayout.of(sources.get(at).text(), id));
         });
     }
 

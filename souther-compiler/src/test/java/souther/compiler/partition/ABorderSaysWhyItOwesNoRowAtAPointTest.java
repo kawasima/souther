@@ -1,8 +1,9 @@
 package souther.compiler.partition;
 
+import souther.compiler.diag.SourceLayouts;
+import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 
-import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.numeric.Towards;
 import souther.compiler.query.Adequacy;
 import souther.compiler.partition.FixtureTemplate;
@@ -324,7 +325,7 @@ class ABorderSaysWhyItOwesNoRowAtAPointTest {
                         example cmp
                             | "same" : ("b", "b") -> No { why = 0 }
                         """),
-                "example.strings", "cmp", true, souther.compiler.diag.SourceNameResolver.identity()).text();
+                "example.strings", "cmp", true, souther.compiler.diag.SourceRendering.namedByIdentity(SourceLayouts.NONE)).text();
 
         assertFalse(rows.contains("cmp(\"\", \"\")"),
                 "a pair standing equal is the line itself and is at neither side of it:\n" + rows);
@@ -528,7 +529,7 @@ class ABorderSaysWhyItOwesNoRowAtAPointTest {
 
         // And the block an author reads says nothing about them, because nothing is owed there.
         String block = souther.compiler.report.GeneratedRows.of(
-                compiled(BOTH_SIDES), "example.owed", "cmp", true, SourceNameResolver.identity()).text();
+                compiled(BOTH_SIDES), "example.owed", "cmp", true, SourceRendering.namedByIdentity(SourceLayouts.NONE)).text();
         assertFalse(block.contains("p.a < p.b"), block);
         assertFalse(block.contains("p.a > p.b"), block);
     }

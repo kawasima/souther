@@ -132,7 +132,9 @@ class AConditionOnTheWayIsNamedHereAndPlacedByWhoeverWroteItTest {
         List<Citation> after = placesOf(moved);
         assertEquals(before.size(), after.size(), "the same conditions are on the way");
         for (int i = 0; i < before.size(); i++) {
-            assertNotEquals(before.get(i), after.get(i),
+            // The caret, and not the place: what the condition is did not change, and blank lines
+            // written above it are exactly the edit that leaves a place where it was.
+            assertNotEquals(sentTo(where, before.get(i)), sentTo(moved, after.get(i)),
                     "a reader is sent to where the condition is now, and it has moved");
         }
     }
@@ -290,6 +292,12 @@ class AConditionOnTheWayIsNamedHereAndPlacedByWhoeverWroteItTest {
         Compilation compilation = Compilation.ofSource(source, "Main");
         compilation.answerEverything();
         return compilation;
+    }
+
+    /** Where a reader is sent for {@code cited}, as {@code compilation}'s sources now stand. */
+    private static souther.compiler.diag.PhysicalPos sentTo(Compilation compilation, Citation cited) {
+        return compilation.texts().resolve(
+                assertInstanceOf(Citation.Written.class, cited).at());
     }
 
     /** Where a report about each condition on the way points, in the order the way carries them. */

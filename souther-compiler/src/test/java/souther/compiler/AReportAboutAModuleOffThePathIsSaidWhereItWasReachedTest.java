@@ -98,7 +98,7 @@ class AReportAboutAModuleOffThePathIsSaidWhereItWasReachedTest {
     void itIsSaidAtTheImportThatNamedTheModule() {
         // `lib.held` is on the path and the module it needs is not, so reading it back has something
         // to report about a declaration written where this compile has no file.
-        Compilation compilation = reading("""
+        String stands = """
                 module app.uses
 
 
@@ -107,13 +107,14 @@ class AReportAboutAModuleOffThePathIsSaidWhereItWasReachedTest {
                 import lib.held ( Held )
 
                 data Page = { held: Held }
-                """, held());
+                """;
+        Compilation compilation = reading(stands, held());
 
         SourcePos said = whereTheReportAboutIsSaid(compilation, "lib.held");
         assertEquals(new QuotedFrom.ASourceThisCompileHolds(new SourceId("0")), said.quotedFrom(),
                 "a reader can only be sent to a file this compile holds");
-        assertEquals(6, said.line(), "the import line naming the module, not a line of the module");
-        assertEquals(1, said.column());
+        assertEquals(6, WhereItSits.in(stands, said).line(), "the import line naming the module, not a line of the module");
+        assertEquals(1, WhereItSits.in(stands, said).column());
     }
 
     /**
@@ -145,25 +146,28 @@ class AReportAboutAModuleOffThePathIsSaidWhereItWasReachedTest {
     @Test
     void oneReachedThroughAnotherIsSaidAtTheImportThatLedThere() {
         Map<String, ClassFileImage> held = held();
-        Map<String, ClassFileImage> front = built("""
+        String stands = """
                 module lib.front exposing ( Front )
                 import lib.held ( Held )
 
                 data Front = { held: Held }
-                """, and(held, deep()));
+                """;
+        Map<String, ClassFileImage> front = built(stands, and(held, deep()));
 
-        Compilation compilation = reading("""
+        String uses = """
                 module app.uses
 
 
                 import lib.front ( Front )
 
                 data Page = { front: Front }
-                """, and(held, front));
+                """;
+        Compilation compilation = reading(uses, and(held, front));
 
         SourcePos said = whereTheReportAboutIsSaid(compilation, "lib.held");
         assertEquals(new QuotedFrom.ASourceThisCompileHolds(new SourceId("0")), said.quotedFrom());
-        assertEquals(4, said.line(), "the import of the dependency that led to it");
+        assertEquals(4, WhereItSits.in(uses, said).line(),
+                "the import of the dependency that led to it");
     }
 
     /** The route this was found on. The report is about a module the caller has no file for, and it
@@ -417,12 +421,13 @@ class AReportAboutAModuleOffThePathIsSaidWhereItWasReachedTest {
      */
     @Test
     void theSameUnavailableProblemIsToldOnce() {
-        Compilation compilation = reading("""
+        String stands = """
                 module app.uses
                 import lib.twice ( Twice )
 
                 data Page = { twice: Twice }
-                """, twiceNaming("lib.deep.Deep", "lib.deep.Deep"));
+                """;
+        Compilation compilation = reading(stands, twiceNaming("lib.deep.Deep", "lib.deep.Deep"));
 
         List<Db.Found> found = compilation.db().allReports();
         assertEquals(List.of("E1506"),
@@ -439,7 +444,7 @@ class AReportAboutAModuleOffThePathIsSaidWhereItWasReachedTest {
         Diagnostic said = whereTheReportAboutIsSaidIn(compilation, "lib.twice");
         Citation.Reached reached = assertInstanceOf(Citation.Reached.class,
                 Citation.of(((Primary.InSource) said.primary()).place().region().start()), "read for where it may be said, the caret is the import");
-        assertEquals(2, reached.at().line(), "the import line naming it");
+        assertEquals(2, WhereItSits.in(stands, reached.at()).line(), "the import line naming it");
 
         assertEquals(1, compilation.diagnostics().get(new SourceId("0")).size(),
                 "one thing to be told, said once");
@@ -509,13 +514,15 @@ class AReportAboutAModuleOffThePathIsSaidWhereItWasReachedTest {
         Diagnostic said = Diagnostic.say(new NameMessage.NoValueOfThatNameInScope("x"))
                 .at(Placement.whatAModulePublished(
                         new SourceProvenance.APublishedModule("lib.held")).at(1, 1))
-                .secondary(Region.ofWidth(new SourcePos(3, 3, new SourceId("0")), 4),
+                .secondary(
+                        Region.ofWidth(Placement.aFileOfThisCompile(new SourceId("0")).at(3, 3), 4),
                         new NameMessage.WriteItOnItsOwn("x"))
                 .build();
 
         assertEquals(1, said.secondary().size(), "the label is there to begin with");
 
-        Diagnostic moved = said.reachedFrom(List.of(new SourcePos(2, 1, new SourceId("0"))),
+        Diagnostic moved = said.reachedFrom(
+                List.of(Placement.aFileOfThisCompile(new SourceId("0")).at(2, 1)),
                 new SourceProvenance.APublishedModule("lib.held"),
                 new ModuleMessage.ItIsReachedFromHereToo());
 
@@ -528,7 +535,7 @@ class AReportAboutAModuleOffThePathIsSaidWhereItWasReachedTest {
     @Test
     void aLabelOverARegionNamingNoSourceIsRefused() {
         Diagnostic.Builder building = Diagnostic.say(new NameMessage.NoValueOfThatNameInScope("x"))
-                .at(new SourcePos(1, 1, new SourceId("0")));
+                .at(Placement.aFileOfThisCompile(new SourceId("0")).at(1, 1));
 
         assertThrows(IllegalArgumentException.class,
                 () -> building.secondary(Region.ofWidth(new SourcePos(3, 3), 4),

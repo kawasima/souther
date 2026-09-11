@@ -59,7 +59,7 @@ class ANameAFailedImportStandsInForIsReportedOnceTest {
     /** And the report is on the import line, not on any of the three uses. */
     @Test
     void andItIsReportedThere() {
-        assertEquals(List.of(3), lines(LIB, APP));
+        assertEquals(List.of(3), lines(APP, LIB, APP));
     }
 
     /** What a compile of these sources said — a diagnostic's code where it has one, its message key
@@ -73,10 +73,11 @@ class ANameAFailedImportStandsInForIsReportedOnceTest {
     }
 
     /** The lines it said them at. */
-    private static List<Integer> lines(String... sources) {
+    private static List<Integer> lines(String in, String... sources) {
         List<Integer> found = new ArrayList<>();
         for (Diagnostic d : diagnostics(sources)) {
-            found.add(((Primary.InSource) d.primary()).place().region().start().line());
+            found.add(WhereItSits.in(in, ((Primary.InSource) d.primary()).place().region())
+                    .start().line());
         }
         return found;
     }

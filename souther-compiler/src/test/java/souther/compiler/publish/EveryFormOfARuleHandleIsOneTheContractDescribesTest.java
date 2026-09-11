@@ -1,5 +1,9 @@
 package souther.compiler.publish;
 
+import souther.compiler.diag.QuotedFrom;
+import souther.compiler.diag.SourcePos;
+import souther.compiler.cst.SourceLayout;
+import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.check.RuleRef;
@@ -66,6 +70,34 @@ class EveryFormOfARuleHandleIsOneTheContractDescribesTest {
     private static final SourceId IN = new SourceId("billing.sou");
 
     /**
+     * A source the handles below are written in, so that the prose has a line and a column to say.
+     *
+     * <p>A handle carries a place, and what line that is at is what the file is laid out as — so a
+     * test about what a handle reads as says which file it means and hands the text over, as the
+     * document writer does.
+     */
+    private static final String BILLING = "module billing\n" + "\n".repeat(12)
+            + "data Amount = Int    invariant cap = value <= 100\n";
+
+    private static final SourceLayout LAID_OUT = SourceLayout.of(BILLING, IN);
+
+    /** And a text nobody named, which is the other half of what the contract gives examples of. */
+    private static final String A_BUFFER = "module billing\n" + "\n".repeat(5) + "  invariant x\n";
+
+    private static final SourceLayout UNNAMED = SourceLayout.of(A_BUFFER);
+
+    private static final SourceRendering NAMED = new SourceRendering(SourceId::value,
+            place -> place.quotedFrom() instanceof QuotedFrom.ASourceThisCompileHolds
+                    ? LAID_OUT : UNNAMED);
+
+    /** The clause of the source above, which is written at the line and column the contract's own
+     *  examples are spelled with. */
+    private static final SourcePos CLAUSE = LAID_OUT.placeAt(BILLING.indexOf("invariant"));
+
+    /** The same clause, in the text nobody named. */
+    private static final SourcePos IN_A_BUFFER = UNNAMED.placeAt(A_BUFFER.indexOf("invariant"));
+
+    /**
      * One handle of every form the grammar has.
      *
      * <p>The product of what decides a sentence: which form it is, which of the published words goes
@@ -91,11 +123,11 @@ class EveryFormOfARuleHandleIsOneTheContractDescribesTest {
 
     private static PublishedRuleHandle.Place inASourceThisCompileHolds() {
         return new PublishedRuleHandle.Place.InSource(
-                new PublishedAt(IN, 14, 22, new PublishedAt.Where.Here()));
+                new PublishedAt(CLAUSE, new PublishedAt.Where.Here()));
     }
 
     private static PublishedRuleHandle.Place inATextWithNoName() {
-        return new PublishedRuleHandle.Place.Unplaced(7, 3);
+        return new PublishedRuleHandle.Place.Unplaced(IN_A_BUFFER);
     }
 
     /**
@@ -207,7 +239,7 @@ class EveryFormOfARuleHandleIsOneTheContractDescribesTest {
     /** The sentences this compiler writes, one per form. */
     private static Set<String> rendered() {
         return everyForm().stream()
-                .map(each -> RuleHandleProse.said(each, SourceId::value, null))
+                .map(each -> RuleHandleProse.said(each, NAMED, null))
                 .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
@@ -256,15 +288,15 @@ class EveryFormOfARuleHandleIsOneTheContractDescribesTest {
             DocumentItem into = whereItBelongs(each);
             switch (each.carries()) {
                 case THE_HANDLE_ALONE -> {
-                    each.put(into, handle, SourceId::value, null);
+                    each.put(into, handle, NAMED, null);
                     assertThrows(IllegalStateException.class,
-                            () -> each.put(whereItBelongs(each), sentence, SourceId::value, null),
+                            () -> each.put(whereItBelongs(each), sentence, NAMED, null),
                             () -> "a field that is the handle is not told a sentence: " + each);
                 }
                 case A_SENTENCE_AROUND_IT -> {
-                    each.put(into, sentence, SourceId::value, null);
+                    each.put(into, sentence, NAMED, null);
                     assertThrows(IllegalStateException.class,
-                            () -> each.put(whereItBelongs(each), handle, SourceId::value, null),
+                            () -> each.put(whereItBelongs(each), handle, NAMED, null),
                             () -> "a field with words of its own is not handed a handle: " + each);
                 }
             }
@@ -375,9 +407,9 @@ class EveryFormOfARuleHandleIsOneTheContractDescribesTest {
                     () -> {
                         switch (each.carries()) {
                             case THE_HANDLE_ALONE ->
-                                    each.put(elsewhere, handle, SourceId::value, null);
+                                    each.put(elsewhere, handle, NAMED, null);
                             case A_SENTENCE_AROUND_IT ->
-                                    each.put(elsewhere, sentence, SourceId::value, null);
+                                    each.put(elsewhere, sentence, NAMED, null);
                         }
                     },
                     () -> "a handle written into an object the schema does not declare this field"

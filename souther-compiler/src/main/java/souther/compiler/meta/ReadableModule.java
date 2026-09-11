@@ -3,6 +3,7 @@ package souther.compiler.meta;
 import souther.compiler.ast.Ast;
 import souther.compiler.check.BehaviorImplementation;
 import souther.compiler.check.Scoping;
+import souther.compiler.cst.SourceLayout;
 import java.util.List;
 
 import java.util.Map;
@@ -81,4 +82,18 @@ public sealed interface ReadableModule permits ModuleReadback.AsRead {
 
     /** What its library import lines brought in, which the module itself no longer says. */
     List<Scoping.Claim> libraryClaims();
+
+    /**
+     * How the text this was read back from is laid out.
+     *
+     * <p>Part of the reading and not an index somebody could build afterwards. The places in
+     * {@link #module()} say which of the things written in that text they are, and the text is one
+     * this compiler put back together out of what the module carries — so there is no file to go and
+     * read it from later, and rebuilding it would be rebuilding a second text and hoping it came out
+     * the same. What the reading parsed is what answers here.
+     *
+     * <p>What it is for is the code this module's bodies are spliced into elsewhere: the line a debug
+     * table records for such an instruction is a line of this text.
+     */
+    SourceLayout laidOutText();
 }

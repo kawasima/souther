@@ -1,5 +1,7 @@
 package souther.compiler.query;
 
+import souther.compiler.WhereItSits;
+import souther.compiler.diag.PhysicalRegion;
 import souther.compiler.diag.Primary;
 
 import souther.compiler.source.SourceId;
@@ -8,7 +10,6 @@ import souther.compiler.Compiler;
 import souther.compiler.diag.msg.NameMessage;
 import souther.compiler.diag.Diagnostic;
 import souther.compiler.diag.Located;
-import souther.compiler.diag.Region;
 
 import org.junit.jupiter.api.Test;
 
@@ -125,7 +126,8 @@ class AValueThatReachesItselfIsRefusedOnceAtItsNameTest {
      */
     @Test
     void theRefusalUnderlinesTheNameAndNotTheKeywordInFrontOfIt() {
-        Region region = ((Primary.InSource) cycleIn(diagnose(CYCLE)).primary()).place().region();
+        PhysicalRegion region = WhereItSits.in(CYCLE,
+                ((Primary.InSource) cycleIn(diagnose(CYCLE)).primary()).place().region());
 
         assertEquals(region.start().line(), region.end().line(), "a name is one line's worth");
         assertEquals("let step = step".indexOf("step") + 1, region.start().column(),

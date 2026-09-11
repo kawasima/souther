@@ -1,11 +1,11 @@
 package souther.compiler.report;
 
+import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.DoesNotComeBack;
 import souther.compiler.conformance.ConformanceCorpus;
-import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.query.About;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.ArmObligation;
@@ -316,31 +316,32 @@ class EveryObligationTheCountHoldsIsMetOrNamedTest {
     }
 
     /** One report and what to call the sources it is about. */
-    private record Reported(String name, AdequacyReport report, SourceNameResolver names) {}
+    private record Reported(String name, AdequacyReport report, SourceRendering names) {}
 
     private static List<Reported> reports() {
         List<Reported> out = new ArrayList<>();
         for (ConformanceCorpus corpus : ConformanceCorpus.all()) {
             ConformanceCorpus.Analysed analysed = corpus.analyse();
-            out.add(new Reported(corpus.name(), analysed.report(), corpus.names()));
+            out.add(new Reported(corpus.name(), analysed.report(),
+                    new SourceRendering(corpus.names(), analysed.compilation().texts())));
         }
         Compilation unread = Compilation.ofSource(TOO_LARGE_TO_OBSERVE, "Main");
         unread.measure(Adequacy.Asked.fullReport());
         unread.answerEverything();
         out.add(new Reported("example.unread", AdequacyReport.of(unread),
-                SourceNameResolver.identity()));
+                SourceRendering.namedByIdentity(unread.texts())));
         Compilation stopped = Compilation.ofSource(A_ROW_THAT_DOES_NOT_COME_BACK, "Main");
         stopped.withJvmExampleDeadlines(DoesNotComeBack.overrunningOn(
                 DoesNotComeBack.everythingAboutRowsOf("go")));
         stopped.measure(Adequacy.Asked.fullReport());
         stopped.answerEverything();
         out.add(new Reported("example.loop", AdequacyReport.of(stopped),
-                SourceNameResolver.identity()));
+                SourceRendering.namedByIdentity(stopped.texts())));
         Compilation gate = Compilation.ofSource(ONE_ARM_OF_TWO, "Main");
         gate.measure(Adequacy.Asked.fullReport());
         gate.answerEverything();
         out.add(new Reported("example.gate", AdequacyReport.of(gate),
-                SourceNameResolver.identity()));
+                SourceRendering.namedByIdentity(gate.texts())));
         return out;
     }
 }

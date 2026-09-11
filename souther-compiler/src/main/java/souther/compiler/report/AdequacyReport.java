@@ -34,7 +34,7 @@ import souther.compiler.partition.ReportedReason;
 import souther.compiler.partition.RoleAnswer;
 import souther.compiler.partition.UndividedPosition;
 import souther.compiler.diag.Citation;
-import souther.compiler.diag.SourceNameResolver;
+import souther.compiler.diag.SourceRendering;
 import souther.compiler.inputs.InputQuestion;
 import souther.compiler.inputs.StandingQuestion;
 import souther.compiler.inputs.WhereInTheRule;
@@ -995,7 +995,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
      * <p>After the behaviors, so that a reader who has just read what each body is short of reads
      * what the model itself is short of once.
      */
-    private void declared(StringBuilder out, ModuleReport module, SourceNameResolver names,
+    private void declared(StringBuilder out, ModuleReport module, SourceRendering rendering,
                           PublishedRuleHandle.WhereARuleIs places) {
         // What the declarations are owed, folded the way a behavior's own account is and by the same
         // fold. Here rather than in the blocks above, because that is where the work is: a line a
@@ -1019,12 +1019,12 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
         for (Adequacy.DeclaredDebt each : account.undecided()) {
             for (String said : undecidedBecause(each.debt().owed().disposition(),
                     pointOf(each, RuleHandleProse.said(each.debt().describe(places),
-                            names, null)))) {
+                            rendering, null)))) {
                 out.append(String.format("      ? %s%n", said));
             }
             readings(out, each.debt(), _ -> true, at -> whatWasTried(
                     at.owedAt(each.debt().at()).searches(),
-                    module.owedByDeclarations().conditionPlaces(), names, null));
+                    module.owedByDeclarations().conditionPlaces(), rendering, null));
         }
         Map<String, List<Adequacy.Finding>> byDeclaration = new LinkedHashMap<>();
         for (ReportedFinding each : module.declarations()) {
@@ -1567,7 +1567,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
     // --- rendering --------------------------------------------------------------------------------
 
     /**
-     * The report as a person reads it, with the sources under the names {@code names} gives them.
+     * The report as a person reads it, with the sources under the names {@code rendering} gives them.
      *
      * <p>The names are asked for rather than held. What a report is about is identified by whatever
      * the caller handed its sources over as — an index under a build, a document URI under an editor
@@ -1575,7 +1575,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
      * reader's files apart, so it is a fact about the set in front of them. A caller with no names to
      * give says so with {@link SourceNameResolver#identity}, and the ids stand for themselves.
      */
-    public String human(SourceNameResolver names) {
+    public String human(SourceRendering rendering) {
         StringBuilder out = new StringBuilder();
         Map<BehaviorImplementation, Integer> counted = new EnumMap<>(BehaviorImplementation.class);
         for (BehaviorImplementation each : BehaviorImplementation.values()) {
@@ -1599,20 +1599,20 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                                         behavior.pending().getAsInt())
                                 : "rows not read"));
                 signature(out, behavior);
-                partition(out, behavior, module.declaredIn(), names, behavior.rulePlace());
-                branch(out, behavior, module.declaredIn(), names);
-                decision(out, behavior, module.declaredIn(), names);
+                partition(out, behavior, module.declaredIn(), rendering, behavior.rulePlace());
+                branch(out, behavior, module.declaredIn(), rendering);
+                decision(out, behavior, module.declaredIn(), rendering);
                 // Under the behavior it names, because a reason printed at the module's foot is
                 // read as belonging to whichever behavior came last. That was survivable while the
                 // only reasons naming one were rare; a position that could not be read is not.
                 said(out, module.incompleteness().written().stream()
                         .filter(gap -> gap.fact().behavior()
                                 .map(behavior.name()::equals).orElse(false))
-                        .toList(), names);
+                        .toList(), rendering);
             }
-            declared(out, module, names, module.owedByDeclarations().rulePlace());
+            declared(out, module, rendering, module.owedByDeclarations().rulePlace());
             said(out, module.incompleteness().written().stream()
-                    .filter(gap -> gap.fact().behavior().isEmpty()).toList(), names);
+                    .filter(gap -> gap.fact().behavior().isEmpty()).toList(), rendering);
         }
         int total = counted.values().stream().mapToInt(Integer::intValue).sum();
         out.append(String.format("%n%d %s: %d implemented, %d unimplemented, %d injected;"
@@ -1653,7 +1653,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                 // a line is owed a sentence. What kind of thing it is comes out in what is said to
                 // do about it, which is read from the same fact the word is.
                 out.append(String.format("      %s — %s%n",
-                        said(each.subject(), names, places),
+                        said(each.subject(), rendering, places),
                         next(ReaderDisposition.of(each))));
             }
         }
@@ -1675,9 +1675,9 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
 
     /** The reasons, in the one shape a reason is printed in wherever it sits. */
     private void said(StringBuilder out, List<PublishedIncompleteness> gaps,
-                             SourceNameResolver names) {
+                             SourceRendering rendering) {
         for (PublishedIncompleteness gap : gaps) {
-            out.append(String.format("    · %s%n", Reasons.said(gap.fact(), names)));
+            out.append(String.format("    · %s%n", Reasons.said(gap.fact(), rendering)));
         }
     }
 
@@ -1829,7 +1829,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
      * more than writing the value — the comparison has to have run — and nothing counts that yet.
      */
     private void partition(StringBuilder out, BehaviorReport behavior,
-                                  SourceId declaredIn, SourceNameResolver names,
+                                  SourceId declaredIn, SourceRendering rendering,
                                   PublishedRuleHandle.WhereARuleIs places) {
         // Whether there is a section at all is settled once, for every surface, and asked of the
         // measurement rather than of the entries beside it. Asked of the entries, a behavior whose
@@ -1922,7 +1922,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                             said.classId(), said.at(), because(said.reasons()),
                             unproven(said.why())));
         }
-        undivided(out, behavior, names, declaredIn, places);
+        undivided(out, behavior, rendering, declaredIn, places);
         // On a line of its own, and this is the whole of why it has one. Counting combinations
         // across two positions is the neighbouring technique rather than this one, and printed at
         // the end of the partition line it sat beside the border counts where a reader could add
@@ -1988,17 +1988,17 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
         for (BorderObligationPointAssessment point : owed.undecided()) {
             for (String said : undecidedBecause(point.owed().disposition(),
                     point.role() + " point ("
-                            + RuleHandleProse.said(point.describe(places), names, declaredIn) + ")")) {
+                            + RuleHandleProse.said(point.describe(places), rendering, declaredIn) + ")")) {
                 out.append(String.format("      ? %s%n", said));
             }
             readings(out, point, _ -> true, at -> whatWasTried(
-                    at.owedAt(point.at()).searches(), behavior.conditionPlaces(), names,
+                    at.owedAt(point.at()).searches(), behavior.conditionPlaces(), rendering,
                     declaredIn));
         }
         // A border the model drew that nothing here answered for, said whether or not one came of
         // it. It is exactly where none did that the question stands, so this cannot be written by
         // walking the borders.
-        unaccounted(out, behavior, names, declaredIn,
+        unaccounted(out, behavior, rendering, declaredIn,
                 asked -> asked.holdsOpen(CoverageObligation.Measure.BOUNDARY), places);
         // The rule as this report writes it. The finding carries the rule and not words about it,
         // because what to say differs between here — where a file has a name — and the warning built
@@ -2032,7 +2032,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                     out.append(String.format("      %s no row is at %s %s point%s (%s)%n",
                             mark(f), againstTheLine ? "the" : "an", point.role(),
                             point.whichSide(),
-                            RuleHandleProse.said(point.describe(places), names, declaredIn)));
+                            RuleHandleProse.said(point.describe(places), rendering, declaredIn)));
                     readings(out, point, _ -> true, _ -> "");
                 }
             }
@@ -2047,7 +2047,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                 out.append(String.format("      · the %s point (%s) is answered, and not at every"
                                 + " reading of the line%n",
                         point.role(),
-                        RuleHandleProse.said(point.describe(places), names, declaredIn)));
+                        RuleHandleProse.said(point.describe(places), rendering, declaredIn)));
                 readings(out, point, at -> !at.owedAt(point.at()).hasRowWitness(), _ -> "");
             }
         }
@@ -2058,7 +2058,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             if (p.item() instanceof ItemAssessment.NotOwed not) {
                 out.append(String.format("      · no %s point%s is owed at %s (%s): %s%n",
                         p.role(), p.border().border().whichSide(p.at()), p.border().label(),
-                        RuleHandleProse.said(p.border().describe(places), names, declaredIn),
+                        RuleHandleProse.said(p.border().describe(places), rendering, declaredIn),
                         whyNotOwed(not.reason())));
             }
         }
@@ -2071,7 +2071,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                 if (answer instanceof RoleAnswer.NoPoint none) {
                     out.append(String.format("      · no %s point exists at %s (%s): %s%n",
                             role, line.label(),
-                            RuleHandleProse.said(line.describe(places), names, declaredIn),
+                            RuleHandleProse.said(line.describe(places), rendering, declaredIn),
                             whyNoPoint(none.why())));
                 }
             });
@@ -2135,7 +2135,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
      * very comparison drew — one measure's silence printed as though it were the other's.
      */
     private void undivided(StringBuilder out, BehaviorReport behavior,
-                                  SourceNameResolver names, SourceId declaredIn,
+                                  SourceRendering rendering, SourceId declaredIn,
                                   PublishedRuleHandle.WhereARuleIs places) {
         for (Adequacy.Finding f : behavior.findings()) {
             if (f.about() instanceof About.APositionNoLineDivides(var position)) {
@@ -2166,13 +2166,13 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                 // tell which.
                 out.append(String.format("      %s %s: %s — %s, about `%s`%s%n",
                         mark(f), it.readingStopped() ? "not read" : "no line",
-                        cited(it.cited(), names, declaredIn, places),
+                        cited(it.cited(), rendering, declaredIn, places),
                         whyUnread(it.reason()), it.at(),
-                        sentTo(it.finding().sentTo(), names, declaredIn)));
+                        sentTo(it.finding().sentTo(), rendering, declaredIn)));
             }
             if (f.about() instanceof About.ARuleNothingClassified(var it)) {
                 out.append(String.format("      %s not read: %s — %s, about `%s`%n",
-                        mark(f), cited(it.cited(), names, declaredIn, places),
+                        mark(f), cited(it.cited(), rendering, declaredIn, places),
                         whyUnread(it.reason()), it.at()));
             }
         }
@@ -2198,7 +2198,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
         }
         // The questions this measure answers: which values may stand where, which classes hold
         // them, and which value a rule tells from every other. A border is the section below's.
-        unaccounted(out, behavior, names, declaredIn,
+        unaccounted(out, behavior, rendering, declaredIn,
                 asked -> asked.holdsOpen(CoverageObligation.Measure.PARTITION), places);
     }
 
@@ -2319,7 +2319,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
      * invite an author to stop looking exactly where there is more to find.
      */
     void branch(StringBuilder out, BehaviorReport behavior,
-                               SourceId declaredIn, SourceNameResolver names) {
+                               SourceId declaredIn, SourceRendering rendering) {
         Adequacy.BranchEvidence branch = behavior.branch();
         if (branch == null) {
             return;
@@ -2366,7 +2366,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
         for (ArmObligation.Counted open : arms.undecided()) {
             out.append(String.format("      ? undecided whether a row goes through `%s` (%s)%n",
                     ArmVocabulary.label(open.display()),
-                    behavior.placeOf(open.display()).said(names, declaredIn)));
+                    behavior.placeOf(open.display()).said(rendering, declaredIn)));
         }
         // Whatever findings there are, and no second opinion about whether there may be any. Which
         // arms may be named is settled where they are collected, so a condition repeated here would
@@ -2381,7 +2381,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             if (f.about() instanceof About.AnArmNoRowGoesThrough(var arm)) {
                 out.append(String.format("      %s no row goes through `%s` (%s)%n",
                         mark(f.finding()), ArmVocabulary.label(arm),
-                        f.at().said(names, declaredIn)));
+                        f.at().said(rendering, declaredIn)));
             }
         }
     }
@@ -2401,7 +2401,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
      * said under this, one entry apiece, by the findings that established it.
      */
     void decision(StringBuilder out, BehaviorReport behavior,
-                  SourceId declaredIn, SourceNameResolver names) {
+                  SourceId declaredIn, SourceRendering rendering) {
         DecisionEvidence decision = behavior.evidence().decision();
         if (decision == null) {
             return;
@@ -2438,7 +2438,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             // rules apart is the proposition each condition is keyed on and that is written the
             // one way round an account needs rather than the way the author wrote it.
             for (ShownCondition read : behavior.readingsOf(rule)) {
-                out.append(String.format("          · %s%n", said(read, declaredIn, names)));
+                out.append(String.format("          · %s%n", said(read, declaredIn, rendering)));
             }
         }
     }
@@ -2454,14 +2454,14 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
      * rather than one that goes quiet.
      */
     private static String said(ShownCondition shown, SourceId declaredIn,
-                               SourceNameResolver names) {
+                               SourceRendering rendering) {
         return switch (shown.read()) {
             case DecisionRuleReading.AComparisonCameOut(var _, var held) ->
-                    "the comparison at " + shown.at().said(names, declaredIn)
+                    "the comparison at " + shown.at().said(rendering, declaredIn)
                             + (held ? " holds" : " does not hold");
             case DecisionRuleReading.AForkTookAnArm(var arm) ->
                     "it goes through `" + ArmVocabulary.label(arm) + "` ("
-                            + shown.at().said(names, declaredIn) + ")";
+                            + shown.at().said(rendering, declaredIn) + ")";
             // Every shape with nothing to send a reader to. What differs between them is which
             // part of this compiler fell short, which is not something an author acts on — and a
             // line is written for each so that the rule is never described by fewer conditions
@@ -2721,13 +2721,13 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
     /** What the search for a value at an edge came to, where it ran and found none. */
     private static String whatWasTried(SearchOutcomes outcomes,
                                        Map<ConditionReportAnchor, Citation> shown,
-                                       SourceNameResolver names, SourceId declaredIn) {
+                                       SourceRendering rendering, SourceId declaredIn) {
         // Which searches are worth a sentence is the outcomes' answer, not this one's. Told apart
         // here, two of them would be one piece of news whenever the words for them happened to
         // match — a report deciding what happened from what it was about to write.
         List<String> said = new ArrayList<>();
         for (ItemAssessment.Attempt each : outcomes.worthSaying()) {
-            said.add(whatWasTried(each, shown, names, declaredIn));
+            said.add(whatWasTried(each, shown, rendering, declaredIn));
         }
         // One sentence per search, with the readings' own separator between them. Run together,
         // two searches of one reading read as one clause that says two things.
@@ -2737,7 +2737,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
     /** The same, of one search of the point. */
     private static String whatWasTried(ItemAssessment.Attempt attempt,
                                        Map<ConditionReportAnchor, Citation> shown,
-                                       SourceNameResolver names, SourceId declaredIn) {
+                                       SourceRendering rendering, SourceId declaredIn) {
         // One opening per outcome, and not one for everything that came back without a row. A
         // search this compiler stopped and a search that had everything and reached nothing are
         // different news, and a proof is not a failure at all — read under one opening, an author
@@ -2756,7 +2756,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                     " — this compiler stopped at " + said(it.stoppedBy())
                             + andWritesSomeOf(it.notAllOf()) + ": "
                             + it.why().said().orElseGet(() -> whyUnresolved(it.why()))
-                            + whatTheRegionLeftOut(it.unaccountedFor(), shown, names, declaredIn);
+                            + whatTheRegionLeftOut(it.unaccountedFor(), shown, rendering, declaredIn);
             // Said as what this compiler writes rather than as a number it stopped at, because
             // there is no number: an author told to raise one would raise it and get the same
             // offer. What would change this is somebody writing the rest of what it walks, and the
@@ -2765,7 +2765,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                     " — this compiler writes some of " + writes(it.notAllOf())
                             + " rather than all of them: "
                             + it.why().said().orElseGet(() -> whyUnresolved(it.why()))
-                            + whatTheRegionLeftOut(it.unaccountedFor(), shown, names, declaredIn);
+                            + whatTheRegionLeftOut(it.unaccountedFor(), shown, rendering, declaredIn);
             // Both halves, because neither says what the other does. The word is what the search
             // itself came to; the figure is why that word is not about the whole of the point. Said
             // as the word alone, an author reads a proof about a value this compiler never planned
@@ -2774,17 +2774,17 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                     " — as far as this compiler plans, which stops at "
                             + said(it.limitedBy()) + ": "
                             + it.why().said().orElseGet(() -> whyUnresolved(it.why()))
-                            + whatTheRegionLeftOut(it.unaccountedFor(), shown, names, declaredIn);
+                            + whatTheRegionLeftOut(it.unaccountedFor(), shown, rendering, declaredIn);
             // No search to report on, which is what this says instead of saying what one found. The
             // figure is what an author would raise to get one made at all.
             case ItemAssessment.Attempt.Unplanned it ->
                     " — nothing was planned for it, because this compiler stops at "
                             + said(it.limitedBy())
-                            + whatTheRegionLeftOut(it.unaccountedFor(), shown, names, declaredIn);
+                            + whatTheRegionLeftOut(it.unaccountedFor(), shown, rendering, declaredIn);
             case ItemAssessment.Attempt.Unresolved it ->
                     (it.why().reason().provesInfeasible() ? " — " : " — nothing composed one: ")
                             + it.why().said().orElseGet(() -> whyUnresolved(it.why()))
-                            + whatTheRegionLeftOut(it.unaccountedFor(), shown, names, declaredIn);
+                            + whatTheRegionLeftOut(it.unaccountedFor(), shown, rendering, declaredIn);
         };
     }
 
@@ -2803,7 +2803,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
      */
     private static String whatTheRegionLeftOut(
             List<ReachabilityGap> left, Map<ConditionReportAnchor, Citation> shown,
-            SourceNameResolver names, SourceId declaredIn) {
+            SourceRendering rendering, SourceId declaredIn) {
         if (left.isEmpty()) {
             return "";
         }
@@ -2815,7 +2815,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                     // The place last and in brackets, as every other line of this report writes
                     // one, and looked up rather than held: what the condition carries is which
                     // question places it, and this is where that question was put.
-                    .append(" (").append(shown.get(left.get(i).anchor()).said(names, declaredIn))
+                    .append(" (").append(shown.get(left.get(i).anchor()).said(rendering, declaredIn))
                     .append(")");
         }
         return out.toString();
@@ -3057,7 +3057,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
      * model asked.
      */
     private void unaccounted(StringBuilder out, BehaviorReport behavior,
-                                    SourceNameResolver names,
+                                    SourceRendering rendering,
                                     SourceId declaredIn,
                                     Predicate<PartitionEvidence.Unanswered> mine,
                                     PublishedRuleHandle.WhereARuleIs places) {
@@ -3071,11 +3071,11 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                 // order between the two. Written into the same list, the limit the rules ran into
                 // together would be the last thing the author wrote, and it is nothing they wrote.
                 out.append(String.format("      %s not accounted for: %s — %s %s: %s%s%n",
-                        mark(f), cited(asked.cited(), names, declaredIn, places),
+                        mark(f), cited(asked.cited(), rendering, declaredIn, places),
                         asked(asked.asked()), subjectOf(asked),
                         whyStanding(asked).written().stream()
                                 .map(stop -> whyUnread(stop.reason())
-                                        + sentTo(stop.sentTo(), names, declaredIn))
+                                        + sentTo(stop.sentTo(), rendering, declaredIn))
                                 .collect(Collectors.joining("; ")),
                         whatItsPositionWasShortOf(asked).map(AdequacyReport::whyUnread)
                                 .map(each -> ", and the answer at its position: " + each)
@@ -3139,11 +3139,11 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
      * partition's and one rule has as many of those as it has readings.
      */
     private static String cited(Set<RuleCitation> offered,
-                                SourceNameResolver names,
+                                SourceRendering rendering,
                                 SourceId declaredIn,
                                 PublishedRuleHandle.WhereARuleIs places) {
         return RuleHandleProse.said(PublishedRuleHandle.of(handle(offered, places), places),
-                names, declaredIn);
+                rendering, declaredIn);
     }
 
     /**
@@ -3674,8 +3674,8 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
      * {@link DocumentSources} for the string to write, so the table is what the document turned out to
      * carry rather than a second list of the places an identity can appear.
      */
-    public String json(SourceNameResolver names) {
-        DocumentSources sources = new DocumentSources(names);
+    public String json(SourceRendering rendering) {
+        DocumentSources sources = new DocumentSources(rendering);
         ObjectNode root = JSON.createObjectNode();
         root.put("schemaVersion", schemaVersion);
         root.put("compilerVersion", compilerVersion);
@@ -3811,8 +3811,11 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
      */
     private static void place(ObjectNode at, PublishedAt place, DocumentSources sources) {
         at.put("sourceId", sources.written(place.source()));
-        at.put("line", place.line());
-        at.put("column", place.column());
+        souther.compiler.diag.PhysicalPos sits = sources.layouts().resolve(place.at());
+        if (sits != null) {
+            at.put("line", sits.line());
+            at.put("column", sits.column());
+        }
         ObjectNode writtenAt = at.putObject("writtenAt");
         place.writtenAt().fields().forEach(writtenAt::put);
     }
@@ -3839,10 +3842,10 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
      * this compilation cannot point at — which is the state {@link PublishedAt} answers for and not
      * one decided again here.
      */
-    private static String sentTo(WhereInTheRule sentTo, SourceNameResolver names,
+    private static String sentTo(WhereInTheRule sentTo, SourceRendering rendering,
                                  SourceId declaredIn) {
         return placeInTheRule(sentTo)
-                .map(at -> ", at " + PlaceProse.said(at, names, declaredIn))
+                .map(at -> ", at " + PlaceProse.said(at, rendering, declaredIn))
                 .orElse("");
     }
 
@@ -3978,7 +3981,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                 // table of sources this document carries.
                 RuleHandleSurface.UNANSWERED_RULE.put(
                         said, PublishedRuleHandle.of(handle(each.cited(), places), places),
-                        sources::written, null);
+                        sources.rendering(), null);
                 // What tells one rule from another, beside the words for finding it. A handle is a
                 // projection of the rule and not the rule: two arms of one `ensures` clause may
                 // name the same case, so the author's words for them are the same words, and two
@@ -4046,7 +4049,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             // and where a boundary is the only place a report points at, the `sources` table has
             // no other entry to guess from.
             RuleHandleSurface.BOUNDARY_ORIGIN.put(
-                    drawn, boundary.describe(places), sources::written, null);
+                    drawn, boundary.describe(places), sources.rendering(), null);
             // What the line is a line at, said rather than left to be inferred from the text beside
             // it. A line between two positions writes the other position where a line at a count
             // writes the count, and the two read alike.
@@ -4171,7 +4174,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             // name of its own.
             if (each instanceof PartitionEvidence.NotRead.ARule rule) {
                 RuleHandleSurface.NOT_READ_RULE.put(
-                        row, PublishedRuleHandle.of(handle(rule.cited(), places), places), sources::written, null);
+                        row, PublishedRuleHandle.of(handle(rule.cited(), places), places), sources.rendering(), null);
                 ruleId(said.putObject("ruleId"), rule.rule());
                 // And where inside the rule, for a reason that is about a part of it. The handle
                 // above sends a reader to the rule, which is the whole answer while what they lift
@@ -4182,7 +4185,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             }
             if (each instanceof PartitionEvidence.NotRead.AnUnclassifiedRule rule) {
                 RuleHandleSurface.NOT_READ_RULE.put(
-                        row, PublishedRuleHandle.of(handle(rule.cited(), places), places), sources::written, null);
+                        row, PublishedRuleHandle.of(handle(rule.cited(), places), places), sources.rendering(), null);
                 ruleId(said.putObject("ruleId"), rule.rule());
             }
         });
@@ -4409,7 +4412,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             obligationId(o.putObject("obligationId"), point.point());
             o.put("point", word(point.role()));
             RuleHandleSurface.OBLIGATION_RULE.put(
-                    owed, point.handle(places), sources::written, null);
+                    owed, point.handle(places), sources.rendering(), null);
             ruleId(o.putObject("ruleId"), point.id().provenance());
             o.put("relation", point.operator());
             // What the line is on, where the author wrote a word for it. A body's line has none,
@@ -4531,7 +4534,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             f.put("kind", word(finding.kind()));
             f.put("disposition", word(finding.disposition(held)));
             RuleHandleSurface.FINDING_SUBJECT.put(found, subject(finding, places),
-                    sources::written, null);
+                    sources.rendering(), null);
             // Which rule this is about, where the finding is about one. The words in `subject` are
             // how a reader finds it, and two rules an author named alike have the same words — so a
             // consumer joining findings to the questions they came from wants this.
@@ -4956,7 +4959,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                 // document has one for.
                 RuleHandleSurface.OPENING_RULE.put(
                         DocumentItem.at(into, "/$defs/subject/oneOf/8"), it.rule(),
-                        sources::written, null);
+                        sources.rendering(), null);
                 if (!it.stopped().isEmpty()) {
                     ArrayNode stopped = into.putArray("stopped");
                     it.stopped().forEach(stopped::add);
@@ -4999,12 +5002,12 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
      * <p>A {@code switch} with no {@code default}, so a subject added later is a compile error
      * rather than an entry printed with nothing said about it.
      */
-    private static String said(Subject subject, SourceNameResolver names,
+    private static String said(Subject subject, SourceRendering rendering,
                                PublishedRuleHandle.WhereARuleIs places) {
         return switch (subject) {
             case Subject.OfAModule it -> "module " + it.module();
             case Subject.OfABehavior it -> it.behavior();
-            case Subject.OfASource it -> "source " + names.nameOf(it.source());
+            case Subject.OfASource it -> "source " + rendering.names().nameOf(it.source());
             case Subject.OfARow it -> switch (it.rowRef().identity()) {
                 case RowIdentity.Named named -> "row `" + named.name() + "` of " + it.rowRef().behavior();
                 case RowIdentity.Unnamed unnamed ->
@@ -5018,7 +5021,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             // both.
             case Subject.AtARule it -> {
                 PartitionEvidence.Unanswered asked = new PartitionEvidence.Unanswered(it.question());
-                yield RuleHandleProse.said(PublishedRuleHandle.of(handle(asked.cited(), places), places), names,
+                yield RuleHandleProse.said(PublishedRuleHandle.of(handle(asked.cited(), places), places), rendering,
                                 null)
                         + " at " + asked.at() + " (" + whyStanding(asked).words().stream()
                         .map(AdequacyReport::whyUnread).collect(Collectors.joining("; ")) + ")";

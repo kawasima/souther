@@ -7,11 +7,16 @@ package souther.compiler.diag;
  * known, {@code start == end}.
  *
  * <p>Everything here is measured in UTF-16 code units, because that is what a {@link SourcePos}
- * column is — an index into the line, which is what the LSP exchanges and what a JSON diagnostic
- * publishes. It is not a count of screen columns and not a number of characters to draw. A
- * full-width character is one unit and two columns, so a caller that handed a screen width to
- * {@link #ofWidth} would move the end of a published range by the wrong amount. Turning any of this
- * into a place on the screen is {@code HumanRenderer}'s, and it needs the source line to do it.
+ * measures a place in — what the LSP exchanges and what a JSON diagnostic publishes. It is not a
+ * count of screen columns and not a number of characters to draw. A full-width character is one unit
+ * and two columns, so a caller that handed a screen width to {@link #ofWidth} would move the end of
+ * a published range by the wrong amount. Turning any of this into a place on the screen is
+ * {@code HumanRenderer}'s, and it needs the source line to do it.
+ *
+ * <p>How wide a region is on a line is not asked here. A region says which of the things written in
+ * a text it runs between, and how far apart those are is a fact about how that text is laid out
+ * now — {@code SourceLayout.resolve} answers with a {@link PhysicalRegion}, which is what a renderer
+ * measures.
  */
 public record Region(SourcePos start, SourcePos end) {
 
@@ -45,17 +50,4 @@ public record Region(SourcePos start, SourcePos end) {
         return !inner.start.isBefore(outer.start) && !outer.end.isBefore(inner.end);
     }
 
-    /**
-     * How much of the start line the region covers, in UTF-16 code units, and at least one.
-     *
-     * <p>A region that ends on a later line answers one. How much of the first line such a region
-     * covers is not written down anywhere here, and no reader has needed it: the one caller cuts
-     * this many units out of the line and measures what it cut.
-     */
-    public int sourceSpan() {
-        if (end.line() != start.line()) {
-            return 1;
-        }
-        return Math.max(1, end.column() - start.column());
-    }
 }

@@ -1,10 +1,11 @@
 package souther.compiler;
 
+import souther.compiler.diag.SourceLayouts;
+import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.diag.CompileException;
 import souther.compiler.diag.Diagnostic;
-import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.query.InputCaseEvidence;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.Compilation;
@@ -482,7 +483,7 @@ class ACaseTheModelRulesOutIsNotOwedARowTest {
     /** The report a build reads, which is where a claim and a measure are put together. */
     private static String reportOn(String source) {
         return souther.compiler.report.AdequacyReport.of(measured(source))
-                .human(SourceNameResolver.identity());
+                .human(SourceRendering.namedByIdentity(SourceLayouts.NONE));
     }
 
     private static PartitionEvidence partitionOf(String source) {
@@ -797,7 +798,7 @@ class ACaseTheModelRulesOutIsNotOwedARowTest {
     @Test
     void everyRowTheGeneratorOffersCompiles() {
         String offered = GeneratedRows.of(measured(RULED_OUT), "example.probe", "pick", false,
-                SourceNameResolver.identity()).text();
+                SourceRendering.namedByIdentity(SourceLayouts.NONE)).text();
 
         assertTrue(offered.contains("(Pending)"), offered);
         assertFalse(offered.contains("(Off)"), offered);

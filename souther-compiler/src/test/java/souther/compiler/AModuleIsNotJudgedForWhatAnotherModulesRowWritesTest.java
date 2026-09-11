@@ -74,7 +74,8 @@ class AModuleIsNotJudgedForWhatAnotherModulesRowWritesTest {
 
         assertEquals("E1903", e.diagnostic().code(),
                 "a supply position with no value to supply is the row's own fixture error");
-        assertEquals(8, ((Primary.InSource) e.diagnostic().primary()).place().region().start().line(), "the row");
+        assertEquals(8, WhereItSits.in(IMPORTER,
+                ((Primary.InSource) e.diagnostic().primary()).place().region()).start().line(), "the row");
     }
 
     @Test
@@ -86,27 +87,32 @@ class AModuleIsNotJudgedForWhatAnotherModulesRowWritesTest {
 
         assertEquals(declared.diagnostic().code(), bare.diagnostic().code());
         assertEquals(declared.sourceId(), bare.sourceId());
-        assertEquals(((Primary.InSource) declared.diagnostic().primary()).place().region().start().line(), ((Primary.InSource) bare.diagnostic().primary()).place().region().start().line());
+        assertEquals(WhereItSits.in(IMPORTER,
+                        ((Primary.InSource) declared.diagnostic().primary()).place().region())
+                        .start().line(), WhereItSits.in(IMPORTER,
+                        ((Primary.InSource) bare.diagnostic().primary()).place().region())
+                        .start().line());
     }
 
     @Test
     void aRowInTheDeclaringModuleIsToldAtItsOwnRowToo() {
+        String source = """
+                module probe.own
+                data Amount = Int
+                behavior keep : (a: Amount) -> Amount
+                    constructs Amount
+                let boom (x: Int) = unreachable "not yet"
+                let keep (a) = Amount(1)
+                example keep
+                  | "x" : (Amount(boom(1))) -> Amount(1)
+                """;
         // Nothing crosses a module boundary here, and the reading is the same one: the row wrote a
         // supply position holding no value, and the row is where that is said. The helper's own
         // line is where the abort was written, which the report carries as the second place.
         CompileException e = assertThrows(CompileException.class,
-                () -> Compiler.compileModules(List.of("""
-                        module probe.own
-                        data Amount = Int
-                        behavior keep : (a: Amount) -> Amount
-                            constructs Amount
-                        let boom (x: Int) = unreachable "not yet"
-                        let keep (a) = Amount(1)
-                        example keep
-                          | "x" : (Amount(boom(1))) -> Amount(1)
-                        """)));
+                () -> Compiler.compileModules(List.of(source)));
 
         assertEquals("E1903", e.diagnostic().code());
-        assertEquals(8, ((Primary.InSource) e.diagnostic().primary()).place().region().start().line(), "the row, not the helper on line 5");
+        assertEquals(8, WhereItSits.in(source, ((Primary.InSource) e.diagnostic().primary()).place().region()).start().line(), "the row, not the helper on line 5");
     }
 }

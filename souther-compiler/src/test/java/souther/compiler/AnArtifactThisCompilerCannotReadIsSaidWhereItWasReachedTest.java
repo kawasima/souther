@@ -1,5 +1,6 @@
 package souther.compiler;
 
+import souther.compiler.diag.PhysicalRegion;
 import souther.compiler.diag.Primary;
 
 import souther.compiler.codegen.Backend;
@@ -169,7 +170,7 @@ class AnArtifactThisCompilerCannotReadIsSaidWhereItWasReachedTest {
      */
     @Test
     void itIsSaidAtTheImportThatReachesTheModule() {
-        Compilation compilation = Compilation.ofSources(List.of("""
+        String stands = """
                 module app.uses
 
 
@@ -178,7 +179,8 @@ class AnArtifactThisCompilerCannotReadIsSaidWhereItWasReachedTest {
                 import lib.pub ( Held )
 
                 data Page = { held: Held }
-                """), new Fabricated(Map.of(
+                """;
+        Compilation compilation = Compilation.ofSources(List.of(stands), new Fabricated(Map.of(
                         "lib.pub.$Module", moduleClass(Backend.BOUNDARY_VERSION + 1, "lib.pub",
                                 List.of(), List.of("Held"), List.of()),
                         "lib.pub.Held", dataClass("data Held = String"))));
@@ -186,8 +188,10 @@ class AnArtifactThisCompilerCannotReadIsSaidWhereItWasReachedTest {
         Located said = compilation.diagnostics().get(new SourceId("0")).stream()
                 .filter(d -> d.diagnostic().code().equals("E1509")).findFirst().orElseThrow();
 
-        assertEquals(6, ((Primary.InSource) said.diagnostic().primary()).place().region().start().line(), "the import line naming the module");
-        assertEquals(1, ((Primary.InSource) said.diagnostic().primary()).place().region().start().column());
+        PhysicalRegion caret = WhereItSits.in(stands,
+                ((Primary.InSource) said.diagnostic().primary()).place().region());
+        assertEquals(6, caret.start().line(), "the import line naming the module");
+        assertEquals(1, caret.start().column());
     }
 
     /** The boundary revision does not agree. */

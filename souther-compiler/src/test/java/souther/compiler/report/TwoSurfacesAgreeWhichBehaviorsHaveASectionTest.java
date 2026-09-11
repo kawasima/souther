@@ -1,11 +1,12 @@
 package souther.compiler.report;
 
+import souther.compiler.diag.SourceLayouts;
+import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
-import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.Compilation;
 
@@ -112,7 +113,7 @@ class TwoSurfacesAgreeWhichBehaviorsHaveASectionTest {
      */
     @Test
     void theBehaviorThisIssueWasAboutHasOneAndSaysWhatItFound() {
-        String take = block(report().human(SourceNameResolver.identity()), "take");
+        String take = block(report().human(SourceRendering.namedByIdentity(SourceLayouts.NONE)), "take");
 
         assertTrue(take.contains("border      borders 2"), take);
         assertTrue(take.contains("this order names no value there"), take);
@@ -136,7 +137,7 @@ class TwoSurfacesAgreeWhichBehaviorsHaveASectionTest {
     private static Set<String> inTheText() {
         Set<String> out = new LinkedHashSet<>();
         String name = null;
-        for (String line : report().human(SourceNameResolver.identity()).lines().toList()) {
+        for (String line : report().human(SourceRendering.namedByIdentity(SourceLayouts.NONE)).lines().toList()) {
             if (line.startsWith("  ") && !line.startsWith("    ") && !line.isBlank()) {
                 name = line.trim().split("\\s+")[0];
             } else if (name != null && line.startsWith("    partition ")) {
@@ -148,7 +149,7 @@ class TwoSurfacesAgreeWhichBehaviorsHaveASectionTest {
 
     private static Set<String> inTheJson() {
         JsonNode root = JsonMapper.builder().build()
-                .readTree(report().json(SourceNameResolver.identity()));
+                .readTree(report().json(SourceRendering.namedByIdentity(SourceLayouts.NONE)));
         Set<String> out = new LinkedHashSet<>();
         root.get("modules").forEach(module -> module.get("behaviors").forEach(behavior -> {
             if (behavior.has("partition")) {

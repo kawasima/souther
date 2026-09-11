@@ -1,12 +1,12 @@
 package souther.compiler.query;
 
+import souther.compiler.diag.Placement;
 import souther.compiler.source.SourceId;
 
 import souther.compiler.diag.msg.NameMessage;
 
 
 import souther.compiler.diag.Diagnostic;
-import souther.compiler.diag.SourcePos;
 
 import org.junit.jupiter.api.Test;
 
@@ -35,10 +35,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  */
 class WhereAReportIsAnchoredIsReadInThisOrderTest {
 
-    /** A report pointing at line 3 of {@code positionsFile}, found by a key naming {@code keysFile}. */
+    /** A report pointing into {@code positionsFile}, or into a text nothing names where it is none,
+     *  found by a key naming {@code keysFile}. */
     private static Db.Found found(SourceId positionsFile, SourceId keysFile) {
+        Placement in = positionsFile == null ? Placement.aTextWithNoIdentity()
+                : Placement.aFileOfThisCompile(positionsFile);
         Diagnostic d = Diagnostic.say(new NameMessage.NoValueOfThatNameInScope("x"))
-                .at(new SourcePos(3, 3, positionsFile), 4).build();
+                .at(in.at(3, 3), 4).build();
         return new Db.Found("m", keysFile, Report.of(d));
     }
 

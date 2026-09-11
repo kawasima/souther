@@ -1,5 +1,6 @@
 package souther.compiler;
 
+import souther.compiler.cst.SourceLayout;
 import souther.compiler.diag.CompileException;
 import souther.compiler.diag.Diagnostic;
 import souther.compiler.diag.HumanRenderer;
@@ -74,7 +75,7 @@ class AMissingFieldIsNotBlamedOnASpreadThatWasNotWrittenTest {
 
     private static String rendered(String src, Locale locale) {
         return new HumanRenderer(false)
-                .render(diagnosticOf(src), new SourceContext("demo.sou", src), locale);
+                .render(diagnosticOf(src), new SourceContext("demo.sou", src, SourceLayout.of(src)), locale);
     }
 
     @Test

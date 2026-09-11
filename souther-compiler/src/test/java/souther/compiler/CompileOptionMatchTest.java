@@ -1,5 +1,6 @@
 package souther.compiler;
 
+import souther.compiler.cst.SourceLayout;
 import souther.compiler.diag.CompileException;
 import souther.compiler.diag.HumanRenderer;
 import souther.compiler.diag.SourceContext;
@@ -221,7 +222,7 @@ class CompileOptionMatchTest {
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
         assertEquals("E1303", e.code(), e.getMessage());
         String out = new HumanRenderer(false).render(e.diagnostic(),
-                new SourceContext("demo.sou", src), Locale.ENGLISH);
+                new SourceContext("demo.sou", src, SourceLayout.of(src)), Locale.ENGLISH);
         assertTrue(out.contains("Some"), out);
         assertFalse(out.contains("Java"), "a Java binding does not build an optional either: " + out);
     }
@@ -238,7 +239,7 @@ class CompileOptionMatchTest {
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
         assertEquals("E1303", e.code(), e.getMessage());
         String out = new HumanRenderer(false).render(e.diagnostic(),
-                new SourceContext("demo.sou", src), Locale.ENGLISH);
+                new SourceContext("demo.sou", src, SourceLayout.of(src)), Locale.ENGLISH);
         assertTrue(out.contains("None"), out);
     }
 
@@ -255,7 +256,7 @@ class CompileOptionMatchTest {
                 """;
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
         String out = new HumanRenderer(false).render(e.diagnostic(),
-                new SourceContext("demo.sou", src), Locale.ENGLISH);
+                new SourceContext("demo.sou", src, SourceLayout.of(src)), Locale.ENGLISH);
         assertTrue(out.contains("flatMap"), out);
     }
 }

@@ -1,5 +1,6 @@
 package souther.compiler.query;
 
+import souther.compiler.diag.Placement;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.check.RuleCitation;
@@ -223,7 +224,7 @@ class OneFactIsOneWeakeningHoweverItWasEvidencedTest {
         List<RuleReasons.Placed> written = new ArrayList<>();
         for (int i = 0; i < stopped.length; i++) {
             written.add(new RuleReasons.Placed(
-                    new SourcePos(1, i + 1, new SourceId("one")),
+                    Placement.aFileOfThisCompile(new SourceId("one")).at(1, i + 1),
                     WhereInTheRule.theRuleItself(), stopped[i]));
         }
         return of(new Weakening.ModelReadingIncomplete(ClosureGap.QuestionUnanswered.of(

@@ -1,5 +1,6 @@
 package souther.compiler.frontend;
 
+import souther.compiler.WhereItSits;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.query.Scopes;
@@ -105,7 +106,7 @@ class AFrontEndDoesNotDropWhatTheIrCannotHoldTest {
      */
     @Test
     void aSumCannotCarryAnInvariant() {
-        CompileException refused = assertThrows(CompileException.class, () -> Compiler.compile("""
+        String module = """
                 module demo
                 data A
                 data B
@@ -114,10 +115,11 @@ class AFrontEndDoesNotDropWhatTheIrCannotHoldTest {
                 data Out = { s: String }
                 behavior k : (t: T) -> Out constructs Out
                 let k (t) = Out { s = "x" }
-                """));
+                """;
+        CompileException refused = assertThrows(CompileException.class, () -> Compiler.compile(module));
 
         assertEquals("E1107", refused.code());
-        assertEquals(5, refused.pos().line(), "must point at the clause, not the declaration");
+        assertEquals(5, WhereItSits.in(module, refused.pos()).line(), "must point at the clause, not the declaration");
     }
 
     /** The clause is refused before it is elaborated, so this would otherwise compile clean with an

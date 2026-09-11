@@ -1,5 +1,6 @@
 package souther.compiler.query;
 
+import souther.compiler.cst.SourceLayout;
 import souther.compiler.source.SourceId;
 
 import org.junit.jupiter.api.Test;
@@ -78,7 +79,7 @@ class AnEditorIsOnlyToldAboutNamesTheAuthorWroteTest {
         Map<String, String> byId = new LinkedHashMap<>();
         byId.put(ID, source);
         return Compilation.ofDocuments(byId, Set.of(), ModulePath.EMPTY).db()
-                .ask(new Names.ValueAt(new SourcePos(line, column, new SourceId(ID)))).value();
+                .ask(new Names.ValueAt(caret(source, line, column))).value();
     }
 
     /** What the cursor is on across a whole span, as one string: `X` where something is, `.` where
@@ -139,5 +140,17 @@ class AnEditorIsOnlyToldAboutNamesTheAuthorWroteTest {
         assertEquals("w", under(WRITTEN, 14, 16).name(), "`| Round as w`");
         assertEquals("z", under(WRITTEN, 15, 15).name(), "`| Flat as z`");
         assertNull(under(WRITTEN, 14, 7), "the arm starts at the case name, which binds nothing");
+    }
+
+    /**
+     * The place an editor's caret is at line {@code line} column {@code column} of {@code source}.
+     *
+     * <p>A caret is a line and a column — it is where a reader put it — and which of the things
+     * written in that file that lands on is the file's to say. Spelled out of the two numbers, it
+     * is a place made up rather than read, and what is under it is nothing.
+     */
+    private static SourcePos caret(String source, int line, int column) {
+        SourceLayout laidOut = SourceLayout.of(source, new SourceId(ID));
+        return laidOut.placeAt(laidOut.lines().offsetOf(line - 1, column - 1));
     }
 }

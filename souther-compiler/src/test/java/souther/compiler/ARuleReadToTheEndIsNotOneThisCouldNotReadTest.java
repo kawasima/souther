@@ -1,11 +1,11 @@
 package souther.compiler;
 
+import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
-import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.Compilation;
 import souther.compiler.report.AdequacyReport;
@@ -102,7 +102,7 @@ class ARuleReadToTheEndIsNotOneThisCouldNotReadTest {
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
         AdequacyReport report = AdequacyReport.of(compilation);
-        JsonNode document = JSON.readTree(report.json(SourceNameResolver.identity()));
+        JsonNode document = JSON.readTree(report.json(SourceRendering.namedByIdentity(compilation.texts())));
         JsonNode behavior = document.get("modules").get(0).get("behaviors").get(0);
         List<String> weakening = new ArrayList<>();
         behavior.path("weakening").forEach(each -> weakening.add(each.asString()));
@@ -116,7 +116,7 @@ class ARuleReadToTheEndIsNotOneThisCouldNotReadTest {
                 declaration.get("findings")
                         .forEach(each -> kinds.add(each.get("kind").asString())));
         return new Measured(behavior.get("status").asString(), weakening, kinds,
-                report.human(SourceNameResolver.identity()));
+                report.human(SourceRendering.namedByIdentity(compilation.texts())));
     }
 
     /** A clause that draws a line, which is what the three below are read against. */

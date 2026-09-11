@@ -22,6 +22,7 @@ import souther.compiler.check.Sig;
 import souther.compiler.check.SpecImplementation;
 import souther.compiler.core.EnsuresEnforcement;
 import souther.compiler.core.KernelSignatures;
+import souther.compiler.diag.SourceLayouts;
 import souther.compiler.types.Type;
 import souther.compiler.types.TypeSymbol;
 import souther.compiler.check.TypeOps;
@@ -158,10 +159,11 @@ public final class Backend {
                                                InvariantStatements invariantStatements,
                                                Map<TypeSymbol.AtModule, ValueShape> shapes,
                                                Map<ValueName.Behavior, EnsuresEnforcement> checks,
-                                               Map<String, Type> standingCalls) {
+                                               Map<String, Type> standingCalls,
+                                               SourceLayouts layouts) {
         return generate(module, symbols, kernels, typePackage, sigs, importedSigs, importedInjected,
-                calleeSigs, requirements, checked, compositions, dischargeInvariants, invariantStatements, shapes, checks,
-                standingCalls, Instrumentation.NONE);
+                calleeSigs, requirements, checked, compositions, dischargeInvariants,
+                invariantStatements, shapes, checks, standingCalls, layouts, Instrumentation.NONE);
     }
 
     /**
@@ -192,11 +194,13 @@ public final class Backend {
                                                Map<TypeSymbol.AtModule, ValueShape> shapes,
                                                Map<ValueName.Behavior, EnsuresEnforcement> checks,
                                                Map<String, Type> standingCalls,
+                                               SourceLayouts layouts,
                                                Instrumentation instrumentation) {
         try {
             return generating(module, symbols, kernels, typePackage, sigs, importedSigs,
                     importedInjected, calleeSigs, requirements, checked, compositions,
-                    dischargeInvariants, invariantStatements, shapes, checks, standingCalls, instrumentation);
+                    dischargeInvariants, invariantStatements, shapes, checks, standingCalls,
+                    layouts, instrumentation);
         } catch (IllegalArgumentException e) {
             // Something the writer would not hold, from a member no definition here claimed — a
             // synthesised class, a shared one. It belongs to the module, which is as near as anything
@@ -220,6 +224,7 @@ public final class Backend {
                                                   Map<TypeSymbol.AtModule, ValueShape> shapes,
                                                   Map<ValueName.Behavior, EnsuresEnforcement> checks,
                                                   Map<String, Type> standingCalls,
+                                                  SourceLayouts layouts,
                                                   Instrumentation instrumentation) {
         Map<String, List<GeneratedClass>> caseToSums = new HashMap<>();
         for (Hir.Def def : module.defs()) {
@@ -248,7 +253,7 @@ public final class Backend {
             }
         }
         CodegenContext ctx = new CodegenContext(module.name(), symbols, kernels, caseToSums, typePackage,
-                module.exposing().isEmpty(), exposed, standingCalls);
+                module.exposing().isEmpty(), exposed, standingCalls, layouts);
         ctx.setDischargeInvariants(dischargeInvariants);
         ctx.setInvariantStatements(invariantStatements);
         ctx.setValueShapes(shapes);

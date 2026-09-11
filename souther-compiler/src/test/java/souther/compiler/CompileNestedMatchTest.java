@@ -1,5 +1,6 @@
 package souther.compiler;
 
+import souther.compiler.cst.SourceLayout;
 import souther.compiler.diag.CompileException;
 import souther.compiler.diag.HumanRenderer;
 import souther.compiler.diag.SourceContext;
@@ -49,7 +50,7 @@ class CompileNestedMatchTest {
     private static String rendered(String src) {
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
         return new HumanRenderer(false)
-                .render(e.diagnostic(), new SourceContext("demo.sou", src), Locale.ENGLISH);
+                .render(e.diagnostic(), new SourceContext("demo.sou", src, SourceLayout.of(src)), Locale.ENGLISH);
     }
 
     private long runWith(BytesClassLoader loader, Object raw) throws Exception {

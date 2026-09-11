@@ -1,5 +1,6 @@
 package souther.compiler.check;
 
+import souther.compiler.diag.Placement;
 import souther.compiler.DefaultStdlib;
 import souther.compiler.source.SourceId;
 
@@ -41,7 +42,7 @@ class AKeptCallsFunctionArgumentIsRefusedWhereItIsWrittenTest {
      *  is which of two lines the caret lands on, and a position naming no source would leave that
      *  to whichever text the caller said it was reading. */
     private static final SourceId SOURCE = new SourceId("0");
-    private static final SourcePos CALL = new SourcePos(1, 1, SOURCE);
+    private static final SourcePos CALL = Placement.aFileOfThisCompile(SOURCE).at(1, 1);
 
     /** The list here is this test's own: no source spells the brackets. */
     private static final SourceConstructOrigin COMPOSED = SourceConstructOrigin.unwritten();
@@ -49,7 +50,7 @@ class AKeptCallsFunctionArgumentIsRefusedWhereItIsWrittenTest {
     /** The applications are a body's: this test stands where an author's call stands. */
     private static final ApplicationOrigin WROTE = new ApplicationOrigin.Written(
             SourceConstructOrigin.written(new WrittenOwner.Body("m", "b"), 0, SourceConstruct.CALL));
-    private static final SourcePos ARGUMENT = new SourcePos(3, 5, SOURCE);
+    private static final SourcePos ARGUMENT = Placement.aFileOfThisCompile(SOURCE).at(3, 5);
 
     /**
      * {@code List.flatMap : (('a) -> List<'b>, List<'a>) -> List<'b>} — the function argument is
@@ -72,9 +73,9 @@ class AKeptCallsFunctionArgumentIsRefusedWhereItIsWrittenTest {
                 () -> Elaborator.elaborate(call, Scope.NONE, CheckContext.of(Symbols.none(DefaultStdlib.get()))
                         .preserving(Preserved.byTheLanguagesOwnOperations())));
 
-        assertEquals(ARGUMENT.line(), ((Primary.InSource) e.diagnostic().primary()).place().region().start().line(),
-                "the block is on line " + ARGUMENT.line() + " and the callee on line "
-                        + CALL.line());
+        assertEquals(ARGUMENT,
+                ((Primary.InSource) e.diagnostic().primary()).place().region().start(),
+                "the block is written at " + ARGUMENT + " and the callee at " + CALL);
     }
 
     /**

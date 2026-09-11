@@ -633,7 +633,8 @@ final class BodyGen {
          * the same line (a subexpression tree, or a tail node re-lined by {@code genExpr}) collapse to
          * one entry. */
         private void emitLine(Core e) {
-            int line = e.pos() != null ? e.pos().line() : 0;
+            souther.compiler.diag.PhysicalPos sits = ctx.sits(e.pos());
+            int line = sits == null ? 0 : sits.line();
             if (line > 0 && line != lastEmittedLine) {
                 code.lineNumber(line);
                 lastEmittedLine = line;
@@ -828,7 +829,8 @@ final class BodyGen {
          * the frame's own file and line; a reader of E1911 has the row's place beside this one.
          */
         private String abortMessage(Core.Unreachable u) {
-            return u.pos() == null ? u.reason() : u.reason() + " (" + u.pos() + ")";
+            souther.compiler.diag.PhysicalPos sits = ctx.sits(u.pos());
+            return sits == null ? u.reason() : u.reason() + " (" + sits + ")";
         }
 
         private void match(Core.Match m, Type expected) {

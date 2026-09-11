@@ -38,6 +38,17 @@ class AReportAboutAPathModuleSaysWhichModuleItIsAboutTest {
     private static final List<SourcePos> AN_IMPORT_LINE =
             List.of(Placement.aFileOfThisCompile(new SourceId("0")).at(2, 1));
 
+    /**
+     * Which of the things written in the text a place is at, and not whose code it carries.
+     *
+     * <p>What moving a report does is put the caret somewhere and say the code is elsewhere, so the
+     * two are asked separately: this says where it points, and the assertion after it says what it
+     * is about.
+     */
+    private static List<Integer> written(SourcePos place) {
+        return List.of(place.construct(), place.token(), place.within());
+    }
+
     @Test
     void aMissingDependencyIsAboutTheModuleThatNeedsIt() {
         Diagnostic said = Front.needs("lib.absent", "lib.held");
@@ -72,7 +83,8 @@ class AReportAboutAPathModuleSaysWhichModuleItIsAboutTest {
 
         Citation.Reached reached = assertInstanceOf(Citation.Reached.class,
                 Citation.of(((Primary.InSource) moved.primary()).place().region().start()), "moved, it points at a file the reader holds");
-        assertEquals(2, reached.at().line());
+        assertEquals(written(AN_IMPORT_LINE.get(0)), written(reached.at()),
+                "it points at the import line it was moved to");
         assertEquals("lib.held", reached.provenance().reachedBy(),
                 "and is still about the code it was about");
     }

@@ -3,7 +3,7 @@ package souther.compiler.query;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.DocumentShape;
-import souther.compiler.diag.SourceNameResolver;
+import souther.compiler.diag.SourceRendering;
 import souther.compiler.partition.ObligationIdentity;
 import souther.compiler.report.AdequacyReport;
 
@@ -224,8 +224,9 @@ class ACaseOfAnInputIsAClassOnlyWhereTheBehaviorHasThePositionTest {
     }
 
     private static JsonNode reportOf(String model) {
-        return JSON.readTree(AdequacyReport.of(measured(model))
-                .json(SourceNameResolver.identity()));
+        Compilation measured = measured(model);
+        return JSON.readTree(AdequacyReport.of(measured)
+                .json(SourceRendering.namedByIdentity(measured.texts())));
     }
 
     private static Compilation measured(String model) {

@@ -1,5 +1,8 @@
 package souther.compiler;
 
+import souther.compiler.diag.Primary;
+import souther.compiler.WhereItSits;
+import souther.compiler.cst.SourceLayout;
 import souther.compiler.diag.CompileException;
 import souther.compiler.diag.HumanRenderer;
 import souther.compiler.diag.SourceContext;
@@ -68,7 +71,7 @@ class CompileDependsOnClauseTest {
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
         assertEquals("E1607", e.code(), e.getMessage());
         String hint = new HumanRenderer(false).render(e.diagnostic(),
-                new SourceContext("demo.sou", src), Locale.ENGLISH);
+                new SourceContext("demo.sou", src, SourceLayout.of(src)), Locale.ENGLISH);
         assertTrue(hint.contains("Remove `chain` from `depends on`"), hint);
         assertFalse(hint.contains("`let`"), "a composition has no `let` to remove: " + hint);
     }
@@ -150,14 +153,16 @@ class CompileDependsOnClauseTest {
                 """;
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(implemented));
         assertEquals("E1607", e.code(), e.getMessage());
-        assertTrue(e.getMessage().startsWith("9:16 "),
+        assertEquals("9:16", String.valueOf(WhereItSits.in(implemented,
+                        ((Primary.InSource) e.diagnostic().primary()).place().region().start())),
                 "at the `one` of `depends on one`: " + e.getMessage());
 
         String unknown = implemented.replace("depends on one", "depends on nosuch")
                 .replace("let use (a, one) = one(a)", "let use (a, nosuch) = nosuch(a)");
         CompileException absent = assertThrows(CompileException.class, () -> Compiler.compile(unknown));
         assertEquals("E1607", absent.code(), absent.getMessage());
-        assertTrue(absent.getMessage().startsWith("9:16 "),
+        assertEquals("9:16", String.valueOf(WhereItSits.in(unknown,
+                        ((Primary.InSource) absent.diagnostic().primary()).place().region().start())),
                 "and at the `nosuch` of `depends on nosuch`: " + absent.getMessage());
     }
 

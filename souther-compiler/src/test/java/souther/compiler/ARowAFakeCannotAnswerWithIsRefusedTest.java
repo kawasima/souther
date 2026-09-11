@@ -137,10 +137,10 @@ class ARowAFakeCannotAnswerWithIsRefusedTest {
         List<Diagnostic> said = unanswerable(source);
 
         assertEquals(1, said.size(), "one row of the two answers nothing");
-        assertEquals(lineOf(source, "\"second\""), ((Primary.InSource) said.get(0).primary()).place().region().start().line(),
+        assertEquals(lineOf(source, "\"second\""), WhereItSits.in(source, ((Primary.InSource) said.get(0).primary()).place().region()).start().line(),
                 "and it is the later one, since the first match is what answers");
         assertEquals(lineOf(source, "Found { id = MemberId(\"m-1\") }"),
-                ((souther.compiler.diag.DiagnosticPlace.InSource) said.get(0).secondary().get(0).place()).region().start().line(),
+                WhereItSits.in(source, ((souther.compiler.diag.DiagnosticPlace.InSource) said.get(0).secondary().get(0).place()).region()).start().line(),
                 "the row that answers instead is quoted");
     }
 
@@ -155,10 +155,10 @@ class ARowAFakeCannotAnswerWithIsRefusedTest {
         List<Diagnostic> said = unanswerable(source);
 
         assertEquals(1, said.size(), "one of the two `_` rows answers nothing");
-        assertEquals(lineOf(source, "\"first\""), ((Primary.InSource) said.get(0).primary()).place().region().start().line(),
+        assertEquals(lineOf(source, "\"first\""), WhereItSits.in(source, ((Primary.InSource) said.get(0).primary()).place().region()).start().line(),
                 "and it is the earlier one, since a table falls through to the last `_`");
         assertEquals(lineOf(source, "\"second\""),
-                ((souther.compiler.diag.DiagnosticPlace.InSource) said.get(0).secondary().get(0).place()).region().start().line(),
+                WhereItSits.in(source, ((souther.compiler.diag.DiagnosticPlace.InSource) said.get(0).secondary().get(0).place()).region()).start().line(),
                 "the `_` that answers is quoted");
     }
 
@@ -174,9 +174,9 @@ class ARowAFakeCannotAnswerWithIsRefusedTest {
         List<Diagnostic> said = unanswerable(source);
 
         assertEquals(List.of(lineOf(source, "\"first\""), lineOf(source, "\"second\"")),
-                said.stream().map(d -> ((Primary.InSource) d.primary()).place().region().start().line()).sorted().toList(),
+                said.stream().map(d -> WhereItSits.in(source, ((Primary.InSource) d.primary()).place().region()).start().line()).sorted().toList(),
                 "two rows answer nothing, and each is said at itself");
-        assertTrue(said.stream().allMatch(d -> ((souther.compiler.diag.DiagnosticPlace.InSource) d.secondary().get(0).place()).region().start().line()
+        assertTrue(said.stream().allMatch(d -> WhereItSits.in(source, ((souther.compiler.diag.DiagnosticPlace.InSource) d.secondary().get(0).place()).region()).start().line()
                         == lineOf(source, "\"third\"")),
                 "and both name the one that answers, rather than the row written after them");
     }

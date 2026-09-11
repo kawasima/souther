@@ -81,7 +81,7 @@ class HighValueDiagnosticTest {
         // the empty seed and say how to type it — annotate the binding (issue #71) or move the fold
         // into a typed position — not at the arithmetic deep inside the inlined Map.updateOrInsert (issue #70,
         // the misleading-location half).
-        Diagnostic d = diagnosticOf("""
+        String source = """
                 module demo
                 import List ( fold )
                 data In = { keys: List<String> }
@@ -91,10 +91,11 @@ class HighValueDiagnosticTest {
                     let counts = fold((acc, k) -> Map.updateOrInsert(k, 1, n -> n + 1, acc), Map.empty, i.keys)
                     Out { m = counts }
                 }
-                """);
+                """;
+        Diagnostic d = diagnosticOf(source);
         assertEquals("check.fold.seed.title", d.titleKey());
         // the primary caret is on the Map.empty seed (line 7), not the `+` inside upsert
-        assertEquals(7, ((Primary.InSource) d.primary()).place().region().start().line());
+        assertEquals(7, WhereItSits.in(source, ((Primary.InSource) d.primary()).place().region()).start().line());
     }
 
     @Test

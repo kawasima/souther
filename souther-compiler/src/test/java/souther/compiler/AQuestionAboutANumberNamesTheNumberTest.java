@@ -1,5 +1,6 @@
 package souther.compiler;
 
+import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 
 import tools.jackson.databind.JsonNode;
@@ -8,7 +9,6 @@ import tools.jackson.databind.json.JsonMapper;
 import souther.compiler.check.NumberAt;
 import souther.compiler.check.Owed;
 import souther.compiler.check.RuleKey;
-import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.inputs.InputQuestion;
 import souther.compiler.inputs.TermPath;
 import souther.compiler.query.Adequacy;
@@ -80,7 +80,7 @@ class AQuestionAboutANumberNamesTheNumberTest {
         Compilation compilation = Compilation.ofSource(source, "Main");
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
-        return JSON.readTree(AdequacyReport.of(compilation).json(SourceNameResolver.identity()))
+        return JSON.readTree(AdequacyReport.of(compilation).json(SourceRendering.namedByIdentity(compilation.texts())))
                 .get("modules").get(0).get("behaviors").get(0).get("partition");
     }
 

@@ -1,5 +1,6 @@
 package souther.compiler.publish;
 
+import souther.compiler.diag.Placement;
 import org.junit.jupiter.api.Test;
 import souther.compiler.check.Clause;
 import souther.compiler.check.ClauseName;
@@ -7,7 +8,6 @@ import souther.compiler.check.RuleCitation;
 import souther.compiler.check.RuleReportAnchor;
 import souther.compiler.check.RuleRef;
 import souther.compiler.diag.Citation;
-import souther.compiler.diag.SourcePos;
 import souther.compiler.source.SourceId;
 import souther.compiler.types.SourceConstruct;
 import souther.compiler.types.SourceConstructOrigin;
@@ -47,9 +47,8 @@ class WhereARuleIsIsAskedOncePerHandleOfferedTest {
 
         Optional<RuleCitation> written = PublicationOrders.handleFor(offered, cited -> {
             asked.add(cited);
-            return Citation.of(new SourcePos(cited.anchor()
-                    instanceof RuleReportAnchor.ByTheReadingThatMetIt met ? met.reach() + 1 : 1,
-                    1, new SourceId("0")));
+            return Citation.of(Placement.aFileOfThisCompile(new SourceId("0")).at(cited.anchor()
+                    instanceof RuleReportAnchor.ByTheReadingThatMetIt met ? met.reach() + 1 : 1, 1));
         });
 
         assertEquals(offered.size(), asked.size(),

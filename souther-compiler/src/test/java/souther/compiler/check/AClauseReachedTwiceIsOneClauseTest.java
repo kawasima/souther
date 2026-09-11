@@ -1,5 +1,6 @@
 package souther.compiler.check;
 
+import souther.compiler.WhereItSits;
 import souther.compiler.Compiler;
 import souther.compiler.check.InvariantChecker.Judgment;
 import souther.compiler.check.InvariantChecker.Said;
@@ -123,8 +124,9 @@ class AClauseReachedTwiceIsOneClauseTest {
                 .flatMap(d -> d.secondary().stream())
                 .map(label -> label.place())
                 .filter(place -> place instanceof souther.compiler.diag.DiagnosticPlace.InSource)
-                .map(place -> ((souther.compiler.diag.DiagnosticPlace.InSource) place)
-                        .region().start().line())
+                .map(place -> WhereItSits.in(source,
+                        ((souther.compiler.diag.DiagnosticPlace.InSource) place).region())
+                        .start().line())
                 .toList();
     }
 

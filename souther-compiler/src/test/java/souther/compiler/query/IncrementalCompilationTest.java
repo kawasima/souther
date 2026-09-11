@@ -1,7 +1,10 @@
 package souther.compiler.query;
 
+import souther.compiler.diag.SourcePos;
+import souther.compiler.cst.SourceLayout;
 import souther.compiler.source.SourceId;
 
+import souther.compiler.ast.Ast;
 import souther.compiler.check.Symbols;
 import souther.compiler.meta.ModulePath;
 
@@ -243,6 +246,99 @@ class IncrementalCompilationTest {
                 constructs Amount
             let thrice (n) = Amount(n.value * 3)
             """;
+
+    /**
+     * Where a place is said from decides what an edit reaches, and these are the three shapes that
+     * settle it.
+     *
+     * <p>A place is which meaningful token of which top-level construct it is at. So writing a
+     * token moves the places after it <b>in that construct</b> and no further; writing whitespace,
+     * a line break or a comment moves nothing at all; and writing a construct moves the constructs
+     * after it. Held here because the first of the three was lost once: counted over the whole
+     * text rather than from the construct, a token typed into one body moved every declaration
+     * under it, which is the commonest edit an author makes and the one this is all for.
+     */
+    @Test
+    void aTokenWrittenInOneBodyLeavesThePlacesOfTheNextDeclarationWhereTheyWere() {
+        SourceLayout before = SourceLayout.of(ORDERS, new SourceId("orders.sou"));
+        SourceLayout after = SourceLayout.of(
+                twiceOver("doubled(n.value + 0)").get("orders.sou"), new SourceId("orders.sou"));
+
+        assertEquals(placeOf(before, "n.value * 3"), placeOf(after, "n.value * 3"),
+                "`thrice` is written after the edit and says what it said");
+        assertNotEquals(placeOf(before, "doubled"), placeOf(after, "n.value + 0"),
+                "and the edit did move what follows it inside `twice`");
+    }
+
+    /** A comment or a line break is not a token, so nothing in the file is anywhere else. */
+    @Test
+    void aCommentWrittenInOneBodyLeavesEveryPlaceInTheFileWhereItWas() {
+        SourceLayout before = SourceLayout.of(ORDERS, new SourceId("orders.sou"));
+        SourceLayout after = SourceLayout.of(
+                ORDERS.replace("let twice (n)", "// doubling\n\nlet twice (n)"),
+                new SourceId("orders.sou"));
+
+        assertEquals(placeOf(before, "doubled(n.value)"), placeOf(after, "doubled(n.value)"),
+                "the body the comment was written above");
+        assertEquals(placeOf(before, "n.value * 3"), placeOf(after, "n.value * 3"),
+                "and the declaration after it");
+    }
+
+    /** Writing a construct moves the constructs after it, which is the conservative half. */
+    @Test
+    void aDeclarationWrittenInTheMiddleMovesThePlacesOfTheOnesAfterIt() {
+        SourceLayout before = SourceLayout.of(ORDERS, new SourceId("orders.sou"));
+        SourceLayout after = SourceLayout.of(
+                ORDERS.replace("behavior thrice", "data Other = Int\n\nbehavior thrice"),
+                new SourceId("orders.sou"));
+
+        assertNotEquals(placeOf(before, "n.value * 3"), placeOf(after, "n.value * 3"),
+                "`thrice` is one construct further down than it was");
+        assertEquals(placeOf(before, "doubled(n.value)"), placeOf(after, "doubled(n.value)"),
+                "and what was written above it is where it was");
+    }
+
+    /**
+     * And the tree the front end builds out of it is the same tree, regions and all.
+     *
+     * <p>The three above ask the layout what it answers. This asks what is made of those answers,
+     * because a region has two ends and the checks above compare places a node begins at. The end
+     * is the half that can be got wrong on its own: the offset a token ends at is the offset the
+     * next one starts at wherever nothing separates them, so an end read as an offset belonged to
+     * whichever token came next and moved back onto its own the moment a space was written between
+     * them. Nothing about the module had changed and every region closing on such a token was a
+     * different value.
+     *
+     * <p>Compared as the whole parsed module, so that every place and every region the tree carries
+     * is in the claim rather than the ones a test thought to name.
+     */
+    @Test
+    void aSpaceWrittenBetweenTwoTokensLeavesTheParsedModuleThatSameValue() {
+        String glued = ORDERS;
+        String spaced = ORDERS.replace("let twice (n)", "let twice  ( n )")
+                .replace("Amount(doubled(n.value))", "Amount( doubled(n.value) )");
+        assertNotEquals(glued, spaced, "the two texts differ, or this compares a text to itself");
+
+        assertEquals(parsed(glued), parsed(spaced),
+                "a space between two tokens leaves every place and every region as it was");
+        assertNotEquals(parsed(glued), parsed(glued.replace("n.value * 3", "n.value * 3 + 0")),
+                "and a token written in does move what follows it, which is the conservative half");
+    }
+
+    /** The module the front end reads out of {@code source}, places and regions and all. */
+    private static Ast.Module parsed(String source) {
+        Map<String, String> byId = new LinkedHashMap<>();
+        byId.put("orders.sou", source);
+        Compilation c = Compilation.ofDocuments(byId, Set.of(), ModulePath.EMPTY);
+        c.answerEverything();
+        assertTrue(c.db().allReports().isEmpty(), () -> "the model parses: " + c.db().allReports());
+        return c.db().ask(new Front.Parsed(new SourceId("orders.sou"))).value().module();
+    }
+
+    /** The place the first character of {@code written} is at in {@code laidOut}'s text. */
+    private static SourcePos placeOf(SourceLayout laidOut, String written) {
+        return laidOut.placeAt(laidOut.text().indexOf(written));
+    }
 
     /** One behavior calling another, both requiring nothing. */
     private static final String CALLS = """

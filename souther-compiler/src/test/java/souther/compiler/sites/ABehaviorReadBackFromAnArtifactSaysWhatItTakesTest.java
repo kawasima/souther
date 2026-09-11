@@ -1,6 +1,7 @@
 package souther.compiler.sites;
 
 import souther.compiler.Compiler;
+import souther.compiler.cst.SourceLayout;
 import souther.compiler.diag.SourcePos;
 import souther.compiler.meta.ModulePath;
 import souther.compiler.query.Compilation;
@@ -68,17 +69,21 @@ class ABehaviorReadBackFromAnArtifactSaysWhatItTakesTest {
         assertEquals(List.of("Amount"), typesOf(called));
     }
 
-    /** Where {@code word} is written on the line the consumer writes {@code line} on, in the file
-     *  this compilation read it from — a place is in some text and says which. */
+    /**
+     * Where {@code word} is written after the consumer's {@code line}, in the file this compilation
+     * read it from.
+     *
+     * <p>Read off the text as it is laid out, because that is what a place is made from. Counted
+     * into a line and a column instead, the numbers would be type-correct and name whatever token
+     * happens to be counted that far along.
+     */
     private static SourcePos over(Compilation compilation, String line, String word) {
-        List<String> lines = CONSUMER.lines().toList();
-        for (int at = 0; at < lines.size(); at++) {
-            if (lines.get(at).contains(line)) {
-                return new SourcePos(at + 1, lines.get(at).indexOf(word) + 1,
-                        compilation.sourceIds().get(0));
-            }
+        int at = CONSUMER.indexOf(line);
+        if (at < 0) {
+            throw new AssertionError("the source under test no longer writes " + line);
         }
-        throw new AssertionError("the source under test no longer writes " + line);
+        return SourceLayout.of(CONSUMER, compilation.sourceIds().get(0))
+                .placeAt(CONSUMER.indexOf(word, at));
     }
 
     private static List<String> namesOf(CalledBehavior called) {

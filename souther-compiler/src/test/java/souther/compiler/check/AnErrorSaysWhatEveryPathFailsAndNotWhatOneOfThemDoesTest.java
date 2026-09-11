@@ -1,5 +1,6 @@
 package souther.compiler.check;
 
+import souther.compiler.WhereItSits;
 import souther.compiler.Compiler;
 import souther.compiler.check.InvariantChecker.Judgment;
 import souther.compiler.check.InvariantChecker.Said;
@@ -86,7 +87,7 @@ class AnErrorSaysWhatEveryPathFailsAndNotWhatOneOfThemDoesTest {
         List<LabeledRegion> marked = error().secondary();
 
         assertEquals(List.of(7, 8),
-                marked.stream().map(one -> ((souther.compiler.diag.DiagnosticPlace.InSource) one.place()).region().start().line()).toList());
+                marked.stream().map(one -> WhereItSits.in(EITHER_WAY, ((souther.compiler.diag.DiagnosticPlace.InSource) one.place()).region()).start().line()).toList());
         assertTrue(marked.stream().allMatch(one -> one.said()
                         instanceof InvariantMessage.ThisClauseRejectsTheValueOnSomeOfThePathsHere),
                 "not `ThisClauseRejectsThisValue`, which the value that comes down the other branch"

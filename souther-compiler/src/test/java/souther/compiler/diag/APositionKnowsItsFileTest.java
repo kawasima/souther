@@ -41,6 +41,11 @@ class APositionKnowsItsFileTest {
             data N = { v: Int }
             """;
 
+    /** A place somebody spells by hand in the file {@code id}. */
+    private static SourcePos in(String id, int token, int within) {
+        return Placement.aFileOfThisCompile(new SourceId(id)).at(token, within);
+    }
+
     private static Ast.Module parsedAs(String id, String source) {
         Map<String, String> byId = new LinkedHashMap<>();
         byId.put(id, source);
@@ -74,7 +79,7 @@ class APositionKnowsItsFileTest {
 
     @Test
     void aRegionsEndIsInTheSameFileAsItsStart() {
-        Region r = Region.ofWidth(new SourcePos(4, 7, new SourceId("m.sou")), 5);
+        Region r = Region.ofWidth(in("m.sou", 4, 7), 5);
 
         assertTrue(r.end().isIn(new SourceId("m.sou")), "a region does not leave the source it began in");
     }
@@ -87,16 +92,16 @@ class APositionKnowsItsFileTest {
      */
     @Test
     void theSameCoordinateInTwoFilesIsTwoPlaces() {
-        assertNotEquals(new SourcePos(25, 16, new SourceId("shippingfee.sou")),
-                new SourcePos(25, 16, new SourceId("shippingfee.examples.sou")));
+        assertNotEquals(in("shippingfee.sou", 25, 16),
+                in("shippingfee.examples.sou", 25, 16));
     }
 
     @Test
     void theSameCoordinateInOneFileIsOnePlace() {
-        assertEquals(new SourcePos(25, 16, new SourceId("shippingfee.sou")),
-                new SourcePos(25, 16, new SourceId("shippingfee.sou")));
-        assertEquals(new SourcePos(25, 16, new SourceId("shippingfee.sou")).hashCode(),
-                new SourcePos(25, 16, new SourceId("shippingfee.sou")).hashCode());
+        assertEquals(in("shippingfee.sou", 25, 16),
+                in("shippingfee.sou", 25, 16));
+        assertEquals(in("shippingfee.sou", 25, 16).hashCode(),
+                in("shippingfee.sou", 25, 16).hashCode());
     }
 
     /**
@@ -116,7 +121,7 @@ class APositionKnowsItsFileTest {
      *  can be quoted from that nonetheless reads as an answer. */
     @Test
     void aBlankSourceIdIsRefused() {
-        assertThrows(IllegalArgumentException.class, () -> new SourcePos(1, 1, new SourceId("")));
-        assertThrows(IllegalArgumentException.class, () -> new SourcePos(1, 1, new SourceId("  ")));
+        assertThrows(IllegalArgumentException.class, () -> in("", 1, 1));
+        assertThrows(IllegalArgumentException.class, () -> in("  ", 1, 1));
     }
 }

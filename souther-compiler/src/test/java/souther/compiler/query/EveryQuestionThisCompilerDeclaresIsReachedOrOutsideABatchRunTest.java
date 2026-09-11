@@ -1,5 +1,6 @@
 package souther.compiler.query;
 
+import souther.compiler.diag.SourceRendering;
 import souther.compiler.Compiler;
 import souther.compiler.conformance.ConformanceCorpus;
 import souther.compiler.jvm.ClassFileImage;
@@ -163,8 +164,10 @@ class EveryQuestionThisCompilerDeclaresIsReachedOrOutsideABatchRunTest {
             // Offering an author the rows nothing covers, which is `souther examples --generate`,
             // with and without the rows at the edges a rule draws.
             ConformanceCorpus.Analysed generating = corpus.analyse();
-            GeneratedRows.of(generating.compilation(), null, null, true, corpus.names()).text();
-            GeneratedRows.of(generating.compilation(), null, null, false, corpus.names()).text();
+            GeneratedRows.of(generating.compilation(), null, null, true,
+                    new SourceRendering(corpus.names(), generating.compilation().texts())).text();
+            GeneratedRows.of(generating.compilation(), null, null, false,
+                    new SourceRendering(corpus.names(), generating.compilation().texts())).text();
             into(generating.compilation(), out);
 
             // Asking a compilation what a module declares, which is what the command line reads to

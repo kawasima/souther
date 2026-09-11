@@ -1,5 +1,6 @@
 package souther.compiler.query;
 
+import souther.compiler.diag.SourceLayouts;
 import org.junit.jupiter.api.Test;
 import souther.compiler.check.PathReachability;
 import souther.compiler.report.AdequacyReport;
@@ -115,7 +116,7 @@ class AnAbsentDerivationIsNotAProofAboutTheModelTest {
     @Test
     void theDocumentDoesNotCallAnImplementedBehaviorOneWithNoBody() {
         JsonNode root = JSON.readTree(AdequacyReport.of(measured(STOPPED))
-                .json(souther.compiler.diag.SourceNameResolver.identity()));
+                .json(souther.compiler.diag.SourceRendering.namedByIdentity(SourceLayouts.NONE)));
         JsonNode behavior = root.get("modules").get(0).get("behaviors").get(0);
 
         assertEquals("pick", behavior.get("name").asString());
@@ -137,7 +138,7 @@ class AnAbsentDerivationIsNotAProofAboutTheModelTest {
     @Test
     void theDocumentLeavesOutACountItCouldNotMake() {
         JsonNode root = JSON.readTree(AdequacyReport.of(measured(STOPPED))
-                .json(souther.compiler.diag.SourceNameResolver.identity()));
+                .json(souther.compiler.diag.SourceRendering.namedByIdentity(SourceLayouts.NONE)));
         JsonNode behavior = root.get("modules").get(0).get("behaviors").get(0);
 
         assertFalse(behavior.has("rows"),

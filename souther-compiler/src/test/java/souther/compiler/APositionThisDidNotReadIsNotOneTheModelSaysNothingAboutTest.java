@@ -1,8 +1,8 @@
 package souther.compiler;
 
+import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 
-import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.BorderAssessment;
 import souther.compiler.query.Compilation;
@@ -94,7 +94,7 @@ class APositionThisDidNotReadIsNotOneTheModelSaysNothingAboutTest {
         Compilation compilation = Compilation.ofSource(MODEL, "Main");
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
-        String human = AdequacyReport.of(compilation).human(SourceNameResolver.identity());
+        String human = AdequacyReport.of(compilation).human(SourceRendering.namedByIdentity(compilation.texts()));
         StringBuilder block = new StringBuilder();
         boolean inside = false;
         for (String line : human.split("\n", -1)) {
@@ -237,7 +237,7 @@ class APositionThisDidNotReadIsNotOneTheModelSaysNothingAboutTest {
         compilation.answerEverything();
 
         String block = souther.compiler.report.GeneratedRows.of(
-                compilation, "example.repro", "boundedByADate", true, SourceNameResolver.identity()).text();
+                compilation, "example.repro", "boundedByADate", true, SourceRendering.namedByIdentity(compilation.texts())).text();
 
         assertTrue(block.contains("Cutoff(Date(\"2026-01-01\"))"), block);
     }
@@ -256,7 +256,7 @@ class APositionThisDidNotReadIsNotOneTheModelSaysNothingAboutTest {
         compilation.answerEverything();
 
         String block = souther.compiler.report.GeneratedRows.of(
-                compilation, "example.repro", "byDateTime", true, SourceNameResolver.identity()).text();
+                compilation, "example.repro", "byDateTime", true, SourceRendering.namedByIdentity(compilation.texts())).text();
 
         assertTrue(block.contains("DateTime(\"2026-01-01T00:00:00\")"), block);
         assertFalse(block.contains("refused at construction"), block);

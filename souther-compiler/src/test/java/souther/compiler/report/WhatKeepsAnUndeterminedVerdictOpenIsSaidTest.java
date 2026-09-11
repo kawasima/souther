@@ -1,5 +1,7 @@
 package souther.compiler.report;
 
+import souther.compiler.diag.SourceLayouts;
+import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 
 import tools.jackson.databind.JsonNode;
@@ -9,7 +11,6 @@ import souther.compiler.check.RuleCitation;
 import souther.compiler.check.RuleReportAnchor;
 import souther.compiler.types.WrittenOwner;
 import souther.compiler.check.RuleRef;
-import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.inputs.BlockReason;
 import souther.compiler.inputs.FilingCoordinate;
 import souther.compiler.inputs.StandingQuestion;
@@ -96,7 +97,7 @@ class WhatKeepsAnUndeterminedVerdictOpenIsSaidTest {
         AdequacyReport report = measured();
 
         assertEquals(AdequacyReport.AdequacyStatus.UNDETERMINED, report.adequacy(),
-                () -> report.human(SourceNameResolver.identity()));
+                () -> report.human(SourceRendering.namedByIdentity(SourceLayouts.NONE)));
         assertTrue(report.adequacyGaps().isEmpty(),
                 () -> "and no gap: there is nothing left to write " + report.adequacyGaps());
     }
@@ -134,7 +135,7 @@ class WhatKeepsAnUndeterminedVerdictOpenIsSaidTest {
     /** And a person reading the report is told so, under the verdict. */
     @Test
     void theReportSaysItUnderTheVerdict() {
-        String human = measured().human(SourceNameResolver.identity());
+        String human = measured().human(SourceRendering.namedByIdentity(SourceLayouts.NONE));
 
         assertTrue(human.contains("""
                 adequacy: undetermined
@@ -147,7 +148,7 @@ class WhatKeepsAnUndeterminedVerdictOpenIsSaidTest {
     /** And a build reading the document is told the fact, not the count. */
     @Test
     void theDocumentSaysTheFactAndLeavesTheCountingToWhoeverWantsIt() {
-        JsonNode root = JSON.readTree(measured().json(SourceNameResolver.identity()));
+        JsonNode root = JSON.readTree(measured().json(SourceRendering.namedByIdentity(SourceLayouts.NONE)));
 
         assertEquals("undetermined", root.get("adequacy").asString());
         assertEquals(1, root.get("keptOpenBy").size(), root.get("keptOpenBy").toString());
@@ -171,10 +172,10 @@ class WhatKeepsAnUndeterminedVerdictOpenIsSaidTest {
     @Test
     void aModelWithNoRowsIsOpenOnTheMeasuresNobodyMade() {
         AdequacyReport report = noRows();
-        JsonNode open = JSON.readTree(report.json(SourceNameResolver.identity())).get("keptOpenBy");
+        JsonNode open = JSON.readTree(report.json(SourceRendering.namedByIdentity(SourceLayouts.NONE))).get("keptOpenBy");
 
         assertEquals(AdequacyReport.AdequacyStatus.UNDETERMINED, report.adequacy(),
-                () -> report.human(SourceNameResolver.identity()));
+                () -> report.human(SourceRendering.namedByIdentity(SourceLayouts.NONE)));
         assertFalse(open.isEmpty(),
                 "a verdict nobody could settle is open on the measures nobody made");
         for (JsonNode each : open) {
@@ -203,7 +204,7 @@ class WhatKeepsAnUndeterminedVerdictOpenIsSaidTest {
         for (AdequacyReport each : List.of(measured(), settled(), noRows(), refused())) {
             assertEquals(each.adequacy() == AdequacyReport.AdequacyStatus.UNDETERMINED,
                     !each.whatKeepsTheVerdictOpen().isEmpty(),
-                    () -> each.human(SourceNameResolver.identity()));
+                    () -> each.human(SourceRendering.namedByIdentity(SourceLayouts.NONE)));
         }
     }
 
@@ -218,13 +219,13 @@ class WhatKeepsAnUndeterminedVerdictOpenIsSaidTest {
     @Test
     void theCountThePageAndTheDocumentAgreeOnARefusedReport() {
         AdequacyReport report = refused();
-        JsonNode root = JSON.readTree(report.json(SourceNameResolver.identity()));
+        JsonNode root = JSON.readTree(report.json(SourceRendering.namedByIdentity(SourceLayouts.NONE)));
 
         assertEquals(AdequacyReport.AdequacyStatus.NOT_SATISFIED, report.adequacy(),
-                () -> report.human(SourceNameResolver.identity()));
+                () -> report.human(SourceRendering.namedByIdentity(SourceLayouts.NONE)));
         assertEquals(new AdequacyReport.UnderAWiderRun(0, 0), report.underAWiderRun());
-        assertFalse(report.human(SourceNameResolver.identity()).contains("what keeps it open"),
-                report.human(SourceNameResolver.identity()));
+        assertFalse(report.human(SourceRendering.namedByIdentity(SourceLayouts.NONE)).contains("what keeps it open"),
+                report.human(SourceRendering.namedByIdentity(SourceLayouts.NONE)));
         assertTrue(root.get("keptOpenBy").isEmpty(), root.get("keptOpenBy").toString());
     }
 
@@ -250,10 +251,10 @@ class WhatKeepsAnUndeterminedVerdictOpenIsSaidTest {
     @Test
     void aSettledVerdictIsOpenOnNothing() {
         AdequacyReport report = settled();
-        JsonNode root = JSON.readTree(report.json(SourceNameResolver.identity()));
+        JsonNode root = JSON.readTree(report.json(SourceRendering.namedByIdentity(SourceLayouts.NONE)));
 
         assertNotEquals(AdequacyReport.AdequacyStatus.UNDETERMINED, report.adequacy(),
-                () -> report.human(SourceNameResolver.identity()));
+                () -> report.human(SourceRendering.namedByIdentity(SourceLayouts.NONE)));
         assertTrue(root.get("keptOpenBy").isEmpty(), root.get("keptOpenBy").toString());
     }
 

@@ -71,8 +71,7 @@ final class EvaluationId implements SaysWhatStandsForIt {
     }
 
     String rendered() {
-        return "<" + named.what() + " at "
-                + (where == null ? "?" : where.line() + ":" + where.column()) + ">";
+        return "<" + named.what() + " at " + (where == null ? "?" : where) + ">";
     }
 
     @Override

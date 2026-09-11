@@ -1,5 +1,6 @@
 package souther.compiler;
 
+import souther.compiler.cst.SourceLayout;
 import souther.compiler.diag.msg.ParseMessage;
 import souther.compiler.diag.CompileException;
 
@@ -38,7 +39,7 @@ class SyntaxDiagnosticTest {
     void expectedFoundUsesFriendlyTokenNamesAndLocalizes() {
         Diagnostic d = diagnosticOf("module demo\ndata M = { name String }\n");
         assertInstanceOf(ParseMessage.ADeclarationExpectedSomethingElse.class, d.said());
-        SourceContext src = new SourceContext("m.sou", "module demo\ndata M = { name String }\n");
+        SourceContext src = new SourceContext("m.sou", "module demo\ndata M = { name String }\n", SourceLayout.of("module demo\ndata M = { name String }\n"));
         String en = new HumanRenderer(false).render(d, src, Locale.ENGLISH);
         String ja = new HumanRenderer(false).render(d, src, Locale.JAPANESE);
         assertTrue(en.contains("I expected `:` here, but found a name."), en);
@@ -57,7 +58,7 @@ class SyntaxDiagnosticTest {
         Diagnostic d = diagnosticOf(source);
         assertEquals("parse.title", d.titleKey());
         assertInstanceOf(ParseMessage.ABlockEndsInOneExpression.class, d.said());
-        SourceContext src = new SourceContext("m.sou", source);
+        SourceContext src = new SourceContext("m.sou", source, SourceLayout.of(source));
         String en = new HumanRenderer(false).render(d, src, Locale.ENGLISH);
         String ja = new HumanRenderer(false).render(d, src, Locale.JAPANESE);
         assertTrue(en.contains("A block ends in one expression, which is its value"), en);

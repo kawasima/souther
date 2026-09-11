@@ -2,7 +2,7 @@ package souther.compiler.query;
 
 import org.junit.jupiter.api.Test;
 
-import souther.compiler.diag.SourceNameResolver;
+import souther.compiler.diag.SourceRendering;
 import souther.compiler.report.AdequacyReport;
 import souther.compiler.report.GeneratedRows;
 
@@ -152,12 +152,15 @@ class ARuleOfferedARowIsCoveredOnceTheRowIsWrittenTest {
     }
 
     private static String block(String model) {
-        return GeneratedRows.of(measured(model), "example.decide", null, true,
-                SourceNameResolver.identity()).text();
+        Compilation measured = measured(model);
+        return GeneratedRows.of(measured, "example.decide", null, true,
+                SourceRendering.namedByIdentity(measured.texts())).text();
     }
 
     private static String report(String model) {
-        return AdequacyReport.of(measured(model)).human(SourceNameResolver.identity());
+        Compilation measured = measured(model);
+        return AdequacyReport.of(measured)
+                .human(SourceRendering.namedByIdentity(measured.texts()));
     }
 
     private static Compilation measured(String model) {

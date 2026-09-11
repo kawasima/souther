@@ -1,5 +1,6 @@
 package souther.compiler;
 
+import souther.compiler.cst.SourceLayout;
 import souther.compiler.diag.CompileException;
 import souther.compiler.diag.Diagnostic;
 import souther.compiler.diag.HumanRenderer;
@@ -42,7 +43,7 @@ class CompileSumSpreadConstructionTest {
     private static String rendered(String src, Locale locale) {
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
         Diagnostic d = e.diagnostic();
-        return new HumanRenderer(false).render(d, new SourceContext("demo.sou", src), locale);
+        return new HumanRenderer(false).render(d, new SourceContext("demo.sou", src, SourceLayout.of(src)), locale);
     }
 
     private static Map<?, ?> runWith(BytesClassLoader loader, Object raw) throws Exception {

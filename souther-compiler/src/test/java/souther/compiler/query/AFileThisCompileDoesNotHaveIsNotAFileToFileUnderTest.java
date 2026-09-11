@@ -1,13 +1,13 @@
 package souther.compiler.query;
 
 
+import souther.compiler.diag.Placement;
 import souther.compiler.source.SourceId;
 
 import souther.compiler.diag.msg.NameMessage;
 
 
 import souther.compiler.diag.Diagnostic;
-import souther.compiler.diag.SourcePos;
 import souther.compiler.meta.ModulePath;
 
 import org.junit.jupiter.api.Test;
@@ -40,7 +40,7 @@ class AFileThisCompileDoesNotHaveIsNotAFileToFileUnderTest {
     /** A report about module {@code m} whose primary region was read from {@code positionsFile}. */
     private static Db.Found about(String positionsFile) {
         Diagnostic d = Diagnostic.say(new NameMessage.NoValueOfThatNameInScope("x"))
-                .at(new SourcePos(2, 1, new SourceId(positionsFile)), 4).build();
+                .at(Placement.aFileOfThisCompile(new SourceId(positionsFile)).at(2, 1), 4).build();
         return new Db.Found("m", null, Report.of(d));
     }
 

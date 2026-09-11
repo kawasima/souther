@@ -1,5 +1,7 @@
 package souther.compiler.report;
 
+import souther.compiler.diag.SourceLayouts;
+import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.check.BehaviorContract;
@@ -128,7 +130,8 @@ class OneRuleIsCalledOneThingOnBothSurfacesTest {
             RuleCitation cited = new RuleCitation.Written(written,
                     new RuleReportAnchor.ByTheModuleThatWroteIt());
             String said = RuleHandleProse.said(
-                    PublishedRuleHandle.of(cited, SOMEWHERE), SourceNameResolver.identity(), null);
+                    PublishedRuleHandle.of(cited, SOMEWHERE),
+                    new SourceRendering(SourceNameResolver.identity(), SourceLayouts.NONE), null);
 
             assertEquals(AdequacyReport.schemaRuleKind(each),
                     said.substring(0, said.indexOf('@')),
@@ -161,7 +164,8 @@ class OneRuleIsCalledOneThingOnBothSurfacesTest {
 
             assertEquals(named.citedName(), RuleHandleProse.said(
                             PublishedRuleHandle.of(cited, SOMEWHERE),
-                            SourceNameResolver.identity(), null),
+                            new SourceRendering(SourceNameResolver.identity(),
+                                    SourceLayouts.NONE), null),
                     () -> "a rule with a name is cited by it: " + each);
             assertTrue(!named.citedName().isBlank(),
                     () -> "and there is a name to cite it by: " + each);

@@ -1,5 +1,6 @@
 package souther.compiler.query;
 
+import souther.compiler.WhereItSits;
 import souther.compiler.source.SourceId;
 
 import org.junit.jupiter.api.Test;
@@ -8,6 +9,7 @@ import souther.compiler.ast.Hir;
 import souther.compiler.check.Resolve;
 import souther.compiler.diag.Diagnostic;
 import souther.compiler.diag.Located;
+import souther.compiler.diag.PhysicalPos;
 import souther.compiler.diag.SourcePos;
 import souther.compiler.diag.msg.BehaviorMessage;
 import souther.compiler.diag.msg.DataMessage;
@@ -106,7 +108,8 @@ class ADeclarationTheModuleDoesNotHaveGetsNoIdentityTest {
         List<Hir.Def> resolved = resolvedDefs(TWICE);
 
         assertEquals(List.of("Amount", "D"), namesOf(resolved));
-        assertEquals(4, resolved.get(1).pos().line(), "the declaration the module has is the first");
+        assertEquals(4, WhereItSits.in(TWICE, resolved.get(1).pos()).line(),
+                "the declaration the module has is the first");
     }
 
     @Test
@@ -133,8 +136,14 @@ class ADeclarationTheModuleDoesNotHaveGetsNoIdentityTest {
      */
     @Test
     void theResolutionIndexHoldsOnlyWhatTheModulesDeclarationsName() {
-        assertEquals(List.of(new SourcePos(4, 15, new SourceId(ID))), semanticUsesOfAmount(TWICE));
-        assertEquals(List.of(new SourcePos(4, 15, new SourceId(ID))), semanticUsesOfAmount(RESERVED));
+        assertEquals(List.of(new PhysicalPos(4, 15)), sitsIn(TWICE, semanticUsesOfAmount(TWICE)));
+        assertEquals(List.of(new PhysicalPos(4, 15)),
+                sitsIn(RESERVED, semanticUsesOfAmount(RESERVED)));
+    }
+
+    /** Where each of {@code places} sits in {@code source}, which is what the line above names. */
+    private static List<PhysicalPos> sitsIn(String source, List<SourcePos> places) {
+        return places.stream().map(each -> WhereItSits.in(source, each)).toList();
     }
 
     /**

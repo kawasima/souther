@@ -1,8 +1,9 @@
 package souther.compiler.report;
 
 import souther.compiler.ast.Hir;
+import souther.compiler.cst.SourceLayout;
+import souther.compiler.diag.PhysicalRegion;
 import souther.compiler.diag.QuotedFrom;
-import souther.compiler.diag.Region;
 import souther.compiler.query.Answer;
 import souther.compiler.query.Bodies;
 import souther.compiler.query.Db;
@@ -96,7 +97,9 @@ final class WrittenEnsures {
                 throw new IllegalStateException("no text for a source this compile holds: "
                         + source + ", for a clause of " + spec.name());
             }
-            out.add(cut(text.value(), clause.region(), spec.name()));
+            out.add(cut(text.value(),
+                    SourceLayout.of(text.value(), source).resolve(clause.region()),
+                    spec.name()));
         }
         return List.copyOf(out);
     }
@@ -115,7 +118,7 @@ final class WrittenEnsures {
      * by reading this same text, and the passes that rewrite what a clause states carry them over
      * unchanged.
      */
-    private static String cut(String text, Region region, String behavior) {
+    private static String cut(String text, PhysicalRegion region, String behavior) {
         if (region == null) {
             throw new IllegalStateException("a written clause of " + behavior + " covers nothing");
         }
@@ -142,7 +145,7 @@ final class WrittenEnsures {
         return out.toString();
     }
 
-    private static IllegalStateException outside(Region region, String behavior) {
+    private static IllegalStateException outside(PhysicalRegion region, String behavior) {
         return new IllegalStateException("a clause of " + behavior + " is written at " + region
                 + ", which is not in the text it was read from");
     }

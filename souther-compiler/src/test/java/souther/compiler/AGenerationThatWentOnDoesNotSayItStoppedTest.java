@@ -1,11 +1,12 @@
 package souther.compiler;
 
+import souther.compiler.diag.SourceLayouts;
+import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.RuleReadings;
 import souther.compiler.check.DeclaredSig;
-import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.inputs.InputDomain;
 import souther.compiler.observe.Classification;
 import souther.compiler.observe.Incompleteness;
@@ -94,7 +95,7 @@ class AGenerationThatWentOnDoesNotSayItStoppedTest {
                         Map.of("submit", new Adequacy.Filling(result,
                                 Generator.GenerationResult.NONE,
                                 Adequacy.Generated.RowsForRules.NOTHING, List.of())), null)),
-                Map.of(), SourceNameResolver.identity(), COMPILED.db()).text();
+                Map.of(), SourceRendering.namedByIdentity(SourceLayouts.NONE), COMPILED.db()).text();
     }
 
     /** A run asked for nothing, which is what a reason about the run alone is written against. */

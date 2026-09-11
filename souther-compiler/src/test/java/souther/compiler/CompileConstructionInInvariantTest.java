@@ -44,69 +44,74 @@ class CompileConstructionInInvariantTest {
 
     @Test
     void theCallSpellingWrittenInTheClause() {
-        CompileException e = err("""
+        String source = """
                 module m
                 data Yen = Int invariant value >= 0
                 data Table = List<Int>
                     invariant ok = List.all(x -> Yen(0).value <= x, value)
-                """);
+                """;
+        CompileException e = err(source);
         assertInstanceOf(InvariantMessage.TheNamedClauseConstructsAData.class, e.diagnostic().said());
-        assertEquals(4, ((Primary.InSource) e.diagnostic().primary()).place().region().start().line());
+        assertEquals(4, WhereItSits.in(source, ((Primary.InSource) e.diagnostic().primary()).place().region()).start().line());
     }
 
     @Test
     void theRecordSpellingWrittenInTheClause() {
-        CompileException e = err("""
+        String source = """
                 module m
                 data Yen = Int invariant value >= 0
                 data Table = List<Int>
                     invariant ok = List.all(x -> Yen { value = 0 }.value <= x, value)
-                """);
+                """;
+        CompileException e = err(source);
         assertInstanceOf(InvariantMessage.TheNamedClauseConstructsAData.class, e.diagnostic().said());
-        assertEquals(4, ((Primary.InSource) e.diagnostic().primary()).place().region().start().line());
+        assertEquals(4, WhereItSits.in(source, ((Primary.InSource) e.diagnostic().primary()).place().region()).start().line());
     }
 
     @Test
     void theCallSpellingWrittenInAHelperTheClauseNames() {
-        CompileException e = err("""
+        String source = """
                 module m
                 data Yen = Int invariant value >= 0
                 let atLeastZero (x: Int): Bool = Yen(0).value <= x
                 data Table = Int
                     invariant ok = atLeastZero(value)
-                """);
+                """;
+        CompileException e = err(source);
         assertInstanceOf(InvariantMessage.TheNamedClauseConstructsAData.class, e.diagnostic().said());
-        assertEquals(3, ((Primary.InSource) e.diagnostic().primary()).place().region().start().line(),
+        assertEquals(3, WhereItSits.in(source, ((Primary.InSource) e.diagnostic().primary()).place().region()).start().line(),
                 "the error is at the construction, which is in the helper");
     }
 
     @Test
     void theRecordSpellingWrittenInAHelperTheClauseNames() {
-        CompileException e = err("""
+        String source = """
                 module m
                 data Yen = Int invariant value >= 0
                 let atLeastZero (x: Int): Bool = Yen { value = 0 }.value <= x
                 data Table = Int
                     invariant ok = atLeastZero(value)
-                """);
+                """;
+        CompileException e = err(source);
         assertInstanceOf(InvariantMessage.TheNamedClauseConstructsAData.class, e.diagnostic().said());
-        assertEquals(3, ((Primary.InSource) e.diagnostic().primary()).place().region().start().line());
+        assertEquals(3, WhereItSits.in(source, ((Primary.InSource) e.diagnostic().primary()).place().region()).start().line());
     }
 
     /** However many helpers away: the clause arrives at the check with all of them expanded into it,
      *  so the error is at the construction and not at the first helper the clause names. */
     @Test
     void theConstructionIsFoundThroughAChainOfHelpers() {
-        CompileException e = err("""
+        String source = """
                 module m
                 data Yen = Int invariant value >= 0
                 let inner (x: Int): Bool = Yen(0).value <= x
                 let outer (x: Int): Bool = inner(x)
                 data Table = Int
                     invariant ok = outer(value)
-                """);
+                """;
+        CompileException e = err(source);
         assertInstanceOf(InvariantMessage.TheNamedClauseConstructsAData.class, e.diagnostic().said());
-        assertEquals(3, ((Primary.InSource) e.diagnostic().primary()).place().region().start().line(),
+        assertEquals(3, WhereItSits.in(source, ((Primary.InSource) e.diagnostic().primary()).place().region()).start().line(),
                 "`inner` holds the construction; `outer` only passes through");
     }
 
@@ -180,10 +185,10 @@ class CompileConstructionInInvariantTest {
                 e.diagnostic().secondary().get(0).said());
 
         Region marked = ((souther.compiler.diag.DiagnosticPlace.InSource) e.diagnostic().secondary().get(0).place()).region();
-        assertEquals(5, marked.start().line());
+        assertEquals(5, WhereItSits.in(source, marked).start().line());
         assertEquals("invariant ok = atLeastZero(value)",
-                source.split("\n", -1)[marked.start().line() - 1]
-                        .substring(marked.start().column() - 1, marked.end().column() - 1),
+                source.split("\n", -1)[WhereItSits.in(source, marked).start().line() - 1]
+                        .substring(WhereItSits.in(source, marked).start().column() - 1, WhereItSits.in(source, marked).end().column() - 1),
                 "the clause as it was written, and not the point it is anchored at");
     }
 
@@ -195,16 +200,17 @@ class CompileConstructionInInvariantTest {
      */
     @Test
     void aConstructionReachedThroughACombinatorIsPointedAtTheConstruction() {
-        CompileException e = err("""
+        String source = """
                 module m
                 data Yen = Int invariant value >= 0
                 let atLeastZero (x: Int): Bool = Yen(0).value <= x
                 data Table = List<Int>
                     invariant ok = List.all(x -> atLeastZero(x), value)
-                """);
+                """;
+        CompileException e = err(source);
         assertInstanceOf(InvariantMessage.TheNamedClauseConstructsAData.class, e.diagnostic().said());
-        assertEquals(3, ((Primary.InSource) e.diagnostic().primary()).place().region().start().line());
-        assertEquals(34, ((Primary.InSource) e.diagnostic().primary()).place().region().start().column(),
+        assertEquals(3, WhereItSits.in(source, ((Primary.InSource) e.diagnostic().primary()).place().region()).start().line());
+        assertEquals(34, WhereItSits.in(source, ((Primary.InSource) e.diagnostic().primary()).place().region()).start().column(),
                 "the construction in the helper, not the combinator the clause calls");
     }
 
@@ -213,6 +219,30 @@ class CompileConstructionInInvariantTest {
      *  not only in the column. */
     @Test
     void aConstructionWrittenInTheLambdaGivenToACombinatorKeepsItsPlace() {
+        String source = """
+                module m
+                data Yen = Int invariant value >= 0
+                data Table = List<Int>
+                    invariant ok = List.all(
+                        x -> Yen(0).value <= x,
+                        value)
+                """;
+        CompileException e = err(source);
+        assertInstanceOf(InvariantMessage.TheNamedClauseConstructsAData.class, e.diagnostic().said());
+        assertEquals(5, WhereItSits.in(source, ((Primary.InSource) e.diagnostic().primary()).place().region()).start().line());
+        assertEquals(14, WhereItSits.in(source, ((Primary.InSource) e.diagnostic().primary()).place().region()).start().column());
+    }
+
+    /**
+     * And written in a clause that runs over several lines, where the two are as much one place as
+     * they are when the whole clause is written on one.
+     *
+     * <p>What decides this is the stretch the clause covers. A clause the author broke over three
+     * lines holds everything written inside it, and a reader shown the construction and then sent to
+     * the clause around it is being sent where they already are.
+     */
+    @Test
+    void aConstructionWrittenInAClauseThatRunsOverSeveralLinesIsLabelledOnce() {
         CompileException e = err("""
                 module m
                 data Yen = Int invariant value >= 0
@@ -221,9 +251,7 @@ class CompileConstructionInInvariantTest {
                         x -> Yen(0).value <= x,
                         value)
                 """);
-        assertInstanceOf(InvariantMessage.TheNamedClauseConstructsAData.class, e.diagnostic().said());
-        assertEquals(5, ((Primary.InSource) e.diagnostic().primary()).place().region().start().line());
-        assertEquals(14, ((Primary.InSource) e.diagnostic().primary()).place().region().start().column());
+        assertTrue(e.diagnostic().secondary().isEmpty());
     }
 
     /** Written in the clause itself there is one place, and labelling it twice says nothing. */

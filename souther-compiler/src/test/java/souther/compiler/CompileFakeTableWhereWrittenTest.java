@@ -78,14 +78,16 @@ class CompileFakeTableWhereWrittenTest {
     void aTableNoRowReadsIsStillBuilt() {
         // `N` is a newtype over Int, so `N("x")` is a row that will not build. Nothing depends on
         // `find`, so no row ever stands in with this table; it says what it says all the same.
-        Diagnostic one = only(UNREAD + """
+        String source = UNREAD + """
 
                 fake find
                     | (N("x")) -> Found { n = N(1) }
-                """);
+                """;
+        Diagnostic one = only(source);
 
         assertEquals("E1317", one.code());
-        assertEquals(16, ((Primary.InSource) one.primary()).place().region().start().line(), "at the row that states no value");
+        assertEquals(16, WhereItSits.in(source,
+                ((Primary.InSource) one.primary()).place().region()).start().line(), "at the row that states no value");
     }
 
     @Test
@@ -112,15 +114,17 @@ class CompileFakeTableWhereWrittenTest {
 
     @Test
     void aRowOfTheWrongArityIsSaidWithoutARowReadingTheTable() {
-        Diagnostic one = only(UNREAD + """
+        String source = UNREAD + """
 
                 fake find
                     | (N(1), N(2)) -> Found { n = N(1) }
-                """);
+                """;
+        Diagnostic one = only(source);
 
         assertEquals("E1908", one.code());
         assertInstanceOf(ExampleMessage.TheFakeCouldNotBeBuilt.class, one.said());
-        assertEquals(16, ((Primary.InSource) one.primary()).place().region().start().line(), "at the row whose input count is wrong");
+        assertEquals(16, WhereItSits.in(source,
+                ((Primary.InSource) one.primary()).place().region()).start().line(), "at the row whose input count is wrong");
     }
 
     /**
@@ -239,7 +243,7 @@ class CompileFakeTableWhereWrittenTest {
     @Test
     void aTableThatDidNotFinishBuildingSaysSoAtTheFake() {
         List<Located> warnings = new ArrayList<>();
-        assertDoesNotThrow(() -> Compiler.compiled("""
+        String source = """
                 module example.slow
 
                 data N = Int
@@ -255,7 +259,8 @@ class CompileFakeTableWhereWrittenTest {
 
                 fake find
                     | (N(spin(1))) -> Found { n = N(1) }
-                """, "Main", warnings, souther.compiler.query.Adequacy.Asked.NOTHING,
+                """;
+        assertDoesNotThrow(() -> Compiler.compiled(source, "Main", warnings, souther.compiler.query.Adequacy.Asked.NOTHING,
                 DoesNotComeBack.WAIT,
                 DoesNotComeBack.overrunningOn(DoesNotComeBack.everyTableOf("find"))));
 
@@ -264,8 +269,8 @@ class CompileFakeTableWhereWrittenTest {
         assertEquals(List.of(), only("E1920", warnings),
                 "nothing records what `find` owes, so no comparison was missed");
         Diagnostic one = said.get(0).diagnostic();
-        assertEquals(14, ((Primary.InSource) one.primary()).place().region().start().line(), "at the fake");
-        assertEquals(6, ((Primary.InSource) one.primary()).place().region().start().column(), "on the behavior it names");
+        assertEquals(14, WhereItSits.in(source, ((Primary.InSource) one.primary()).place().region()).start().line(), "at the fake");
+        assertEquals(6, WhereItSits.in(source, ((Primary.InSource) one.primary()).place().region()).start().column(), "on the behavior it names");
         // What it says, as the values it says it about. Asked of the rendered line it would be
         // asked of the catalog's English as well, and a sentence reworded is not this reading
         // changing.

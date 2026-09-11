@@ -1,8 +1,9 @@
 package souther.compiler.partition;
 
+import souther.compiler.diag.SourceLayouts;
+import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 
-import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.Compilation;
 import souther.compiler.query.PartitionEvidence;
@@ -130,7 +131,7 @@ class WhatWasNotReadIsSaidByWhoeverKnowsWhichRuleTest {
     }
 
     private static String human(String model) {
-        return report(model).human(SourceNameResolver.identity());
+        return report(model).human(SourceRendering.namedByIdentity(SourceLayouts.NONE));
     }
 
     private static AdequacyReport report(String model) {

@@ -1314,8 +1314,8 @@ public final class Adequacy {
             // In the order an author reads them. The walk numbers an inner fork while it is inside
             // the arm that holds it, so what order it finds them in is a fact about the traversal;
             // where a warning sits in the output should be a fact about the source.
-            found.sort(java.util.Comparator.comparingInt((Dead each) -> at(db, each.arm()).line())
-                    .thenComparingInt(each -> at(db, each.arm()).column()));
+            found.sort(java.util.Comparator.comparing((Dead each) -> at(db, each.arm()),
+                    SourcePos.IN_WRITTEN_ORDER));
             List<Report> reports = new ArrayList<>();
             for (Dead each : found) {
                 reports.add(warning(db, each.arm(), each.proof()));
@@ -1364,11 +1364,14 @@ public final class Adequacy {
             @Override
             public souther.compiler.diag.Diagnostic.Builder conditionsThatCannotAllHold(
                     List<souther.compiler.reach.PathDecision> decisions) {
-                return said.hint(new DeadBranchMessage.TheConditionsOnTheWayHereCannotAllHold(
-                        decisions.stream()
-                                .map(each -> "line " + each.at().line()
-                                        + (each.held() ? " holding" : " failing"))
-                                .collect(java.util.stream.Collectors.joining(", "))));
+                souther.compiler.diag.Diagnostic.Builder out =
+                        said.hint(new DeadBranchMessage.TheConditionsOnTheWayHereCannotAllHold());
+                for (souther.compiler.reach.PathDecision each : decisions) {
+                    out = out.secondary(souther.compiler.diag.Region.point(each.at()),
+                            each.held() ? new DeadBranchMessage.ThisOneHoldsOnTheWayHere()
+                                    : new DeadBranchMessage.ThisOneFailsOnTheWayHere());
+                }
+                return out;
             }
 
             @Override

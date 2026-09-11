@@ -1,5 +1,7 @@
 package souther.compiler.query;
 
+import souther.compiler.diag.Placement;
+import souther.compiler.cst.SourceLayout;
 import souther.compiler.source.SourceId;
 import souther.compiler.diag.QuotedFrom;
 
@@ -70,10 +72,18 @@ class ACursorIsOnAPlaceNotACoordinateTest {
         return c;
     }
 
-    /** What the compiler says is under a cursor at line 8 column 14 of {@code inFile}. */
+    /**
+     * What the compiler says is under a cursor at line 8 column 14 of {@code inFile}.
+     *
+     * <p>A cursor is a line and a column — it is where a reader put it — and the place that is has
+     * to be read off the text it is in. Which is the whole of what this test is about: the two
+     * files write a name at the same line and column and the two places are not the same place.
+     */
     private static Resolve.ValueUse under(SourceId inFile) {
-        return compiled().db()
-                .ask(new Names.ValueDenotedAt(new SourcePos(8, 14, inFile))).value();
+        String text = MODEL_ID.equals(inFile) ? MODEL : ATTACHED;
+        SourceLayout laidOut = SourceLayout.of(text, inFile);
+        return compiled().db().ask(new Names.ValueDenotedAt(
+                laidOut.placeAt(laidOut.lines().offsetOf(7, 13)))).value();
     }
 
     @Test
@@ -121,7 +131,7 @@ class ACursorIsOnAPlaceNotACoordinateTest {
 
     @Test
     void aQuestionThatNamesNoFileIsNotAnsweredWithANameFromOne() {
-        assertFalse(Names.spans(WrittenName.of("name", new SourcePos(8, 14, MODEL_ID)),
+        assertFalse(Names.spans(WrittenName.of("name", Placement.aFileOfThisCompile(MODEL_ID).at(8, 14)),
                 new SourcePos(8, 14)));
     }
 
@@ -133,12 +143,12 @@ class ACursorIsOnAPlaceNotACoordinateTest {
     @Test
     void aQuestionAboutAFileIsNotAnsweredWithANameFromNoFile() {
         assertFalse(Names.spans(WrittenName.of("name", new SourcePos(8, 14)),
-                new SourcePos(8, 14, MODEL_ID)));
+                Placement.aFileOfThisCompile(MODEL_ID).at(8, 14)));
     }
 
     @Test
     void aNameInAnotherFileIsNotUnderTheCursorHoweverTheLinesLineUp() {
-        assertFalse(Names.spans(WrittenName.of("name", new SourcePos(8, 14, ATTACHED_ID)),
-                new SourcePos(8, 14, MODEL_ID)));
+        assertFalse(Names.spans(WrittenName.of("name", Placement.aFileOfThisCompile(ATTACHED_ID).at(8, 14)),
+                Placement.aFileOfThisCompile(MODEL_ID).at(8, 14)));
     }
 }

@@ -1,5 +1,6 @@
 package souther.program.api;
 
+import souther.compiler.cst.SourceLayout;
 import souther.compiler.diag.QuotedFrom;
 import souther.compiler.observe.Expectation;
 import souther.compiler.observe.Mismatch;
@@ -205,7 +206,7 @@ class AnOutputReadsWhatABehaviorsExamplesSaidTest {
      */
     @Test
     void aRowOfABehaviorThatNeedsAStandInCrossesWithWhatStoodInForIt() {
-        CheckedProgram program = CheckedProgram.of(List.of("""
+        String source = """
                 module demo
 
                 data Rate = Int
@@ -221,7 +222,8 @@ class AnOutputReadsWhatABehaviorsExamplesSaidTest {
 
                 example priceOf
                     | "at twice" : (Price(10)) with rateNow = Rate(2) -> Price(20)
-                """));
+                """;
+        CheckedProgram program = CheckedProgram.of(List.of(source));
 
         CheckedRow row = behavior(program, "demo", "priceOf").rows().get(0);
         // An arm of its own, so that a reader written for rows that run on their own cannot be
@@ -254,7 +256,7 @@ class AnOutputReadsWhatABehaviorsExamplesSaidTest {
         for (int i = 0; i < 65; i++) {
             elements.append(i == 0 ? "" : ", ").append(i);
         }
-        CheckedProgram program = CheckedProgram.of(List.of("""
+        String source = """
                 module demo
 
                 data Count = Int
@@ -265,7 +267,8 @@ class AnOutputReadsWhatABehaviorsExamplesSaidTest {
 
                 example countOf
                     | "a long list" : ([ %s ]) -> Count(65)
-                """.formatted(elements)));
+                """.formatted(elements);
+        CheckedProgram program = CheckedProgram.of(List.of(source));
 
         CheckedRow row = behavior(program, "demo", "countOf").rows().get(0);
         CheckedRow.NotReproducible states =
@@ -290,7 +293,7 @@ class AnOutputReadsWhatABehaviorsExamplesSaidTest {
         for (int i = 0; i < 65; i++) {
             elements.append(i == 0 ? "" : ", ").append(i);
         }
-        CheckedProgram program = CheckedProgram.of(List.of("""
+        String source = """
                 module demo
 
                 data Count = Int
@@ -308,7 +311,8 @@ class AnOutputReadsWhatABehaviorsExamplesSaidTest {
 
                 example countOf
                     | "a long list stood in" : () -> Count(65)
-                """.formatted(elements)));
+                """.formatted(elements);
+        CheckedProgram program = CheckedProgram.of(List.of(source));
 
         CheckedRow row = behavior(program, "demo", "countOf").rows().get(0);
         CheckedRow.NotReproducible states =
@@ -322,7 +326,7 @@ class AnOutputReadsWhatABehaviorsExamplesSaidTest {
         // more where it answers what it does not list, so naming the table would leave a reader to
         // find which of them nothing could be made of. Line 13 is `fake everyTag` and line 17 is
         // the example row; 14 is the value.
-        assertEquals(14, why.at().line(),
+        assertEquals(14, SourceLayout.of(source).resolve(why.at()).line(),
                 "quoted at the value that was not kept, which is where it is written");
     }
 
@@ -340,7 +344,7 @@ class AnOutputReadsWhatABehaviorsExamplesSaidTest {
         for (int i = 0; i < 65; i++) {
             elements.append(i == 0 ? "" : ", ").append(i);
         }
-        CheckedProgram program = CheckedProgram.of(List.of("""
+        String source = """
                 module demo
 
                 data Count = Int
@@ -360,7 +364,8 @@ class AnOutputReadsWhatABehaviorsExamplesSaidTest {
 
                 example countOf
                     | "counted by what stands in" : ("a") -> Count(0)
-                """.formatted(elements)));
+                """.formatted(elements);
+        CheckedProgram program = CheckedProgram.of(List.of(source));
 
         CheckedRow row = behavior(program, "demo", "countOf").rows().get(0);
         RowStatement.StandInUnavailable why = assertInstanceOf(
@@ -370,7 +375,7 @@ class AnOutputReadsWhatABehaviorsExamplesSaidTest {
         // The row begins on line 13 with its first argument, its second is on 14, and the answer it
         // states for them is on 15. What was not kept is the second argument, and neither the row
         // nor the answer is what a reader is sent to.
-        assertEquals(14, why.at().line(),
+        assertEquals(14, SourceLayout.of(source).resolve(why.at()).line(),
                 "quoted at the value that was not kept, which is the second argument");
     }
 
@@ -384,7 +389,7 @@ class AnOutputReadsWhatABehaviorsExamplesSaidTest {
      */
     @Test
     void andWhatAFieldHoldsIsReadFromWhatThisProgramDeclares() {
-        CheckedProgram program = CheckedProgram.of(List.of("""
+        String source = """
                 module demo
 
                 data Tags = { of: Set<Int> }
@@ -395,7 +400,8 @@ class AnOutputReadsWhatABehaviorsExamplesSaidTest {
 
                 example tagsOf
                     | "a set of two" : ([ 1, 2 ]) -> Tags { of = [ 1, 2 ] }
-                """));
+                """;
+        CheckedProgram program = CheckedProgram.of(List.of(source));
 
         CheckedRow.SelfContained row = selfContained(
                 behavior(program, "demo", "tagsOf").rows().get(0));
@@ -417,7 +423,7 @@ class AnOutputReadsWhatABehaviorsExamplesSaidTest {
      */
     @Test
     void aRowNamingACaseThatCarriesNothingIsHeldToIt() {
-        CheckedProgram program = CheckedProgram.of(List.of("""
+        String source = """
                 module demo
 
                 data Missing
@@ -429,7 +435,8 @@ class AnOutputReadsWhatABehaviorsExamplesSaidTest {
 
                 example lookUp
                     | "not there" : (false) -> Missing
-                """));
+                """;
+        CheckedProgram program = CheckedProgram.of(List.of(source));
 
         CheckedRow.SelfContained row = selfContained(
                 behavior(program, "demo", "lookUp").rows().get(0));
@@ -448,7 +455,7 @@ class AnOutputReadsWhatABehaviorsExamplesSaidTest {
      *  not read. */
     @Test
     void aBehaviorNothingExamplesHasNoRows() {
-        CheckedProgram program = CheckedProgram.of(List.of("""
+        String source = """
                 module demo
 
                 data Amount = Int
@@ -456,7 +463,8 @@ class AnOutputReadsWhatABehaviorsExamplesSaidTest {
                 behavior twice : (a: Amount) -> Amount constructs Amount
 
                 let twice (a) = Amount(a.value * 2)
-                """));
+                """;
+        CheckedProgram program = CheckedProgram.of(List.of(source));
 
         assertEquals(List.of(), behavior(program, "demo", "twice").rows());
     }
@@ -470,7 +478,7 @@ class AnOutputReadsWhatABehaviorsExamplesSaidTest {
      */
     @Test
     void everyRowWrittenCrossesAsARow() {
-        CheckedProgram program = CheckedProgram.of(List.of("""
+        String source = """
                 module demo
 
                 data Amount = Int
@@ -494,7 +502,8 @@ class AnOutputReadsWhatABehaviorsExamplesSaidTest {
 
                 example scaled
                     | "with a rate" : (Amount(2)) with rateNow = Rate(3) -> Amount(6)
-                """));
+                """;
+        CheckedProgram program = CheckedProgram.of(List.of(source));
 
         List<CheckedRow> every = new ArrayList<>();
         for (CheckedModule module : program.modules()) {

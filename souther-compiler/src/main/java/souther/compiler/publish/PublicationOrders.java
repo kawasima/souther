@@ -2,6 +2,7 @@ package souther.compiler.publish;
 
 import souther.compiler.check.RuleCitation;
 import souther.compiler.diag.Citation;
+import souther.compiler.diag.SourcePos;
 import souther.compiler.observe.Incompleteness;
 import souther.compiler.observe.RunSensitivity;
 import souther.compiler.partition.CompositionBudget;
@@ -115,8 +116,7 @@ public final class PublicationOrders {
      */
     static final Comparator<PublishedAt> PLACES = Comparator
             .comparing((PublishedAt each) -> each.source().value())
-            .thenComparingInt(PublishedAt::line)
-            .thenComparingInt(PublishedAt::column)
+            .thenComparing(PublishedAt::at, SourcePos.IN_WRITTEN_ORDER)
             .thenComparingInt(PublicationOrders::whereRank)
             .thenComparing(PublicationOrders::declarationOf);
 

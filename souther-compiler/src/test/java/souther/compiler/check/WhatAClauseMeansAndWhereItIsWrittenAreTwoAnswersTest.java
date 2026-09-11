@@ -1,5 +1,6 @@
 package souther.compiler.check;
 
+import souther.compiler.WhereItSits;
 import souther.compiler.diag.DiagnosticPlace;
 import souther.compiler.meta.ModulePath;
 import souther.compiler.query.Bodies;
@@ -169,7 +170,7 @@ class WhatAClauseMeansAndWhereItIsWrittenAreTwoAnswersTest {
         DiagnosticPlace place = answered(declaring).db()
                 .ask(new Shapes.ClauseLocation(new Clause.Id(TypeSymbols.declared(SMALL), nth)))
                 .value();
-        return ((DiagnosticPlace.InSource) place).region().start().line();
+        return WhereItSits.in(declaring, ((DiagnosticPlace.InSource) place).region()).start().line();
     }
 
     private static Compilation answered(String declaring) {

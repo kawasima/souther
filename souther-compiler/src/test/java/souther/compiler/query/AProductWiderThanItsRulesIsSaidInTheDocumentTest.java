@@ -1,9 +1,9 @@
 package souther.compiler.query;
 
+import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.report.AdequacyReport;
-import souther.compiler.diag.SourceNameResolver;
 
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
@@ -95,7 +95,7 @@ class AProductWiderThanItsRulesIsSaidInTheDocumentTest {
                 .withReadingPolicy(souther.compiler.query.ReadAs.MERGING_WHAT_A_CHOICE_LEAVES);
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
-        return JSON.readTree(AdequacyReport.of(compilation).json(SourceNameResolver.identity()))
+        return JSON.readTree(AdequacyReport.of(compilation).json(SourceRendering.namedByIdentity(compilation.texts())))
                 .get("modules").get(0).get("behaviors").get(0);
     }
 
@@ -172,7 +172,7 @@ class AProductWiderThanItsRulesIsSaidInTheDocumentTest {
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
         JsonNode behavior = JSON.readTree(
-                        AdequacyReport.of(compilation).json(SourceNameResolver.identity()))
+                        AdequacyReport.of(compilation).json(SourceRendering.namedByIdentity(compilation.texts())))
                 .get("modules").get(0).get("behaviors").get(0);
 
         List<String> said = new ArrayList<>();

@@ -1,5 +1,6 @@
 package souther.compiler;
 
+import souther.compiler.cst.SourceLayout;
 import souther.compiler.diag.Primary;
 
 import souther.compiler.diag.CompileException;
@@ -41,15 +42,15 @@ class CompileDeriveDiagnosticTest {
                 """;
         Diagnostic d = diagnosticOf(src);
 
-        assertEquals(4, ((Primary.InSource) d.primary()).place().region().start().line());
-        String out = new HumanRenderer(false).render(d, new SourceContext("demo.sou", src),
+        assertEquals(4, WhereItSits.in(src, ((Primary.InSource) d.primary()).place().region()).start().line());
+        String out = new HumanRenderer(false).render(d, new SourceContext("demo.sou", src, SourceLayout.of(src)),
                 Locale.ENGLISH);
         assertTrue(out.contains("`集計.entries`"), out);
         assertTrue(out.contains("Map<String, (String, Int)>"), out);
         assertTrue(out.contains("Use a named data"), out);
 
         // the same three parts in Japanese: a locale must not lose the field or the type
-        String ja = new HumanRenderer(false).render(d, new SourceContext("demo.sou", src),
+        String ja = new HumanRenderer(false).render(d, new SourceContext("demo.sou", src, SourceLayout.of(src)),
                 Locale.JAPANESE);
         assertTrue(ja.contains("`集計.entries`"), ja);
         assertTrue(ja.contains("Map<String, (String, Int)>"), ja);
@@ -66,8 +67,8 @@ class CompileDeriveDiagnosticTest {
                 """;
         Diagnostic d = diagnosticOf(src);
 
-        assertEquals(4, ((Primary.InSource) d.primary()).place().region().start().line());
-        String out = new HumanRenderer(false).render(d, new SourceContext("demo.sou", src),
+        assertEquals(4, WhereItSits.in(src, ((Primary.InSource) d.primary()).place().region()).start().line());
+        String out = new HumanRenderer(false).render(d, new SourceContext("demo.sou", src, SourceLayout.of(src)),
                 Locale.ENGLISH);
         assertTrue(out.contains("`座席.where`"), out);
         assertTrue(out.contains("(Int, Int)"), out);

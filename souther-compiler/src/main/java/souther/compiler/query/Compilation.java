@@ -12,6 +12,7 @@ import souther.compiler.diag.Diagnostic;
 import souther.compiler.diag.LabeledRegion;
 import souther.compiler.diag.msg.ModuleMessage;
 import souther.compiler.diag.Located;
+import souther.compiler.diag.SourceLayouts;
 import souther.compiler.diag.SourcePos;
 import souther.compiler.diag.Primary;
 import souther.compiler.diag.DiagnosticView;
@@ -486,6 +487,22 @@ public final class Compilation {
         return db;
     }
 
+    /**
+     * The texts this compilation holds, for turning the places in its answers into lines and
+     * columns.
+     *
+     * <p>What a renderer needs beside a report. An answer says which of the things written in a
+     * source a place is, and where that sits is what the source now says — so a caller writing a
+     * document, quoting a line or sending a reader somewhere asks this, and asks it again after the
+     * next edit.
+     *
+     * <p>Made fresh on each call and not kept here. What it reads is the store as it now stands, and
+     * one held on to would go on answering about sources that have since been written in again.
+     */
+    public SourceLayouts texts() {
+        return new TheTextsThisCompileHolds(db);
+    }
+
     /** What makes a walk of this compilation stop short of an answer — {@link Db#abandonWhen}. */
     public void abandonWhen(Abandonment abandonment) {
         db.abandonWhen(abandonment);
@@ -834,9 +851,8 @@ public final class Compilation {
         if (errors.isEmpty()) {
             return null;
         }
-        errors.sort(Comparator.comparingInt(this::orderOf)
-                .thenComparingInt(f -> lineOf(f.report().diagnostic()))
-                .thenComparingInt(f -> columnOf(f.report().diagnostic())));
+        errors.sort(Comparator.<Db.Found>comparingInt(this::orderOf)
+                .thenComparing(f -> orderingPositionOf(f.report().diagnostic()), IN_FILE_ORDER));
         Db.Found first = errors.get(0);
         List<Located> rest = new ArrayList<>();
         for (Db.Found f : errors.subList(1, errors.size())) {
@@ -871,15 +887,14 @@ public final class Compilation {
         };
     }
 
-    private static int lineOf(Diagnostic diagnostic) {
-        SourcePos pos = orderingPositionOf(diagnostic);
-        return pos == null ? -1 : pos.line();
-    }
-
-    private static int columnOf(Diagnostic diagnostic) {
-        SourcePos pos = orderingPositionOf(diagnostic);
-        return pos == null ? -1 : pos.column();
-    }
+    /** Two reports of one file in the order an author reads them, with the one pointing at no part
+     *  of the file before them all. */
+    private static final Comparator<SourcePos> IN_FILE_ORDER = (one, other) -> {
+        if (one == null || other == null) {
+            return one == other ? 0 : one == null ? -1 : 1;
+        }
+        return SourcePos.IN_WRITTEN_ORDER.compare(one, other);
+    };
 
     /**
      * Which of this compilation's sources a report is listed under: the one it claims

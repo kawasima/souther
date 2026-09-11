@@ -1,5 +1,6 @@
 package souther.compiler;
 
+import souther.compiler.cst.SourceLayout;
 import souther.compiler.diag.Primary;
 
 import net.unit8.raoh.Err;
@@ -115,41 +116,44 @@ class CompileIncludeTest {
     // NullPointerException instead of being reported (issue #154).
     @Test
     void aSpreadOfATypeNotInScopeIsReportedAtTheName() {
-        CompileException e = assertThrows(CompileException.class, () -> Compiler.compile("""
+        String source = """
                 module demo exposing ( Invoice )
                 data Invoice = { ...Common, total: Int }
-                """));
+                """;
+        CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(source));
 
         assertTrue(e.getMessage().contains("cannot find a type named `Common`"), e.getMessage());
-        assertEquals(2, ((Primary.InSource) e.diagnostic().primary()).place().region().start().line());
-        assertEquals(21, ((Primary.InSource) e.diagnostic().primary()).place().region().start().column(), "the caret is on the spread's name");
-        assertEquals(27, ((Primary.InSource) e.diagnostic().primary()).place().region().end().column());
+        assertEquals(2, WhereItSits.in(source, ((Primary.InSource) e.diagnostic().primary()).place().region()).start().line());
+        assertEquals(21, WhereItSits.in(source, ((Primary.InSource) e.diagnostic().primary()).place().region()).start().column(), "the caret is on the spread's name");
+        assertEquals(27, WhereItSits.in(source, ((Primary.InSource) e.diagnostic().primary()).place().region()).end().column());
     }
 
     // The same miss written as a field's type reports the same thing at the same kind of position —
     // the two paths differing is what issue #154 was about.
     @Test
     void aFieldOfATypeNotInScopeIsReportedTheSameWay() {
-        CompileException e = assertThrows(CompileException.class, () -> Compiler.compile("""
+        String source = """
                 module demo exposing ( Invoice )
                 data Invoice = { c: Common, total: Int }
-                """));
+                """;
+        CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(source));
 
         assertTrue(e.getMessage().contains("cannot find a type named `Common`"), e.getMessage());
-        assertEquals(21, ((Primary.InSource) e.diagnostic().primary()).place().region().start().column());
+        assertEquals(21, WhereItSits.in(source, ((Primary.InSource) e.diagnostic().primary()).place().region()).start().column());
     }
 
     @Test
     void aSpreadOfANameInScopeThatIsNotAProductStillSaysSo() {
-        CompileException e = assertThrows(CompileException.class, () -> Compiler.compile("""
+        String source = """
                 module demo exposing ( Invoice )
                 data Common = A | B
                 data Invoice = { ...Common, total: Int }
-                """));
+                """;
+        CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(source));
 
         assertTrue(e.getMessage().contains("not a product data"), e.getMessage());
-        assertEquals(3, ((Primary.InSource) e.diagnostic().primary()).place().region().start().line());
-        assertEquals(21, ((Primary.InSource) e.diagnostic().primary()).place().region().start().column());
+        assertEquals(3, WhereItSits.in(source, ((Primary.InSource) e.diagnostic().primary()).place().region()).start().line());
+        assertEquals(21, WhereItSits.in(source, ((Primary.InSource) e.diagnostic().primary()).place().region()).start().column());
     }
 
     // Every reader of a spread goes through the same resolution, so none of them may reach a null
@@ -181,7 +185,7 @@ class CompileIncludeTest {
                 """;
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
         String out = new HumanRenderer(false)
-                .render(e.diagnostic(), new SourceContext("demo.sou", src), Locale.ENGLISH);
+                .render(e.diagnostic(), new SourceContext("demo.sou", src, SourceLayout.of(src)), Locale.ENGLISH);
 
         assertTrue(out.contains("`Commin`"), out);
         assertTrue(out.contains("Common"), out);   // the name it meant
