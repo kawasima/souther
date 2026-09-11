@@ -78,7 +78,7 @@ public record StatedComparison(ComparisonClaim claim, Core left, Core right) {
      * decides what a number is, so a reader holding the positions and one holding the lengths reach
      * this the same way and neither can reach the other's.
      */
-    <K> Numbered<K> at(Function<Core, K> named) {
+    public <K> Numbered<K> at(Function<Core, K> named) {
         K found = named.apply(left);
         if (found != null) {
             return new Numbered<>(claim, found, right);
@@ -98,5 +98,5 @@ public record StatedComparison(ComparisonClaim claim, Core left, Core right) {
      *              reading, or something with no number in it at all — telling those apart is the
      *              reader's and not this
      */
-    record Numbered<K>(ComparisonClaim claim, K number, Core other) {}
+    public record Numbered<K>(ComparisonClaim claim, K number, Core other) {}
 }

@@ -1,5 +1,6 @@
 package souther.compiler;
 
+import souther.compiler.cst.SourceLayout;
 import souther.compiler.diag.DiagnosticRenderer;
 import souther.compiler.diag.Primary;
 import souther.compiler.query.Bodies;
@@ -156,7 +157,7 @@ class CompileUnitValueTest {
                 """;
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
         assertTrue(e.getMessage().contains("invariant"), e.getMessage());
-        assertEquals(3, e.pos().line(), "must point at the clause, not the data");
+        assertEquals(3, WhereItSits.in(src, e.pos()).line(), "must point at the clause, not the data");
     }
 
     /** The clause is refused before it is elaborated, so this would otherwise be accepted with an
@@ -187,10 +188,10 @@ class CompileUnitValueTest {
                 """;
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
         assertTrue(e.getMessage().contains("empty body"), e.getMessage());
-        assertEquals(2, e.pos().line(), "must point at the body");
-        assertEquals(13, e.pos().column(), "must start at the opening brace");
+        assertEquals(2, WhereItSits.in(src, e.pos()).line(), "must point at the body");
+        assertEquals(13, WhereItSits.in(src, e.pos()).column(), "must start at the opening brace");
         String out = new HumanRenderer(false)
-                .render(e.diagnostic(), new SourceContext("demo.sou", src), Locale.ENGLISH);
+                .render(e.diagnostic(), new SourceContext("demo.sou", src, SourceLayout.of(src)), Locale.ENGLISH);
         assertTrue(out.contains("^^"), out);   // the whole `{}`, not just the opening brace
     }
 
@@ -208,8 +209,9 @@ class CompileUnitValueTest {
                 """;
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
         assertTrue(e.getMessage().contains("empty body"), e.getMessage());
-        assertEquals(2, e.pos().line(), "must point at the opening brace");
-        assertEquals(1, ((Primary.InSource) e.diagnostic().primary()).place().region().sourceSpan(), "a multi-line region draws one caret");
+        assertEquals(2, WhereItSits.in(src, e.pos()).line(), "must point at the opening brace");
+        assertEquals(1, WhereItSits.in(src,
+                ((Primary.InSource) e.diagnostic().primary()).place().region()).sourceSpan(), "a multi-line region draws one caret");
     }
 
     /** A spread body is a body: what it includes decides the fields, and an empty one cannot be

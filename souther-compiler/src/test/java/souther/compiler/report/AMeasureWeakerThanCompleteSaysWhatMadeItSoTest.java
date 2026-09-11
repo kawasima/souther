@@ -1,10 +1,11 @@
 package souther.compiler.report;
 
+import souther.compiler.diag.SourceLayouts;
+import souther.compiler.diag.SourceRendering;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.execute.EvaluationPolicy;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.Compilation;
@@ -108,7 +109,7 @@ class AMeasureWeakerThanCompleteSaysWhatMadeItSoTest {
     @Test
     void everyMeasurementInTheDocumentSaysWhatItIsAndWhatItWentWithout() throws Exception {
         List<JsonNode> measurements = new ArrayList<>();
-        collect(JSON.readTree(report.json(SourceNameResolver.identity())), measurements);
+        collect(JSON.readTree(report.json(SourceRendering.namedByIdentity(SourceLayouts.NONE))), measurements);
         assertTrue(measurements.size() > 10,
                 "the model produces measurements of every kind: " + measurements.size());
         // What this walk is worth is what it met. A run in which no measure came back weaker than

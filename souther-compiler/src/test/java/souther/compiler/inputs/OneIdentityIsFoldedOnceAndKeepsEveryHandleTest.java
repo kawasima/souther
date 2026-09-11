@@ -1,5 +1,6 @@
 package souther.compiler.inputs;
 
+import souther.compiler.diag.Placement;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.check.Clause;
@@ -8,7 +9,6 @@ import souther.compiler.check.RuleCitation;
 import souther.compiler.check.RuleReportAnchor;
 import souther.compiler.types.WrittenOwner;
 import souther.compiler.check.RuleRef;
-import souther.compiler.diag.SourcePos;
 import souther.compiler.source.SourceId;
 import souther.compiler.types.SourceConstruct;
 import souther.compiler.types.SourceConstructOrigin;
@@ -283,7 +283,7 @@ class OneIdentityIsFoldedOnceAndKeepsEveryHandleTest {
         List<RuleReasons.Placed> written = new ArrayList<>();
         for (int i = 0; i < these.length; i++) {
             written.add(new RuleReasons.Placed(
-                    new SourcePos(1, i + 1, new SourceId("one")),
+                    Placement.aFileOfThisCompile(new SourceId("one")).at(1, i + 1),
                     WhereInTheRule.theRuleItself(), these[i]));
         }
         return new WhatAQuestionStandsOn(RuleReasons.from(written), Optional.empty());

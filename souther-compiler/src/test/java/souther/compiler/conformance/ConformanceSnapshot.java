@@ -1,12 +1,13 @@
 package souther.compiler.conformance;
 
+import souther.compiler.diag.SourceLayouts;
+import souther.compiler.diag.SourceRendering;
 import souther.compiler.diag.Diagnostic;
 import souther.compiler.diag.DiagnosticPlace;
 import souther.compiler.diag.Located;
 import souther.compiler.diag.Primary;
 import souther.compiler.diag.QuotedFrom;
 import souther.compiler.diag.Region;
-import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.diag.SourceProvenance;
 import souther.compiler.report.AdequacyReport;
 import souther.compiler.report.GeneratedRows;
@@ -40,8 +41,9 @@ final class ConformanceSnapshot {
      */
     static String report(ConformanceCorpus.Analysed analysed) {
         AdequacyReport report = analysed.report();
-        SourceNameResolver names = analysed.corpus().names();
-        return report.json(names).replace("\"" + report.compilerVersion() + "\"",
+        SourceRendering rendering = new SourceRendering(analysed.corpus().names(),
+                analysed.compilation().texts());
+        return report.json(rendering).replace("\"" + report.compilerVersion() + "\"",
                 "\"" + VERSION_PLACEHOLDER + "\"") + System.lineSeparator();
     }
 
@@ -62,14 +64,15 @@ final class ConformanceSnapshot {
      * would leave a document that still added up.
      */
     static String generated(ConformanceCorpus.Analysed analysed) {
-        SourceNameResolver names = analysed.corpus().names();
+        SourceRendering rendering = new SourceRendering(analysed.corpus().names(),
+                analysed.compilation().texts());
         // Every module and every behavior, which is what the command does when it is told no
         // narrower. Asked twice over the one compilation: the rows are read off answers it already
         // holds, so the second reading costs what reading costs rather than what composing does.
         return "// --generate" + System.lineSeparator()
-                + GeneratedRows.of(analysed.compilation(), null, null, false, names).text()
+                + GeneratedRows.of(analysed.compilation(), null, null, false, rendering).text()
                 + "// --generate --boundaries" + System.lineSeparator()
-                + GeneratedRows.of(analysed.compilation(), null, null, true, names).text();
+                + GeneratedRows.of(analysed.compilation(), null, null, true, rendering).text();
     }
 
     /**
@@ -84,39 +87,40 @@ final class ConformanceSnapshot {
      * about the standard library and one about nothing at all.
      */
     static String diagnostics(ConformanceCorpus.Analysed analysed) {
-        SourceNameResolver names = analysed.corpus().names();
+        SourceRendering rendering = new SourceRendering(analysed.corpus().names(),
+                analysed.compilation().texts());
         List<String> lines = new ArrayList<>();
         for (Located located : analysed.said()) {
             Diagnostic diagnostic = located.diagnostic();
             String code = diagnostic.code() == null ? "<uncoded>" : diagnostic.code();
             lines.add(diagnostic.severity().name().toLowerCase(Locale.ROOT) + " " + code + " "
-                    + where(diagnostic.primary(), names));
+                    + where(diagnostic.primary(), rendering));
         }
         return lines.isEmpty() ? "" : String.join(System.lineSeparator(), lines)
                 + System.lineSeparator();
     }
 
-    private static String where(Primary primary, SourceNameResolver names) {
+    private static String where(Primary primary, SourceRendering rendering) {
         return switch (primary) {
-            case Primary.InSource(DiagnosticPlace.InSource place) -> at(place.region(), names);
+            case Primary.InSource(DiagnosticPlace.InSource place) -> at(place.region(), rendering);
             case Primary.InAnUnnamedText(var unnamed) -> "in an unnamed text "
-                    + line(unnamed.region());
+                    + line(unnamed.region(), rendering.layouts());
             case Primary.Unavailable(SourceProvenance from) -> "in " + from;
             case Primary.Nowhere() -> "nowhere";
         };
     }
 
-    private static String at(Region region, SourceNameResolver names) {
+    private static String at(Region region, SourceRendering rendering) {
         // A place a reader is sent to names the source it is in, which `DiagnosticPlace.InSource`
         // refuses to be built without — so the one case here is the only one there is.
         String file = region.start().quotedFrom()
                 instanceof QuotedFrom.ASourceThisCompileHolds(var source)
-                ? names.nameOf(source)
+                ? rendering.names().nameOf(source)
                 : "<unnamed>";
-        return (file == null ? "<unnamed>" : file) + ":" + line(region);
+        return (file == null ? "<unnamed>" : file) + ":" + line(region, rendering.layouts());
     }
 
-    private static String line(Region region) {
-        return region.start().line() + ":" + region.start().column();
+    private static String line(Region region, SourceLayouts layouts) {
+        return String.valueOf(layouts.resolve(region.start()));
     }
 }

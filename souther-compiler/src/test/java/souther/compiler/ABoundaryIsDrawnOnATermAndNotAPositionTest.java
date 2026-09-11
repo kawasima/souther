@@ -1,8 +1,9 @@
 package souther.compiler;
 
+import souther.compiler.diag.SourceLayouts;
+import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 
-import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.BorderAssessment;
 import souther.compiler.query.ItemAssessment;
@@ -157,7 +158,7 @@ class ABoundaryIsDrawnOnATermAndNotAPositionTest {
      */
     @Test
     void noneOfThemIsReportedAsAPositionNothingDivides() {
-        String human = AdequacyReport.of(compiled(MODEL)).human(SourceNameResolver.identity());
+        String human = AdequacyReport.of(compiled(MODEL)).human(SourceRendering.namedByIdentity(SourceLayouts.NONE));
         List<String> said = human.lines().map(String::strip)
                 .filter(line -> line.startsWith("· not derivable:")).toList();
 

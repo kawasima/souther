@@ -242,15 +242,11 @@ public final class ClauseHelpers {
         SourcePos[] found = {e.pos()};
         Hir.forEachChild(e, child -> {
             SourcePos inner = beginsAt(child);
-            if (inner != null && (found[0] == null || earlier(inner, found[0]))) {
+            if (inner != null && (found[0] == null || inner.isBefore(found[0]))) {
                 found[0] = inner;
             }
         });
         return found[0];
-    }
-
-    private static boolean earlier(SourcePos a, SourcePos b) {
-        return a.line() != b.line() ? a.line() < b.line() : a.column() < b.column();
     }
 
     /**

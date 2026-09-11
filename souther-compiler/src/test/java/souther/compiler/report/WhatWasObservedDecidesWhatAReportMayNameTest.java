@@ -1,5 +1,7 @@
 package souther.compiler.report;
 
+import souther.compiler.diag.SourceLayouts;
+import souther.compiler.diag.SourceRendering;
 import souther.compiler.query.WeakeningSet;
 import souther.compiler.types.WrittenOwner;
 import souther.compiler.report.AdequacyReport;
@@ -15,7 +17,6 @@ import souther.compiler.coverage.CoverageSites;
 import souther.compiler.coverage.DecidedBy;
 import souther.compiler.coverage.Numberings;
 import souther.compiler.coverage.SourceOutcome;
-import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.query.Adequacy;
 import souther.compiler.types.SourceConstruct;
 import souther.compiler.types.SourceConstructOrigin;
@@ -77,8 +78,8 @@ class WhatWasObservedDecidesWhatAReportMayNameTest {
     }
 
     private static souther.compiler.diag.Citation at(int line) {
-        return souther.compiler.diag.Citation.of(new souther.compiler.diag.SourcePos(line, 1,
-                new souther.compiler.source.SourceId("m.sou")));
+        return souther.compiler.diag.Citation.of(souther.compiler.diag.Placement
+                .aFileOfThisCompile(new souther.compiler.source.SourceId("m.sou")).at(line, 1));
     }
 
     /** Every row read, and one fork whose rule could not be worked out. */
@@ -97,7 +98,7 @@ class WhatWasObservedDecidesWhatAReportMayNameTest {
     void theArmNoRowGoesThroughIsStillNamed() {
         ObjectNode behavior = JsonMapper.builder().build().createObjectNode();
         AdequacyReport.branch(behavior, reported(),
-                new DocumentSources(SourceNameResolver.identity()));
+                new DocumentSources(SourceRendering.namedByIdentity(SourceLayouts.NONE)));
 
         List<String> dispositions = new java.util.ArrayList<>();
         behavior.get("branch").get("obligations")
@@ -115,7 +116,7 @@ class WhatWasObservedDecidesWhatAReportMayNameTest {
         StringBuilder out = new StringBuilder();
         new AdequacyReport(AdequacyReport.SCHEMA_VERSION, "x",
                 souther.compiler.query.Adequacy.AdequacyBar.RELIABLE_DOMAIN, WeakeningSet.none(),
-                List.of()).branch(out, reported(), null, SourceNameResolver.identity());
+                List.of()).branch(out, reported(), null, SourceRendering.namedByIdentity(SourceLayouts.NONE));
 
         // Two arms and not four. What the count holds is what a row can be owed for, and a fork
         // standing for however many rules nobody could work out is not that — it is said under the

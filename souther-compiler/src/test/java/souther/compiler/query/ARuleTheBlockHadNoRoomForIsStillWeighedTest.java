@@ -2,7 +2,7 @@ package souther.compiler.query;
 
 import org.junit.jupiter.api.Test;
 
-import souther.compiler.diag.SourceNameResolver;
+import souther.compiler.diag.SourceRendering;
 import souther.compiler.partition.AdequacyPolicy;
 import souther.compiler.partition.Budgets;
 import souther.compiler.partition.GenerationOutcome;
@@ -136,8 +136,9 @@ class ARuleTheBlockHadNoRoomForIsStillWeighedTest {
     }
 
     private static String blockUnder(int rowLimit) {
-        return GeneratedRows.of(compiled(rowLimit), "example.narrow", null, true,
-                SourceNameResolver.identity()).text();
+        Compilation compiled = compiled(rowLimit);
+        return GeneratedRows.of(compiled, "example.narrow", null, true,
+                SourceRendering.namedByIdentity(compiled.texts())).text();
     }
 
     private static Compilation compiled(int rowLimit) {

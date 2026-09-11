@@ -1,8 +1,8 @@
 package souther.compiler.query;
 
+import souther.compiler.diag.SourceRendering;
 import souther.compiler.conformance.ConformanceCorpus;
 import souther.compiler.report.AdequacyReport;
-import souther.compiler.diag.SourceNameResolver;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
@@ -75,7 +75,7 @@ class EverythingAnAnswerHoldsMeansSomethingTest {
                 Compilation compilation = Compilation.ofSource(SPOKEN_ABOUT, "Main");
                 compilation.measure(Adequacy.Asked.fullReport());
                 compilation.answerEverything();
-                AdequacyReport.of(compilation).json(SourceNameResolver.identity());
+                AdequacyReport.of(compilation).json(SourceRendering.namedByIdentity(compilation.texts()));
                 out.add(compilation.db());
             }
         }

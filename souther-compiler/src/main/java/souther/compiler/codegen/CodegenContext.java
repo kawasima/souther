@@ -1,6 +1,7 @@
 package souther.compiler.codegen;
 
 import souther.compiler.check.ExpandedClauseLookup;
+import souther.compiler.check.InvariantStatements;
 import souther.compiler.check.AtomSpace;
 import souther.compiler.check.ReqSig;
 import souther.compiler.core.EnsuresEnforcement;
@@ -10,6 +11,7 @@ import souther.compiler.core.KernelSignatures;
 import souther.compiler.core.ValueShape;
 import souther.compiler.check.DerivedSymbols;
 import souther.compiler.ast.Hir;
+import souther.compiler.diag.SourceLayouts;
 import souther.compiler.types.Type;
 import souther.compiler.types.TypeSymbol;
 import souther.compiler.check.TypeOps;
@@ -73,6 +75,21 @@ final class CodegenContext {
      */
     final Map<String, Type> standingCalls;
 
+    /**
+     * The texts this module's code was read from, for the debug table.
+     *
+     * <p>Handed in for the run and not asked for. What line an instruction's code is at is what its
+     * file is laid out as at the moment, and a backend that could go and find that out would be a
+     * backend that reads the workspace; what it has business knowing is the texts the compilation
+     * it is emitting for was given.
+     */
+    private final SourceLayouts layouts;
+
+    /** Where a place sits in the text it is in, or null where this compilation holds no such text. */
+    souther.compiler.diag.PhysicalPos sits(souther.compiler.diag.SourcePos place) {
+        return layouts.resolve(place);
+    }
+
     /** Synthetic {@code Fn} classes generated for escaping lambdas (spec §blocks), merged into the
      * module output once every behavior is generated. */
     private final Map<GeneratedClass, byte[]> synthClasses = new LinkedHashMap<>();
@@ -128,6 +145,30 @@ final class CodegenContext {
      */
     EnsuresEnforcement ensuresCheckOf(ValueName.Behavior behavior) {
         return EnsuresEnforcement.in(ensuresChecks, pkg, behavior);
+    }
+
+    /**
+     * What each conjunct of this module's declarations states, statement by statement.
+     *
+     * <p>The reading the front end made, handed over rather than repeated. What a rule states is
+     * settled where the clause's shape was read — a binding crossed, a denial spent — and a backend
+     * that read the tree for itself would recognise a rule written out and decline the same rule
+     * named through a helper, which is a difference in what a decoder reports and not in the model.
+     *
+     * <p>Null until it is set, for the reason {@link #dischargeInvariants} gives.
+     */
+    private InvariantStatements invariantStatements;
+
+    void setInvariantStatements(InvariantStatements statements) {
+        this.invariantStatements = statements;
+    }
+
+    InvariantStatements invariantStatements() {
+        if (invariantStatements == null) {
+            throw new IllegalStateException(
+                    "what " + pkg + "'s clauses state was never handed over");
+        }
+        return invariantStatements;
     }
 
     void setDischargeInvariants(ExpandedClauseLookup clauses) {
@@ -379,7 +420,8 @@ final class CodegenContext {
     CodegenContext(String pkg, DerivedSymbols symbols, KernelSignatures kernels,
                    Map<String, List<GeneratedClass>> caseToSums,
                    Map<String, String> typePackage, boolean exposeAll, Set<String> exposed,
-                   Map<String, Type> standingCalls) {
+                   Map<String, Type> standingCalls, SourceLayouts layouts) {
+        this.layouts = layouts;
         this.pkg = pkg;
         this.symbols = symbols;
         this.kernels = kernels;

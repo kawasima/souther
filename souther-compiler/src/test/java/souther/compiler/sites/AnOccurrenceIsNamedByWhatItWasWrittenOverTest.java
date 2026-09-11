@@ -1,5 +1,6 @@
 package souther.compiler.sites;
 
+import souther.compiler.diag.Placement;
 import org.junit.jupiter.api.Test;
 import souther.compiler.ast.Hir;
 import souther.compiler.diag.Region;
@@ -57,7 +58,7 @@ class AnOccurrenceIsNamedByWhatItWasWrittenOverTest {
     @Test
     void aStretchNothingWasWrittenOverIsNoOccurrence() {
         AuthoredSites sites = identified(resolved(SOURCE));
-        SourcePos nowhere = new SourcePos(400, 1, new SourceId("m.sou"));
+        SourcePos nowhere = Placement.aFileOfThisCompile(new SourceId("m.sou")).at(400, 1);
         assertNull(sites.site(new Region(nowhere, nowhere.along(3))),
                 "nothing is written on line 400");
         assertNull(sites.site(null), "and a caller with no extent is asking about nothing");
@@ -79,8 +80,8 @@ class AnOccurrenceIsNamedByWhatItWasWrittenOverTest {
     void aRegionThatBeginsInOneSourceAndEndsInAnotherIsRefused() {
         Hir.Module module = resolved(SOURCE);
         Hir.FnDef f = fn(module, "f");
-        SourcePos opens = new SourcePos(6, 13, new SourceId("m.sou"));
-        SourcePos closes = new SourcePos(6, 16, new SourceId("elsewhere.sou"));
+        SourcePos opens = Placement.aFileOfThisCompile(new SourceId("m.sou")).at(6, 13);
+        SourcePos closes = Placement.aFileOfThisCompile(new SourceId("elsewhere.sou")).at(6, 16);
         Hir.Expr straddling = new Hir.StringLit("x", opens, new Region(opens, closes));
         Hir.Module bent = module.withFns(List.of(new Hir.FnDef(f.written(), f.declaredIn(),
                 f.params(), f.declaredReturn(), new Hir.FnBody.Written(straddling), f.modifiers(),

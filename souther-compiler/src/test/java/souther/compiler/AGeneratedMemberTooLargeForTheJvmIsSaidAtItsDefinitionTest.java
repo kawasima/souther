@@ -1,5 +1,6 @@
 package souther.compiler;
 
+import souther.compiler.cst.SourceLayout;
 import souther.compiler.diag.CompileException;
 import souther.compiler.diag.HumanRenderer;
 import souther.compiler.diag.SourceContext;
@@ -44,7 +45,7 @@ class AGeneratedMemberTooLargeForTheJvmIsSaidAtItsDefinitionTest {
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
 
         String said = new HumanRenderer(false).render(e.diagnostic(),
-                new SourceContext("demo.sou", src), Locale.ENGLISH);
+                new SourceContext("demo.sou", src, SourceLayout.of(src)), Locale.ENGLISH);
         assertTrue(said.contains("apply"), "the method it could not write: " + said);
         assertTrue(said.contains("65535"), "the limit it went past: " + said);
     }

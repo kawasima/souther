@@ -115,7 +115,7 @@ class ARowNameIsUniqueWithinItsBehaviorTest {
 
         assertEquals(2, said.size(), "both rows carry the name, so both are told");
         assertEquals(List.of(lineOf(source, "Amount(200)"), lineOf(source, "Amount(300)")),
-                said.stream().map(d -> ((Primary.InSource) d.primary()).place().region().start().line()).sorted().toList(),
+                said.stream().map(d -> WhereItSits.in(source, ((Primary.InSource) d.primary()).place().region()).start().line()).sorted().toList(),
                 "each is said at the row it is about");
         ExampleMessage.TheNameIsOnMoreThanOneRow first =
                 assertInstanceOf(ExampleMessage.TheNameIsOnMoreThanOneRow.class, said.get(0).said());
@@ -141,7 +141,7 @@ class ARowNameIsUniqueWithinItsBehaviorTest {
         assertEquals(1, collisions(said.get(new SourceId("0"))).size(), "the module's own row is told, on the module");
         assertEquals(1, collisions(said.get(new SourceId("1"))).size(),
                 "the attached file's row is told, on the attached file");
-        assertEquals(lineOf(attached, "Amount(300)"), ((Primary.InSource) collisions(said.get(new SourceId("1"))).get(0).primary()).place().region().start().line(),
+        assertEquals(lineOf(attached, "Amount(300)"), WhereItSits.in(attached, ((Primary.InSource) collisions(said.get(new SourceId("1"))).get(0).primary()).place().region()).start().line(),
                 "a position is a line of the file the row is written in");
     }
 
@@ -172,7 +172,7 @@ class ARowNameIsUniqueWithinItsBehaviorTest {
                 .toList();
 
         assertEquals(1, said.size(), "a name was written and it names nothing");
-        assertEquals(lineOf(source, "Amount(200)"), ((Primary.InSource) said.get(0).primary()).place().region().start().line());
+        assertEquals(lineOf(source, "Amount(200)"), WhereItSits.in(source, ((Primary.InSource) said.get(0).primary()).place().region()).start().line());
     }
 
     @Test

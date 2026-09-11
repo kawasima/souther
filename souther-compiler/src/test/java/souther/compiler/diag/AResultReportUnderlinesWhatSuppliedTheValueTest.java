@@ -1,5 +1,6 @@
 package souther.compiler.diag;
 
+import souther.compiler.WhereItSits;
 import souther.compiler.Compiler;
 
 import org.junit.jupiter.api.Test;
@@ -125,7 +126,8 @@ class AResultReportUnderlinesWhatSuppliedTheValueTest {
 
         Diagnostic report = only(source);
         assertEquals("if n > 0 then", lineUnderlined(source, report).trim());
-        assertEquals(1, ((Primary.InSource) report.primary()).place().region().sourceSpan(), "a construct is measured from its start");
+        assertEquals(1, WhereItSits.in(source,
+                ((Primary.InSource) report.primary()).place().region()).sourceSpan(), "a construct is measured from its start");
     }
 
     /** A fold's step, written as a block, answers something the accumulator cannot hold. */
@@ -203,14 +205,14 @@ class AResultReportUnderlinesWhatSuppliedTheValueTest {
     /** The characters of {@code source} a report's primary region covers. */
     private static String underlined(String source, Diagnostic report) {
         Region region = ((Primary.InSource) report.primary()).place().region();
-        assertEquals(region.start().line(), region.end().line(),
+        assertEquals(WhereItSits.in(source, region).start().line(),
+                WhereItSits.in(source, region).end().line(),
                 "an expression this test is about is one line's worth");
-        int from = region.start().column() - 1;
-        return lineUnderlined(source, report).substring(from, from + region.sourceSpan());
+        return WhereItSits.underlined(source, region);
     }
 
     /** The whole source line a report's primary region begins on. */
     private static String lineUnderlined(String source, Diagnostic report) {
-        return source.lines().toList().get(((Primary.InSource) report.primary()).place().region().start().line() - 1);
+        return source.lines().toList().get(WhereItSits.in(source, ((Primary.InSource) report.primary()).place().region()).start().line() - 1);
     }
 }

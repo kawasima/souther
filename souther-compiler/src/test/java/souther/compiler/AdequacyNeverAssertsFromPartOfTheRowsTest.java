@@ -1,10 +1,10 @@
 package souther.compiler;
 
+import souther.compiler.diag.SourceRendering;
 import souther.compiler.query.Measurement;
 import souther.compiler.execute.jvm.JvmExampleDeadlines;
 import org.junit.jupiter.api.Test;
 
-import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.observe.MeasurementStatus;
 import souther.compiler.publish.RuleHandleProse;
 import souther.compiler.query.Adequacy;
@@ -227,7 +227,9 @@ class AdequacyNeverAssertsFromPartOfTheRowsTest {
                             + RuleHandleProse.said(
                                     point.said(cited -> souther.compiler.query.Sites.placeOf(
                                             compilation.db(), cited)),
-                                    souther.compiler.source.SourceId::value, null));
+                                    new souther.compiler.diag.SourceRendering(
+                                            souther.compiler.source.SourceId::value,
+                                            compilation.texts()), null));
                 }
             }
             if (partition.pairs().counted() instanceof Measurement.Complete<?>
@@ -280,7 +282,7 @@ class AdequacyNeverAssertsFromPartOfTheRowsTest {
 
             String written = GeneratedRows.of(Adequacy.offeredFor(compilation.db(),
                             souther.compiler.query.OfferingRequest.overTheModule(module, true)),
-                    Map.of(), SourceNameResolver.identity(), compilation.db()).text();
+                    Map.of(), SourceRendering.namedByIdentity(compilation.texts()), compilation.db()).text();
             assertFalse(written.contains("example "),
                     module + " offers a row that may already be written: " + written);
             // Either word, because the two models get here differently: one has rows nothing read
@@ -337,7 +339,7 @@ class AdequacyNeverAssertsFromPartOfTheRowsTest {
                 .get("take").arms().unmet().isEmpty(), "an arm nothing goes through");
         assertFalse(GeneratedRows.of(Adequacy.offeredFor(compilation.db(),
                         souther.compiler.query.OfferingRequest.overTheModule(module, true)),
-                Map.of(), SourceNameResolver.identity(), compilation.db()).text().isEmpty(),
+                Map.of(), SourceRendering.namedByIdentity(compilation.texts()), compilation.db()).text().isEmpty(),
                 "and rows offered for them");
     }
 }

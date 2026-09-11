@@ -64,7 +64,9 @@ class AReportAboutADeclarationFollowsItWhenItMovesTest {
         assertEquals(1, errors.size(),
                 "this workspace is supposed to be refused for exactly one thing: " + errors);
         if (errors.getFirst().diagnostic().primary() instanceof Primary.InSource in) {
-            return in.place().region().start().line();
+            // The line a reader is sent to, which is what the file is laid out as now — the place
+            // itself is what the declaration is, and writing above it leaves that where it was.
+            return c.texts().resolve(in.place().region().start()).line();
         }
         throw new AssertionError("the report is supposed to point at the declaration, and points "
                 + errors.getFirst().diagnostic().primary() + " instead");

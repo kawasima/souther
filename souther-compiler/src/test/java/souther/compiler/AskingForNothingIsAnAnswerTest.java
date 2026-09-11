@@ -1,8 +1,9 @@
 package souther.compiler;
 
+import souther.compiler.diag.SourceLayouts;
+import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 
-import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.Compilation;
 import souther.compiler.query.NothingWasAsked;
@@ -111,7 +112,7 @@ class AskingForNothingIsAnAnswerTest {
         AdequacyReport report = AdequacyReport.of(compiled(Adequacy.Level.OFF));
 
         assertEquals(AdequacyReport.AdequacyStatus.UNDETERMINED, report.adequacy(),
-                report.human(SourceNameResolver.identity()));
+                report.human(SourceRendering.namedByIdentity(SourceLayouts.NONE)));
         assertEquals(List.of(), report.findings(), "nothing was measured, so nothing was found");
     }
 
@@ -129,7 +130,7 @@ class AskingForNothingIsAnAnswerTest {
     void theDocumentHoldsWhatTheModelSaysAndNoCount() {
         JsonNode behavior = JsonMapper.builder().build()
                 .readTree(AdequacyReport.of(compiled(Adequacy.Level.OFF))
-                        .json(SourceNameResolver.identity()))
+                        .json(SourceRendering.namedByIdentity(SourceLayouts.NONE)))
                 .get("modules").get(0).get("behaviors").get(0);
 
         JsonNode signature = behavior.get("signature");
@@ -176,7 +177,7 @@ class AskingForNothingIsAnAnswerTest {
     void theSameModelMeasuredDoesHoldCounts() {
         JsonNode document = JsonMapper.builder().build()
                 .readTree(AdequacyReport.of(compiled(Adequacy.Level.ALL))
-                        .json(SourceNameResolver.identity()));
+                        .json(SourceRendering.namedByIdentity(SourceLayouts.NONE)));
 
         assertFalse(document.findValues("specified").isEmpty(),
                 () -> "nothing was counted at `all` either: " + document);

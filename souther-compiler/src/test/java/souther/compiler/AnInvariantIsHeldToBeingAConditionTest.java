@@ -24,18 +24,20 @@ class AnInvariantIsHeldToBeingAConditionTest {
 
     @Test
     void aClauseThatIsNotACondition() {
-        CompileException refused = assertThrows(CompileException.class, () -> Compiler.compile("""
+        String source = """
                 module demo
                 data Amount = Int
                     invariant value + 1
-                """));
+                """;
+        CompileException refused = assertThrows(CompileException.class, () -> Compiler.compile(source));
 
         assertAll(
                 () -> assertInstanceOf(DeclarationMessage.AnInvariantExpressionIsBool.class,
                         refused.diagnostics().get(0).said(),
                         "what the clause came to is what says it is not a condition"),
-                () -> assertEquals(3, ((Primary.InSource) refused.diagnostics().get(0).primary())
-                                .place().region().start().line(),
+                () -> assertEquals(3, WhereItSits.in(source,
+                                ((Primary.InSource) refused.diagnostics().get(0).primary())
+                                        .place().region()).start().line(),
                         "said at the clause, and not where a value is built"));
     }
 }

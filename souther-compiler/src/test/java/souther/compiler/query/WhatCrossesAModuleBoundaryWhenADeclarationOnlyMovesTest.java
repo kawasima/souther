@@ -12,22 +12,21 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * What an edit that only moves a declaration reaches in the module that imports it.
  *
- * <p>Written down where it can be watched while the readers are moved onto the boundary one at a
- * time. A comment line written in the declaring module moves every position under it and says
- * nothing different; the importer's answers are worked out again for it, through the declaration
- * answers that carry the authored tree.
+ * <p>Nothing. A comment line written above a declaration says nothing different about it, and a
+ * place is which of the things written in a text it is — so the declaration's clauses come out the
+ * same, what it publishes comes out the same, and the importer's body is not checked again.
  *
- * <p><b>Written to be red until it is not.</b> Each answer below is asked before and after the edit
- * and held to whichever of the two it is today, so moving a reader onto the boundary shows up here
- * as this test failing rather than as nothing. What it is holding is the measurement, not the goal:
- * a line saying an answer is remade is a line to change when it stops being remade, and the
- * comparison beside it — that an edit changing what the declaration says does reach the importer —
- * is what keeps the goal from being met by an answer that never moves.
+ * <p>This was written to be red until it was not. Every line of it said an answer was remade, and
+ * said beside itself that the line was the one to change when it stopped being; what it holds now
+ * is that they are not. The comparison beside it is what keeps this from being met by an importer
+ * that never looks at the declaration at all: an edit that changes what the declaration says does
+ * reach it.
  */
 class WhatCrossesAModuleBoundaryWhenADeclarationOnlyMovesTest {
 
@@ -72,19 +71,14 @@ class WhatCrossesAModuleBoundaryWhenADeclarationOnlyMovesTest {
         // the store having skipped the question.
         assertEquals(published.value(), c.db().ask(new Shapes.MeaningOf(
                         AMOUNT)).value(),
-                "what the declaration says is the same, and the boundary answer moved");
-        // Which answer carries the move across. The clauses a reading is answered from are the
-        // declaration's own, in the representation its module expanded them into -- an authored
-        // tree, so moving the declaration makes a different one.
-        assertNotEquals(expanded.value(), c.db().ask(new Shapes.ClausesExpandedFor(
+                "what the declaration says is the same");
+        assertEquals(expanded.value(), c.db().ask(new Shapes.ClausesExpandedFor(
                         AMOUNT)).value(),
-                "the clauses came out the same, so this is no longer what carries the move");
-        assertNotSame(checked, c.db().ask(new Bodies.CheckedBehavior("shop.cart", "paidOn")),
-                "the importer's checked body no longer moves for a comment written next door —"
-                        + " which is the goal, so this line is the one to change");
-        assertNotSame(inputs, c.db().ask(new Adequacy.Inputs("shop.cart")),
-                "the importer's inputs no longer move for a comment written next door — which is"
-                        + " the goal, so this line is the one to change");
+                "and so are the clauses it was expanded into: a comment is not a token");
+        assertSame(checked, c.db().ask(new Bodies.CheckedBehavior("shop.cart", "paidOn")),
+                "so the importer's body was not checked again");
+        assertSame(inputs, c.db().ask(new Adequacy.Inputs("shop.cart")),
+                "and what its rows are measured over was not worked out again");
     }
 
     /**
@@ -109,11 +103,22 @@ class WhatCrossesAModuleBoundaryWhenADeclarationOnlyMovesTest {
                 "a body checked against the declaration was not checked again");
     }
 
+    /**
+     * The workspace with the declaring module written over, and the importer where it was.
+     *
+     * <p>Both documents, because an update is the whole workspace: handed the edited file alone,
+     * this left the importer out of the compilation altogether, and every answer about it came back
+     * absent. Which is not an answer moving — it is a module that is no longer there — and it is
+     * what two of the lines above used to be measuring.
+     */
     private static void edit(Compilation c, String prices) {
         Map<String, String> edited = new LinkedHashMap<>();
         edited.put("prices.sou", prices);
+        edited.put("cart.sou", IMPORTING);
         c.update(edited, Set.of());
         c.answerEverything();
+        assertTrue(c.db().allReports().isEmpty(), "the edited workspace still compiles: "
+                + c.db().allReports());
     }
 
     private static Compilation started() {

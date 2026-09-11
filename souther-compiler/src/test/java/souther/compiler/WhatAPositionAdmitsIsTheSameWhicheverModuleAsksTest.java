@@ -1,11 +1,11 @@
 package souther.compiler;
 
+import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
-import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.meta.ModulePath;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.Compilation;
@@ -153,7 +153,7 @@ class WhatAPositionAdmitsIsTheSameWhicheverModuleAsksTest {
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
         JsonNode document = JSON.readTree(
-                AdequacyReport.of(compilation).json(SourceNameResolver.identity()));
+                AdequacyReport.of(compilation).json(SourceRendering.namedByIdentity(compilation.texts())));
         Map<String, JsonNode> out = new LinkedHashMap<>();
         for (JsonNode module : document.get("modules")) {
             for (JsonNode behavior : module.path("behaviors")) {

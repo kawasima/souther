@@ -1,5 +1,6 @@
 package souther.compiler.check;
 
+import souther.compiler.WhereItSits;
 import souther.compiler.diag.Primary;
 
 import souther.compiler.source.SourceId;
@@ -239,9 +240,9 @@ class AHelperSaysTheSameThingWhereverItIsDeclaredTest {
     private static String quoted(String source, Region at) {
         assertNotNull(at, "a report that points at nothing quotes nothing");
         List<String> lines = List.of(source.split("\n", -1));
-        String line = lines.get(at.start().line() - 1);
-        int from = at.start().column() - 1;
-        int to = at.end().line() == at.start().line() ? at.end().column() - 1 : line.length();
+        String line = lines.get(WhereItSits.in(source, at).start().line() - 1);
+        int from = WhereItSits.in(source, at).start().column() - 1;
+        int to = WhereItSits.in(source, at).end().line() == WhereItSits.in(source, at).start().line() ? WhereItSits.in(source, at).end().column() - 1 : line.length();
         return line.substring(from, Math.min(to, line.length()));
     }
 }

@@ -1,5 +1,6 @@
 package souther.compiler;
 
+import souther.compiler.cst.SourceLayout;
 import souther.compiler.diag.ReportContext;
 
 import souther.compiler.source.SourceId;
@@ -9,6 +10,7 @@ import souther.compiler.diag.DiagnosticPlace;
 import souther.compiler.diag.HumanRenderer;
 import souther.compiler.diag.LabeledRegion;
 import souther.compiler.diag.Located;
+import souther.compiler.diag.Placement;
 import souther.compiler.diag.SourceContext;
 import souther.compiler.diag.SourceProvenance;
 import souther.compiler.query.Compilation;
@@ -115,7 +117,9 @@ class ALabelSaysWhereItIsWithoutBeingToldWhereItIsShownTest {
         String out = rendered(inOneCompile(), IN_ONE_COMPILE);
 
         assertInstanceOf(DiagnosticPlace.InSource.class, label.place());
-        assertEquals(4, ((souther.compiler.diag.DiagnosticPlace.InSource) label.place()).region().start().line());
+        assertEquals(4, WhereItSits.in(IN_ONE_COMPILE,
+                ((souther.compiler.diag.DiagnosticPlace.InSource) label.place()).region())
+                .start().line());
         assertTrue(out.contains("invariant atLeastOne = value >= 1"),
                 () -> "the clause is quoted: " + out);
     }
@@ -156,7 +160,7 @@ class ALabelSaysWhereItIsWithoutBeingToldWhereItIsShownTest {
     void aRegionNobodyPlacedIsRefusedRatherThanPlacedByTheReport() {
         Diagnostic.Builder building = Diagnostic
                 .say(new souther.compiler.diag.msg.NameMessage.NoValueOfThatNameInScope("x"))
-                .at(new souther.compiler.diag.SourcePos(1, 1, new SourceId("0")));
+                .at(Placement.aFileOfThisCompile(new SourceId("0")).at(1, 1));
 
         assertThrowsIllegalArgument(() -> building.secondary(
                 souther.compiler.diag.Region.ofWidth(new souther.compiler.diag.SourcePos(3, 3), 4),
@@ -169,7 +173,7 @@ class ALabelSaysWhereItIsWithoutBeingToldWhereItIsShownTest {
     void aRegionWithNoEndIsRefusedWhereItIsMadeAPlace() {
         org.junit.jupiter.api.Assertions.assertThrows(DiagnosticPlace.NotAPlace.class,
                 () -> DiagnosticPlace.of(new souther.compiler.diag.Region(
-                        new souther.compiler.diag.SourcePos(3, 3, new SourceId("0")), null)));
+                        Placement.aFileOfThisCompile(new SourceId("0")).at(3, 3), null)));
         org.junit.jupiter.api.Assertions.assertThrows(DiagnosticPlace.NotAPlace.class,
                 () -> DiagnosticPlace.of(null));
     }
@@ -221,7 +225,7 @@ class ALabelSaysWhereItIsWithoutBeingToldWhereItIsShownTest {
 
     private static String rendered(Compilation c, String source) {
         return new HumanRenderer(false).render(new Located(theWarning(c), ReportContext.inFile(new SourceId("0"))),
-                id -> new SourceContext("m.sou", source), Locale.ENGLISH);
+                id -> new SourceContext("m.sou", source, SourceLayout.of(source)), Locale.ENGLISH);
     }
 
     private static void assertThrowsIllegalArgument(Runnable r) {

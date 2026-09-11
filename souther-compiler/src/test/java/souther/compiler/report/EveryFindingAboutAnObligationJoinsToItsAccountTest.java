@@ -1,10 +1,10 @@
 package souther.compiler.report;
 
+import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.conformance.ConformanceCorpus;
-import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.Compilation;
 
@@ -376,13 +376,15 @@ class EveryFindingAboutAnObligationJoinsToItsAccountTest {
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
         return JSON.readTree(
-                AdequacyReport.of(compilation).json(SourceNameResolver.identity()));
+                AdequacyReport.of(compilation).json(SourceRendering.namedByIdentity(compilation.texts())));
     }
 
     private static List<JsonNode> documents() {
         List<JsonNode> out = new ArrayList<>();
         for (ConformanceCorpus corpus : ConformanceCorpus.all()) {
-            out.add(JSON.readTree(corpus.analyse().report().json(corpus.names())));
+            ConformanceCorpus.Analysed analysed = corpus.analyse();
+            out.add(JSON.readTree(analysed.report().json(
+                    new SourceRendering(corpus.names(), analysed.compilation().texts()))));
         }
         out.add(reportOf(TWO_RULES_AT_ONE_FORK));
         out.add(reportOf(TWO_POSITIONS_ONE_CLASS_NAME));

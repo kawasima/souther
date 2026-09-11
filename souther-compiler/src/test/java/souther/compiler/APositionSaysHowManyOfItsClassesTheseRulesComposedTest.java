@@ -1,6 +1,6 @@
 package souther.compiler;
 
-import souther.compiler.diag.SourceNameResolver;
+import souther.compiler.diag.SourceRendering;
 import souther.compiler.meta.ModulePath;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.Compilation;
@@ -278,6 +278,6 @@ class APositionSaysHowManyOfItsClassesTheseRulesComposedTest {
         List<souther.compiler.diag.Located> warnings = new ArrayList<>();
         Compilation compilation = Compiler.analyzedModules(List.of(model), ModulePath.EMPTY,
                 warnings, Adequacy.Asked.fullReport());
-        return AdequacyReport.of(compilation).human(SourceNameResolver.identity());
+        return AdequacyReport.of(compilation).human(SourceRendering.namedByIdentity(compilation.texts()));
     }
 }

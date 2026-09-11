@@ -222,7 +222,7 @@ class EveryPlaceDeliveredNamesASourceThisCompilationHoldsTest {
         Compilation compilation = measured();
         JsonNode document = JsonMapper.builder().build()
                 .readTree(AdequacyReport.of(compilation)
-                        .json(souther.compiler.diag.SourceNameResolver.identity()));
+                        .json(souther.compiler.diag.SourceRendering.namedByIdentity(compilation.texts())));
 
         Set<String> named = new LinkedHashSet<>();
         document.get("sources").propertyNames().forEach(named::add);

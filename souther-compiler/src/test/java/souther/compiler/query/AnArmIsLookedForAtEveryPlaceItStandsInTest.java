@@ -2,7 +2,7 @@ package souther.compiler.query;
 
 import org.junit.jupiter.api.Test;
 
-import souther.compiler.diag.SourceNameResolver;
+import souther.compiler.diag.SourceRendering;
 import souther.compiler.report.GeneratedRows;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -109,6 +109,6 @@ class AnArmIsLookedForAtEveryPlaceItStandsInTest {
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
         return GeneratedRows.of(compilation, "example.arms", null, true,
-                SourceNameResolver.identity()).text();
+                SourceRendering.namedByIdentity(compilation.texts())).text();
     }
 }

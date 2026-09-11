@@ -19,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 class AnErrorKeepsTheMessageItWasRaisedWithTest {
 
     private static Diagnostic at(int line, String says) {
-        return Diagnostic.literal(new SourcePos(line, 1, new SourceId("a.sou")), says);
+        return Diagnostic.literal(Placement.aFileOfThisCompile(new SourceId("a.sou")).at(line, 1), says);
     }
 
     @Test

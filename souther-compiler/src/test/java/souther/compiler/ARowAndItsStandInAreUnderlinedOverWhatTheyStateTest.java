@@ -123,16 +123,16 @@ class ARowAndItsStandInAreUnderlinedOverWhatTheyStateTest {
     /** The characters {@code region} covers, cut out of the source it was read from. */
     private static String underlined(String source, Region region) {
         List<String> lines = List.of(source.split("\n", -1));
-        if (region.start().line() == region.end().line()) {
-            return lines.get(region.start().line() - 1)
-                    .substring(region.start().column() - 1, region.end().column() - 1);
+        if (WhereItSits.in(source, region).start().line() == WhereItSits.in(source, region).end().line()) {
+            return lines.get(WhereItSits.in(source, region).start().line() - 1)
+                    .substring(WhereItSits.in(source, region).start().column() - 1, WhereItSits.in(source, region).end().column() - 1);
         }
         StringBuilder out =
-                new StringBuilder(lines.get(region.start().line() - 1).substring(region.start().column() - 1));
-        for (int line = region.start().line() + 1; line < region.end().line(); line++) {
+                new StringBuilder(lines.get(WhereItSits.in(source, region).start().line() - 1).substring(WhereItSits.in(source, region).start().column() - 1));
+        for (int line = WhereItSits.in(source, region).start().line() + 1; line < WhereItSits.in(source, region).end().line(); line++) {
             out.append('\n').append(lines.get(line - 1));
         }
-        return out.append('\n').append(lines.get(region.end().line() - 1), 0, region.end().column() - 1)
+        return out.append('\n').append(lines.get(WhereItSits.in(source, region).end().line() - 1), 0, WhereItSits.in(source, region).end().column() - 1)
                 .toString();
     }
 }

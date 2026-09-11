@@ -23,8 +23,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 class APageShowsTheRulesOfWhatItShowsTest {
 
     /**
-     * Two behaviors with a rule each, and the second written after the first — so an edit above the
-     * second moves it and leaves the first where it was.
+     * Two behaviors with a rule each, and the second written after the first — so a declaration
+     * written above the second moves it and leaves the first where it was.
      *
      * <p>The second's rule is one this compiler does not read to the end, so what a report says
      * about it is a finding about the rule and a sentence sending a reader to it. A pair of rules
@@ -49,7 +49,7 @@ class APageShowsTheRulesOfWhatItShowsTest {
     @Test
     void movingARuleOfABehaviorAPageDoesNotShowLeavesThePageAlone() {
         AdequacyReport before = reportOf(MODEL.formatted(""));
-        AdequacyReport after = reportOf(MODEL.formatted("// a line written above the second\n"));
+        AdequacyReport after = reportOf(MODEL.formatted("data Between\n\n"));
 
         // The page is about `f`, and `f` has rules a reader can be sent to. Asked of a page with
         // none, everything below would hold of a report that gathers nothing at all.
@@ -57,7 +57,9 @@ class APageShowsTheRulesOfWhatItShowsTest {
                         .filter(each -> each.name().equals("f"))
                         .findFirst().orElseThrow().rulePlaces().isEmpty(),
                 "the page under test sends a reader to a rule with no name");
-        // And the edit moved something: the whole report is not the same value.
+        // And the edit moved something: the whole report is not the same value. A declaration and
+        // not a comment, because a comment is not a token and moves no place at all — which is the
+        // thing this file is written under, and would leave the control saying nothing.
         assertEquals(false, before.equals(after),
                 "the edit moved the rule of the behavior the page does not show");
 

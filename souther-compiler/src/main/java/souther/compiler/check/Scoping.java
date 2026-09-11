@@ -77,8 +77,7 @@ public final class Scoping {
         // whatever the author wrote.
         List<Claim> claims = new ArrayList<>(subject.libraryClaims());
         claims.addAll(claimsOf(universe, m, aliases, refused));
-        claims.sort(Comparator.<Claim>comparingInt(each -> line(each.imp()))
-                .thenComparingInt(each -> column(each.imp())));
+        claims.sort(IN_WRITTEN_ORDER);
         ResolvedImports imports =
                 adjudicate(claims, ownData.keySet(), ownValues, refused);
 
@@ -96,21 +95,24 @@ public final class Scoping {
     }
 
     /**
-     * Where a line is written, so claims can be put in the order an author reads them.
+     * The order an author reads the lines in, which is the order they are written in.
      *
      * <p>A line the author did not write is last. An import synthesized from a qualified reference
      * stands at the module header, which is before every line that was written, and showing it as
      * the one that has a name already would name a line nobody can go and look at.
+     *
+     * <p>Asked of the positions and not of their numbers. What comes before what is one question
+     * with one answer ({@link SourcePos#isBefore}), and a comparator spelling it again out of a line
+     * and a column is a second account of it that a change to either would leave behind.
      */
-    private static int line(Ast.Import imp) {
-        SourcePos at = imp.pos();
-        return at == null ? Integer.MAX_VALUE : at.line();
-    }
-
-    private static int column(Ast.Import imp) {
-        SourcePos at = imp.pos();
-        return at == null ? Integer.MAX_VALUE : at.column();
-    }
+    private static final Comparator<Claim> IN_WRITTEN_ORDER = (one, other) -> {
+        SourcePos here = one.imp().pos();
+        SourcePos there = other.imp().pos();
+        if (here == null || there == null) {
+            return here == there ? 0 : here == null ? 1 : -1;
+        }
+        return SourcePos.IN_WRITTEN_ORDER.compare(here, there);
+    };
 
     /**
      * One import line asking for one spelling.

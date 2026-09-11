@@ -1,5 +1,6 @@
 package souther.cli;
 
+import souther.compiler.cst.SourceLayout;
 import souther.compiler.source.SourceId;
 
 import souther.compiler.Compiler;
@@ -187,7 +188,7 @@ class MultiFileDiagnosticOriginTest {
                 () -> Main.compileToDir(List.of(a, b), dir.resolve("out")));
         Path source = Main.sourceOf(List.of(a, b), e);
         String rendered = new HumanRenderer(false).render(e.diagnostic(),
-                new SourceContext(source.getFileName().toString(), Files.readString(source)),
+                new SourceContext(source.getFileName().toString(), Files.readString(source), SourceLayout.of(Files.readString(source))),
                 Locale.ENGLISH);
 
         assertTrue(rendered.contains("b.sou:6:"), rendered);

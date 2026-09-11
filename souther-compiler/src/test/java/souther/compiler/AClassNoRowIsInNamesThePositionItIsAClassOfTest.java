@@ -1,8 +1,9 @@
 package souther.compiler;
 
+import souther.compiler.diag.SourceLayouts;
+import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 
-import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.Compilation;
 import souther.compiler.report.AdequacyReport;
@@ -56,7 +57,7 @@ class AClassNoRowIsInNamesThePositionItIsAClassOfTest {
     /** The human report writes the position beside the class. */
     @Test
     void theReportSaysWhichPositionEachClassIsOf() {
-        String human = report().human(SourceNameResolver.identity());
+        String human = report().human(SourceRendering.namedByIdentity(SourceLayouts.NONE));
 
         assertEquals(List.of("      · no row is in `No` at left",
                         "      · no row is in `No` at right"),
@@ -72,7 +73,7 @@ class AClassNoRowIsInNamesThePositionItIsAClassOfTest {
      */
     @Test
     void theDocumentTellsTheTwoFindingsApart() {
-        JsonNode findings = JSON.readTree(report().json(SourceNameResolver.identity()))
+        JsonNode findings = JSON.readTree(report().json(SourceRendering.namedByIdentity(SourceLayouts.NONE)))
                 .get("modules").get(0).get("behaviors").get(0).get("findings");
 
         assertEquals(List.of("No (at left)", "No (at right)"),
@@ -87,7 +88,7 @@ class AClassNoRowIsInNamesThePositionItIsAClassOfTest {
      */
     @Test
     void thePositionsNamedAreTheOnesTheAxesPublish() {
-        JsonNode behavior = JSON.readTree(report().json(SourceNameResolver.identity()))
+        JsonNode behavior = JSON.readTree(report().json(SourceRendering.namedByIdentity(SourceLayouts.NONE)))
                 .get("modules").get(0).get("behaviors").get(0);
 
         List<String> paths = new ArrayList<>();

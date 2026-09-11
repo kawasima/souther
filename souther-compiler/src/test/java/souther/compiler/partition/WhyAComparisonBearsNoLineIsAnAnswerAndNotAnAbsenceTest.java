@@ -1,5 +1,6 @@
 package souther.compiler.partition;
 
+import souther.compiler.WhereItSits;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.check.RuleReadingSource;
@@ -80,7 +81,7 @@ class WhyAComparisonBearsNoLineIsAnAnswerAndNotAnAbsenceTest {
             Citation.Written at = assertInstanceOf(
                     Citation.Written.class, each.at(),
                     "the model under test is written in this compile's own source");
-            byLine.put(at.at().line(), each.standing());
+            byLine.put(WhereItSits.in(MODEL, at.at()).line(), each.standing());
         }
         return byLine;
     }

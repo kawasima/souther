@@ -316,9 +316,26 @@ public final class Placement {
         return new Placement(text, new CopiedFrom(declaring.provenance()));
     }
 
-    /** The position of {@code line} and {@code column} in this text. */
-    public SourcePos at(int line, int column) {
-        return new SourcePos(line, column, this);
+    /**
+     * A place in this text, in the first of its top-level constructs.
+     *
+     * <p>For a caller spelling one out rather than reading it off a text — a test writing a place
+     * to compare, a pass minting one to mean nowhere. Where a text is what a place is being made
+     * from, {@code SourceLayout} is what makes it, and this is not the way in.
+     */
+    public SourcePos at(int token, int within) {
+        return at(0, token, within);
+    }
+
+    /**
+     * The same, in the {@code construct}-th of them.
+     *
+     * <p>The way a laid-out text makes its places, and the only way in from outside this package
+     * that says which construct. What counts the constructs of a text is what parsed it, so a
+     * caller reaching this without one has counted them a second time.
+     */
+    public SourcePos at(int construct, int token, int within) {
+        return new SourcePos(construct, token, within, this);
     }
 
     /** A file this compile holds, under the identity it holds it by. Its positions are where the

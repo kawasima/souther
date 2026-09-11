@@ -56,13 +56,17 @@ public final class MatchElaborator {
 
     /**
      * An arm names something that is not a case of what is being matched. When that name is a case of
-     * another sum, say which — the author wrote an arm for a different match. The layout rule
-     * (<<match>>) settles that by column, except where both matches are on one line: there the inner
-     * match takes every `|` after it, so an arm meant for the outer one lands here, and the report
-     * says how to end the inner match.
+     * another sum, say which — the author wrote an arm for a different match.
+     *
+     * <p>Raised as something the matches around this one can still answer about. Which match an arm
+     * belongs to is settled by the layout rule (&lt;&lt;match&gt;&gt;): a {@code |} indented past the
+     * arms of the match around it belongs to the inner one, which every {@code |} on the line the
+     * inner match was opened on is. So an arm meant for an outer match lands in an inner one, and
+     * what says that is happening is not how the two are laid out — it is that the name this arm
+     * gives is a case of a match this one is written inside of.
      */
-    static CompileException notCase(Hir.Name written, String what, Hir.Case c, Hir.Match m,
-                                            Set<TypeSymbol> cases, Symbols symbols) {
+    static NotACaseOfThisMatch notCase(Hir.Name written, String what, Hir.Case c,
+                                       Set<TypeSymbol> cases, Symbols symbols) {
         String caseName = written.written();
         String otherSum = null;
         for (TypeSymbol name : symbols.scope().visibleNames()) {
@@ -76,15 +80,71 @@ public final class MatchElaborator {
                 break;
             }
         }
-        Diagnostic.Builder d = Diagnostic.at(c.pos())
-                .say(new MatchMessage.NotACaseOf(caseName, what));
-        if (otherSum != null) {
-            d = d.hint(new MatchMessage.ItIsACaseOfAnotherSum(caseName, otherSum));
-            if (c.pos().line() == m.pos().line()) {
+        return new NotACaseOfThisMatch(written.answered() == null ? null : written.answered().type(),
+                caseName, what, c, otherSum, false);
+    }
+
+    /**
+     * An arm naming something the match it was written in has no case of, on its way out past the
+     * matches that match is written inside.
+     *
+     * <p>It carries what the arm named, because the answer to whether an inner match took an arm
+     * meant for an outer one is held by the outer one: the arm is here, the case-space it makes
+     * sense in is there, and neither half can be read from where the other is. Each match around
+     * this one asks {@link #takenFromTheMatchAround}, and the nearest one that has the case is the
+     * one the arm was written for.
+     */
+    static final class NotACaseOfThisMatch extends CompileException {
+
+        private static final long serialVersionUID = 1L;
+
+        private final transient TypeSymbol named;
+
+        private final transient String caseName;
+
+        private final transient String what;
+
+        private final transient Hir.Case at;
+
+        private final transient String otherSum;
+
+        private NotACaseOfThisMatch(TypeSymbol named, String caseName, String what, Hir.Case at,
+                                    String otherSum, boolean takenFromAMatchAround) {
+            super(said(caseName, what, at, otherSum, takenFromAMatchAround));
+            this.named = named;
+            this.caseName = caseName;
+            this.what = what;
+            this.at = at;
+            this.otherSum = otherSum;
+        }
+
+        private static Diagnostic said(String caseName, String what, Hir.Case at, String otherSum,
+                                       boolean takenFromAMatchAround) {
+            Diagnostic.Builder d = Diagnostic.at(at.pos())
+                    .say(new MatchMessage.NotACaseOf(caseName, what));
+            if (otherSum != null) {
+                d = d.hint(new MatchMessage.ItIsACaseOfAnotherSum(caseName, otherSum));
+            }
+            if (takenFromAMatchAround) {
                 d = d.hint(new MatchMessage.AMatchInAnArmTakesTheArmsAfterIt());
             }
+            return d.build();
         }
-        return CompileException.of(d.build());
+
+        /**
+         * This error, said as the arm having been taken from {@code around} — where what it names is
+         * a case of that match.
+         *
+         * <p>Answered once. The nearest match that has the case is the one the arm was written for,
+         * so a match further out that also has it is not told, and what comes back from here is no
+         * longer something any of them will answer about.
+         */
+        CompileException takenFromTheMatchAround(CaseSpace.Cases around, Symbols symbols) {
+            if (named == null || !around.holds(named, symbols)) {
+                return this;
+            }
+            return CompileException.of(said(caseName, what, at, otherSum, true));
+        }
     }
 
     /** Match over a fixed set of data cases (a named sum's cases, or an anonymous union's members).
@@ -112,7 +172,7 @@ public final class MatchElaborator {
                 TypeSymbol caseName = names(written);
                 ResolvedCase resolved = space.selector(caseName, ctx.symbols());
                 if (resolved == null) {
-                    throw notCase(written, what, c, m, cases, ctx.symbols());
+                    throw notCase(written, what, c, cases, ctx.symbols());
                 }
                 alternatives.add(resolved);
                 answersFor.addAll(resolved.atoms());
@@ -157,9 +217,18 @@ public final class MatchElaborator {
                 }
                 checkUnwrapAsserts(c, ctx.symbols());
             }
-            Core body = Elaborator.liftIntoOption(
-                    Elaborator.elaborate(c.body(), bound(env, c.binding(), bindType), ctx, expected),
-                    expected, ctx.symbols());
+            // What this arm's body says, and what a match inside it could not answer on its own. An
+            // arm written for this match that the layout rule gave to an inner one arrives as a case
+            // that match has no case of, and this is where there is a space to read it against.
+            Core body;
+            try {
+                body = Elaborator.liftIntoOption(
+                        Elaborator.elaborate(c.body(), bound(env, c.binding(), bindType), ctx,
+                                expected),
+                        expected, ctx.symbols());
+            } catch (NotACaseOfThisMatch inner) {
+                throw inner.takenFromTheMatchAround(space, ctx.symbols());
+            }
             arms.add(new Core.Case(pattern, CoreBinders.of(c.binding()), body, c.pos()));
             branchType = mergeBranch(m, branchType, body.type(), c, expected);
         }

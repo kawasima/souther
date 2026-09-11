@@ -1,5 +1,6 @@
 package souther.compiler.query;
 
+import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.partition.AdequacyPolicy;
@@ -8,7 +9,6 @@ import souther.compiler.partition.GenerationReason;
 import souther.compiler.regex.PatternPlan;
 import souther.compiler.DocumentShape;
 import souther.compiler.report.AdequacyReport;
-import souther.compiler.diag.SourceNameResolver;
 
 import tools.jackson.databind.json.JsonMapper;
 
@@ -154,7 +154,7 @@ class ABudgetIsTheCompilationsToSetTest {
                         Budgets.generation()));
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
-        String document = AdequacyReport.of(compilation).json(SourceNameResolver.identity());
+        String document = AdequacyReport.of(compilation).json(SourceRendering.namedByIdentity(compilation.texts()));
 
         assertTrue(document.contains("behavior_distinctions_too_costly"),
                 "the measure was held to less than the rule's two sides take: " + document);

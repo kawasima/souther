@@ -1,5 +1,6 @@
 package souther.compiler.coverage;
 
+import souther.compiler.WhereItSits;
 import souther.compiler.observe.ArmObservation;
 import souther.compiler.Emitted;
 import org.junit.jupiter.api.Test;
@@ -134,7 +135,7 @@ class AComparisonIsLitWhereverItIsWrittenTest {
                 .filter(site -> site instanceof CoverageSites.ComparisonSite)
                 .map(CoverageSites.ComparisonSite.class::cast)
                 .filter(site -> site.at() instanceof souther.compiler.diag.Citation.Written written
-                        && written.at().line() == line)
+                        && WhereItSits.in(MODEL, written.at()).line() == line)
                 .toList();
         assertEquals(1, found.size(),
                 () -> "one comparison of " + behavior + " on line " + line + ": " + plan.sites());

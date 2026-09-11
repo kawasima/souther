@@ -1,5 +1,6 @@
 package souther.cli;
 
+import souther.compiler.cst.SourceLayout;
 import souther.compiler.source.SourceId;
 
 import souther.compiler.jvm.ClassFileImage;
@@ -19,6 +20,7 @@ import souther.compiler.diag.Messages;
 import souther.compiler.diag.SourceContext;
 import souther.compiler.diag.SourceContextResolver;
 import souther.compiler.diag.SourceNameResolver;
+import souther.compiler.diag.SourceRendering;
 import souther.compiler.diag.SourceNames;
 import souther.compiler.doc.ApiCommand;
 import souther.compiler.doc.DocCommand;
@@ -388,15 +390,17 @@ public final class Main {
             boolean assessable = !assessed.modules().isEmpty();
             AdequacyReport report = assessed.only(module, behavior);
             if (assessable) {
-                SourceNameResolver names = namesOf(sources);
-                String rendered = render.json() ? report.json(names) + System.lineSeparator()
-                        : report.human(names);
+                SourceRendering rendering =
+                        new SourceRendering(namesOf(sources), compilation.texts());
+                String rendered = render.json()
+                        ? report.json(rendering) + System.lineSeparator()
+                        : report.human(rendering);
                 System.out.print(rendered);
                 // After the report, because the rows are what to do about what the report just said.
                 // Beside it rather than in it where the report is JSON: the rows are source, and
                 // source in the middle of a JSON document is not a document.
                 if (generate) {
-                    String rows = GeneratedRows.of(compilation, module, behavior, boundaries, names).text();
+                    String rows = GeneratedRows.of(compilation, module, behavior, boundaries, rendering).text();
                     (render.json() ? System.err : System.out).print(rows);
                 }
             }
@@ -845,7 +849,8 @@ public final class Main {
             return null;
         }
         try {
-            return new SourceContext(name, Files.readString(source));
+            String text = Files.readString(source);
+            return new SourceContext(name, text, SourceLayout.of(text));
         } catch (IOException _) {
             return null;
         }

@@ -1,5 +1,6 @@
 package souther.compiler.check;
 
+import souther.compiler.WhereItSits;
 import souther.compiler.DefaultStdlib;
 import souther.compiler.ast.Ast;
 import souther.compiler.ast.Hir;
@@ -134,16 +135,16 @@ class AnExpansionKeepsTheSpellingItCopiedTest {
     /** The characters {@code at} covers, cut out of the source it was read from. */
     private static String cut(String source, Region at) {
         List<String> lines = List.of(source.split("\n", -1));
-        if (at.start().line() == at.end().line()) {
-            return lines.get(at.start().line() - 1)
-                    .substring(at.start().column() - 1, at.end().column() - 1);
+        if (WhereItSits.in(source, at).start().line() == WhereItSits.in(source, at).end().line()) {
+            return lines.get(WhereItSits.in(source, at).start().line() - 1)
+                    .substring(WhereItSits.in(source, at).start().column() - 1, WhereItSits.in(source, at).end().column() - 1);
         }
         StringBuilder out =
-                new StringBuilder(lines.get(at.start().line() - 1).substring(at.start().column() - 1));
-        for (int line = at.start().line() + 1; line < at.end().line(); line++) {
+                new StringBuilder(lines.get(WhereItSits.in(source, at).start().line() - 1).substring(WhereItSits.in(source, at).start().column() - 1));
+        for (int line = WhereItSits.in(source, at).start().line() + 1; line < WhereItSits.in(source, at).end().line(); line++) {
             out.append('\n').append(lines.get(line - 1));
         }
-        return out.append('\n').append(lines.get(at.end().line() - 1), 0, at.end().column() - 1)
+        return out.append('\n').append(lines.get(WhereItSits.in(source, at).end().line() - 1), 0, WhereItSits.in(source, at).end().column() - 1)
                 .toString();
     }
 }

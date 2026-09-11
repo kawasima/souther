@@ -1,6 +1,6 @@
 package souther.compiler.publish;
 
-import souther.compiler.diag.SourceNameResolver;
+import souther.compiler.diag.SourceRendering;
 import souther.compiler.source.SourceId;
 
 /**
@@ -23,15 +23,15 @@ public final class RuleHandleProse {
 
     /** {@code handle} in a report about {@code sectionSource}, with the sources under the names
      *  {@code names} gives them. */
-    public static String said(PublishedRuleHandle handle, SourceNameResolver names,
+    public static String said(PublishedRuleHandle handle, SourceRendering sources,
                               SourceId sectionSource) {
-        return RuleHandleSentence.said(handle, names, sectionSource);
+        return RuleHandleSentence.said(handle, sources, sectionSource);
     }
 
     /** The same for a sentence with a handle in it, so that the words around one are put together
      *  the one way wherever they are read. */
-    public static String said(PublishedSentence sentence, SourceNameResolver names,
+    public static String said(PublishedSentence sentence, SourceRendering sources,
                               SourceId sectionSource) {
-        return RuleHandleSentence.of(sentence, names, sectionSource);
+        return RuleHandleSentence.of(sentence, sources, sectionSource);
     }
 }

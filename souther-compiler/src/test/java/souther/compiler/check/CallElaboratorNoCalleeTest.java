@@ -121,7 +121,7 @@ class CallElaboratorNoCalleeTest {
                 ValueName.Stdlib.operation("List", "map"))) {
             RuntimeException e = answerFor(denotes);
             assertInstanceOf(IllegalStateException.class, e, denotes.toString());
-            assertTrue(e.getMessage().contains("7:3"), () -> "says where: " + e.getMessage());
+            assertTrue(e.getMessage().contains(String.valueOf(AT)), () -> "says where: " + e.getMessage());
         }
     }
 
@@ -141,6 +141,6 @@ class CallElaboratorNoCalleeTest {
                 ResolvedSymbols.none(souther.compiler.DefaultStdlib.get()));
 
         assertInstanceOf(IllegalStateException.class, e);
-        assertTrue(e.getMessage().contains("7:3"), () -> "says where: " + e.getMessage());
+        assertTrue(e.getMessage().contains(String.valueOf(AT)), () -> "says where: " + e.getMessage());
     }
 }

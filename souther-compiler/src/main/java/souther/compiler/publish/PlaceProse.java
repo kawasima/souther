@@ -1,6 +1,6 @@
 package souther.compiler.publish;
 
-import souther.compiler.diag.SourceNameResolver;
+import souther.compiler.diag.SourceRendering;
 import souther.compiler.source.SourceId;
 
 /**
@@ -29,10 +29,14 @@ public final class PlaceProse {
      * the section already names the file, and with the file where it does not — a position from
      * another source, printed bare, points at whatever happens to sit at those numbers in the one
      * the reader has in mind.
+     *
+     * <p>The numbers come from {@code layouts}, which is whoever holds the texts. What a place says
+     * is which of the things written in a source it is; what line that is at is what the file is
+     * laid out as at the moment, and a document says it as of the moment it is written.
      */
-    public static String said(PublishedAt at, SourceNameResolver names, SourceId sectionSource) {
-        String numbers = at.line() + ":" + at.column();
+    public static String said(PublishedAt at, SourceRendering sources, SourceId sectionSource) {
+        String numbers = String.valueOf(sources.layouts().resolve(at.at()));
         return at.source().equals(sectionSource) ? numbers
-                : names.nameOf(at.source()) + ":" + numbers;
+                : sources.names().nameOf(at.source()) + ":" + numbers;
     }
 }

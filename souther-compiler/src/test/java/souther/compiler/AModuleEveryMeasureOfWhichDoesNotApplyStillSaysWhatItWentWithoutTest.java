@@ -1,5 +1,6 @@
 package souther.compiler;
 
+import souther.compiler.diag.SourceLayouts;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.observe.Incompleteness;
@@ -111,7 +112,7 @@ class AModuleEveryMeasureOfWhichDoesNotApplyStillSaysWhatItWentWithoutTest {
     @Test
     void theDocumentSaysBoth() {
         JsonNode root = JSON.readTree(AdequacyReport.of(measured())
-                .json(souther.compiler.diag.SourceNameResolver.identity()));
+                .json(souther.compiler.diag.SourceRendering.namedByIdentity(SourceLayouts.NONE)));
         JsonNode module = root.get("modules").get(0);
 
         assertEquals("partial", module.get("status").asString());

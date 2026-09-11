@@ -1,8 +1,8 @@
 package souther.compiler;
 
+import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 
-import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.Compilation;
 import souther.compiler.report.GeneratedRows;
@@ -91,7 +91,7 @@ class TheBlockAndItsHeaderComeFromOneListOfRowsTest {
         assertNotNull(generated, "the model under test compiles");
         return GeneratedRows.of(Adequacy.offeredFor(compilation.db(),
                         souther.compiler.query.OfferingRequest.overTheModule(module, true)),
-                Map.of(), SourceNameResolver.identity(), compilation.db()).text();
+                Map.of(), SourceRendering.namedByIdentity(compilation.texts()), compilation.db()).text();
     }
 
     /** Where each row starts. A row the formatter wrapped is still one row, and one {@code |}. */

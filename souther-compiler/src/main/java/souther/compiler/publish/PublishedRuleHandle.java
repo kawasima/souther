@@ -152,9 +152,9 @@ public sealed interface PublishedRuleHandle extends Comparable<PublishedRuleHand
         /** In a file this compile holds, so a reader can be sent to it. */
         record InSource(PublishedAt at) implements Place {}
 
-        /** In a text this compilation cannot name: the numbers are real and the file is the
-         *  reader's to know. */
-        record Unplaced(int line, int column) implements Place {}
+        /** In a text this compilation cannot name: the place is a real place in it, and the file
+         *  is the reader's to know. */
+        record Unplaced(SourcePos at) implements Place {}
 
         /** A place a reader can be sent to before one only whoever is showing the report can use,
          *  which is how much a reader is given, most first. */
@@ -174,11 +174,8 @@ public sealed interface PublishedRuleHandle extends Comparable<PublishedRuleHand
             return switch (this) {
                 case InSource it ->
                         PublicationOrders.PLACES.compare(it.at(), ((InSource) other).at());
-                case Unplaced it -> {
-                    Unplaced also = (Unplaced) other;
-                    int line = Integer.compare(it.line(), also.line());
-                    yield line != 0 ? line : Integer.compare(it.column(), also.column());
-                }
+                case Unplaced it ->
+                        SourcePos.IN_WRITTEN_ORDER.compare(it.at(), ((Unplaced) other).at());
             };
         }
     }
@@ -270,7 +267,7 @@ public sealed interface PublishedRuleHandle extends Comparable<PublishedRuleHand
      */
     private static Place placeOf(Citation cited, SourcePos at) {
         return PublishedAt.of(cited).<Place>map(Place.InSource::new)
-                .orElseGet(() -> new Place.Unplaced(at.line(), at.column()));
+                .orElseGet(() -> new Place.Unplaced(at));
     }
 
     /**

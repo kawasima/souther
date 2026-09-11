@@ -239,13 +239,14 @@ class CompileNamedInvariantClauseTest {
      */
     @Test
     void underscoreCannotNameAClause() {
-        CompileException e = assertThrows(CompileException.class, () -> Compiler.compile("""
+        String source = """
                 module demo
                 data Positive = Int
                     invariant _ = value > 0
-                """));
+                """;
+        CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(source));
         assertInstanceOf(InvariantMessage.UnderscoreCannotNameAClause.class, e.diagnostics().get(0).said());
-        assertEquals(3, ((Primary.InSource) e.diagnostics().get(0).primary()).place().region().start().line(), "reported at the clause, not at a use");
+        assertEquals(3, WhereItSits.in(source, ((Primary.InSource) e.diagnostics().get(0).primary()).place().region()).start().line(), "reported at the clause, not at a use");
     }
 
     /**

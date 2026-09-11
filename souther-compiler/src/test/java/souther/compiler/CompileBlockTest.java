@@ -1,5 +1,7 @@
 package souther.compiler;
 
+import souther.compiler.WhereItSits;
+import souther.compiler.diag.Primary;
 import souther.compiler.diag.CompileException;
 
 import org.junit.jupiter.api.Test;
@@ -141,7 +143,9 @@ class CompileBlockTest {
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
         assertTrue(e.getMessage().contains("filter"), e.getMessage());
         assertTrue(e.getMessage().contains("must return Bool, but returns Int"), e.getMessage());
-        assertTrue(e.getMessage().startsWith("3:"), "points at the user's call, not the prelude: " + e.getMessage());
+        assertEquals(3, WhereItSits.in(src,
+                        ((Primary.InSource) e.diagnostic().primary()).place().region()).start().line(),
+                "points at the user's call, not the prelude: " + e.getMessage());
     }
 
     // Passing a value where a combinator wants a function is rejected at the call site, naming the
@@ -157,6 +161,8 @@ class CompileBlockTest {
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
         assertTrue(e.getMessage().contains("expects a function"), e.getMessage());
         assertTrue(e.getMessage().contains("map"), e.getMessage());
-        assertTrue(e.getMessage().startsWith("3:"), "points at the user's call: " + e.getMessage());
+        assertEquals(3, WhereItSits.in(src,
+                        ((Primary.InSource) e.diagnostic().primary()).place().region()).start().line(),
+                "points at the user's call: " + e.getMessage());
     }
 }

@@ -227,7 +227,7 @@ class AComparisonThisDoesNotReadIsStillNoticedTest {
         // Line 14 column 31 is the `<`, and column 8 is the `if` that tests it. The two are
         // on one line, so a citation taken from the fork would be a plausible place on the right
         // line — which is what this used to say and what a reader would go to the wrong token for.
-        assertEquals(31, where.at().column(),
+        assertEquals(31, read.compilation().texts().resolve(where.at()).column(),
                 () -> "the comparison and not the fork that tests it: " + where.at());
     }
 

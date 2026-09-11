@@ -1,5 +1,6 @@
 package souther.compiler.diag;
 
+import souther.compiler.cst.SourceLayout;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.diag.msg.DataMessage;
@@ -28,14 +29,22 @@ class ACaretIsDrawnInColumnsNotCharactersTest {
      * at — and the gutter is part of that column, since the quoted line and the carets are written
      * on one terminal line.
      */
-    private static final SourceContext SRC = new SourceContext("demo.sou",
-            "module demo\n"
+    private static final String TEXT = "module demo\n"
             + "    免責金額以下 { 請求額 = 診療内容.請求額, 免責金額 = 契約.自己負担割合 }\n"
             + "a\tb\n"
-            + "let f (n) = null\n");
+            + "let f (n) = null\n";
+
+    private static final SourceLayout LAID_OUT = SourceLayout.of(TEXT);
+
+    private static final SourceContext SRC = new SourceContext("demo.sou", TEXT, LAID_OUT);
+
+    /** The place at line {@code line} column {@code column} of the text above, as it is laid out. */
+    private static SourcePos at(int line, int column) {
+        return LAID_OUT.placeAt(LAID_OUT.lines().offsetOf(line - 1, column - 1));
+    }
 
     private static String caretUnder(int line, int column, int width) {
-        Diagnostic d = Diagnostic.at(new SourcePos(line, column), width)
+        Diagnostic d = Diagnostic.at(at(line, column), width)
                 .say(new DataMessage.SpreadFieldCollision("f", "A", "...B"))
                 .build();
         return lines(new HumanRenderer(false).render(d, SRC, Locale.ENGLISH)).get(3);
@@ -97,7 +106,7 @@ class ACaretIsDrawnInColumnsNotCharactersTest {
      */
     @Test
     void the_title_bar_is_the_same_width_in_every_language() {
-        Diagnostic d = Diagnostic.at(new SourcePos(2, 30), 4)
+        Diagnostic d = Diagnostic.at(at(2, 30), 4)
                 .say(new DataMessage.SpreadFieldCollision("f", "A", "...B"))
                 .build();
         String english = lines(new HumanRenderer(false).render(d, SRC, Locale.ENGLISH)).get(0);

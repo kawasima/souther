@@ -1,5 +1,7 @@
 package souther.compiler.check;
 
+import souther.compiler.diag.Primary;
+import souther.compiler.WhereItSits;
 import org.junit.jupiter.api.Test;
 import souther.compiler.Compiler;
 import souther.compiler.diag.CompileException;
@@ -85,10 +87,11 @@ class EnsuresDeclarationTest {
         assertEquals("6:13", where(SINGLE.replace("same =", "_ =")));
     }
 
-    /** Where a refusal of {@code source} points, as a reader is told it. */
+    /** Where a refusal of {@code source} points, as a reader is sent there. */
     private static String where(String source) {
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(source));
-        return e.getMessage().split(" ")[0];
+        return String.valueOf(WhereItSits.in(source,
+                ((Primary.InSource) e.diagnostic().primary()).place().region().start()));
     }
 
     @Test void aCompositionCarriesNoClause() {

@@ -1,5 +1,6 @@
 package souther.compiler.inputs;
 
+import souther.compiler.diag.Placement;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.diag.SourcePos;
@@ -81,8 +82,8 @@ class OnlyPlacesOfOneTextPutReasonsInAnOrderTest {
     void andReasonsOfTwoTextsStandInNoOrderAnybodyWrote() {
         assertInstanceOf(RuleReasons.NoSingleAuthoredOrder.class,
                 RuleReasons.from(List.of(
-                        placed(new SourcePos(5, 1, ONE), FORM),
-                        placed(new SourcePos(10, 1, ANOTHER), DOMAIN))),
+                        placed(Placement.aFileOfThisCompile(ONE).at(5, 1), FORM),
+                        placed(Placement.aFileOfThisCompile(ANOTHER).at(10, 1), DOMAIN))),
                 "nothing an author did says which file comes first");
     }
 
@@ -100,11 +101,11 @@ class OnlyPlacesOfOneTextPutReasonsInAnOrderTest {
     @Test
     void whatComesOutOfTwoTextsIsTheSameWhicheverWayRoundTheyWereMet() {
         assertEquals(RuleReasons.from(List.of(
-                        placed(new SourcePos(5, 1, ONE), FORM),
-                        placed(new SourcePos(10, 1, ANOTHER), DOMAIN))).reasons(),
+                        placed(Placement.aFileOfThisCompile(ONE).at(5, 1), FORM),
+                        placed(Placement.aFileOfThisCompile(ANOTHER).at(10, 1), DOMAIN))).reasons(),
                 RuleReasons.from(List.of(
-                        placed(new SourcePos(10, 1, ANOTHER), DOMAIN),
-                        placed(new SourcePos(5, 1, ONE), FORM))).reasons(),
+                        placed(Placement.aFileOfThisCompile(ANOTHER).at(10, 1), DOMAIN),
+                        placed(Placement.aFileOfThisCompile(ONE).at(5, 1), FORM))).reasons(),
                 "which text was met first is a fact about this compiler and about no model");
     }
 
@@ -117,7 +118,7 @@ class OnlyPlacesOfOneTextPutReasonsInAnOrderTest {
 
     /** A place in the one text these are written in. */
     private static SourcePos at(int column) {
-        return new SourcePos(1, column, ONE);
+        return Placement.aFileOfThisCompile(ONE).at(1, column);
     }
 
     /** A reason about the whole of its rule, which is what everything here is about: what is asked

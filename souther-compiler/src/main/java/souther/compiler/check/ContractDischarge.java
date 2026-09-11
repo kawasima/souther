@@ -80,8 +80,7 @@ public record ContractDischarge(List<RuleDischarge> rules,
         // Its own reading, over the clauses as the analysis reads them. A rule may reach a
         // declaration through the values it names, and the representation those are read in is the
         // one every other reader of this module's rules uses.
-        Terms naming = new Terms(Terms.Of.THE_DISCHARGE_TREE, policy,
-                new Clauses(source, DeclarationReadings.NONE));
+        Terms naming = new Terms(Terms.Of.THE_DISCHARGE_TREE, policy, new Clauses(source));
         Denotations locations =
                 Denotations.none().locations(named, naming::placeSubject, naming::placeTerm);
 

@@ -13,7 +13,7 @@ import souther.compiler.diag.QuotedFrom;
 import souther.compiler.ast.StructuralCost;
 import souther.compiler.ast.WrittenName;
 import souther.compiler.cst.CstLexer;
-import souther.compiler.cst.LineIndex;
+import souther.compiler.cst.SourceLayout;
 import souther.compiler.cst.SyntaxElement;
 import souther.compiler.cst.SyntaxKind;
 import souther.compiler.cst.SyntaxNode;
@@ -53,7 +53,9 @@ import java.util.Set;
  */
 public final class AstBuilder {
 
-    private final LineIndex lines;
+    /** What this text is made of and where each of it sits — the one place a place is made from a
+     *  text, so nothing below here counts its tokens again. */
+    private final SourceLayout layout;
     /**
      * Which text this is reading — part of the owner of anything several texts may write for one
      * behavior, and nothing else's.
@@ -79,12 +81,12 @@ public final class AstBuilder {
      */
     private final Map<WrittenOwner, Reading> readings = new LinkedHashMap<>();
 
-    private AstBuilder(String source, Placement read) {
-        this.lines = new LineIndex(source, read);
+    private AstBuilder(SyntaxNode sourceFile, String source, Placement read) {
+        this.layout = SourceLayout.of(sourceFile, source, read);
         // Asked of a position, which is the one way there is to ask which text something is in.
         // The placement holds the answer and does not publish it: a caller reading it off the
         // placement would be a second way to reach a classification that is made once.
-        this.text = lines.posOf(0).quotedFrom();
+        this.text = layout.placeAt(0).quotedFrom();
     }
 
     /** What reads {@code owner}'s syntax, made once and handed back after that. */
@@ -106,7 +108,7 @@ public final class AstBuilder {
      */
     static Ast.Module build(SyntaxNode sourceFile, String source, String defaultModuleName,
                             Placement read) {
-        return new AstBuilder(source, read).module(sourceFile, defaultModuleName);
+        return new AstBuilder(sourceFile, source, read).module(sourceFile, defaultModuleName);
     }
 
     // --- module ---
@@ -1197,7 +1199,7 @@ public final class AstBuilder {
                     for (int i = 1; i < path.size(); i++) {
                         value = new Ast.FieldAccess(value, nameOf(path.get(i)),
                                 posOf(path.get(i)),
-                                new Region(posOf(path.get(0)), lines.posOf(path.get(i).end())));
+                                new Region(posOf(path.get(0)), layout.after(path.get(i))));
                     }
                     pathNames.add(bound);
                     pathValues.add(value);
@@ -1938,7 +1940,7 @@ public final class AstBuilder {
     }
 
     private SourcePos pos(SyntaxNode n) {
-        return lines.posOf(firstMeaningfulToken(n).start());
+        return layout.at(firstMeaningfulToken(n));
     }
 
     private SyntaxToken lastMeaningfulTokenOrNull(SyntaxNode n) {
@@ -1974,16 +1976,16 @@ public final class AstBuilder {
         SyntaxToken first = firstMeaningfulTokenOrNull(n);
         SyntaxToken last = lastMeaningfulTokenOrNull(n);
         return first == null || last == null ? null
-                : new Region(lines.posOf(first.start()), lines.posOf(last.end()));
+                : new Region(layout.at(first), layout.after(last));
     }
 
     private SourcePos posOf(SyntaxToken t) {
-        return lines.posOf(t.start());
+        return layout.at(t);
     }
 
     /** The characters {@code t} is written with — its own slice of the file, escapes and all. */
     private Region regionOf(SyntaxToken t) {
-        return new Region(lines.posOf(t.start()), lines.posOf(t.end()));
+        return new Region(layout.at(t), layout.after(t));
     }
 
     /**
@@ -2016,7 +2018,7 @@ public final class AstBuilder {
     private Region bodyRegion(SyntaxNode body) {
         SourcePos open = pos(body);
         return body.token(SyntaxKind.RBRACE)
-                .map(close -> new Region(open, lines.posOf(close.end())))
+                .map(close -> new Region(open, layout.after(close)))
                 .orElseGet(() -> Region.point(open));
     }
 

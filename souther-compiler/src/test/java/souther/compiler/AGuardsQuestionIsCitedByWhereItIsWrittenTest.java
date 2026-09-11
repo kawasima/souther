@@ -1,5 +1,7 @@
 package souther.compiler;
 
+import souther.compiler.diag.SourceLayouts;
+import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.check.RuleCitation;
@@ -110,7 +112,7 @@ class AGuardsQuestionIsCitedByWhereItIsWrittenTest {
                         + written);
         String said = RuleHandleProse.said(
                 PublishedRuleHandle.of(written, page.rulePlace()),
-                SourceNameResolver.identity(), null);
+                new SourceRendering(SourceNameResolver.identity(), SourceLayouts.NONE), null);
         assertTrue(said.startsWith("comparison@"),
                 () -> "what the rule is and where it is written: " + said);
     }

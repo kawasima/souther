@@ -83,17 +83,23 @@ class CompileQualifiedCalleeTest {
      */
     @Test
     void aChainThatAnswersNothingIsReportedWhereTheAnswerRanOut() {
-        CompileException e = refused(UP, """
+        String source = """
                 module down exposing ( In, Out, run )
                 data In = { n: Int }
                 data Out = { m: Int }
                 behavior run : (i: In) -> Out constructs Out
                 let run (i) = Out { m = i.n + up.defaults.limit }
-                """);
+                """;
+        CompileException e = refused(UP, source);
 
         assertTrue(e.getMessage().contains("`up.defaults`"), e.getMessage());
         assertEquals("up.defaults".length(),
-                ((Primary.InSource) e.diagnostic().primary()).place().region().end().column() - ((Primary.InSource) e.diagnostic().primary()).place().region().start().column());
+                WhereItSits.in(source,
+                        ((Primary.InSource) e.diagnostic().primary()).place().region())
+                        .end().column()
+                        - WhereItSits.in(source,
+                                ((Primary.InSource) e.diagnostic().primary()).place().region())
+                        .start().column());
     }
 
     /** A chain rooted at a binding is field reads all the way down, however long it is: the root is
@@ -140,17 +146,23 @@ class CompileQualifiedCalleeTest {
      */
     @Test
     void aMemberAKnownNamespaceHasNotGotIsNamedInFull() {
-        CompileException e = refused(DOTTED, """
+        String source = """
                 module down exposing ( In, Out, run )
                 data In = { n: Int }
                 data Out = { m: Int }
                 behavior run : (i: In) -> Out constructs Out
                 let run (i) = Out { m = probe.a.NoSuch(i.n).value }
-                """);
+                """;
+        CompileException e = refused(DOTTED, source);
 
         assertTrue(e.getMessage().contains("probe.a.NoSuch"), e.getMessage());
         assertEquals("probe.a.NoSuch".length(),
-                ((Primary.InSource) e.diagnostic().primary()).place().region().end().column() - ((Primary.InSource) e.diagnostic().primary()).place().region().start().column(),
+                WhereItSits.in(source,
+                        ((Primary.InSource) e.diagnostic().primary()).place().region())
+                        .end().column()
+                        - WhereItSits.in(source,
+                                ((Primary.InSource) e.diagnostic().primary()).place().region())
+                        .start().column(),
                 "the report underlines exactly the name that was written");
     }
 
@@ -158,18 +170,19 @@ class CompileQualifiedCalleeTest {
      *  dot is a namespace, so there is no qualified name here to name. */
     @Test
     void aChainRootedAtAnUnknownNameIsReportedAtTheRoot() {
-        CompileException e = refused("""
+        String source = """
                 module demo
                 data In = { n: Int }
                 data Out = { m: Int }
                 behavior go : (i: In) -> Out constructs Out
                 let go (i) = Out { m = unknown.member(i.n) }
-                """);
+                """;
+        CompileException e = refused(source);
 
         assertInstanceOf(NameMessage.NoValueOfThatNameInScope.class, e.diagnostic().said());
         assertTrue(e.getMessage().contains("`unknown`"), e.getMessage());
         assertEquals("unknown".length(),
-                ((Primary.InSource) e.diagnostic().primary()).place().region().end().column() - ((Primary.InSource) e.diagnostic().primary()).place().region().start().column());
+                WhereItSits.in(source, ((Primary.InSource) e.diagnostic().primary()).place().region()).end().column() - WhereItSits.in(source, ((Primary.InSource) e.diagnostic().primary()).place().region()).start().column());
     }
 
     /**
@@ -179,7 +192,7 @@ class CompileQualifiedCalleeTest {
      */
     @Test
     void aFieldThatIsNotAFunctionIsReportedByTheSpellingTheAuthorWrote() {
-        CompileException e = refused("""
+        String source = """
                 module demo
                 data Deps = { count: Int }
                 data In = { n: Int }
@@ -189,12 +202,13 @@ class CompileQualifiedCalleeTest {
                     let d = Deps { count = 1 }
                     Out { m = d.count(i.n) }
                 }
-                """);
+                """;
+        CompileException e = refused(source);
 
         assertInstanceOf(NameMessage.ItIsNotAFunctionHere.class, e.diagnostic().said());
         assertTrue(e.getMessage().contains("`d.count`"), e.getMessage());
         assertEquals("d.count".length(),
-                ((Primary.InSource) e.diagnostic().primary()).place().region().end().column() - ((Primary.InSource) e.diagnostic().primary()).place().region().start().column(),
+                WhereItSits.in(source, ((Primary.InSource) e.diagnostic().primary()).place().region()).end().column() - WhereItSits.in(source, ((Primary.InSource) e.diagnostic().primary()).place().region()).start().column(),
                 "the report underlines the read, not the binding the lowering introduced");
     }
 

@@ -1,5 +1,6 @@
 package souther.compiler.diag;
 
+import souther.compiler.cst.SourceLayout;
 import souther.compiler.Compiler;
 
 import souther.compiler.diag.msg.DeclarationMessage;
@@ -16,8 +17,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /** The diagnostic renderers: Elm-style human output, the JSON form, and locale selection. */
 class DiagnosticRenderTest {
 
-    private static final SourceContext SRC =
-            new SourceContext("demo.sou", "module demo\nlet f (n) = null\n");
+    private static final String TEXT = "module demo\nlet f (n) = null\n";
+
+    private static final SourceLayout LAID_OUT = SourceLayout.of(TEXT);
+
+    private static final SourceContext SRC = new SourceContext("demo.sou", TEXT, LAID_OUT);
+
+    /** The place at line {@code line} column {@code column} of the text above. */
+    private static SourcePos at(int line, int column) {
+        return LAID_OUT.placeAt(LAID_OUT.lines().offsetOf(line - 1, column - 1));
+    }
 
     /**
      * The JSON form carries the values the message is about, under the names its entry writes them
@@ -30,7 +39,7 @@ class DiagnosticRenderTest {
      */
     @Test
     void jsonCarriesTheValuesTheMessageIsAbout() {
-        Diagnostic d = Diagnostic.at(new SourcePos(2, 13))
+        Diagnostic d = Diagnostic.at(at(2, 13))
                 .say(new souther.compiler.diag.msg.DataMessage.SpreadFieldCollision(
                         "issuedAt", "Sold", "...Issued"))
                 .build();
@@ -42,14 +51,14 @@ class DiagnosticRenderTest {
     /** A wrapped text carries no values object rather than an empty one: it is not a message. */
     @Test
     void jsonCarriesNoValuesWhereThereIsNoMessage() {
-        Diagnostic d = Diagnostic.literal(new SourcePos(2, 13), "the compiler was handed this");
+        Diagnostic d = Diagnostic.literal(at(2, 13), "the compiler was handed this");
         assertFalse(new JsonRenderer().render(d, SRC, Locale.ENGLISH).contains("\"values\""));
     }
 
     /** The names are the message's, so they are the same in every language the sentence is asked in. */
     @Test
     void theValuesAreNamedTheSameInEveryLanguage() {
-        Diagnostic d = Diagnostic.at(new SourcePos(2, 13))
+        Diagnostic d = Diagnostic.at(at(2, 13))
                 .say(new souther.compiler.diag.msg.DataMessage.SpreadFieldCollision(
                         "issuedAt", "Sold", "...Issued"))
                 .build();
@@ -62,7 +71,7 @@ class DiagnosticRenderTest {
     @Test
     void humanRendererQuotesTheLineAndUnderlinesTheToken() {
         Diagnostic d = Diagnostic.say(new DeclarationMessage.NullIsNotPartOfTheLanguage())
-                .at(new SourcePos(2, 13), 4)
+                .at(at(2, 13), 4)
                 .build();
         String out = new HumanRenderer(false).render(d, SRC, Locale.ENGLISH);
         assertTrue(out.contains("E1301"), out);
@@ -73,7 +82,7 @@ class DiagnosticRenderTest {
     @Test
     void titleFollowsTheLocale() {
         Diagnostic d = Diagnostic.say(new DeclarationMessage.NullIsNotPartOfTheLanguage())
-                .at(new SourcePos(2, 13)).build();
+                .at(at(2, 13)).build();
         String en = new HumanRenderer(false).render(d, SRC, Locale.ENGLISH);
         String ja = new HumanRenderer(false).render(d, SRC, Locale.JAPANESE);
         assertTrue(en.contains("USE OF NULL"), en);
@@ -96,7 +105,7 @@ class DiagnosticRenderTest {
     @Test
     void jsonRendererCarriesCodeAndRegion() {
         Diagnostic d = Diagnostic.say(new DeclarationMessage.NullIsNotPartOfTheLanguage())
-                .at(new SourcePos(2, 13), 4)
+                .at(at(2, 13), 4)
                 .build();
         String json = new JsonRenderer().render(d, SRC, Locale.JAPANESE);
         assertTrue(json.contains("\"code\":\"E1301\""), json);

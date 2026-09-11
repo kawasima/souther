@@ -1,5 +1,6 @@
 package souther.compiler.partition;
 
+import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 
 import tools.jackson.databind.JsonNode;
@@ -17,7 +18,6 @@ import souther.compiler.check.InvariantStatementId;
 import souther.compiler.check.PartId;
 import souther.compiler.check.ClauseName;
 import souther.compiler.check.RuleRef;
-import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.Compilation;
 import souther.compiler.report.AdequacyReport;
@@ -377,7 +377,7 @@ class ABorderSaysWhichOfItsTwoPointsALineIsTest {
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
         JsonNode root = JsonMapper.builder().build()
-                .readTree(AdequacyReport.of(compilation).json(SourceNameResolver.identity()));
+                .readTree(AdequacyReport.of(compilation).json(SourceRendering.namedByIdentity(compilation.texts())));
         List<String> out = new ArrayList<>();
         root.findValues("boundaries").forEach(each -> each.forEach(
                 b -> b.get("items").forEach(i -> out.add(i.get("point").asString() + ":"
@@ -389,6 +389,6 @@ class ABorderSaysWhichOfItsTwoPointsALineIsTest {
         Compilation compilation = Compilation.ofSource(model, "Main");
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
-        return AdequacyReport.of(compilation).human(SourceNameResolver.identity());
+        return AdequacyReport.of(compilation).human(SourceRendering.namedByIdentity(compilation.texts()));
     }
 }

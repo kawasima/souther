@@ -1,5 +1,6 @@
 package souther.compiler;
 
+import souther.compiler.cst.SourceLayout;
 import souther.compiler.diag.Primary;
 
 import souther.compiler.diag.CompileException;
@@ -56,7 +57,11 @@ class ExampleMultipleFailuresTest {
 
         List<Diagnostic> ds = e.diagnostics();
         assertEquals(2, ds.size(), "one diagnostic per failing row");
-        assertNotEquals(((Primary.InSource) ds.get(0).primary()).place().region().start().line(), ((Primary.InSource) ds.get(1).primary()).place().region().start().line(),
+        assertNotEquals(
+                WhereItSits.in(TWO_BAD_FIXTURES,
+                        ((Primary.InSource) ds.get(0).primary()).place().region()).start().line(),
+                WhereItSits.in(TWO_BAD_FIXTURES,
+                        ((Primary.InSource) ds.get(1).primary()).place().region()).start().line(),
                 "each points at its own row");
         assertEquals(ds.get(0), e.diagnostic(), "the first is still the one a single-diagnostic caller reads");
     }
@@ -69,7 +74,7 @@ class ExampleMultipleFailuresTest {
         for (Diagnostic d : e.diagnostics()) {
             assertEquals("E1903", d.code());
             String rendered = new HumanRenderer(false)
-                    .render(d, new SourceContext("probe.sou", TWO_BAD_FIXTURES), Locale.ENGLISH);
+                    .render(d, new SourceContext("probe.sou", TWO_BAD_FIXTURES, SourceLayout.of(TWO_BAD_FIXTURES)), Locale.ENGLISH);
             assertTrue(rendered.contains("invariant violated"),
                     "the reason the value did not produce, was: " + rendered);
             assertFalse(rendered.contains("examples do not hold"),
@@ -84,7 +89,7 @@ class ExampleMultipleFailuresTest {
 
         for (Diagnostic d : e.diagnostics()) {
             String rendered = new HumanRenderer(false)
-                    .render(d, new SourceContext("probe.sou", TWO_BAD_FIXTURES),
+                    .render(d, new SourceContext("probe.sou", TWO_BAD_FIXTURES, SourceLayout.of(TWO_BAD_FIXTURES)),
                             Messages.resolveLocale("ja"));
             assertFalse(rendered.contains("実際:"),
                     "a fixture that cannot be built has no value to compare, was: " + rendered);

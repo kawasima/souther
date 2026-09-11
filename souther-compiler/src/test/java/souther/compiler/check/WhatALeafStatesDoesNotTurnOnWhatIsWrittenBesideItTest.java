@@ -1,8 +1,8 @@
 package souther.compiler.check;
 
+import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 
-import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.Compilation;
 import souther.compiler.report.AdequacyReport;
@@ -173,7 +173,7 @@ class WhatALeafStatesDoesNotTurnOnWhatIsWrittenBesideItTest {
                 """.formatted(YES_OR_NO, clause), "Main");
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
-        return AdequacyReport.of(compilation).human(SourceNameResolver.identity()).lines()
+        return AdequacyReport.of(compilation).human(SourceRendering.namedByIdentity(compilation.texts())).lines()
                 .map(String::strip)
                 .toList();
     }

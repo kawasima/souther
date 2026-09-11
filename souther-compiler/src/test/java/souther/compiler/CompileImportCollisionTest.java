@@ -57,17 +57,21 @@ class CompileImportCollisionTest {
 
     @Test
     void theCollisionPointsAtBothImports() {
+        String source = """
+                module probe.c
+                import probe.a ( Amount )
+                import probe.b ( Amount )
+                data Line = { a: Amount }
+                """;
         CompileException e = assertThrows(CompileException.class,
-                () -> Compiler.compileModules(List.of(A, B, """
-                        module probe.c
-                        import probe.a ( Amount )
-                        import probe.b ( Amount )
-                        data Line = { a: Amount }
-                        """)));
+                () -> Compiler.compileModules(List.of(A, B, source)));
 
-        assertEquals(3, ((Primary.InSource) e.diagnostic().primary()).place().region().start().line(), "the caret is on the second import");
+        assertEquals(3, WhereItSits.in(source,
+                ((Primary.InSource) e.diagnostic().primary()).place().region()).start().line(), "the caret is on the second import");
         assertEquals(1, e.diagnostic().secondary().size(), "the first import is labelled too");
-        assertEquals(2, ((souther.compiler.diag.DiagnosticPlace.InSource) e.diagnostic().secondary().get(0).place()).region().start().line());
+        assertEquals(2, WhereItSits.in(source,
+                ((souther.compiler.diag.DiagnosticPlace.InSource)
+                        e.diagnostic().secondary().get(0).place()).region()).start().line());
     }
 
     @Test

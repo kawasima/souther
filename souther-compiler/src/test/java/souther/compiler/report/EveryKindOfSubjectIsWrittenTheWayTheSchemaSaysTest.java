@@ -1,7 +1,8 @@
 package souther.compiler.report;
 
+import souther.compiler.diag.SourceLayouts;
+import souther.compiler.diag.SourceRendering;
 import souther.compiler.DocumentShape;
-import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.publish.MeasureWord;
 import souther.compiler.publish.PublishedRuleHandle;
 import souther.compiler.publish.PublishedSubject;
@@ -158,7 +159,7 @@ class EveryKindOfSubjectIsWrittenTheWayTheSchemaSaysTest {
             entry.put("kind", "not_measured");
             entry.put("reason", "no_rows");
             entry.put("runSensitivity", "unaffected");
-            AdequacyReport.about(entry.putObject("about"), subject, new DocumentSources(SourceNameResolver.identity()));
+            AdequacyReport.about(entry.putObject("about"), subject, new DocumentSources(SourceRendering.namedByIdentity(SourceLayouts.NONE)));
 
             DocumentShape.of(document).wrong().forEach(said ->
                     wrong.add(subject.kind() + ": " + said));
@@ -187,7 +188,7 @@ class EveryKindOfSubjectIsWrittenTheWayTheSchemaSaysTest {
         for (PublishedSubject each : oneOfEach()) {
             ObjectNode written = JSON.createObjectNode();
             AdequacyReport.about(written, each,
-                    new DocumentSources(SourceNameResolver.identity()));
+                    new DocumentSources(SourceRendering.namedByIdentity(SourceLayouts.NONE)));
             List<String> matched = new ArrayList<>();
             for (JsonNode branch : union) {
                 if (fits(written, branch)) {

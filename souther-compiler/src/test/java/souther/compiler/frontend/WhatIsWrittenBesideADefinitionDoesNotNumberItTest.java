@@ -1,5 +1,6 @@
 package souther.compiler.frontend;
 
+import souther.compiler.WhereItSits;
 import souther.compiler.ast.Ast;
 import souther.compiler.diag.CompileException;
 import souther.compiler.diag.SourcePos;
@@ -217,7 +218,7 @@ class WhatIsWrittenBesideADefinitionDoesNotNumberItTest {
     private static String withAProbe(Ast.Module written, String source, String probe) {
         int firstDefinition = Integer.MAX_VALUE;
         for (SourcePos pos : whereItsDefinitionsBegin(written)) {
-            firstDefinition = Math.min(firstDefinition, pos.line());
+            firstDefinition = Math.min(firstDefinition, WhereItSits.in(source, pos).line());
         }
         if (firstDefinition == Integer.MAX_VALUE) {
             return null;

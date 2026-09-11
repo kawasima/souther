@@ -1,5 +1,6 @@
 package souther.compiler.partition;
 
+import souther.compiler.diag.SourceLayouts;
 import souther.compiler.coverage.ComparisonEmissionSite;
 import souther.compiler.coverage.Numberings;
 import souther.compiler.types.ExpansionLineage;
@@ -82,7 +83,7 @@ class AClauseOfATypeDoesNotPartItsValuesTest {
 
                 example take
                     | "one" : (R { lo = 1, hi = 1 }) -> Yes
-                """)).human(souther.compiler.diag.SourceNameResolver.identity());
+                """)).human(souther.compiler.diag.SourceRendering.namedByIdentity(SourceLayouts.NONE));
 
         org.junit.jupiter.api.Assertions.assertTrue(block.contains("example.same"), block);
     }
