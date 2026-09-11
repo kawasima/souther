@@ -281,7 +281,7 @@ public final class MeasuredInput {
      * model divides a position is what the model says, and answered from a projection the two
      * would come back as one {@code false}.
      */
-    public boolean divides(Generator.ClassOwed owed) {
+    public boolean divides(ClassOfAPosition owed) {
         for (Axis axis : divided.axes()) {
             if (!axis.id().equals(owed.at())) {
                 continue;

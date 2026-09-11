@@ -293,10 +293,10 @@ class ARowNothingRanFillsNoCombinationTest {
     @Test
     void aClassIsComposedForWhenItIsOnTheListAndNotOtherwise() {
         Model model = Model.of(SHIPPING, "shippingFee");
-        List<Generator.ClassOwed> every =
+        List<ClassOfAPosition> every =
                 Generator.everyClassNoRowSitsIn(model.subject(), List.of());
         assertFalse(every.isEmpty(), "the model divides its positions");
-        Generator.ClassOwed one = every.get(0);
+        ClassOfAPosition one = every.get(0);
 
         assertEquals(List.of(), composedFor(model, List.of()),
                 "asked for no class, nothing is composed");
@@ -305,14 +305,14 @@ class ARowNothingRanFillsNoCombinationTest {
     }
 
     /** Which classes the generator composes a row for when it is asked about {@code classes}. */
-    private static List<Generator.ClassOwed> composedFor(Model model,
-                                                         List<Generator.ClassOwed> classes) {
+    private static List<ClassOfAPosition> composedFor(Model model,
+                                                         List<ClassOfAPosition> classes) {
         return Generator.fill(model.subject(), List.of(), Generator.CandidateCheck.ANY,
                         model.read(), Generator.Trial.NOTHING_RUNS, List.of(), classes,
                         List.of(), Budgets.generation())
                 .rows().stream().flatMap(row -> row.purposes().stream())
                 .map(Generator.Purpose.ForAClass.class::cast)
-                .map(at -> new Generator.ClassOwed(at.at(), at.classId())).toList();
+                .map(at -> new ClassOfAPosition(at.at(), at.classId())).toList();
     }
 
     /** Which arms the generator composes a row for when it is asked about {@code arms}. */

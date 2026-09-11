@@ -7,7 +7,7 @@ import souther.compiler.query.PointResolution;
 import souther.compiler.query.BorderAccount;
 import souther.compiler.query.GenerationScope;
 import souther.compiler.partition.BorderObligationPoint;
-import souther.compiler.query.OfferItem;
+import souther.compiler.partition.ObligationIdentity;
 import souther.compiler.query.Composition;
 import souther.compiler.query.OfferingRequest;
 import souther.compiler.query.RowKey;
@@ -83,7 +83,7 @@ class ARowIsReadUnderWhateverBehaviorComposedItTest {
         assertFalse(table.composedFor().isEmpty(),
                 "and something was composed for: " + table.requested());
         table.composedFor().forEach((item, row) -> {
-            Map<OfferItem, Settlement> here = table.byRow().get(row);
+            Map<ObligationIdentity, Settlement> here = table.byRow().get(row);
             assertNotNull(here, "the row composed for " + item + " is one this offers");
             assertInstanceOf(Settlement.Settles.class, here.get(item),
                     "a row composed by a behavior nothing else was asked of settles what it was"
@@ -116,8 +116,8 @@ class ARowIsReadUnderWhateverBehaviorComposedItTest {
                 "the model under test has a behavior with a search of its own to be asked for");
 
         Set<BorderObligationPoint> asked = new LinkedHashSet<>();
-        for (OfferItem item : table.requested()) {
-            if (item instanceof OfferItem.APointOfALine(var point)) {
+        for (ObligationIdentity item : table.requested()) {
+            if (item instanceof ObligationIdentity.OfALine(var point)) {
                 asked.add(point);
             }
         }
@@ -144,7 +144,7 @@ class ARowIsReadUnderWhateverBehaviorComposedItTest {
         // value it could not build or a run nobody watched, and neither is what a carrier without a
         // search of its own is.
         long settles = 0;
-        for (Map.Entry<RowKey, Map<OfferItem, Settlement>> row : table.byRow().entrySet()) {
+        for (Map.Entry<RowKey, Map<ObligationIdentity, Settlement>> row : table.byRow().entrySet()) {
             settles += row.getValue().values().stream().filter(Settlement::settles).count();
         }
         assertTrue(settles > 0, "the rows settle something: " + table.byRow());
@@ -154,7 +154,7 @@ class ARowIsReadUnderWhateverBehaviorComposedItTest {
                     var row))) {
                 continue;
             }
-            OfferItem item = new OfferItem.APointOfALine(each.getKey());
+            ObligationIdentity item = new ObligationIdentity.OfALine(each.getKey());
             assertTrue(table.offers(table.keeping(), item),
                     "what the carrier's row was composed for is offered after the reduction: "
                             + item + " " + by + " " + row);

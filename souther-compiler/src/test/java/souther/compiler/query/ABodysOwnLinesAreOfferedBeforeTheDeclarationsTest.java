@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import souther.compiler.partition.FixtureTemplate;
 import souther.compiler.partition.Generator;
+import souther.compiler.partition.ObligationIdentity;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -91,8 +92,8 @@ class ABodysOwnLinesAreOfferedBeforeTheDeclarationsTest {
                 Adequacy.generatedOf(compilation.db(), "example.dense"), account());
         Settlements table = Settlements.of(compilation.db(), composition);
 
-        OfferItem inTheRun = table.requested().stream()
-                .filter(each -> each instanceof OfferItem.APointOfALine(var point)
+        ObligationIdentity inTheRun = table.requested().stream()
+                .filter(each -> each instanceof ObligationIdentity.OfALine(var point)
                         && point.role() == souther.compiler.partition.PointRole.IN)
                 .findFirst().orElseThrow(() -> new AssertionError(
                         "this model owes a row in the run beside its guard: " + table.requested()));

@@ -4,6 +4,7 @@ import souther.compiler.observe.MeasureReason;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.BoundaryDerivation;
 import souther.compiler.query.BoundaryForMeasurement;
+import souther.compiler.query.DecisionEvidence;
 import souther.compiler.query.FailureReason;
 import souther.compiler.query.InputCaseEvidence;
 import souther.compiler.query.ItemAssessment;
@@ -150,6 +151,9 @@ record ReasonProse(Introduction introduction, String said) {
             case Adequacy.RowReading.NotAsked it -> switch (it) {
                 case ROWS_NOT_ASKED -> "this build does not read rows";
             };
+            case DecisionEvidence.NotAsked it -> switch (it) {
+                case NOT_ASKED -> "the build did not ask where the rows went";
+            };
             case Adequacy.SignatureEvidence.NoRows it -> switch (it) {
                 case NO_ROWS -> "no row names this behavior";
             };
@@ -188,6 +192,13 @@ record ReasonProse(Introduction introduction, String said) {
             };
             case Adequacy.RowReading.Unavailable it -> switch (it) {
                 case ROWS_UNAVAILABLE -> "nothing came back from the rows";
+            };
+            case DecisionEvidence.Unreadable it -> switch (it) {
+                case THE_BODY_WAS_NOT_READ -> "this behavior's body was not elaborated";
+                case NO_ROW_CAME_BACK -> "no row of this behavior came back to be read";
+                case THE_ROWS_CARRY_NO_ACCOUNT -> "the rows carry no account of where they went";
+                case NO_RULE_IS_RECOGNISABLE ->
+                        "no run through any of these rules can be recognised";
             };
             case BoundaryDerivation.TheReadingDidNotRunOut it -> switch (it) {
                 case THE_READING_DID_NOT_RUN_OUT -> "no line was derived at any position";

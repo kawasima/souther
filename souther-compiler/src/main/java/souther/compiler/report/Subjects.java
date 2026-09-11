@@ -60,6 +60,17 @@ final class Subjects {
             // along has them.
             case Weakening.ProofContradicted it -> new Subject.AtAnArm(it.arm());
             case Weakening.ArmsUnsettled it -> new Subject.AtAFork(it.fork());
+            // The behavior, and not the rule or the row. A run that could not be placed is one
+            // fact about the reading of that behavior's runs, and every rule of its decision rests
+            // on it — named by a rule, one shortfall would be as many facts as the body has ways.
+            case Weakening.DecisionOfRowUnreadable it -> new Subject.OfABehavior(it.behavior());
+            // The same, and for the same reason: a run nothing watched is one fact about the
+            // reading of this behavior's runs, whichever of its rules the run would have taken.
+            case Weakening.DecisionRunNotWatched it -> new Subject.OfABehavior(it.behavior());
+            // The behavior whose ways could not be written down. Which figure stopped the reading
+            // is what happened and travels as the reason; one body has one decision, so it tells
+            // no two of these apart.
+            case Weakening.DecisionReadingIncomplete it -> new Subject.OfABehavior(it.behavior());
         };
     }
 

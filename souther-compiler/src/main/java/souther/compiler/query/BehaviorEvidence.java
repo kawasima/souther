@@ -38,13 +38,19 @@ package souther.compiler.query;
  *                         each once however many of its positions read it
  *                         ({@link Adequacy.BodyBorders})
  * @param branch           what they establish about the arms of its body
+ * @param decision         the rules of the decision its body states and which of them the rows
+ *                         took, or null where the compile did not get far enough to be asked.
+ *                         Beside {@code branch} and not among it: two rules can go through one
+ *                         arm, and a body whose arms answer alike states two rules that one row
+ *                         through each arm covers
  */
 public record BehaviorEvidence(Adequacy.RowReading reading,
                                Adequacy.SignatureEvidence signature,
                                PartitionEvidence partition,
                                Measure<java.util.List<BorderAssessment>> boundaryReadings,
                                Measure<java.util.List<BorderObligationPointAssessment>> account,
-                               Adequacy.BranchEvidence branch) {
+                               Adequacy.BranchEvidence branch,
+                               DecisionEvidence decision) {
 
     public BehaviorEvidence {
         java.util.Objects.requireNonNull(reading,
@@ -100,6 +106,12 @@ public record BehaviorEvidence(Adequacy.RowReading reading,
         parts.put("partition", partition == null ? null : partition.partitioned());
         parts.put("border", boundaryReadings);
         parts.put("branch", branch == null ? null : branch.measured());
+        // Which rules of the body's decision the rows took, which is a measure of this behavior
+        // like the rest of them. A reading that placed only some of the rows leaves every rule
+        // nothing was seen taking as one a row may already take, and this is the one way that
+        // reaches a status, a verdict and a document without each of them asking the decision
+        // itself.
+        parts.put("decision", decision == null ? null : decision.took());
         return java.util.Collections.unmodifiableMap(parts);
     }
 

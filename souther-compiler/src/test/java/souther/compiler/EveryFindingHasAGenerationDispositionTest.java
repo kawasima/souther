@@ -792,7 +792,7 @@ class EveryFindingHasAGenerationDispositionTest {
         return filling(compilation, module, behavior).generation().stream()
                 .filter(each -> each.finding().about()
                         instanceof souther.compiler.query.About.ACaseNoRowAppliesItTo(
-                                var input, var case_)
+                                var input, var case_, var _)
                         && case_.name().equals(missing) && input.at() + 1 == at)
                 .map(Adequacy.GenerationDisposition::outcome)
                 .findFirst().orElseThrow(() -> new AssertionError("no gap for " + missing));
@@ -905,7 +905,8 @@ class EveryFindingHasAGenerationDispositionTest {
                         souther.compiler.query.Composition.composed(
                         souther.compiler.query.OfferingRequest.overTheModule("example.kind", true),
                         Map.of("pick", new Adequacy.Filling(stopped(why),
-                                atTheEdges(alsoAtTheEdges), List.of())), null)),
+                                atTheEdges(alsoAtTheEdges),
+                                Adequacy.Generated.RowsForRules.NOTHING, List.of())), null)),
                 Map.of(), SourceNameResolver.identity(), compiled(KIND).db()).text();
     }
 

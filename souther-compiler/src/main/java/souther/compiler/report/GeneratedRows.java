@@ -21,7 +21,7 @@ import souther.compiler.query.Compilation;
 import souther.compiler.query.Db;
 import souther.compiler.query.BorderAccount;
 import souther.compiler.query.GenerationScope;
-import souther.compiler.query.OfferItem;
+import souther.compiler.partition.ObligationIdentity;
 import souther.compiler.query.OfferedRow;
 import souther.compiler.query.Offering;
 import souther.compiler.query.OfferingRequest;
@@ -154,7 +154,7 @@ public final class GeneratedRows {
             // Nothing about a point one of the rows above stands at. What is left to write is what
             // this says, and a line telling a person no row was composed for something they are
             // being handed a row for is work that is not left.
-            if (offering.answered().contains(new OfferItem.APointOfALine(each.getKey()))) {
+            if (offering.answered().contains(new ObligationIdentity.OfALine(each.getKey()))) {
                 continue;
             }
             switch (each.getValue()) {
@@ -580,9 +580,13 @@ public final class GeneratedRows {
                 // first says what the attempt came to, and whether a row can be written at all is
                 // its reason's to say; the second says no run of this will offer one until
                 // something is written for it.
-                case GenerationOutcome.NotSupported none -> say(out, said,
-                        String.format("// nothing offers a row for `%s` in `%s`: %s%n",
-                                about(each.finding(), places), behavior, none.reason().said()));
+                // Each of what is missing, for the reason the attempts above are each said: a
+                // thing that stands in two places is read at both, and what is missing at one of
+                // them is not what is missing at the other.
+                case GenerationOutcome.NotSupported none -> none.reasons().forEach(why ->
+                        say(out, said,
+                                String.format("// nothing offers a row for `%s` in `%s`: %s%n",
+                                        about(each.finding(), places), behavior, why.said())));
                 // Said rather than passed over, because the report counts this coordinate among
                 // what is missing and no row is offered for it. Left out, an author reads a gap
                 // above and no account of why nothing was written for it; the account is that the
@@ -703,13 +707,18 @@ public final class GeneratedRows {
             // the sentence a diagnostic says in the reader's language and the words written here
             // are two readings of one arm rather than one of them being handed the other's.
             case About.AnArmNoRowGoesThrough(var arm) -> ArmVocabulary.label(arm);
-            case About.ACaseNoRowAppliesItTo(var input, var missing) -> missing.name();
+            case About.ACaseNoRowAppliesItTo(var _, var missing, var _) -> missing.name();
             case About.ACaseNoRowExpects(var missing) -> missing.name();
             // The class and the measure it is a class of, which a class name alone does not say:
             // two parameters of one type divide into classes of the same names, and one location is
             // measured at more than one number.
             case About.AClassNoRowIsIn(var missing) ->
                     missing.name() + " at " + missing.axis().name();
+            // The behavior whose decision it is a rule of, which is as far as words about a rule
+            // go. What tells one from another is the proposition each of its conditions is keyed
+            // on, written the one way round that makes a comparison and its denial one column —
+            // and printing that would show an author a comparison they did not write.
+            case About.ARuleNoRowTakes(var behavior, var _) -> "a decision rule of " + behavior;
             // Findings row synthesis is not about, which `shown` leaves out and nothing here is
             // asked to name. Listed rather than defaulted so that a shape added later has to be
             // given words here.
@@ -756,6 +765,11 @@ public final class GeneratedRows {
             case THE_WAY_IN_PLACES_AT_NO_CLASS ->
                     "the way to it holds a decision that no class of any position stands for, so"
                             + " nothing here can steer a row along it";
+            // Nothing was left untried here and nothing is unwritable: the value is in hand and
+            // the block is full. What lifts it is the number of rows a block offers, which is not
+            // what any of the words above are about.
+            case THE_BLOCK_IS_AS_LONG_AS_IT_MAY_BE ->
+                    "a value was found for it and this block already offers as many rows as it may";
             case THE_RULES_LEAVE_NOTHING_THERE ->
                     "the rules leave no value here, and every combination they do leave was tried";
             case ONE_POSITION_CANNOT_BE_BOTH ->

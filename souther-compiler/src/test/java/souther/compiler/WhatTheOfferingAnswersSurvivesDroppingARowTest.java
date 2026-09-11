@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Test;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.Compilation;
 import souther.compiler.query.GenerationScope;
-import souther.compiler.query.OfferItem;
+import souther.compiler.partition.ObligationIdentity;
 import souther.compiler.query.Composition;
 import souther.compiler.query.OfferingRequest;
 import souther.compiler.query.RowKey;
@@ -74,10 +74,10 @@ class WhatTheOfferingAnswersSurvivesDroppingARowTest {
     @Test
     void everythingSomeRowSettledIsStillSettled() {
         Settlements table = table();
-        Set<OfferItem> before = table.settled();
+        Set<ObligationIdentity> before = table.settled();
         Set<RowKey> kept = table.keeping();
         assertFalse(kept.isEmpty(), "something is offered: " + table.byRow().keySet());
-        for (OfferItem item : before) {
+        for (ObligationIdentity item : before) {
             assertTrue(kept.stream().anyMatch(row -> table.at(row, item).settles()),
                     "a kept row still settles " + item);
         }
@@ -132,7 +132,7 @@ class WhatTheOfferingAnswersSurvivesDroppingARowTest {
      * of one contract, and the one that drifted would be the one nobody reads.
      */
     private static boolean lost(Settlements table, Set<RowKey> kept, Set<RowKey> without) {
-        for (OfferItem item : table.requested()) {
+        for (ObligationIdentity item : table.requested()) {
             if (table.offers(kept, item) && !table.offers(without, item)) {
                 return true;
             }

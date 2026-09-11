@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import souther.compiler.numeric.Count;
 import souther.compiler.partition.Generator;
+import souther.compiler.partition.ObligationIdentity;
 import souther.compiler.partition.PointRole;
 
 import java.util.List;
@@ -109,7 +110,7 @@ class ARowIsNotOfferedForAPointItIsNotSeenToStandAtTest {
         Settlements table = settlements();
         assertFalse(table.composedFor().isEmpty(), "rows are composed for this model");
         table.composedFor().forEach((item, row) -> {
-            Map<OfferItem, Settlement> here = table.byRow().get(row);
+            Map<ObligationIdentity, Settlement> here = table.byRow().get(row);
             assertNotNull(here, "the row composed for " + item + " is one this offers: " + row);
             assertFalse(here.get(item) instanceof Settlement.DoesNotSettle,
                     "a row composed for " + item + " is not read as standing elsewhere: " + row);

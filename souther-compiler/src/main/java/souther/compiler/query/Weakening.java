@@ -284,4 +284,95 @@ public sealed interface Weakening {
             return RunSensitivity.UNAFFECTED;
         }
     }
+
+    /**
+     * A row of the behavior ran and this reading could not tell which rule of its decision the run
+     * took.
+     *
+     * <p>What it takes away is the claim that a rule nothing was seen taking is a rule no row
+     * takes. The row went somewhere; a rule reported as taken by nothing may be where it went, and
+     * an author told to write one for it may be told to write a row that is already in the file.
+     *
+     * <p><b>About the reading and not about the rule.</b> Nothing here says a rule is out of reach
+     * or that a row for it is owed — those are the requirement and the coverage, and each is
+     * answered elsewhere. The fact is that a run this compiler watched could not be placed.
+     *
+     * <p>{@code why} is carried rather than counted away. A run no recognisable rule matches and a
+     * run more than one matches are different shortfalls, and a reader handed only that some row
+     * went unplaced has nothing to act on.
+     */
+    record DecisionOfRowUnreadable(String behavior,
+                                   souther.compiler.partition.RulesTaken.WhichRule.Why why)
+            implements Weakening {
+
+        public DecisionOfRowUnreadable {
+            java.util.Objects.requireNonNull(behavior, "a row is a row of some behavior");
+            java.util.Objects.requireNonNull(why, "a reading that fell short says what stopped it");
+        }
+
+        /** A run this reading cannot place is not placed by allowing the build more. */
+        @Override
+        public RunSensitivity runSensitivity() {
+            return RunSensitivity.UNAFFECTED;
+        }
+    }
+
+    /**
+     * A row of the behavior ran and nothing recorded where it went.
+     *
+     * <p>Its own word beside {@link DecisionOfRowUnreadable}, which is the nearest thing and is not
+     * this: there a run was watched and no rule could be told of it, here there is nothing to tell
+     * a rule of. Both leave a rule nothing was seen taking as one a row may already take, and they
+     * are different shortfalls — a reader of the first goes looking at the rules, and a reader of
+     * this at what read the run.
+     *
+     * <p>Said by the reading of the runs rather than taken from the reading of the rows. A row with
+     * no account may sit in a reading of the rows that finished, so a reading that borrowed the
+     * row reading's words for it had nothing to say exactly where it went without the most.
+     */
+    record DecisionRunNotWatched(String behavior) implements Weakening {
+
+        public DecisionRunNotWatched {
+            java.util.Objects.requireNonNull(behavior, "a row is a row of some behavior");
+        }
+
+        /** What watched a run is what this build recorded, and a wider one records no more. */
+        @Override
+        public RunSensitivity runSensitivity() {
+            return RunSensitivity.UNAFFECTED;
+        }
+    }
+
+    /**
+     * The ways through a body could not all be written down, so what rules its decision has is not
+     * known.
+     *
+     * <p><b>Not a body that decides nothing.</b> A reading that stopped at a figure comes back with
+     * none of the body's rules rather than some of them, and a reader taking that for the model's
+     * answer would publish a body of many ways as one that states no decision. What is known is
+     * that the derivation did not finish.
+     *
+     * <p>Beside {@link DecisionOfRowUnreadable} and not among it. That one is about which rule a
+     * run took, with the rules in hand; this is about not having them. A reader acts on the two
+     * differently — one leaves a rule undecided, and this one leaves the account without the
+     * obligations to decide about.
+     */
+    record DecisionReadingIncomplete(
+            String behavior,
+            souther.compiler.partition.DecisionReading.Enumeration why) implements Weakening {
+
+        public DecisionReadingIncomplete {
+            java.util.Objects.requireNonNull(behavior, "a decision is some body's");
+            java.util.Objects.requireNonNull(why, "a reading that stopped says what stopped it");
+        }
+
+        /**
+         * What stopped it is a figure this reading was held to, so a reading held to a larger one
+         * gets further.
+         */
+        @Override
+        public RunSensitivity runSensitivity() {
+            return RunSensitivity.MAY_CHANGE;
+        }
+    }
 }

@@ -10,6 +10,7 @@ import souther.compiler.query.Compilation;
 
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.node.ObjectNode;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -72,9 +73,91 @@ class EveryFindingAboutAnObligationJoinsToItsAccountTest {
                 | "both hold" : (Person { active = true, retired = true }) -> Yes
             """;
 
+    /**
+     * Two positions of one behavior, dividing into classes that read alike.
+     *
+     * <p>The corpus reaches no class no row is in, so the join for one would hold over nothing.
+     * Both positions are left in the same class, which is the pair a consumer joining on the words
+     * would land on twice — the class is spelled {@code No} at each of them.
+     */
+    private static final String TWO_POSITIONS_ONE_CLASS_NAME = """
+            module example.both
+
+            data Yes
+            data No
+            data Flag = Yes | No
+            data Res = { n: Int }
+
+            behavior both : (left: Flag, right: Flag) -> Res
+                constructs Res
+
+            let both (left, right) = Res { n = 1 }
+
+            example both
+                | "both say yes" : (Yes, Yes) -> Res { n = 1 }
+            """;
+
+    /**
+     * Two rules through one arm, one of which no row takes.
+     *
+     * <p>The corpus reaches no rule no row takes, so the join for one would hold over nothing. Both
+     * rules go through the one {@code then}, so the arm account says nothing is missing and the
+     * decision account says one rule is — which is the pair the two measures were told apart for.
+     */
+    private static final String TWO_RULES_ONE_ARM = """
+            module example.rule
+
+            data Safe
+            data Risky
+            data Level = Safe | Risky
+            data On
+            data Off
+            data Switch = On | Off
+            data Verdict = { n: Int }
+
+            behavior act : (level: Level, power: Switch) -> Verdict
+                constructs Verdict
+
+            let act (level, power) =
+                if level == Safe then
+                    if power == On then Verdict { n = 1 } else Verdict { n = 2 }
+                else
+                    Verdict { n = 3 }
+
+            example act
+                | "safe and on"  : (Safe, On) -> Verdict { n = 1 }
+                | "risky"        : (Risky, On) -> Verdict { n = 3 }
+            """;
+
+    /**
+     * A sum an input ranges over, one case of which no row applies the behavior to.
+     *
+     * <p>The one obligation two measures reach. The signature counts the cases a row applies the
+     * behavior to and the partition counts the classes a row sits in, and for a top-level sum they
+     * are the same thing a row is owed for — so the two findings name one entry or the account has
+     * the same work in it twice.
+     */
+    private static final String A_CASE_AND_ITS_CLASS = """
+            module example.case
+
+            data Yes
+            data No
+            data Flag = Yes | No
+            data Res = { n: Int }
+
+            behavior only : (flag: Flag) -> Res
+                constructs Res
+
+            let only (flag) = Res { n = 1 }
+
+            example only
+                | "yes" : (Yes) -> Res { n = 1 }
+            """;
+
     /** The kinds that are about something a row is owed for, and the account each is counted in. */
     private static final List<String> ABOUT_AN_OBLIGATION =
-            List.of("boundary_unmet", "domain_point_uncovered", "arm_unreached");
+            List.of("boundary_unmet", "domain_point_uncovered", "arm_unreached",
+                    "axis_class_uncovered", "decision_rule_uncovered", "input_case_unspecified");
 
     @Test
     void everyFindingAboutAnObligationNamesOneEntryOfItsAccount() {
@@ -157,9 +240,106 @@ class EveryFindingAboutAnObligationJoinsToItsAccountTest {
         }
     }
 
+    /**
+     * Two classes spelled alike at two positions, each landing on its own axis.
+     *
+     * <p>Said here as well as in the sweep above because the sweep is over whatever the corpus
+     * happens to reach, and it reaches no class no row is in. A join that holds over nothing holds
+     * while the mechanism is gone.
+     */
+    @Test
+    void twoClassesSpeltAlikeLandOnTheAxisEachIsAClassOf() {
+        JsonNode document = reportOf(TWO_POSITIONS_ONE_CLASS_NAME);
+        JsonNode behavior = onlyBehaviorOf(document);
+        List<JsonNode> classes = new ArrayList<>();
+        for (JsonNode finding : behavior.get("findings")) {
+            if ("axis_class_uncovered".equals(finding.get("kind").asString())) {
+                classes.add(finding);
+            }
+        }
+
+        assertEquals(2, classes.size(),
+                () -> "one class left at each position: " + behavior.get("findings"));
+        assertEquals(1, classes.stream()
+                        .map(f -> f.get("obligationId").get("class").asString()).distinct().count(),
+                () -> "spelt alike: " + classes);
+        assertEquals(2, classes.stream()
+                        .map(f -> String.valueOf(f.get("obligationId"))).distinct().count(),
+                () -> "told apart by which position's axis: " + classes);
+        for (JsonNode each : classes) {
+            assertEquals(1, entriesOf(behavior, onlyModuleOf(document), "axis_class_uncovered")
+                            .stream()
+                            .filter(entry -> each.get("obligationId")
+                                    .equals(entry.get("obligationId"))).count(),
+                    () -> "and lands on one class of the axes: " + each);
+        }
+    }
+
+    /**
+     * A case of an input and the class of its position are one entry, not two that coincide.
+     *
+     * <p>The one place two derivations reach one obligation. What the signature counts and what the
+     * partition counts are the same thing a row is owed for at a top-level sum, so a consumer
+     * acting on both is acting on one item of work — and a verdict counting each of them is
+     * counting one gap twice.
+     *
+     * <p>Said of the identity rather than of the words. Both findings name the case, so a consumer
+     * joining on what a reader is shown would land on one entry by coincidence and would go on
+     * doing it until two positions of one behavior divided into classes that read alike.
+     */
+    @Test
+    void aCaseOfAnInputAndTheClassOfItsPositionAreOneEntry() {
+        JsonNode document = reportOf(A_CASE_AND_ITS_CLASS);
+        JsonNode behavior = onlyBehaviorOf(document);
+        List<JsonNode> cases = new ArrayList<>();
+        List<JsonNode> classes = new ArrayList<>();
+        for (JsonNode finding : behavior.get("findings")) {
+            String kind = finding.get("kind").asString();
+            if ("input_case_unspecified".equals(kind)) {
+                cases.add(finding);
+            } else if ("axis_class_uncovered".equals(kind)) {
+                classes.add(finding);
+            }
+        }
+
+        assertEquals(1, cases.size(),
+                () -> "one case of the input has no row: " + behavior.get("findings"));
+        assertEquals(1, classes.size(),
+                () -> "and the position divides into one class no row is in: "
+                        + behavior.get("findings"));
+        assertEquals(classes.get(0).get("obligationId"), cases.get(0).get("obligationId"),
+                () -> "the two measures reached one obligation: " + cases + " / " + classes);
+        assertEquals(1, entriesOf(behavior, onlyModuleOf(document), "axis_class_uncovered").stream()
+                        .filter(entry -> cases.get(0).get("obligationId")
+                                .equals(entry.get("obligationId"))).count(),
+                () -> "which the account holds once: " + behavior.get("partition"));
+    }
+
     private static List<JsonNode> entriesOf(JsonNode behavior, JsonNode module, String kind) {
         List<JsonNode> out = new ArrayList<>();
+        // A class of a position is kept as the axis it is a class of and the string that axis
+        // lists, so the entry a finding joins to is that pair. Made here rather than published as
+        // a third array, because the axes already carry every class of every position and an array
+        // beside them would be the same membership declared twice.
+        if ("axis_class_uncovered".equals(kind)) {
+            for (JsonNode axis : behavior.get("partition").get("axes")) {
+                for (JsonNode cls : axis.get("classes")) {
+                    ObjectNode entry = JSON.createObjectNode();
+                    ObjectNode id = entry.putObject("obligationId");
+                    id.put("axis", axis.get("axis").asString());
+                    id.put("class", cls.asString());
+                    out.add(entry);
+                }
+            }
+            return out;
+        }
+        // A case of an input and the class its position divides into are one thing a row is owed
+        // for, so a finding of either kind joins to the one entry the axes publish.
+        if ("input_case_unspecified".equals(kind)) {
+            return entriesOf(behavior, module, "axis_class_uncovered");
+        }
         JsonNode from = switch (kind) {
+            case "decision_rule_uncovered" -> behavior.get("decision").get("obligations");
             case "arm_unreached" -> behavior.get("branch").get("obligations");
             case "boundary_unmet", "domain_point_uncovered" ->
                     behavior.get("partition").get("obligations");
@@ -196,6 +376,9 @@ class EveryFindingAboutAnObligationJoinsToItsAccountTest {
             out.add(JSON.readTree(corpus.analyse().report().json(corpus.names())));
         }
         out.add(reportOf(TWO_RULES_AT_ONE_FORK));
+        out.add(reportOf(TWO_POSITIONS_ONE_CLASS_NAME));
+        out.add(reportOf(TWO_RULES_ONE_ARM));
+        out.add(reportOf(A_CASE_AND_ITS_CLASS));
         return out;
     }
 }

@@ -68,6 +68,11 @@ class ALineOnAStringIsDrawnAndOnlyItsNeighbourIsNotTest {
      * there is. What is absent is the boundary row one step under the line — a string has no value
      * just below another that this language names, and inventing one would put a character this
      * compiler chose into a row somebody has to read.
+     *
+     * <p>Three rows and not two, and the third is not a boundary row. The body decides by a
+     * comparison this compiler has no words for, so each way through it is a rule no row takes and
+     * one of them is owed a row of its own. What this test is about is the boundary, and the count
+     * is here so that a row appearing just below the line would be seen.
      */
     @Test
     void noRowIsOfferedJustBelowTheLine() {
@@ -75,7 +80,7 @@ class ALineOnAStringIsDrawnAndOnlyItsNeighbourIsNotTest {
 
         assertTrue(rows.contains("(YearMonth(\"\"))"), "the class below the line has a row: " + rows);
         assertFalse(rows.contains("m = 2026-07"), rows);
-        assertEquals(2, rows.lines().filter(each -> each.contains("YearMonth(")).count(), rows);
+        assertEquals(3, rows.lines().filter(each -> each.contains("YearMonth(")).count(), rows);
     }
 
     private static Compilation measured() {

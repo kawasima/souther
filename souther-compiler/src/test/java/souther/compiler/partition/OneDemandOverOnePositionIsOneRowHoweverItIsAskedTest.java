@@ -86,7 +86,7 @@ class OneDemandOverOnePositionIsOneRowHoweverItIsAskedTest {
             for (Map.Entry<Integer, Integer> pin : onePinWaysInto(probe, model, axes)) {
                 Axis axis = axes.get(pin.getKey());
                 assertEquals(
-                        rowsOf(model, List.of(new Generator.ClassOwed(axis.id(),
+                        rowsOf(model, List.of(new ClassOfAPosition(axis.id(),
                                 axis.classes().get(pin.getValue()).id())), List.of()),
                         rowsOf(model, List.of(), List.of(probe)),
                         "the class of " + axis.path() + " and the arm it is the way into");
@@ -122,7 +122,7 @@ class OneDemandOverOnePositionIsOneRowHoweverItIsAskedTest {
     }
 
     /** What one run of the search offered, by the values each row carries. */
-    private static List<List<String>> rowsOf(Model model, List<Generator.ClassOwed> classes,
+    private static List<List<String>> rowsOf(Model model, List<ClassOfAPosition> classes,
                                              List<ArmProbe> arms) {
         return Generator.fill(model.subject(), List.of(), Generator.CandidateCheck.ANY,
                         model.read(), Generator.Trial.NOTHING_RUNS, List.of(), classes, arms,

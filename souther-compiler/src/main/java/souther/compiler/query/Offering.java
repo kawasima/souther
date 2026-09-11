@@ -1,5 +1,7 @@
 package souther.compiler.query;
 
+import souther.compiler.partition.ObligationIdentity;
+
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -36,7 +38,7 @@ public final class Offering {
     private final SequencedMap<String, List<OfferedRow>> rowsByBehavior;
     private final SequencedMap<String, Adequacy.Filling> searched;
     private final BorderAccount account;
-    private final Set<OfferItem> answered;
+    private final Set<ObligationIdentity> answered;
 
     /**
      * @param request  what was asked for, which is what settles which rows are here
@@ -51,7 +53,7 @@ public final class Offering {
      */
     Offering(OfferingRequest request, SequencedMap<String, List<OfferedRow>> rowsByBehavior,
              SequencedMap<String, Adequacy.Filling> searched, BorderAccount account,
-             Set<OfferItem> answered) {
+             Set<ObligationIdentity> answered) {
         this.request = request;
         this.rowsByBehavior =
                 Collections.unmodifiableSequencedMap(new LinkedHashMap<>(rowsByBehavior));
@@ -82,7 +84,7 @@ public final class Offering {
     }
 
     /** The items one of these rows would answer if it were written. */
-    public Set<OfferItem> answered() {
+    public Set<ObligationIdentity> answered() {
         return answered;
     }
 

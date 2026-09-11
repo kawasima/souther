@@ -578,6 +578,20 @@ public final class CoverageSites {
                     .filter(ArmSite.class::isInstance).map(ArmSite.class::cast)
                     .toList();
         }
+
+        /**
+         * The comparisons of one behavior, which is what a reader sending somebody to one asks for.
+         *
+         * <p>Beside {@link #arms} and not among it. A comparison stops as soon as its answer is
+         * settled, so which arm a row landed in does not say which comparison ran — a measure over
+         * arms that took one of these would be counting a place its denominator was never about.
+         */
+        public List<ComparisonSite> comparisons(String behavior) {
+            return sites.stream()
+                    .filter(site -> site.behavior().equals(behavior))
+                    .filter(ComparisonSite.class::isInstance).map(ComparisonSite.class::cast)
+                    .toList();
+        }
     }
 
     /**

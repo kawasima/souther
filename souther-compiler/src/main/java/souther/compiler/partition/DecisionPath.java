@@ -19,13 +19,36 @@ import java.util.Map;
  * contradiction rather than a rule, and refusing it here is what the reading of the ways does with
  * one.
  */
-record DecisionPath(List<Consulted> consulted) {
+final class DecisionPath {
 
     /** A path that has consulted nothing, which is what a value nothing forks arrives by. */
     static final DecisionPath NOWHERE = new DecisionPath(List.of());
 
-    DecisionPath {
-        consulted = List.copyOf(consulted);
+    private final List<Consulted> consulted;
+
+    /**
+     * The rule this path is, made once.
+     *
+     * <p>Held rather than worked out per call, which is why this is a class and not a record. What
+     * tells two paths apart is the rule, so the walk that gathers the ways asks for it once per
+     * candidate per way already gathered — and a rule built from the columns each time made the
+     * cost of reading one body's ways grow with their square.
+     *
+     * <p>Made in the constructor rather than on first use. The value is what this is, and a field
+     * filled later is a value that answers differently before and after somebody asks.
+     */
+    private final DecisionRule rule;
+
+    DecisionPath(List<Consulted> consulted) {
+        this.consulted = List.copyOf(consulted);
+        Map<DecisionCondition, DecidedCondition> vector = new LinkedHashMap<>();
+        this.consulted.forEach(each -> vector.put(each.answer().condition(), each.answer()));
+        this.rule = new DecisionRule(vector);
+    }
+
+    /** The conditions this path consulted, in the order it met them. */
+    List<Consulted> consulted() {
+        return consulted;
     }
 
     /**
@@ -72,12 +95,12 @@ record DecisionPath(List<Consulted> consulted) {
      */
     @Override
     public boolean equals(Object other) {
-        return other instanceof DecisionPath that && rule().equals(that.rule());
+        return other instanceof DecisionPath that && rule.equals(that.rule);
     }
 
     @Override
     public int hashCode() {
-        return rule().hashCode();
+        return rule.hashCode();
     }
 
     /** What this path states about the input, which is what a search composes a row against. */
@@ -111,9 +134,7 @@ record DecisionPath(List<Consulted> consulted) {
 
     /** The rule this path is, which is its columns and what each came out as. */
     DecisionRule rule() {
-        Map<DecisionCondition, DecidedCondition> vector = new LinkedHashMap<>();
-        consulted.forEach(each -> vector.put(each.answer().condition(), each.answer()));
-        return new DecisionRule(vector);
+        return rule;
     }
 
     /** Where a run down this path is seen, one entry per column in the order it met them. */

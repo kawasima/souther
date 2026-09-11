@@ -3,6 +3,7 @@ package souther.compiler.query;
 import souther.compiler.partition.BorderObligationPoint;
 import souther.compiler.partition.GenerationOutcome;
 import souther.compiler.partition.Generator;
+import souther.compiler.partition.ObligationIdentity;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -305,7 +306,7 @@ public record BorderAccount(String module, GenerationScope scope,
             }
             BorderObligationPoint at = owed.debt().point();
             out.add(new Adequacy.GenerationDisposition(finding,
-                    java.util.Optional.of(new OfferItem.APointOfALine(at)),
+                    java.util.Optional.of(new ObligationIdentity.OfALine(at)),
                     outcomeForTheLine(at)));
         }
         return List.copyOf(out);

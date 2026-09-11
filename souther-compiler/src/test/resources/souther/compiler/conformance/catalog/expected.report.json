@@ -1,8 +1,8 @@
 {
-  "schemaVersion" : 18,
+  "schemaVersion" : 19,
   "compilerVersion" : "<version>",
   "status" : "partial",
-  "weakening" : [ "rule_unread" ],
+  "weakening" : [ "rule_unread", "decision_of_row_unreadable" ],
   "adequacy" : "not_satisfied",
   "keptOpenBy" : [ ],
   "modules" : [ {
@@ -953,6 +953,32 @@
         } ],
         "denominatorSettled" : true
       },
+      "decision" : {
+        "coverage" : {
+          "status" : "complete"
+        },
+        "obligations" : [ {
+          "obligationId" : {
+            "behavior" : "discount",
+            "conditions" : [ {
+              "kind" : "not_read",
+              "condition" : "condition 0 of `discount`",
+              "outcome" : "held"
+            } ]
+          },
+          "taken" : true
+        }, {
+          "obligationId" : {
+            "behavior" : "discount",
+            "conditions" : [ {
+              "kind" : "not_read",
+              "condition" : "condition 0 of `discount`",
+              "outcome" : "denied"
+            } ]
+          },
+          "taken" : true
+        } ]
+      },
       "findings" : [ {
         "kind" : "partition_not_derivable",
         "disposition" : "reported",
@@ -1107,7 +1133,7 @@
   }, {
     "module" : "conformance.shipping",
     "status" : "partial",
-    "weakening" : [ "rule_unread" ],
+    "weakening" : [ "rule_unread", "decision_of_row_unreadable" ],
     "incompleteness" : [ ],
     "declarations" : [ {
       "owners" : [ {
@@ -1472,7 +1498,7 @@
       "rows" : 11,
       "pending" : 0,
       "status" : "partial",
-      "weakening" : [ "rule_unread" ],
+      "weakening" : [ "rule_unread", "decision_of_row_unreadable" ],
       "signature" : {
         "status" : "complete",
         "output" : {
@@ -2729,6 +2755,103 @@
           "disposition" : "met"
         } ],
         "denominatorSettled" : true
+      },
+      "decision" : {
+        "coverage" : {
+          "status" : "partial",
+          "weakening" : [ "decision_of_row_unreadable" ]
+        },
+        "obligations" : [ {
+          "obligationId" : {
+            "behavior" : "出荷する",
+            "conditions" : [ {
+              "kind" : "comparison",
+              "condition" : "GT LinearForm[constant=-30000, coefs={指示.重量=1}]",
+              "outcome" : "denied"
+            }, {
+              "kind" : "not_read",
+              "condition" : "condition 1 of `出荷する`",
+              "outcome" : "held"
+            }, {
+              "kind" : "not_read",
+              "condition" : "condition 4 of `出荷する`",
+              "outcome" : "held"
+            } ]
+          },
+          "taken" : false
+        }, {
+          "obligationId" : {
+            "behavior" : "出荷する",
+            "conditions" : [ {
+              "kind" : "comparison",
+              "condition" : "GT LinearForm[constant=-30000, coefs={指示.重量=1}]",
+              "outcome" : "denied"
+            }, {
+              "kind" : "not_read",
+              "condition" : "condition 2 of `出荷する`",
+              "outcome" : "held"
+            }, {
+              "kind" : "not_read",
+              "condition" : "condition 3 of `出荷する`",
+              "outcome" : "held"
+            }, {
+              "kind" : "not_read",
+              "condition" : "condition 4 of `出荷する`",
+              "outcome" : "held"
+            } ]
+          },
+          "taken" : false
+        }, {
+          "obligationId" : {
+            "behavior" : "出荷する",
+            "conditions" : [ {
+              "kind" : "comparison",
+              "condition" : "GT LinearForm[constant=-30000, coefs={指示.重量=1}]",
+              "outcome" : "denied"
+            }, {
+              "kind" : "not_read",
+              "condition" : "condition 2 of `出荷する`",
+              "outcome" : "denied"
+            }, {
+              "kind" : "not_read",
+              "condition" : "condition 3 of `出荷する`",
+              "outcome" : "held"
+            }, {
+              "kind" : "not_read",
+              "condition" : "condition 4 of `出荷する`",
+              "outcome" : "held"
+            } ]
+          },
+          "taken" : false
+        }, {
+          "obligationId" : {
+            "behavior" : "出荷する",
+            "conditions" : [ {
+              "kind" : "comparison",
+              "condition" : "GE LinearForm[constant=-12, coefs={Time.hour(指示.集荷時刻)=1}]",
+              "outcome" : "held"
+            }, {
+              "kind" : "comparison",
+              "condition" : "GT LinearForm[constant=-30000, coefs={指示.重量=1}]",
+              "outcome" : "denied"
+            }, {
+              "kind" : "not_read",
+              "condition" : "condition 5 of `出荷する`",
+              "outcome" : "denied"
+            } ]
+          },
+          "taken" : false
+        }, {
+          "obligationId" : {
+            "behavior" : "出荷する",
+            "conditions" : [ {
+              "kind" : "comparison",
+              "condition" : "GT LinearForm[constant=-30000, coefs={指示.重量=1}]",
+              "outcome" : "held"
+            } ]
+          },
+          "taken" : true
+        } ]
       },
       "findings" : [ {
         "kind" : "domain_point_uncovered",

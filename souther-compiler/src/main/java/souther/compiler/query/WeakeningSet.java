@@ -154,7 +154,9 @@ public final class WeakeningSet {
                  Weakening.BorderValueUnreadable _, Weakening.BodiesNotElaborated _,
                  Weakening.BoundaryNotDerived _, Weakening.InputNotRead _,
                  Weakening.PairSpaceTruncated _, Weakening.ProofContradicted _,
-                 Weakening.ArmsUnsettled _ -> one;
+                 Weakening.ArmsUnsettled _, Weakening.DecisionOfRowUnreadable _,
+                 Weakening.DecisionRunNotWatched _,
+                 Weakening.DecisionReadingIncomplete _ -> one;
         };
     }
 
@@ -171,7 +173,9 @@ public final class WeakeningSet {
                  Weakening.BorderValueUnreadable _, Weakening.BodiesNotElaborated _,
                  Weakening.BoundaryNotDerived _, Weakening.InputNotRead _,
                  Weakening.PairSpaceTruncated _, Weakening.ProofContradicted _,
-                 Weakening.ArmsUnsettled _ -> had;
+                 Weakening.ArmsUnsettled _, Weakening.DecisionOfRowUnreadable _,
+                 Weakening.DecisionRunNotWatched _,
+                 Weakening.DecisionReadingIncomplete _ -> had;
         };
     }
 
