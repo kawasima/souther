@@ -316,9 +316,15 @@ public final class Placement {
         return new Placement(text, new CopiedFrom(declaring.provenance()));
     }
 
-    /** The position of {@code line} and {@code column} in this text. */
-    public SourcePos at(int line, int column) {
-        return new SourcePos(line, column, this);
+    /**
+     * A place in this text, in the first of its top-level constructs.
+     *
+     * <p>For a caller spelling one out rather than reading it off a text — a test writing a place
+     * to compare, a pass minting one to mean nowhere. Where a text is what a place is being made
+     * from, {@code SourceLayout} is what makes it, and this is not the way in.
+     */
+    public SourcePos at(int token, int within) {
+        return new SourcePos(token, within, this);
     }
 
     /** A file this compile holds, under the identity it holds it by. Its positions are where the

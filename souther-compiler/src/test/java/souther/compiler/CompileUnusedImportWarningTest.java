@@ -62,7 +62,7 @@ class CompileUnusedImportWarningTest {
             }
             assertFalse(report.report().isError(), "an unused import does not stop a build");
             SourcePos at = ((Primary.InSource) d.primary()).place().region().start();
-            found.add(d.values().get("name") + " at " + WhereItSits.in(STOCK, at).line() + ":" + WhereItSits.in(STOCK, at).column());
+            found.add(d.values().get("name") + " at " + compilation.texts().resolve(at));
         }
         return found;
     }

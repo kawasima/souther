@@ -480,17 +480,30 @@ public final class Analyzer {
         return id == null ? null : id.value();
     }
 
-    /** Where the cursor is, in the terms the compiler answers about: a place in a file, not a line
-     * and a column that any file might have. */
-    private static SourcePos cursor(String uri, Position pos) {
-        return new SourcePos(pos.line() + 1, pos.character() + 1, new SourceId(uri));
+    /**
+     * Where the cursor is, in the terms the compiler answers about: a place in a file, not a line
+     * and a column that any file might have.
+     *
+     * <p>Read off the document. A line and a column are where the reader put the caret, and which
+     * of the things written in that file they landed on is the file's to say — so the text is
+     * asked, and a document this compilation is not holding has no place to answer with.
+     */
+    private static SourcePos cursor(Compilation compilation, String uri, Position pos) {
+        SourceId id = new SourceId(uri);
+        String text = compilation.db().ask(new souther.compiler.query.Front.Text(id)).value();
+        if (text == null) {
+            return null;
+        }
+        SourceLayout laidOut = SourceLayout.of(text, id);
+        return laidOut.placeAt(laidOut.lines().offsetOf(pos.line(), pos.character()));
     }
 
     /** What the cursor is on, as the compiler answers it: the type a name at {@code pos} denotes,
      * or the declaration whose own name is there. Null when the compiler cannot say — a file it
      * could not read, or a name in the value namespace. */
     private TypeSymbol typeUnderCursor(Compilation compilation, String uri, Position pos) {
-        return compilation.db().ask(new Names.TypeAt(cursor(uri, pos))).value();
+        SourcePos at = cursor(compilation, uri, pos);
+        return at == null ? null : compilation.db().ask(new Names.TypeAt(at)).value();
     }
 
     /**
@@ -1312,7 +1325,8 @@ public final class Analyzer {
     /** What the cursor is on in the value namespace, as the compiler answers it, or null when
      * nothing there is a name in it. */
     private ValueName valueUnderCursor(Compilation compilation, String uri, Position pos) {
-        return compilation.db().ask(new Names.ValueAt(cursor(uri, pos))).value();
+        SourcePos at = cursor(compilation, uri, pos);
+        return at == null ? null : compilation.db().ask(new Names.ValueAt(at)).value();
     }
 
     /**
