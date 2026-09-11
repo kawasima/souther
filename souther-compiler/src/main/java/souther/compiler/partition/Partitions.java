@@ -2,6 +2,7 @@ package souther.compiler.partition;
 
 import souther.compiler.check.DefaultBoundOperationFacts;
 import souther.compiler.check.ReadingPolicy;
+import souther.compiler.check.RuleReadingContext;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.Carrier;
 import souther.compiler.check.RuleKey;
@@ -323,6 +324,12 @@ public final class Partitions {
         InputDomain inputs = input.domain();
         Quantities quantities = input.quantities();
         RuleReadingSource ruleSource = input.rules();
+        // The one world the walk below reads in: the input's rules, what this caller allows a
+        // reading to spend, and the readings the input already made of the declarations it met.
+        // A step of it left to read a declaration for itself reads the same declaration once per
+        // position that arrives at it.
+        RuleReadingContext ruleReading =
+                RuleReadingContext.of(ruleSource, policy, inputs.machines());
         java.util.Set<NumericTerm> uncertain = new java.util.LinkedHashSet<>();
         RulesWithNoLine.Gathered rulesWithoutALine = new RulesWithNoLine.Gathered();
         // What the reading could not hold together, asked of every position it read rather than of
@@ -347,7 +354,7 @@ public final class Partitions {
                 notSeparated.add(
                         new souther.compiler.inputs.PositionValuesNotSeparated(position.path()));
             }
-            axisOf(behavior, position, ruleSource, policy, drawn, uncertain, rulesWithoutALine);
+            axisOf(behavior, position, ruleReading, drawn, uncertain, rulesWithoutALine);
             // What the rules of this position raise that nothing answered, gathered from the
             // reading that found it. Once per position and not once per axis: a question is the
             // model's, and which axis is standing beside it is this compiler's business.
@@ -588,11 +595,11 @@ public final class Partitions {
     private static BodyCutInspection measureAt(List<Axis> out, PositionMeasurements at, Axis axis,
                                   NumericTerm.FromOnePosition term, List<RuleEvidence> evidence,
                                   List<ClassingBlocker> blocked,
-                                  Quantities reading, RuleReadingSource ruleSource,
-                                  ReadingPolicy policy,
+                                  Quantities reading, RuleReadingContext ruleReading,
                                   Allowance<NumericTerm.FromOnePosition> allowance,
                                   RulesWithNoLine rules, RulesWithNoLine.Gathered found,
                                   EvidenceAccount account) {
+        RuleReadingSource ruleSource = ruleReading.source();
         String behavior = at.position().behavior();
         // What a report calls this measure, which is what its number is called under this
         // behavior. Read the same way the measure itself takes its name, so that a piece of
@@ -777,7 +784,7 @@ public final class Partitions {
                 made.classesFor(axis, () -> Intervals.classesOf(
                         Intervals.of(reachable, within == null ? null : within.min(),
                                 within == null ? null : within.max(), carrier),
-                        term, type, reading, policy, ruleSource,
+                        term, type, reading, ruleReading,
                         within == null ? null : within.min(),
                         within == null ? null : within.max())),
                 made.divides(),
@@ -924,9 +931,9 @@ public final class Partitions {
     static Partitioning withThresholds(Partitioning base,
                                        Quantities reading,
                                        List<Threshold> thresholds,
-                                       RuleReadingSource ruleSource, ReadingPolicy policy,
+                                       RuleReadingContext ruleReading,
                                        Allowance<NumericTerm.FromOnePosition> allowance) {
-        return withThresholds(base, reading, thresholds, ruleSource, policy, RulesWithNoLine.NONE,
+        return withThresholds(base, reading, thresholds, ruleReading, RulesWithNoLine.NONE,
                 allowance);
     }
 
@@ -941,10 +948,10 @@ public final class Partitions {
     static Partitioning withThresholds(Partitioning base,
                                        Quantities reading,
                                        List<Threshold> thresholds,
-                                       RuleReadingSource ruleSource, ReadingPolicy policy,
+                                       RuleReadingContext ruleReading,
                                        RulesWithNoLine rulesWithoutALine,
                                        Allowance<NumericTerm.FromOnePosition> allowance) {
-        return withThresholds(base, reading, thresholds, ruleSource, policy, rulesWithoutALine,
+        return withThresholds(base, reading, thresholds, ruleReading, rulesWithoutALine,
                 List.of(), allowance);
     }
 
@@ -960,11 +967,11 @@ public final class Partitions {
     static Partitioning withThresholds(Partitioning base,
                                        Quantities reading,
                                        List<Threshold> thresholds,
-                                       RuleReadingSource ruleSource, ReadingPolicy policy,
+                                       RuleReadingContext ruleReading,
                                        RulesWithNoLine rulesWithoutALine,
                                        List<GuardThresholds.Guards.Singled> singled,
                                        Allowance<NumericTerm.FromOnePosition> allowance) {
-        return withThresholds(base, reading, thresholds, ruleSource, policy, rulesWithoutALine,
+        return withThresholds(base, reading, thresholds, ruleReading, rulesWithoutALine,
                 singled, List.of(), allowance);
     }
 
@@ -979,12 +986,12 @@ public final class Partitions {
     static Partitioning withThresholds(Partitioning base,
                                        Quantities reading,
                                        List<Threshold> thresholds,
-                                       RuleReadingSource ruleSource, ReadingPolicy policy,
+                                       RuleReadingContext ruleReading,
                                        RulesWithNoLine rulesWithoutALine,
                                        List<GuardThresholds.Guards.Singled> singled,
                                        List<LineDrawn> between,
                                        Allowance<NumericTerm.FromOnePosition> allowance) {
-        return withThresholds(base, reading, thresholds, ruleSource, policy, rulesWithoutALine,
+        return withThresholds(base, reading, thresholds, ruleReading, rulesWithoutALine,
                 singled, between, ReachingCuts.NONE, allowance);
     }
 
@@ -999,7 +1006,7 @@ public final class Partitions {
     static Partitioning withThresholds(Partitioning base,
                                        Quantities reading,
                                        List<Threshold> thresholds,
-                                       RuleReadingSource ruleSource, ReadingPolicy policy,
+                                       RuleReadingContext ruleReading,
                                        RulesWithNoLine rulesWithoutALine,
                                        List<GuardThresholds.Guards.Singled> singled,
                                        List<LineDrawn> between,
@@ -1012,7 +1019,7 @@ public final class Partitions {
         // and the allowance for composing them is never asked for a machine. It is still handed in
         // rather than made: an allowance is what a compilation's grant becomes, and one made here
         // would be a meter at every position that nobody granted.
-        return withEvidence(base, reading, evidence, List.of(), allowance, ruleSource, policy,
+        return withEvidence(base, reading, evidence, List.of(), allowance, ruleReading,
                 rulesWithoutALine, between, reaching);
     }
 
@@ -1031,7 +1038,7 @@ public final class Partitions {
                                             List<RuleEvidence> evidence,
                                             List<ClassingBlocker> blocked,
                                             Allowance<NumericTerm.FromOnePosition> allowance,
-                                            RuleReadingSource ruleSource, ReadingPolicy policy,
+                                            RuleReadingContext ruleReading,
                                             RulesWithNoLine rulesWithoutALine,
                                             List<LineDrawn> between,
                                             ReachingCuts reaching) {
@@ -1076,7 +1083,7 @@ public final class Partitions {
                         measureAt(here, at, measured, term, evidence,
                                 blocked.stream()
                                         .filter(each -> each.at().equals(term)).toList(),
-                                reading, ruleSource, policy, allowance, gathered, found, account));
+                                reading, ruleReading, allowance, gathered, found, account));
             }
             // The measures nothing new was said about, kept as they are, and what they were left
             // with folded in beside the rest.
@@ -1391,13 +1398,12 @@ public final class Partitions {
      * its fields, and two readers of one input disagreeing about which positions there are is the
      * thing this arrangement exists to stop.
      */
-    private static void axisOf(String behavior, Position position, RuleReadingSource ruleSource,
-                               ReadingPolicy policy,
+    private static void axisOf(String behavior, Position position, RuleReadingContext reading,
                                List<Drawn> drawn,
                                java.util.Set<NumericTerm> uncertain,
                                RulesWithNoLine.Gathered rulesWithoutALine) {
         rulesWithoutALine.addAll(position.rulesWithoutALine());
-        switch (LocalInspection.of(position, ruleSource, policy)) {
+        switch (LocalInspection.of(position, reading)) {
             case LocalPartition.Divided divided -> {
                 if (position.structure() instanceof StructuralInspection.Decomposed) {
                     throw new IllegalStateException(
@@ -1457,9 +1463,8 @@ public final class Partitions {
     /** Values that could stand for a type wherever nothing else has been said about the position — the
      * inner value of a newtype, a field no axis divides. A record is not one of these: its fields are
      * composed, which is the generator's work and not a value this can hand over. */
-    static List<FixtureTemplate> representativesOf(Type type, RuleReadingSource ruleSource,
-                                                   ReadingPolicy policy) {
-        return representativesOf(type, ruleSource, policy, null);
+    static List<FixtureTemplate> representativesOf(Type type, RuleReadingContext reading) {
+        return representativesOf(type, reading, null);
     }
 
     /**
@@ -1469,9 +1474,9 @@ public final class Partitions {
      * an {@code endsAt} beside a {@code startsAt} of 1439 can only be 1440, and the value this offers
      * has to come from there rather than from the bottom of the type's own range.
      */
-    static List<FixtureTemplate> representativesOf(Type type, RuleReadingSource ruleSource, ReadingPolicy policy,
+    static List<FixtureTemplate> representativesOf(Type type, RuleReadingContext reading,
                                                    NumericDomain.Bounds within) {
-        return representativesOf(type, ruleSource, policy, within, java.util.Set.of());
+        return representativesOf(type, reading, within, java.util.Set.of());
     }
 
     /**
@@ -1482,11 +1487,11 @@ public final class Partitions {
      * of itself and is given up on — the names and not a count of them, since how many names a value
      * wears on the way down is not what has to be stopped.
      */
-    static List<FixtureTemplate> representativesOf(Type type, RuleReadingSource ruleSource, ReadingPolicy policy,
+    static List<FixtureTemplate> representativesOf(Type type, RuleReadingContext reading,
                                                    NumericDomain.Bounds within,
                                                    java.util.Set<TypeSymbol> expanding) {
         return type == null ? List.of()
-                : representativesOf(TypeView.of(type, ruleSource.symbols()), ruleSource, policy,
+                : representativesOf(TypeView.of(type, reading.source().symbols()), reading,
                         within, expanding);
     }
 
@@ -1505,10 +1510,10 @@ public final class Partitions {
      * decoder's answer, so a position carrying a format and a floor gets a value from each and the
      * order they were declared in does not decide whether one builds.
      */
-    static List<FixtureTemplate> representativesOf(TypeView view, RuleReadingSource ruleSource,
-                                                   ReadingPolicy policy,
+    static List<FixtureTemplate> representativesOf(TypeView view, RuleReadingContext reading,
                                                    NumericDomain.Bounds within,
                                                    java.util.Set<TypeSymbol> expanding) {
+        RuleReadingSource ruleSource = reading.source();
         // Already inside the value of one of the names this wears, so the type is written in terms of
         // itself and there is nothing to hand back. Which is the answer and not a limit: no value of
         // such a type exists.
@@ -1526,13 +1531,12 @@ public final class Partitions {
         }
         // What the rules ask for, and then what the position is where nothing was written about it.
         List<FixtureTemplate> bare = new ArrayList<>();
-        bare.addAll(whereTheRulesLeaveTheValue(view, ruleSource, within));
+        bare.addAll(whereTheRulesLeaveTheValue(view, reading, within));
         bare.addAll(whatAFormatAsksFor(view, ruleSource));
         // What the rules say the value holds, before the value that would hold nothing.
-        bare.addAll(Witnesses.holding(view.shape(), leastHeld(view, ruleSource),
-                ruleSource, policy, inside));
+        bare.addAll(Witnesses.holding(view.shape(), leastHeld(view, reading), reading, inside));
         List<FixtureTemplate> ofTheShape =
-                whatTheShapeStandsFor(view.shape(), ruleSource, policy, within, inside);
+                whatTheShapeStandsFor(view.shape(), reading, within, inside);
         bare.addAll(ofTheShape);
 
         List<FixtureTemplate> candidates = new ArrayList<>();
@@ -1544,7 +1548,7 @@ public final class Partitions {
         // a class of a position says what stands at the position under it: asked of a shape that has
         // a value of its own, the answer is that value again, arrived at by building it.
         if (ofTheShape.isEmpty()) {
-            candidates.addAll(dividedInto(view, ruleSource, policy, inside));
+            candidates.addAll(dividedInto(view, reading, inside));
         }
         Map<String, FixtureTemplate> once = new LinkedHashMap<>();
         for (FixtureTemplate each : candidates) {
@@ -1565,14 +1569,12 @@ public final class Partitions {
      * can be produced for it and why, and arriving at a value another way is this deciding the
      * classes were wrong about themselves — the answer they carry is the one an author is shown.
      */
-    private static List<FixtureTemplate> dividedInto(TypeView view, RuleReadingSource ruleSource,
-                                                     ReadingPolicy policy,
+    private static List<FixtureTemplate> dividedInto(TypeView view, RuleReadingContext reading,
                                                      java.util.Set<TypeSymbol> expanding) {
         for (PartitionClass each : PartitionClasses.of(
-                Distinctions.ofType(view, ruleSource.symbols()), view, ruleSource, policy,
-                expanding)) {
+                Distinctions.ofType(view, reading.source().symbols()), view, reading, expanding)) {
             List<FixtureTemplate> stands =
-                    standingFor(each.representatives(), ruleSource, policy, expanding);
+                    standingFor(each.representatives(), reading, expanding);
             if (!stands.isEmpty()) {
                 return stands;
             }
@@ -1589,9 +1591,10 @@ public final class Partitions {
      * number named here as well would be the same number said twice.
      */
     private static List<FixtureTemplate> whereTheRulesLeaveTheValue(TypeView view,
-                                                                    RuleReadingSource ruleSource,
+                                                                    RuleReadingContext reading,
                                                                     NumericDomain.Bounds within) {
-        DeclaredBounds.Range own = DeclaredBounds.of(view, ruleSource);
+        RuleReadingSource ruleSource = reading.source();
+        DeclaredBounds.Range own = DeclaredBounds.of(view, reading);
         if (own == null) {
             return List.of();   // nothing here reads a number of this position at all
         }
@@ -1653,10 +1656,10 @@ public final class Partitions {
      * that falls to whichever arm it was not named in.
      */
     private static List<FixtureTemplate> whatTheShapeStandsFor(Shape shape,
-                                                               RuleReadingSource ruleSource,
-                                                               ReadingPolicy policy,
+                                                               RuleReadingContext reading,
                                                                NumericDomain.Bounds within,
                                                                java.util.Set<TypeSymbol> inside) {
+        RuleReadingSource ruleSource = reading.source();
         return switch (shape) {
             case Shape.Scalar scalar -> standsForA(scalar, within, ruleSource);
             // The empty one, for every collection nothing has said otherwise about. A row whose
@@ -1675,7 +1678,7 @@ public final class Partitions {
                             ? List.of(FixtureTemplate.unitCase(written)) : List.of();
             // A record is written field by field, against the rules relating them.
             case Shape.Product product -> product.name() instanceof TypeSymbol.AtModule named
-                    ? composed(named, ruleSource, policy, inside) : List.of();
+                    ? composed(named, reading, inside) : List.of();
             // What a sum or a union stands for is which of its cases it is, which is what the
             // position divides into rather than a value to name here.
             case Shape.Sum _, Shape.Cases _ -> List.of();
@@ -1725,13 +1728,12 @@ public final class Partitions {
      * class naming a constructor answered yes and then handed over nothing, and the position it
      * stood at was reported as one no value can be written at (issue #651).
      */
-    static List<FixtureTemplate> standingFor(RepresentativeSource source, RuleReadingSource ruleSource,
-                                             ReadingPolicy policy,
+    static List<FixtureTemplate> standingFor(RepresentativeSource source, RuleReadingContext reading,
                                              java.util.Set<TypeSymbol> expanding) {
         return switch (source.evaluate()) {
             case RepresentativeSource.Evaluation.Values values -> values.written();
             case RepresentativeSource.Evaluation.Compose compose ->
-                    composed(compose.through(), ruleSource, policy, expanding).stream()
+                    composed(compose.through(), reading, expanding).stream()
                             .map(compose::written).toList();
             case RepresentativeSource.Evaluation.NothingProducible _ -> List.of();
         };
@@ -1756,10 +1758,10 @@ public final class Partitions {
      * one position at a time. Whether the values may be held together is the decoder's answer — the
      * same answer every other candidate this offers is put through.
      */
-    private static List<FixtureTemplate> composed(TypeSymbol.AtModule record, RuleReadingSource ruleSource,
-                                                  ReadingPolicy policy,
+    private static List<FixtureTemplate> composed(TypeSymbol.AtModule record,
+                                                  RuleReadingContext reading,
                                                   java.util.Set<TypeSymbol> expanding) {
-        return composed(record, ruleSource, policy, expanding, Map.of());
+        return composed(record, reading, expanding, Map.of());
     }
 
     /**
@@ -1774,15 +1776,14 @@ public final class Partitions {
      * @param given what stands at some of the fields, by name. A name no field has is nothing this
      *              can build, and is the caller asking for a value of another type
      */
-    static List<FixtureTemplate> composed(TypeSymbol.AtModule record, RuleReadingSource ruleSource,
-                                          ReadingPolicy policy,
+    static List<FixtureTemplate> composed(TypeSymbol.AtModule record, RuleReadingContext reading,
                                           java.util.Set<TypeSymbol> expanding,
                                           Map<String, FixtureTemplate> given) {
         if (expanding.contains(record)) {
             return List.of();
         }
-        Map<String, FixtureTemplate> chosen =
-                fieldsOf(record, ruleSource, policy, expanding, given);
+        RuleReadingSource ruleSource = reading.source();
+        Map<String, FixtureTemplate> chosen = fieldsOf(record, reading, expanding, given);
         return chosen == null || !(ruleSource.symbols().scope().reach(record)
                 instanceof TypeReachName.Written written)
                         ? List.of() : List.of(FixtureTemplate.record(written, chosen));
@@ -1798,9 +1799,10 @@ public final class Partitions {
      * the fields would be reading one answer back out of another.
      */
     static Map<String, FixtureTemplate> fieldsOf(TypeSymbol.AtModule record,
-                                                 RuleReadingSource ruleSource, ReadingPolicy policy,
+                                                 RuleReadingContext reading,
                                                  java.util.Set<TypeSymbol> expanding,
                                                  Map<String, FixtureTemplate> given) {
+        RuleReadingSource ruleSource = reading.source();
         // What the record is made of, read where a position's reading is made. A walk from the
         // declaration to its fields is that same reading taken a second time, and the two part
         // wherever one of them reaches through a name the other stops at.
@@ -1821,7 +1823,8 @@ public final class Partitions {
         java.util.Set<TypeSymbol> inside = new LinkedHashSet<>(expanding);
         inside.add(record);
         Map<RuleKey, Count> settled = new LinkedHashMap<>();
-        FieldDomains left = FieldDomains.unshared(record, ruleSource, policy, settled);
+        FieldDomains left = FieldDomains.of(record, ruleSource, reading.policy(), settled,
+                reading.readings());
         Map<String, FixtureTemplate> chosen = new LinkedHashMap<>();
         if (!fields.keySet().containsAll(given.keySet())) {
             return null;
@@ -1831,8 +1834,8 @@ public final class Partitions {
             if (at == null) {
                 RuleKey named =
                         RuleKey.of(field.getKey());
-                List<FixtureTemplate> stands = representativesHolding(field.getValue(), ruleSource,
-                        policy, left.at(named).bounds(), left.heldAt(named), inside);
+                List<FixtureTemplate> stands = representativesHolding(field.getValue(), reading,
+                        left.at(named).bounds(), left.heldAt(named), inside);
                 if (stands.isEmpty()) {
                     return null;
                 }
@@ -1844,7 +1847,8 @@ public final class Partitions {
             // which leaves `b` its whole range and takes the bottom of it.
             if (Counts.writtenIn(at.value()) instanceof Count count) {
                 settled.put(RuleKey.of(field.getKey()), count);
-                left = FieldDomains.unshared(record, ruleSource, policy, settled);
+                left = FieldDomains.of(record, ruleSource, reading.policy(), settled,
+                        reading.readings());
             }
         }
         return chosen;
@@ -1853,13 +1857,13 @@ public final class Partitions {
     /** How many of whatever counts a value the rules on it require it to hold, read where the rules
      * are: {@link DeclaredBounds#leastCountOf}. Of the position as it was read, since how many a
      * value holds is what the rules of every name it wears say. */
-    static int leastHeld(TypeView view, RuleReadingSource ruleSource) {
-        return DeclaredBounds.leastCountOf(view, ruleSource);
+    static int leastHeld(TypeView view, RuleReadingContext reading) {
+        return DeclaredBounds.leastCountOf(view, reading);
     }
 
     /** The same, where the record the position sits in has a rule about it too. */
-    static int leastHeld(TypeView view, RuleReadingSource ruleSource, FieldDomains.Held held) {
-        return DeclaredBounds.leastCountOf(view, ruleSource, held);
+    static int leastHeld(TypeView view, RuleReadingContext reading, FieldDomains.Held held) {
+        return DeclaredBounds.leastCountOf(view, reading, held);
     }
 
     /**
@@ -1873,9 +1877,10 @@ public final class Partitions {
      * cap has no projection of its own here: a caller wanting it takes both and is holding one
      * answer.
      */
-    static DeclaredBounds.CountRange heldRange(Type type, RuleReadingSource ruleSource,
+    static DeclaredBounds.CountRange heldRange(Type type, RuleReadingContext reading,
                                                FieldDomains.Held held) {
-        return DeclaredBounds.countsHeld(TypeView.of(type, ruleSource.symbols()), ruleSource, held);
+        return DeclaredBounds.countsHeld(TypeView.of(type, reading.source().symbols()), reading,
+                held);
     }
 
     /**
@@ -1895,12 +1900,10 @@ public final class Partitions {
      * reads is the floor that was built against, and a reading here that knew only the type would
      * say "every value tried was refused" of a position whose values were never built.
      */
-    static java.util.Set<CompositionBudget> notBuilt(Type type, RuleReadingSource ruleSource,
-                                                     ReadingPolicy policy,
+    static java.util.Set<CompositionBudget> notBuilt(Type type, RuleReadingContext reading,
                                                      FieldDomains.Held held) {
-        TypeView view = TypeView.of(type, ruleSource.symbols());
-        return Witnesses.heldBackFor(view.shape(), leastHeld(view, ruleSource, held),
-                ruleSource, policy);
+        TypeView view = TypeView.of(type, reading.source().symbols());
+        return Witnesses.heldBackFor(view.shape(), leastHeld(view, reading, held), reading);
     }
 
     /**
@@ -1915,13 +1918,13 @@ public final class Partitions {
      * <p>Only a whole number steps. Between two decimals there is no next value, so a dense carrier
      * names the one number inside its range and no more.
      */
-    static Place numberInside(TypeView view, RuleReadingSource ruleSource, int index) {
+    static Place numberInside(TypeView view, RuleReadingContext reading, int index) {
         Carrier carrier = numbersOf(view.shape());
         if (carrier == null) {
             return null;
         }
         NumericDomain.Bounds range =
-                TypeBounds.admissible(DeclaredBounds.of(view, ruleSource), null);
+                TypeBounds.admissible(DeclaredBounds.of(view, reading), null);
         Place from = inside(range, carrier);
         if (from == null || !(carrier instanceof Carrier.Whole)) {
             return from != null && index == 0 ? from : null;
@@ -1961,39 +1964,36 @@ public final class Partitions {
      *
      * <p>Both, and the floor first. Each is what one rule was read to produce and which of them the
      * whole of the rules admits is the decoder's answer, so neither withdraws the other — the same
-     * reading {@link #representativesOf(TypeView, RuleReadingSource, ReadingPolicy,
-     * NumericDomain.Bounds, java.util.Set)} makes of a position whose own rules give it a floor,
+     * reading {@link #representativesOf(TypeView, RuleReadingContext, NumericDomain.Bounds,
+     * java.util.Set)} makes of a position whose own rules give it a floor,
      * made here of one whose floor is its record's. What the order decides is not which is right:
      * the search over a
      * row's positions is bounded, so a position offering the value that holds nothing first spends
      * an assignment on a value the rule refuses, and rows at positions the rule has nothing to do
      * with are what runs out.
      */
-    static List<FixtureTemplate> representativesHolding(Type type, RuleReadingSource ruleSource,
-                                                        ReadingPolicy policy,
+    static List<FixtureTemplate> representativesHolding(Type type, RuleReadingContext reading,
                                                         NumericDomain.Bounds within,
                                                         FieldDomains.Held held) {
-        return representativesHolding(TypeView.of(type, ruleSource.symbols()), ruleSource, policy,
-                within, held, java.util.Set.of());
+        return representativesHolding(type, reading, within, held, java.util.Set.of());
     }
 
     /** The same, of a position nothing here has read yet. */
-    static List<FixtureTemplate> representativesHolding(Type type, RuleReadingSource ruleSource,
-                                                        ReadingPolicy policy,
+    static List<FixtureTemplate> representativesHolding(Type type, RuleReadingContext reading,
                                                         NumericDomain.Bounds within,
                                                         FieldDomains.Held held,
                                                         java.util.Set<TypeSymbol> expanding) {
-        return representativesHolding(TypeView.of(type, ruleSource.symbols()), ruleSource, policy,
+        return representativesHolding(TypeView.of(type, reading.source().symbols()), reading,
                 within, held, expanding);
     }
 
     /** The same, with the names this is already inside the value of, for the same reason
      *  {@link #representativesOf} carries them. */
-    static List<FixtureTemplate> representativesHolding(TypeView view, RuleReadingSource ruleSource,
-                                                        ReadingPolicy policy,
+    static List<FixtureTemplate> representativesHolding(TypeView view, RuleReadingContext reading,
                                                         NumericDomain.Bounds within,
                                                         FieldDomains.Held held,
                                                         java.util.Set<TypeSymbol> expanding) {
+        RuleReadingSource ruleSource = reading.source();
         List<FixtureTemplate> candidates = new ArrayList<>();
         // Under every name the position wears, because a floor read off the record says how much the
         // value holds and not what it is written as: a field of a newtype over a list takes a list
@@ -2003,11 +2003,11 @@ public final class Partitions {
         // position rather than of each value built for it.
         if (WornNames.of(view.wrappers(), ruleSource) instanceof WornNames.Spelled spelled) {
             for (FixtureTemplate bare : Witnesses.holding(view.shape(),
-                    leastHeld(view, ruleSource, held), ruleSource, policy, expanding)) {
+                    leastHeld(view, reading, held), reading, expanding)) {
                 candidates.add(RepresentativeSource.under(spelled.names(), bare));
             }
         }
-        candidates.addAll(representativesOf(view, ruleSource, policy, within, expanding));
+        candidates.addAll(representativesOf(view, reading, within, expanding));
         Map<String, FixtureTemplate> once = new LinkedHashMap<>();
         for (FixtureTemplate each : candidates) {
             once.putIfAbsent(each.text(), each);
@@ -2029,19 +2029,19 @@ public final class Partitions {
      * that the value is writable, which is what separates this from a boundary a person is asked to
      * write.
      */
-    static List<FixtureTemplate> displacedRepresentativesOf(Type type, RuleReadingSource ruleSource,
-                                                            ReadingPolicy policy,
+    static List<FixtureTemplate> displacedRepresentativesOf(Type type, RuleReadingContext reading,
                                                             NumericDomain.Bounds within,
                                                             FieldDomains.Held held) {
         // The position, read once and handed to everything below: what it ordinarily offers, what it
         // holds back, where its rules leave a number, and the names any of those go under.
+        RuleReadingSource ruleSource = reading.source();
         TypeView view = TypeView.of(type, ruleSource.symbols());
         List<FixtureTemplate> base = new ArrayList<>(representativesHolding(
-                view, ruleSource, policy, within, held, java.util.Set.of()));
+                view, reading, within, held, java.util.Set.of()));
         // What a position holds back for the product search's second pass is on offer here from the
         // start. This pass runs only where both of those have already failed, and a position keeping
         // a value from the last search there is a value nothing will ever be tried at.
-        for (FixtureTemplate kept : inReserve(view, ruleSource, policy, within)) {
+        for (FixtureTemplate kept : inReserve(view, reading, within)) {
             if (base.stream().noneMatch(each -> each.text().equals(kept.text()))) {
                 base.add(kept);
             }
@@ -2051,7 +2051,7 @@ public final class Partitions {
             return List.copyOf(base);
         }
         NumericDomain.Bounds range =
-                TypeBounds.admissible(DeclaredBounds.of(view, ruleSource), within);
+                TypeBounds.admissible(DeclaredBounds.of(view, reading), within);
         Place step = displaced(range, carrier);
         if (step == null) {
             return List.copyOf(base);
@@ -2143,20 +2143,21 @@ public final class Partitions {
      * moves every assignment past it further back, so offering this one among the rest would lose
      * rows that were being reached at positions this has nothing to do with.
      */
-    static List<FixtureTemplate> inReserve(Type type, RuleReadingSource ruleSource, ReadingPolicy policy,
+    static List<FixtureTemplate> inReserve(Type type, RuleReadingContext reading,
                                            NumericDomain.Bounds within) {
-        return inReserve(TypeView.of(type, ruleSource.symbols()), ruleSource, policy, within);
+        return inReserve(TypeView.of(type, reading.source().symbols()), reading, within);
     }
 
     /** The same, of a position that has already been read. */
-    static List<FixtureTemplate> inReserve(TypeView view, RuleReadingSource ruleSource,
-                                           ReadingPolicy policy, NumericDomain.Bounds within) {
+    static List<FixtureTemplate> inReserve(TypeView view, RuleReadingContext reading,
+                                           NumericDomain.Bounds within) {
+        RuleReadingSource ruleSource = reading.source();
         // A far edge is a rule's, and a rule is written on a name. A position wearing none carries
         // no rule of its own, so there is no edge here to hold anything back at.
         if (!view.isWrapped()) {
             return List.of();
         }
-        DeclaredBounds.Range own = DeclaredBounds.of(view, ruleSource);
+        DeclaredBounds.Range own = DeclaredBounds.of(view, reading);
         NumericDomain.Bounds bounds = TypeBounds.admissible(own, within);
         // The far end has to be a value the position holds. Where the range stops short of it there
         // is nothing there to hold back, and a dense order has no value beside it to hold back
@@ -2174,7 +2175,7 @@ public final class Partitions {
         }
         // Nothing already on offer: a range whose far edge is the number the base type stands for
         // would otherwise hold the same value twice, once in each tier.
-        return representativesOf(view, ruleSource, policy, within, java.util.Set.of()).stream()
+        return representativesOf(view, reading, within, java.util.Set.of()).stream()
                 .map(FixtureTemplate::text).anyMatch(held.text()::equals)
                 ? List.of() : List.of(held);
     }

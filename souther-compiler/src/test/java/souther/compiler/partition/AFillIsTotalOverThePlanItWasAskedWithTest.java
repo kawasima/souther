@@ -38,11 +38,11 @@ class AFillIsTotalOverThePlanItWasAskedWithTest {
     private static final RuleReadingSource SYMBOLS =
             RuleReadings.ofNoClauseFiled(Symbols.none(DefaultStdlib.get()));
 
-    private static final Generator.ClassOwed A_CLASS =
-            new Generator.ClassOwed(new AxisId("fee", "days"), "days/low");
+    private static final ClassOfAPosition A_CLASS =
+            new ClassOfAPosition(new AxisId("fee", "days"), "days/low");
 
-    private static final Generator.ClassOwed ANOTHER_CLASS =
-            new Generator.ClassOwed(new AxisId("fee", "days"), "days/high");
+    private static final ClassOfAPosition ANOTHER_CLASS =
+            new ClassOfAPosition(new AxisId("fee", "days"), "days/high");
 
     /** Two places of one numbering, so that the arms below are addresses of one. */
     private static final Map<Integer, ArmProbe> PLACES = Numberings.arms(3);
@@ -107,7 +107,7 @@ class AFillIsTotalOverThePlanItWasAskedWithTest {
      */
     @Test
     void aClassWithNothingUnderItIsNotAnAnswer() {
-        Map<Generator.ClassOwed, ClassDisposition> nothing = new LinkedHashMap<>();
+        Map<ClassOfAPosition, ClassDisposition> nothing = new LinkedHashMap<>();
         nothing.put(A_CLASS, null);
 
         assertThrows(IllegalArgumentException.class,
@@ -166,12 +166,12 @@ class AFillIsTotalOverThePlanItWasAskedWithTest {
         FillResult filled = new FillResult(planOver(List.of(A_CLASS), List.of(AN_ARM)), composed,
                 List.of(), List.of(), new Discharge(
                         Map.of(A_CLASS, new ClassDisposition.Built(new RowId(0))),
-                        Map.of(AN_ARM, new ArmDisposition.Built(new RowId(0)))));
+                        Map.of(AN_ARM, new ArmDisposition.Built(new RowId(0), ARM))));
 
         assertEquals(1, filled.rows().size(), "one line, offered for both");
     }
 
-    private static GenerationPlan planOver(List<Generator.ClassOwed> classes,
+    private static GenerationPlan planOver(List<ClassOfAPosition> classes,
                                            List<Generator.ArmOwed> arms) {
         souther.compiler.inputs.NumericTerm.ValueOf atDays =
                 new souther.compiler.inputs.NumericTerm.ValueOf(

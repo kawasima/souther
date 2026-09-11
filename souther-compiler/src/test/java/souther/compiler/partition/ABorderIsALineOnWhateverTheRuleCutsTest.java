@@ -785,9 +785,18 @@ class ABorderIsALineOnWhateverTheRuleCutsTest {
                         || line.contains("about `" + position + "`")));
     }
 
-    /** The same report with every citation of a rule with no name blanked, since where a rule is
-     *  written is a place and two spellings of one rule are at two of them. */
+    /**
+     * The same report with every citation of a rule with no name blanked, since where a rule is
+     * written is a place and two spellings of one rule are at two of them.
+     *
+     * <p>Both spellings of a place. A border names the rule and prints the place inside the handle;
+     * a condition of a decision rule is marked at the construct instead and the report names the
+     * place on its own. The two are one fact about this fixture — a comparison written two ways is
+     * two lengths of text — and blanking one of them would have this comparing the columns through
+     * the other.
+     */
     private static String exceptWhereRulesAreWritten(String report) {
-        return report.replaceAll("comparison@\\d+:\\d+", "comparison@<written>");
+        return report.replaceAll("comparison@\\d+:\\d+", "comparison@<written>")
+                .replaceAll("the comparison at \\d+:\\d+", "the comparison at <written>");
     }
 }

@@ -159,6 +159,14 @@ class WhatAWholeWentWithoutIsWhatItsPartsWentWithoutTest {
                     apart.add(partition.partitioned().weakening());
                     apart.add(partition.pairs().counted().weakening());
                 }
+                if (behavior.evidence().decision() != null) {
+                    // Which rules of the body's decision the rows took, which is a part of the
+                    // behavior like the arms. A row nothing watched leaves every rule nothing was
+                    // seen taking as one a row may already take, and that is what this part knows
+                    // and no other does.
+                    parts = parts.union(behavior.evidence().decision().took().weakening());
+                    apart.add(behavior.evidence().decision().took().weakening());
+                }
                 if (behavior.evidence().account() != null) {
                     // This behavior's own account, which is what its weakening is over. A row owed
                     // to the declarations that drew a line is short or not short in the module's
@@ -192,7 +200,8 @@ class WhatAWholeWentWithoutIsWhatItsPartsWentWithoutTest {
         // written down, so a path that stops arriving fails here instead of being made up for.
         Set<String> kinds = new LinkedHashSet<>();
         everything.forEach(each -> kinds.add(each.getClass().getSimpleName()));
-        assertEquals(Set.of("ObservationIncomplete", "ModelReadingIncomplete"), kinds,
+        assertEquals(Set.of("ObservationIncomplete", "ModelReadingIncomplete",
+                        "DecisionRunNotWatched"), kinds,
                 () -> "the ways this model goes without something: " + kinds);
 
         // And at least one part carries a fact no other part of its behavior does, so the rule

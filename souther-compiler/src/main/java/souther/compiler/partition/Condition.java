@@ -35,9 +35,14 @@ import java.util.Optional;
  * <ul>
  *   <li>{@link Joined} — two conditions put together, with what their connective makes of them;
  *   <li>{@link Compares} — one comparison, with the reading of the names in force where it stands;
- *   <li>{@link NotRead} — where this stops. A condition can be anything a {@code Bool} is, and what
- *       is not one of the shapes above says nothing here rather than being guessed at.
+ *   <li>{@link Truth} — a value the body asks for the truth of, with the same reading beside it.
  * </ul>
+ *
+ * <p><b>Three shapes and no fourth for what was not recognised.</b> A condition is a {@code Bool},
+ * so a subtree that is neither of the first two is the body asking whether that value holds — which
+ * is a distinction it draws whether or not anything here can say what the value is. Written as a
+ * shape that says nothing, every such condition was one thing, and a reader with words for the
+ * value in front of it had nowhere to put them.
  *
  * <p><b>A binding is transparent and is not one of the shapes.</b> What a {@code let} contributes is
  * where the names in its body point, which is why {@link Compares} carries the reading rather than
@@ -118,9 +123,21 @@ sealed interface Condition {
         }
     }
 
-    /** Where this reading stops: a condition of a shape it has no words for. */
-    record NotRead(ConditionOccurrence occurrence, ConditionReportAnchor anchor)
-            implements Condition {}
+    /**
+     * A value the body asks for the truth of.
+     *
+     * <p>The value itself and not a comparison against {@code true}. A body writing {@code guard
+     * allowed} wrote no comparison, and lowering one here would put a construct in front of a
+     * reader that no source states and no run is seen at.
+     *
+     * <p>What the value is is left to whoever folds this. The reading in force is beside it for the
+     * reason {@link Compares} carries one: a value named inside an expanded helper is the one the
+     * call handed it, and read against the outer names it is about nothing.
+     *
+     * @param value what the body asks the truth of, as the tree the walk met it in
+     */
+    record Truth(ConditionOccurrence occurrence, ConditionReportAnchor anchor, Core value,
+                 InputReads reads) implements Condition {}
 
     /**
      * {@code e} read as a condition, under {@code reads}, taking its names from {@code numbering}.
@@ -184,11 +201,11 @@ sealed interface Condition {
             }
         }
         if (made == null) {
-            // Where this stops. A condition may be anything a `Bool` is, and the source wrote no
-            // construct here to name one by — so this is placed by the reading that met it, which
-            // is what handing no origin over says.
+            // Everything else is the body asking whether a value holds. The source wrote no
+            // construct here to name the condition by, so it is placed by the reading that met it,
+            // which is what handing no origin over says.
             ConditionOccurrence met = numbering.met();
-            made = new NotRead(met, numbering.anchorOf(null, e.pos(), met));
+            made = new Truth(met, numbering.anchorOf(null, e.pos(), met), e, reads);
         }
         numbering.read(e, reads, made);
         return made;

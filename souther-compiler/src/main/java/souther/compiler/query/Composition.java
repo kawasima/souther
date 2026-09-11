@@ -1,12 +1,15 @@
 package souther.compiler.query;
 
 import souther.compiler.partition.Generator;
+import souther.compiler.partition.ObligationIdentity;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.SequencedMap;
+import java.util.Set;
 
 /**
  * Everything the two searches composed, under the behavior each row is written for.
@@ -66,15 +69,25 @@ public record Composition(OfferingRequest request,
                 ? Map.of() : account.rowsByCarrier();
         SequencedMap<String, Map<RowKey, OfferedRow>> byBehavior = new LinkedHashMap<>();
         for (Map.Entry<String, Adequacy.Filling> behavior : generated.entrySet()) {
+            // The fill's rows and the ones the requirement search stood in the rules, which is a
+            // second search of this behavior's own the way the lines are a third. One block per
+            // behavior all the same: rows of one behavior written under two headings are legal and
+            // read as two lists of something, which they are not.
+            // The fill's rows and the ones the requirement search stood in the rules, which is a
+            // second search of this behavior's own the way the lines are a third. Taken as rows
+            // that say what they were composed for rather than as lines: two searches arriving at
+            // one stimulus is one row offered for both things, and a row that kept only the first
+            // purpose would be work a person is handed under half of what it does.
             take(byBehavior, behavior.getKey(), behavior.getValue().composed().rows(),
-                    request.boundaries() ? atTheLines(owed.get(behavior.getKey())) : List.of());
+                    request.boundaries() ? atTheLines(owed.get(behavior.getKey())) : List.of(),
+                    behavior.getValue().rules().byRule().values());
         }
         // A behavior with nothing of its own to fill can still be the one reading that composed the
         // row a declaration is owed. Left out, that row would be resolved and then dropped on the
         // way to the block.
         for (Map.Entry<String, List<Generator.GeneratedRow>> carrier : owed.entrySet()) {
             if (!generated.containsKey(carrier.getKey())) {
-                take(byBehavior, carrier.getKey(), List.of(), carrier.getValue());
+                take(byBehavior, carrier.getKey(), List.of(), carrier.getValue(), List.of());
             }
         }
         SequencedMap<String, List<OfferedRow>> out = new LinkedHashMap<>();
@@ -85,7 +98,8 @@ public record Composition(OfferingRequest request,
     /** One behavior's rows, joined onto whatever it already offers. */
     private static void take(SequencedMap<String, Map<RowKey, OfferedRow>> byBehavior,
                              String behavior, List<Generator.GeneratedRow> cells,
-                             List<Generator.GeneratedRow> lines) {
+                             List<Generator.GeneratedRow> lines,
+                             Collection<Generator.GeneratedRow> rules) {
         // One block per behavior, however many kinds of row it holds. Rows of one behavior written
         // under two headings are legal and read as two lists of something, which they are not.
         Map<RowKey, OfferedRow> here =
@@ -95,9 +109,32 @@ public record Composition(OfferingRequest request,
             here.put(key, here.computeIfAbsent(key,
                     _ -> new OfferedRow(key, row.inputs(), List.of())).and(row.purposes()));
         }
+        // The lines, joined on the stimulus and never on what they were composed for. A row at a
+        // point carries a purpose no offered row may be named after — {@link OfferedRow} refuses
+        // one, because what a line is owed is answered in the account under the declaration that
+        // owes it rather than by a word over a row — so there is nothing here to union, and the
+        // entry a stimulus already has keeps the purposes it has.
+        //
+        // Which is not a purpose going missing. A row a line and a rule arrive at alike is one row,
+        // and the rules below add their purpose to whatever entry this left: what a person is shown
+        // is that the row is for the rule, and that it also stands at a line is the account's
+        // answer and not this row's label.
         for (Generator.GeneratedRow row : lines) {
             RowKey key = RowKey.of(behavior, row);
             here.putIfAbsent(key, new OfferedRow(key, row.inputs(), List.of()));
+        }
+        // And the rules, after the lines. What a row settles decides whether it is kept and the
+        // order decides which of two that settle the same things is; the body's own lines are
+        // offered before what a search of the ways composed, so an edit to the body does not move
+        // the row a line is offered at.
+        //
+        // Through the same join as the cells, and never the one above: a stimulus a line and a
+        // rule arrive at alike is one row for both, and a row that kept only what it was reached
+        // by first would be work a person is handed under half of what it does.
+        for (Generator.GeneratedRow row : rules) {
+            RowKey key = RowKey.of(behavior, row);
+            here.put(key, here.computeIfAbsent(key,
+                    _ -> new OfferedRow(key, row.inputs(), List.of())).and(row.purposes()));
         }
     }
 
@@ -141,7 +178,7 @@ public record Composition(OfferingRequest request,
      * constructor and leaving the one call that reaches it open would have left the same door with
      * a longer name on it.
      */
-    Offering keeping(java.util.Set<RowKey> kept, java.util.Set<OfferItem> answered) {
+    Offering keeping(Set<RowKey> kept, Set<ObligationIdentity> answered) {
         SequencedMap<String, List<OfferedRow>> out = new LinkedHashMap<>();
         rowsByBehavior.forEach((behavior, here) -> {
             List<OfferedRow> left = here.stream().filter(row -> kept.contains(row.key())).toList();

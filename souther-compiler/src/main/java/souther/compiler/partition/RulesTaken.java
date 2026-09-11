@@ -91,6 +91,24 @@ public final class RulesTaken {
     }
 
     /**
+     * Two of these are one where they recognise the same runs at the same rules.
+     *
+     * <p>Said because this is an answer of the query graph, and an answer that says nothing of
+     * itself is one nothing can tell from a second computation of the same question — which is how
+     * a memoised graph loses the guarantee it exists to give. Everything it is made of is a value,
+     * so what it is made of is what it is.
+     */
+    @Override
+    public boolean equals(Object other) {
+        return other instanceof RulesTaken it && recognisable.equals(it.recognisable);
+    }
+
+    @Override
+    public int hashCode() {
+        return recognisable.hashCode();
+    }
+
+    /**
      * The rules of {@code read}, against the tree that runs and the plan that numbered it.
      *
      * <p>Both trees are asked for because the crossing is about the pair: the rules say which

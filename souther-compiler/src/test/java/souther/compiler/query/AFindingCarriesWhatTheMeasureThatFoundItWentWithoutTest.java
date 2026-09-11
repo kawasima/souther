@@ -96,7 +96,7 @@ class AFindingCarriesWhatTheMeasureThatFoundItWentWithoutTest {
             WeakeningSet owed = switch (each.about()) {
                 case About.ACaseNoRowExpects _, About.ACaseNothingWasSeenToProduce _ ->
                         signature.output().cases().weakening();
-                case About.ACaseNoRowAppliesItTo(var at, var _) ->
+                case About.ACaseNoRowAppliesItTo(var at, var _, var _) ->
                         signature.positions().get(at.at()).cases().weakening();
                 default -> null;
             };
@@ -142,8 +142,9 @@ class AFindingCarriesWhatTheMeasureThatFoundItWentWithoutTest {
                 new InputCaseEvidence.Cases(Set.of(small), Set.of(small), Set.of(small), 0),
                 true, WeakeningSet.none());
 
-        Adequacy.SignatureEvidence signature =
-                Adequacy.SignatureEvidence.of(output, List.of(unreadable, read));
+        // What the declaration calls the two inputs, which is what a case of one is a class of.
+        Adequacy.SignatureEvidence signature = Adequacy.SignatureEvidence.of(output,
+                List.of(unreadable, read), new InputPositions.Declared(List.of("a", "b")));
 
         assertTrue(output.cases().weakening().isEmpty(), "the output was measured in full");
         assertFalse(unreadable.cases().weakening().isEmpty(), "and one input was not");
@@ -190,7 +191,7 @@ class AFindingCarriesWhatTheMeasureThatFoundItWentWithoutTest {
             List<Adequacy.Finding> found, Adequacy.AdequacyBar held, int at,
             TypeSymbol missing) {
         for (Adequacy.Finding each : found) {
-            if (each.about() instanceof About.ACaseNoRowAppliesItTo(var input, var what)
+            if (each.about() instanceof About.ACaseNoRowAppliesItTo(var input, var what, var _)
                     && input.at() == at && what.equals(missing)) {
                 return each.disposition(held);
             }

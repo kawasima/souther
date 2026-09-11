@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Test;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.Compilation;
 import souther.compiler.query.GenerationScope;
-import souther.compiler.query.OfferItem;
+import souther.compiler.partition.ObligationIdentity;
 import souther.compiler.query.Composition;
 import souther.compiler.query.Offering;
 import souther.compiler.query.OfferingRequest;
@@ -130,17 +130,17 @@ class ARowIsNotOfferedForWhatAnotherOfferedRowAnswersTest {
         assertNotNull(findings, "the model under test is measured");
         int asked = 0;
         for (Adequacy.Finding finding : findings) {
-            OfferItem item = switch (finding.about()) {
+            ObligationIdentity item = switch (finding.about()) {
                 case souther.compiler.query.About.APointOfABorder(var point) ->
-                        new OfferItem.APointOfALine(point.point());
+                        new ObligationIdentity.OfALine(point.point());
                 case souther.compiler.query.About.APointOfADeclaredBorder(var owed) ->
-                        new OfferItem.APointOfALine(owed.debt().point());
+                        new ObligationIdentity.OfALine(owed.debt().point());
                 case souther.compiler.query.About.AnArmNoRowGoesThrough(var arm) ->
-                        new OfferItem.AnArm(
-                                new souther.compiler.partition.Generator.ArmOwed(arm.index()));
+                        new ObligationIdentity.OfAnArm(arm.obligation());
                 case souther.compiler.query.About.AClassNoRowIsIn(var missing) ->
-                        new OfferItem.AClass(new souther.compiler.partition.Generator.ClassOwed(
-                                missing.axis().at(), missing.name()));
+                        new ObligationIdentity.OfAClass(
+                                new souther.compiler.partition.ClassOfAPosition(
+                                        missing.axis().at(), missing.name()));
                 default -> null;
             };
             if (item == null) {
@@ -161,12 +161,12 @@ class ARowIsNotOfferedForWhatAnotherOfferedRowAnswersTest {
     void whatTheRowsAnswerIsWhatTheyAnsweredBefore() {
         Compilation compilation = compiled();
         Settlements table = Settlements.of(compilation.db(), composed(compilation));
-        Set<OfferItem> before = table.settled();
+        Set<ObligationIdentity> before = table.settled();
         Set<RowKey> kept = table.keeping();
 
         assertTrue(kept.size() < table.byRow().size(), "something goes: " + kept.size()
                 + " of " + table.byRow().size());
-        for (OfferItem item : before) {
+        for (ObligationIdentity item : before) {
             assertTrue(kept.stream().anyMatch(row -> table.at(row, item).settles()),
                     "and " + item + " is still answered by one of the rows that are left");
         }
@@ -177,7 +177,7 @@ class ARowIsNotOfferedForWhatAnotherOfferedRowAnswersTest {
         Compilation compilation = compiled();
         Settlements table = Settlements.of(compilation.db(), composed(compilation));
         Set<RowKey> kept = table.keeping();
-        for (Map.Entry<RowKey, Map<OfferItem, souther.compiler.query.Settlement>> row
+        for (Map.Entry<RowKey, Map<ObligationIdentity, souther.compiler.query.Settlement>> row
                 : table.byRow().entrySet()) {
             if (kept.contains(row.getKey())) {
                 continue;

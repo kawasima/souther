@@ -6,7 +6,7 @@ import souther.compiler.query.BorderAssessment;
 import souther.compiler.query.Compilation;
 import souther.compiler.query.PointResolution;
 import souther.compiler.query.GenerationScope;
-import souther.compiler.query.OfferItem;
+import souther.compiler.partition.ObligationIdentity;
 import souther.compiler.query.Composition;
 import souther.compiler.query.OfferingRequest;
 import souther.compiler.query.OwedBoundaryPoint;
@@ -73,8 +73,8 @@ class APointNothingIsAskedForARowAtIsNotOfferedOneTest {
 
         Set<BorderObligationPoint> asked = Settlements.of(compilation.db(), composed(compilation))
                 .requested().stream()
-                .filter(OfferItem.APointOfALine.class::isInstance)
-                .map(item -> ((OfferItem.APointOfALine) item).point())
+                .filter(ObligationIdentity.OfALine.class::isInstance)
+                .map(item -> ((ObligationIdentity.OfALine) item).point())
                 .collect(Collectors.toCollection(java.util.LinkedHashSet::new));
 
         for (OwedBoundaryPoint point : settledAlready) {
@@ -140,8 +140,8 @@ class APointNothingIsAskedForARowAtIsNotOfferedOneTest {
         Settlements table = Settlements.of(compilation.db(), composed);
 
         Set<BorderObligationPoint> asked = table.requested().stream()
-                .filter(OfferItem.APointOfALine.class::isInstance)
-                .map(item -> ((OfferItem.APointOfALine) item).point())
+                .filter(ObligationIdentity.OfALine.class::isInstance)
+                .map(item -> ((ObligationIdentity.OfALine) item).point())
                 .collect(Collectors.toCollection(java.util.LinkedHashSet::new));
 
         boolean sawOne = false;

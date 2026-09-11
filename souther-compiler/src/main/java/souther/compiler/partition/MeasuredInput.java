@@ -1,6 +1,7 @@
 package souther.compiler.partition;
 
 import souther.compiler.check.DeclarationReadings;
+import souther.compiler.check.RuleReadingContext;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.Symbols;
 import souther.compiler.inputs.InputReading;
@@ -267,6 +268,18 @@ public final class MeasuredInput {
         return written.rules();
     }
 
+    /**
+     * The world a reader of this input's declarations reads in, whole.
+     *
+     * <p>Where the rules come from, what a reading may spend, and what the walk that read this
+     * input already made of the declarations it met. Handed over together because a reader given
+     * two of the three and left to find the last reads the same declarations again, once per
+     * position that arrives at one.
+     */
+    public RuleReadingContext ruleReading() {
+        return RuleReadingContext.of(rules(), written.policy(), machines);
+    }
+
     /** How many the rules leave the container at {@code at}, or every number where they leave it
      *  unsaid. */
     public int mostHeldAt(PositionId at) {
@@ -281,7 +294,7 @@ public final class MeasuredInput {
      * model divides a position is what the model says, and answered from a projection the two
      * would come back as one {@code false}.
      */
-    public boolean divides(Generator.ClassOwed owed) {
+    public boolean divides(ClassOfAPosition owed) {
         for (Axis axis : divided.axes()) {
             if (!axis.id().equals(owed.at())) {
                 continue;

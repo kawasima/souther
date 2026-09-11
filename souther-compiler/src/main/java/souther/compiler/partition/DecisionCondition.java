@@ -1,7 +1,5 @@
 package souther.compiler.partition;
 
-import souther.compiler.inputs.NumericTerm;
-import souther.compiler.inputs.TermPath;
 import souther.compiler.numeric.LinearForm;
 import souther.compiler.numeric.Rel;
 
@@ -33,12 +31,17 @@ public sealed interface DecisionCondition {
      * are the same distinction, and a reader that took the authored side would have two columns for
      * it.
      *
+     * <p>Over whichever quantities the body compared. A number of the input and a number a
+     * dependency answered are compared the same way and canonicalised the same way, so
+     * {@code riskScore(c) >= 700} and {@code 700 <= riskScore(c)} are one column for the reason
+     * {@code n > 100} and {@code n <= 100} are.
+     *
      * @param form        the comparison with its threshold moved in, so that what it states is
      *                    {@code form rel 0}
      * @param proposition the relation this column is read as holding, which is the canonical one of
      *                    the pair
      */
-    record AComparison(LinearForm<NumericTerm> form, Rel proposition) implements DecisionCondition {
+    record AComparison(LinearForm<DecisionAtom> form, Rel proposition) implements DecisionCondition {
 
         public AComparison {
             if (form == null || proposition == null) {
@@ -54,19 +57,40 @@ public sealed interface DecisionCondition {
     }
 
     /**
-     * A fork on a sum, as the position its scrutinee stands at.
+     * A value read for its truth, as the subject it is read of.
      *
-     * <p>The position and not the arm. What a row is composed to be is a value at a position; "the
-     * second arm was taken" is a fact about the text, and a fork's arms are the answers to one
-     * question about one position rather than a question apiece.
+     * <p>The subject and not the place. {@code guard allowed} written twice over one value is one
+     * distinction, and a column apiece for them would admit an assignment where the value holds and
+     * does not.
      *
-     * @param at the scrutinee's position, before any arm narrows it
+     * <p>Not a comparison against {@code true}. The two answers a truth has are the two answers,
+     * and saying them as a form and a relation would put a construct in the table that the body
+     * never wrote — after which a reader placing the point of a line would find a line drawn on a
+     * comparison nobody can be sent to.
      */
-    record APosition(TermPath at) implements DecisionCondition {
+    record ATruth(DecisionSubject of) implements DecisionCondition {
 
-        public APosition {
-            if (at == null) {
-                throw new IllegalArgumentException("a fork of a decision is asked of some position");
+        public ATruth {
+            if (of == null) {
+                throw new IllegalArgumentException("a truth of a decision is a truth of something");
+            }
+        }
+    }
+
+    /**
+     * A fork on a sum, as the subject its scrutinee is.
+     *
+     * <p>The subject and not the arm. What a row is composed to do is put a value at a position or
+     * stand a dependency in; "the second arm was taken" is a fact about the text, and a fork's arms
+     * are the answers to one question about one subject rather than a question apiece.
+     *
+     * @param of the scrutinee, before any arm narrows it
+     */
+    record ACase(DecisionSubject of) implements DecisionCondition {
+
+        public ACase {
+            if (of == null) {
+                throw new IllegalArgumentException("a fork of a decision is asked of something");
             }
         }
     }

@@ -3,10 +3,13 @@ package souther.compiler;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.query.InputCaseEvidence;
+import souther.compiler.query.InputPositions;
 import souther.compiler.query.OutputCaseEvidence;
 import souther.compiler.query.About;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.PartitionEvidence;
+import souther.compiler.types.TypeKey;
+import souther.compiler.types.TypeSymbols;
 
 import java.util.List;
 
@@ -43,9 +46,14 @@ class WhatAFindingIsAboutIsHeldByTheTypeTest {
         assertThrows(NullPointerException.class, () -> new About.AQuestionNothingAnswered(null));
         assertThrows(NullPointerException.class, () -> new About.AnArmNoRowGoesThrough(null));
         assertThrows(NullPointerException.class,
-                () -> new About.ACaseNoRowAppliesItTo(InputCaseEvidence.none(0), null));
+                () -> new About.ACaseNoRowAppliesItTo(InputCaseEvidence.none(0), null, null));
         assertThrows(NullPointerException.class,
-                () -> new About.ACaseNoRowAppliesItTo(null, null));
+                () -> new About.ACaseNoRowAppliesItTo(null, null, null));
+        // And the class of the position, which is what says this and the domain finding are about
+        // one thing. A case with no such class is a finding nothing could join to the account.
+        assertThrows(NullPointerException.class,
+                () -> new About.ACaseNoRowAppliesItTo(InputCaseEvidence.none(0),
+                        TypeSymbols.declared(new TypeKey("souther.decimal", "Kept")), null));
     }
 
     /**
@@ -98,6 +106,7 @@ class WhatAFindingIsAboutIsHeldByTheTypeTest {
     }
 
     private static Adequacy.SignatureEvidence signature(List<InputCaseEvidence> inputs) {
-        return Adequacy.SignatureEvidence.of(OutputCaseEvidence.none(), inputs);
+        return Adequacy.SignatureEvidence.of(OutputCaseEvidence.none(), inputs,
+                new InputPositions.Declared(List.of("a", "b")));
     }
 }

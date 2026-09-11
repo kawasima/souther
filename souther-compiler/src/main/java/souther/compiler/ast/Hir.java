@@ -639,6 +639,24 @@ public interface Hir {
                             List<Var> dependsOn, List<EnsuresClause> ensures, SourcePos pos) {
             this(WrittenName.synthetic(name, pos), params, ret, constructs, dependsOn, ensures, pos);
         }
+
+        /**
+         * Which behaviors the clause names, which is what a row stands in for.
+         *
+         * <p>The behaviors and not the names written: an entry that resolved to nothing names none
+         * and is reported where it is written. Read the way a {@code with} reads its own target, so
+         * that what a row answers and what a declaration requires are one set of names.
+         */
+        public java.util.Set<ValueName.Behavior> dependsOnBehaviors() {
+            java.util.Set<ValueName.Behavior> out = new java.util.LinkedHashSet<>();
+            for (Var named : dependsOn) {
+                ValueName.Behavior behavior = behaviorOf(named);
+                if (behavior != null) {
+                    out.add(behavior);
+                }
+            }
+            return java.util.Collections.unmodifiableSet(out);
+        }
     }
 
     /** A behavior postcondition. Positions belong to the clause/arm, not merely the expression, so

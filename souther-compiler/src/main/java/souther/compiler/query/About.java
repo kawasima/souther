@@ -4,6 +4,10 @@ import souther.compiler.check.RuleCitation;
 import souther.compiler.coverage.CoverageSites;
 import souther.compiler.diag.SourcePos;
 import souther.compiler.observe.RowIdentity;
+import souther.compiler.partition.ClassOfAPosition;
+import souther.compiler.partition.DecisionReading;
+import souther.compiler.partition.ObligationIdentity;
+import souther.compiler.partition.WhereACaseOfAnInputIsOwed;
 import souther.compiler.types.TypeSymbol;
 
 import java.util.Objects;
@@ -53,19 +57,55 @@ public sealed interface About {
         }
     }
 
-    /** A case of an input no row applies the behavior to. The evidence names which input, so that a
-     *  case and the position it is a case of arrive together. */
-    record ACaseNoRowAppliesItTo(InputCaseEvidence input, TypeSymbol missing) implements About {
+    /**
+     * A case of an input no row applies the behavior to.
+     *
+     * <p>The evidence names which input, so that a case and the position it is a case of arrive
+     * together.
+     *
+     * <p><b>One obligation with the class of that position, where that class is this behavior's
+     * own.</b> A case of a sum an input ranges over and the class that sum makes of the position
+     * are one thing a row is owed for, reached by two derivations: the signature counts the cases a
+     * row applies the behavior to, and the partition counts the classes a row sits in. That holds
+     * while both are about one behavior's own position, and a behavior whose input is read at its
+     * stages has the first without the second — so which identity this carries is settled where the
+     * finding is made, from the boundary both measures were read from, rather than worked out again
+     * by whoever needs one.
+     *
+     * @param owed what the account keys this case on: the class of the position where the behavior
+     *             has one, and the case of the input where nothing divides it
+     */
+    record ACaseNoRowAppliesItTo(InputCaseEvidence input, TypeSymbol missing,
+                                 WhereACaseOfAnInputIsOwed owed) implements OfAnObligation {
         public ACaseNoRowAppliesItTo {
             java.util.Objects.requireNonNull(input, "a finding is about something");
             java.util.Objects.requireNonNull(missing, "a finding is about something");
+            java.util.Objects.requireNonNull(owed, "a case of an input is owed at something");
+        }
+
+        @Override
+        public ObligationIdentity obligationIdentity() {
+            return owed;
         }
     }
 
-    /** A class of a derived position no row is in, which knows the position it is a class of. */
-    record AClassNoRowIsIn(PartitionEvidence.AxisClass axisClass) implements About {
+    /**
+     * A class of a derived position no row is in, which knows the position it is a class of.
+     *
+     * <p>One entry of the domain account, and it says so by being an {@link OfAnObligation}. What
+     * tells it from every other is the axis and which class of it — the words a report writes for
+     * the class do not, since two positions of one behavior can divide into classes that read
+     * alike.
+     */
+    record AClassNoRowIsIn(PartitionEvidence.AxisClass axisClass) implements OfAnObligation {
         public AClassNoRowIsIn {
             java.util.Objects.requireNonNull(axisClass, "a finding is about something");
+        }
+
+        @Override
+        public ObligationIdentity obligationIdentity() {
+            return new ObligationIdentity.OfAClass(
+                    new ClassOfAPosition(axisClass.axis().at(), axisClass.name()));
         }
     }
 
@@ -89,37 +129,6 @@ public sealed interface About {
 
         /** What tells this obligation from every other, in the shape its account keeps. */
         ObligationIdentity obligationIdentity();
-    }
-
-    /**
-     * What tells one thing a row is owed for from every other, over the accounts that keep such
-     * things.
-     *
-     * <p>Closed, so that a surface writing one writes every shape there is: an account added
-     * arrives at each of them as a case to decide about rather than as a value that falls through.
-     * What the shapes have in common is what they are for and not what they hold — a line's point
-     * is a point of an authored line at a level, an arm's is the fork and which of its ways — so
-     * there is nothing here to lift out of them.
-     */
-    sealed interface ObligationIdentity {
-
-        /** A point of a line, which is what the border accounts are owed at. */
-        record OfALine(souther.compiler.partition.BorderObligationPoint point)
-                implements ObligationIdentity {
-
-            public OfALine {
-                java.util.Objects.requireNonNull(point, "an obligation is told apart by something");
-            }
-        }
-
-        /** An arm of a body, which is what the arm account is owed at. */
-        record OfAnArm(souther.compiler.coverage.CoverageSites.Obligation arm)
-                implements ObligationIdentity {
-
-            public OfAnArm {
-                java.util.Objects.requireNonNull(arm, "an obligation is told apart by something");
-            }
-        }
     }
 
     /**
@@ -405,6 +414,36 @@ public sealed interface About {
         @Override
         public ObligationIdentity obligationIdentity() {
             return new ObligationIdentity.OfAnArm(arm.obligation());
+        }
+    }
+
+    /**
+     * A rule of the decision a body states that no row takes.
+     *
+     * <p>One entry of the decision account. The rule is the whole of what tells it from every other
+     * — the distinctions the path consulted and what each came out as — and where those are written
+     * is not part of it, so a body stating one rule at two places states one rule.
+     *
+     * <p>Said only of the rules something was seen standing in. Whether a rule is owed a row at all
+     * is settled before this and is not about the rows: a rule the model's own rules leave no value
+     * for is owed nothing however the rows are written, and one this compiler looked for and did
+     * not find is neither covered nor a gap.
+     *
+     * @param behavior whose decision it is a rule of, which the rule itself does not say
+     * @param ruled    the rule and what a run down its path would be seen doing, which is what a
+     *                 report sends a reader to
+     */
+    record ARuleNoRowTakes(String behavior, DecisionReading.Ruled ruled)
+            implements OfAnObligation {
+
+        public ARuleNoRowTakes {
+            Objects.requireNonNull(behavior, "a rule of a decision is some body's");
+            Objects.requireNonNull(ruled, "a finding is about something");
+        }
+
+        @Override
+        public ObligationIdentity obligationIdentity() {
+            return new ObligationIdentity.OfADecisionRule(behavior, ruled.rule());
         }
     }
 

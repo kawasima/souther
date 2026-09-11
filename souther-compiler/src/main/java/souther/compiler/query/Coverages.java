@@ -13,7 +13,7 @@ import souther.compiler.partition.RuleReachNumbering;
 import souther.compiler.publish.PublicationOrders;
 import souther.compiler.ast.Hir;
 import souther.compiler.check.PathReachability;
-import souther.compiler.check.RuleReadingSource;
+import souther.compiler.check.RuleReadingContext;
 import souther.compiler.numeric.Place;
 import souther.compiler.core.Core;
 import souther.compiler.coverage.ComparisonEmissionSite;
@@ -99,8 +99,11 @@ final class Coverages {
                                       souther.compiler.values.Allowance<
                                               souther.compiler.inputs.NumericTerm.FromOnePosition>
                                               distinctions) {
-        RuleReadingSource ruleSource = read.rules();
         ReadingPolicy policy = read.domain().policy();
+        // The one world the rules of this behavior's declarations are read in, which is the reading
+        // this input already made of them.
+        RuleReadingContext ruleReading = RuleReadingContext.of(read.rules(), policy,
+                read.domain().machines());
         souther.compiler.inputs.Quantities quantities = read.quantities();
         Partitions.Partitioning partitioning =
                 Partitions.of(behavior.name(), read, policy);
@@ -157,7 +160,7 @@ final class Coverages {
                         sets.blocked(),
                         both(declared, both(clauses.between(), guards.between())));
         return new Partitioned(Partitions.withEvidence(partitioning, quantities,
-                filed.evidence(), filed.blocked(), distinctions, ruleSource, policy,
+                filed.evidence(), filed.blocked(), distinctions, ruleReading,
                 // And the lines this had nowhere to put, which are findings of the same kind: a rule
                 // of the model that came to no line at a position it is about.
                 everyRuleWithNoLine(clauses, guards, filed, sets),

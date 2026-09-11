@@ -31,7 +31,13 @@ import java.util.List;
  * @param inputs   the values, as the search composed them. One row's worth: rows that came out
  *                 as one piece of work are written the same way, so which of them these came
  *                 from is not a difference anybody can read
- * @param namedFor the classes and arms this row was composed for, in the order they were taken
+ * <p>A rule of the body's decision is the row's own the same way an arm is: the search that
+ * composed the row ran it and saw it take the way, so nothing an edit does elsewhere moves what it
+ * is for. What it has no word for is a name — a rule is told from the rules beside it by the
+ * conditions it turns on, and those are said under the row rather than in it.
+ *
+ * @param namedFor the classes, arms and rules this row was composed for, in the order they were
+ *                 taken
  */
 public record OfferedRow(RowKey key, List<FixtureTemplate> inputs,
                          List<Generator.Purpose> namedFor) {
@@ -41,9 +47,10 @@ public record OfferedRow(RowKey key, List<FixtureTemplate> inputs,
         namedFor = List.copyOf(namedFor);
         for (Generator.Purpose purpose : namedFor) {
             if (!(purpose instanceof Generator.Purpose.ForAClass
-                    || purpose instanceof Generator.Purpose.ForAnArm)) {
+                    || purpose instanceof Generator.Purpose.ForAnArm
+                    || purpose instanceof Generator.Purpose.ForADecisionRule)) {
                 throw new IllegalArgumentException(
-                        "a row is named after a class or an arm, and never after a line: "
+                        "a row is composed for a class, an arm or a rule, and never for a line: "
                                 + purpose);
             }
         }

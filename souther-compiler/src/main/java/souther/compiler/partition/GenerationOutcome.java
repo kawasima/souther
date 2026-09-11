@@ -1,6 +1,10 @@
 package souther.compiler.partition;
 
+import java.util.Collections;
+import java.util.EnumSet;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.SequencedSet;
 
 /**
  * What the generator can do about one finding.
@@ -95,6 +99,19 @@ public sealed interface GenerationOutcome {
                     "this is a measure this compiler could not make, and a row would answer a"
                             + " question that was never asked"),
 
+            /**
+             * The measure was made and does not establish that anything is missing here.
+             *
+             * <p>Apart from {@link #NOTHING_WAS_MEASURED}, which is the nearest thing and is not
+             * this. There a measure could not be made and what it did not find is not a set of
+             * gaps; here a measure was made, something it reads could not be read, and what it
+             * found may already be answered by a row in the file. A row offered against this is
+             * work handed to somebody who may have done it.
+             */
+            THE_MEASURE_DOES_NOT_ESTABLISH_THIS(
+                    "something this measure reads could not be read, so a row may already answer"
+                            + " this and offering one would hand over work that may be done"),
+
             /** The model was read to the end and says this, which is not a shortfall in the rows. */
             A_FACT_ABOUT_THE_MODEL(
                     "this is what the model says rather than what its rows do not cover, and no row"
@@ -146,8 +163,34 @@ public sealed interface GenerationOutcome {
      */
     record ObligationAlreadySettled() implements GenerationOutcome {}
 
-    /** No strategy takes a finding of this kind, or the form this one would need. */
-    record NotSupported(NotSupported.Reason reason) implements GenerationOutcome {
+    /**
+     * No strategy takes a finding of this kind, or the form this one would need.
+     *
+     * <p><b>Every reason, and not the first of them.</b> A finding may be about a thing that stands
+     * in more than one place — an arm of a helper called twice — and what is missing at each of
+     * those is read separately. They do not order against each other, so carrying one meant
+     * carrying whichever the walk met first, which is the order a body's call sites happen to be
+     * written in.
+     *
+     * @param reasons what is missing, each once and in the order they are declared in, which is the
+     *                one order that is not a fact about the walk
+     */
+    record NotSupported(SequencedSet<NotSupported.Reason> reasons) implements GenerationOutcome {
+
+        public NotSupported {
+            if (reasons.isEmpty()) {
+                throw new IllegalArgumentException(
+                        "nothing takes this finding, and nothing says what is missing");
+            }
+            reasons = Collections.unmodifiableSequencedSet(
+                    new LinkedHashSet<>(EnumSet.copyOf(reasons)));
+        }
+
+        /** One reason, which is what a finding about one place has. */
+        public NotSupported(Reason reason) {
+            this(new LinkedHashSet<>(List.of(reason)));
+        }
+
 
         /**
          * Why nothing takes it — a fact about which strategies are written, not about the model.

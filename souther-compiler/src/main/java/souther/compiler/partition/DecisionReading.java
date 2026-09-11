@@ -7,8 +7,11 @@ import souther.compiler.flow.ValueArrivals;
 import souther.compiler.inputs.InputReading;
 import souther.compiler.inputs.InputReads;
 
+import souther.compiler.types.ValueName;
+
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 /**
  * The rules of the decision one body states.
@@ -108,15 +111,19 @@ public record DecisionReading(String behavior, List<Ruled> found, Enumeration en
      *
      * <p>Whose body it is is asked for, because a rule is reported as a rule of a behavior and a
      * condition takes its name from the reading of one.
+     *
+     * @param dependencies which behaviors this one declares it depends on, since a distinction the
+     *                     body draws on what one of them answered is a distinction a row can write
+     *                     for, and the same call to anything else is a value the model computes
      */
     public static DecisionReading of(String behavior, Core body, InputReading read,
-                                     InputReads reads) {
+                                     InputReads reads, Set<ValueName.Behavior> dependencies) {
         // The conditions of this body take their names here, and one register serves every scope: a
         // condition met under a binding and the same condition met outside it are one condition.
         ConditionNumbering numbering = new ConditionNumbering(read.symbols().module(), behavior);
         ValueArrivals<DecisionPath> arrivals = ValueArrivals.ofBodyWhereTheOperationsStand(body,
-                new DecisionNaming(new ConditionMeanings(read.domain(), read.rules()), reads,
-                        numbering, PATHS_READ.maximum()));
+                new DecisionNaming(meanings(read, dependencies), reads, numbering,
+                        PATHS_READ.maximum()));
         if (!(arrivals.waysAt(body) instanceof Paths.Held<DecisionPath> held)) {
             return new DecisionReading(behavior, List.of(),
                     new Enumeration.StoppedAtAFigure(PATHS_READ));
@@ -127,5 +134,15 @@ public record DecisionReading(String behavior, List<Ruled> found, Enumeration en
                     way.isComplete()));
         }
         return new DecisionReading(behavior, found, new Enumeration.Complete());
+    }
+
+    /** What this body's conditions decide, made once for the whole reading of it. */
+    private static DecisionMeanings meanings(InputReading read,
+                                             Set<ValueName.Behavior> dependencies) {
+        ConditionMeanings states = new ConditionMeanings(read.domain(), read.rules());
+        DecisionSubjects subjects =
+                new DecisionSubjects(read.domain(), read.rules().symbols(), dependencies);
+        return new DecisionMeanings(states, subjects,
+                new DecisionComparison(read.domain(), read.rules(), subjects));
     }
 }

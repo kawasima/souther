@@ -2,6 +2,7 @@ package souther.compiler.partition;
 
 import org.junit.jupiter.api.Test;
 
+import souther.compiler.check.RuleReadingContext;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.RuleReadings;
 import souther.compiler.inputs.InputDomain;
@@ -74,7 +75,8 @@ class AnOpenPositionIsWhatThisReadingFoundTest {
 
     /** What the reading of {@code type} came to. */
     private LocalPartition partitionOf(String type) {
-        return LocalInspection.of(read(type), rules, souther.compiler.query.ReadAs.THE_COMPILATION_DOES);
+        return LocalInspection.of(read(type), RuleReadingContext.unshared(rules,
+                souther.compiler.query.ReadAs.THE_COMPILATION_DOES));
     }
 
     /** A type that states cases divides the position, and no line is drawn through them. */

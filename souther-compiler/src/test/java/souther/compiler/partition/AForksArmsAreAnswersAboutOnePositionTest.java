@@ -60,8 +60,8 @@ class AForksArmsAreAnswersAboutOnePositionTest {
                 .flatMap(rule -> rule.consulted().keySet().stream())
                 .collect(Collectors.toCollection(LinkedHashSet::new));
         assertEquals(2, columns.size(), "two forks state two distinctions");
-        assertTrue(columns.stream().allMatch(DecisionCondition.APosition.class::isInstance),
-                "a fork on a sum is a distinction of a position: " + columns);
+        assertTrue(columns.stream().allMatch(DecisionCondition.ACase.class::isInstance),
+                "a fork on a sum is a distinction of a subject: " + columns);
 
         DecisionCondition audience = rules.stream()
                 .filter(rule -> rule.consulted().size() == 1)

@@ -108,12 +108,11 @@ class NothingHereStartsAReadingSomebodyElseHasAlreadyMadeTest {
             CHECK + "InvariantChecker#seedFieldsUnshared("
                     + "Lsouther/compiler/types/TypeSymbol$AtModule;" + SOURCE_AND_POLICY + ")L"
                     + CHECK + "InvariantChecker$Seeded; -> " + NOTHING_TO_BORROW_FROM,
-            // Choosing what stands at each field of a record, under the composing of a value: it is
-            // handed a plan and a strategy for filling it, and neither carries a lending.
-            "souther/compiler/partition/Partitions#fieldsOf("
-                    + "Lsouther/compiler/types/TypeSymbol$AtModule;" + SOURCE_AND_POLICY
-                    + "Ljava/util/Set;Ljava/util/Map;)Ljava/util/Map; -> "
-                    + CHECK + "FieldDomains#unshared",
+            // The world a walk over a declaration's rules reads in, made for a caller that has
+            // nowhere to borrow from. Asked for by name and never supplied by leaving the lender
+            // out, so that a walk reading each declaration again is a caller that said so.
+            CHECK + "RuleReadingContext#unshared(" + SOURCE_AND_POLICY + ")L" + CHECK
+                    + "RuleReadingContext; -> " + NOTHING_TO_BORROW_FROM,
             // What a value's rules guarantee, asked from under a reading that is under way.
             CHECK + "ValueGuarantees#seededOf(Lsouther/compiler/types/TypeSymbol$AtModule;"
                     + SOURCE_AND_POLICY + ")L" + CHECK + "InvariantChecker$Seeded; -> "

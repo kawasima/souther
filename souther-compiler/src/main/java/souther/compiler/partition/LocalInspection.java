@@ -5,7 +5,7 @@ import souther.compiler.check.DeclaredBounds;
 import souther.compiler.check.DeclaredLine;
 import souther.compiler.check.MatchedEndAttribution;
 import souther.compiler.check.NarrowedBounds;
-import souther.compiler.check.RuleReadingSource;
+import souther.compiler.check.RuleReadingContext;
 import souther.compiler.inputs.NumericTerm;
 import souther.compiler.inputs.Position;
 import souther.compiler.inputs.PositionBounds;
@@ -41,8 +41,7 @@ final class LocalInspection {
      * widening that hands the declared ones back belongs to the position, so a reader applying one
      * of its own here would be making that decision a second time and in another place.
      */
-    static LocalPartition of(Position position, RuleReadingSource ruleSource,
-                             souther.compiler.check.ReadingPolicy policy) {
+    static LocalPartition of(Position position, RuleReadingContext reading) {
         // What stands at the position, which is the number the type's own distinctions divide. Said
         // here because here is where it is known: the cases come from the reading of what may stand
         // at this place, so a class made from one of them is a class of that value and of nothing
@@ -52,7 +51,7 @@ final class LocalInspection {
         // Nothing is being built here: a position is being inspected, so no value's own name is
         // already open.
         List<PartitionClass> classes =
-                PartitionClasses.of(position.obligationCases(), position.view(), ruleSource, policy,
+                PartitionClasses.of(position.obligationCases(), position.view(), reading,
                                 java.util.Set.of())
                         .stream().map(each -> each.ofTheNumber(standing)).toList();
         List<DeclaredMeasure> measures = new ArrayList<>();

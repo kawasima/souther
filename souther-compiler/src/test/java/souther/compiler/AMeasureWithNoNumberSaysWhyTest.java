@@ -1,6 +1,5 @@
 package souther.compiler;
 
-import souther.compiler.diag.SourceLayouts;
 import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 
@@ -165,7 +164,8 @@ class AMeasureWithNoNumberSaysWhyTest {
 
     private static String human() {
         if (rendered == null) {
-            rendered = AdequacyReport.of(compiled()).human(SourceRendering.namedByIdentity(SourceLayouts.NONE));
+            rendered = AdequacyReport.of(compiled())
+                    .human(SourceRendering.namedByIdentity(compiled().texts()));
         }
         return rendered;
     }
@@ -206,12 +206,16 @@ class AMeasureWithNoNumberSaysWhyTest {
                       · divided no way: w.v
                     border      not applicable (the rules of this behavior draw no line)
                     branch      not applicable (this body owes no arm)
+                    decision    rules 1   taken 0
+                      · no row takes a decision rule
                   narrow                   implemented   rows 0    pending 0
                     signature   not applicable (this behavior's output is not a sum)
                     partition   not applicable (the rules of this behavior divide no position)
                       · divided no way: m.v
                     border      not applicable (the rules of this behavior draw no line)
                     branch      not applicable (this body owes no arm)
+                    decision    rules 1   taken 0
+                      · no row takes a decision rule
                   both                     implemented   rows 1    pending 0
                     signature   not applicable (this behavior's output is not a sum)
                     partition   not applicable (this behavior is measured at its stages)
@@ -235,17 +239,25 @@ class AMeasureWithNoNumberSaysWhyTest {
                       · no OFF point is owed at r.cost = 1000 (invariant Amount #1): excluded — the rules leave no value there
                       · no OUT point is owed at r.cost = 1000 (invariant Amount #1): excluded — the rules leave no value there
                     branch      not applicable (this body owes no arm)
+                    decision    rules 1   taken 0
+                      · no row takes a decision rule
                   classify                 implemented   rows 1    pending 0
                     signature   not applicable (this behavior's output is not a sum)
                     partition   axes 1   equivalence partitions 1/2
                       · no row is in `No` at q.flag
                     border      not applicable (the rules of this behavior draw no line)
                     branch      not applicable (this body owes no arm)
+                    decision    rules 1   taken 1
                   sift                     implemented   rows 0    pending 0
                     signature   not applicable (this behavior's output is not a sum)
                     partition   axes 2   equivalence partitions 0/0   (2 not measured: no row names this behavior)
                     border      not applicable (the rules of this behavior draw no line)
                     branch      not measured (no row names this behavior)
+                    decision    rules 2   taken 0
+                      · no row takes a decision rule
+                          · it goes through `case Yes` (46:16)
+                      · no row takes a decision rule
+                          · it goes through `case No` (46:16)
                   declarations   obligations 0/4
                       ? undecided whether a row is at the ON point value = 0 (invariant Amount #1) — no row names this behavior
                           · read as baseRate/r.cost: = 0
@@ -421,7 +433,8 @@ class AMeasureWithNoNumberSaysWhyTest {
     }
 
     private static String humanAt(Adequacy.Level level) {
-        return AdequacyReport.of(compiledAt(level)).human(SourceRendering.namedByIdentity(SourceLayouts.NONE));
+        Compilation at = compiledAt(level);
+        return AdequacyReport.of(at).human(SourceRendering.namedByIdentity(at.texts()));
     }
 
     private static Map<String, Adequacy.BranchEvidence> branchesAt(Adequacy.Level level) {
@@ -616,7 +629,7 @@ class AMeasureWithNoNumberSaysWhyTest {
     void aMeasureThatWasNotMadeHoldsTheVerdictOpenAndAnInapplicableOneDoesNot() {
         AdequacyReport report = AdequacyReport.of(compiled());
         assertEquals(AdequacyReport.AdequacyStatus.UNDETERMINED, report.adequacy(),
-                report.human(SourceRendering.namedByIdentity(SourceLayouts.NONE)));
+                report.human(SourceRendering.namedByIdentity(compiled().texts())));
 
         List<Object[]> measures = allMeasures();
         assertTrue(measures.stream().anyMatch(m -> m[1] instanceof Measure.NotApplicable<?>),

@@ -114,8 +114,12 @@ public record ReachingCuts(Map<ModelOccurrence, List<OnTheWay>> byComparison) {
                     : List.of(new OnTheWay.Declined(joined.occurrence(), joined.anchor(),
                             new OnTheWay.Why.OneOfTwoThings()));
             case Condition.Compares one -> List.of(of(one, inputs, holding, ruleSource));
-            case Condition.NotRead not -> List.of(new OnTheWay.Declined(
-                    not.occurrence(), not.anchor(), new OnTheWay.Why.NoWordsForTheShape()));
+            // A truth is not an inequality over a form, which is what a cut is. Read as one here,
+            // the region a search looks in would be narrowed by a proposition this arithmetic
+            // cannot state, and the decision a body draws on such a value is a different question
+            // asked elsewhere.
+            case Condition.Truth truth -> List.of(new OnTheWay.Declined(
+                    truth.occurrence(), truth.anchor(), new OnTheWay.Why.NoWordsForTheShape()));
         };
     }
 

@@ -3,7 +3,7 @@ package souther.compiler.conformance;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import souther.compiler.query.Adequacy;
-import souther.compiler.query.OfferItem;
+import souther.compiler.partition.ObligationIdentity;
 import souther.compiler.query.Composition;
 import souther.compiler.query.OfferingRequest;
 import souther.compiler.query.RowKey;
@@ -76,7 +76,7 @@ class WhatAnOfferedRowWouldSettleIsMeasuredOverTheCorpusTest {
                 // Total over the two axes it names. A pair with no entry is a row nobody asked
                 // about at an item, and a reduction reading that absence would be free to read it
                 // either way.
-                for (Map.Entry<RowKey, Map<OfferItem, Settlement>> row
+                for (Map.Entry<RowKey, Map<ObligationIdentity, Settlement>> row
                         : settlements.byRow().entrySet()) {
                     assertEquals(new LinkedHashSet<>(settlements.requested()),
                             row.getValue().keySet(),
@@ -93,14 +93,14 @@ class WhatAnOfferedRowWouldSettleIsMeasuredOverTheCorpusTest {
                 // A row composed for an item and read as not settling it is a row that went out
                 // without being put to this walk, which is what offering one goes through.
                 settlements.composedFor().forEach((item, row) -> {
-                    Map<OfferItem, Settlement> here = settlements.byRow().get(row);
+                    Map<ObligationIdentity, Settlement> here = settlements.byRow().get(row);
                     if (here != null) {
                         assertFalse(here.get(item) instanceof Settlement.DoesNotSettle,
                                 "a row composed for " + item + " does not settle it: " + row);
                     }
                 });
-                Set<OfferItem> settled = settlements.settled();
-                for (OfferItem item : settled) {
+                Set<ObligationIdentity> settled = settlements.settled();
+                for (ObligationIdentity item : settled) {
                     if (!settlements.composedFor().containsKey(item)) {
                         settledNotComposedFor++;
                     }
@@ -117,11 +117,18 @@ class WhatAnOfferedRowWouldSettleIsMeasuredOverTheCorpusTest {
         assertTrue(items > 0, "and is asked for something");
     }
 
-    private static String kindOf(OfferItem item) {
+    private static String kindOf(ObligationIdentity item) {
         return switch (item) {
-            case OfferItem.AClass _ -> "class";
-            case OfferItem.AnArm _ -> "arm";
-            case OfferItem.APointOfALine _ -> "point";
+            case ObligationIdentity.OfAClass _ -> "class";
+            case ObligationIdentity.OfAnArm _ -> "arm";
+            case ObligationIdentity.OfALine _ -> "point";
+            // Nothing offers a row for a rule of a decision yet, so nothing puts one in the
+            // universe a run is asked about. Worded rather than refused, so that the day one is
+            // offered the count below says so instead of this failing somewhere else.
+            case ObligationIdentity.OfADecisionRule _ -> "rule";
+            // Nor for a case of an input nothing divides into classes, for the same reason: what
+            // this run composes rows from is the classes of a position.
+            case ObligationIdentity.OfAnInputCase _ -> "input case";
         };
     }
 

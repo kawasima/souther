@@ -17,7 +17,7 @@ import java.util.Map;
  * everything else asks by key — so the order the entries were written in is kept for the sake of a
  * message about one run reading the same way twice, and is not something to build an answer from.
  */
-public record Discharge(Map<Generator.ClassOwed, ClassDisposition> classes,
+public record Discharge(Map<ClassOfAPosition, ClassDisposition> classes,
                         Map<Generator.ArmOwed, ArmDisposition> arms) {
 
     /** Nothing asked for and nothing answered, which is the only run this is right for. */
@@ -32,12 +32,29 @@ public record Discharge(Map<Generator.ClassOwed, ClassDisposition> classes,
     }
 
     /** What became of one class, or null where this run was not asked about it. */
-    public ClassDisposition at(Generator.ClassOwed owed) {
+    public ClassDisposition at(ClassOfAPosition owed) {
         return classes.get(owed);
     }
 
     /** What became of one arm, or null where this run was not asked about it. */
     public ArmDisposition at(Generator.ArmOwed owed) {
         return arms.get(owed);
+    }
+
+    /**
+     * The same, asked at one of the places a run through the arm is recorded.
+     *
+     * <p>For a reader holding an occurrence rather than the arm — a finding names one site of the
+     * arm it is about, and what the search was asked for is the arm and every splice of it. Asked
+     * with the site's own probe as though it were the whole key, such a reader found nothing
+     * whenever the arm stood in the body more than once.
+     */
+    public ArmDisposition at(souther.compiler.coverage.ArmProbe probe) {
+        for (Map.Entry<Generator.ArmOwed, ArmDisposition> each : arms.entrySet()) {
+            if (each.getKey().recordedAt(probe)) {
+                return each.getValue();
+            }
+        }
+        return null;
     }
 }

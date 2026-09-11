@@ -3,6 +3,7 @@ package souther.compiler.check;
 import souther.compiler.numeric.CountDomain;
 import souther.compiler.numeric.Endpoint;
 import souther.compiler.numeric.Place;
+import souther.compiler.types.TypeSymbol;
 import souther.compiler.types.ValueName;
 
 import java.util.ArrayList;
@@ -18,6 +19,11 @@ import java.util.Set;
  * not the same reader: what a position is divided and bounded at, and what values can be produced to
  * stand for it. Each working it out for itself is how a reading of one invariant came to mean two
  * things.
+ *
+ * <p>And read off the one walk that goes inside a conjunct. What a declaration's rules leave is
+ * established where the statements are ({@link FieldDomains}); what is done here is narrowing that
+ * to one number of one position and dropping the lines. A reading of its own here would be a second
+ * account of what the rules say, free to answer about fewer of them than the author wrote.
  *
  * <p>A range, and only what a range can hold. What the rules leave out between their ends is not
  * here — a caller asking whether some particular value is admitted is asking the domain the rules
@@ -162,23 +168,38 @@ public final class DeclaredBounds {
      * with names on them, this reading's names met the reading of lines' names at the same value and
      * the model owed two rows for one line.
      *
-     * <p>Which is what this reading has to give. It hands a whole authored conjunct to the reading
-     * of one comparison, so a conjunct written under a denial arrives as a shape it makes nothing
-     * of — the statements inside it are not reached here and there is nothing to name a line by.
-     * The reading that does reach them is the one lines are read from
-     * ({@link FieldDomains#placed}).
+     * <p>Which is all this has to give. The ends come from the reading lines are read from
+     * ({@link FieldDomains#placed}), narrowed to one number of the position, and what a line is
+     * named by is left there — a caller wanting to know which rule stopped the values asks that
+     * reading rather than taking a name off a width.
      */
     public record Range(Endpoint min, Endpoint max, Carrier carrier) {}
 
     /** What a numeric newtype's own rules leave its value between, for a caller that is asking about
      * the value and not about anything taken of it. */
-    public static Range of(TypeView view, RuleReadingSource source) {
-        return of(view, source, Carrier.ofValue(view.declared(), source.symbols()), null);
+    public static Range of(TypeView view, RuleReadingContext reading) {
+        return of(view, reading,
+                Carrier.ofValue(view.declared(), reading.source().symbols()), null);
     }
 
     /**
      * What the rules a position wears leave {@code measure} of it between, or null where nothing
      * here reads the position's values.
+     *
+     * <p><b>A projection of the reading that reaches the statements, and not a second reading of the
+     * clauses.</b> What the rules leave a number is read once, by the walk that goes inside each
+     * authored conjunct ({@link FieldDomains#placed}); this narrows that to one number of the
+     * position and drops the lines, which is what a width is. Read here instead as one comparison
+     * per conjunct, a rule stated through a helper, one written as the denial of its opposite and
+     * one reaching the count through a name it wraps each arrived as a shape that reading made
+     * nothing of — so a position was offered values its own rules refuse, and which of the two
+     * readings had seen the rule decided what the model admitted.
+     *
+     * <p>The outermost name and no walk of the rest. What a value wears is a chain of names and the
+     * rules of every one of them are the rules of the value, which is a fact the reading of a
+     * declaration already has: asked of the name a position is written under, it comes back with
+     * the ends every name below placed as well. A caller reading each name and intersecting would
+     * count the inner ones once per name above them.
      *
      * @param view    the position as it was read: the rules of every name it wears are the rules of
      *                its value, and which names those are is that reading's answer rather than one
@@ -187,31 +208,26 @@ public final class DeclaredBounds {
      * @param measure the operation the number is taken by, or null where the number is the value
      *                itself
      */
-    public static Range of(TypeView view, RuleReadingSource source, Carrier carrier,
+    public static Range of(TypeView view, RuleReadingContext reading, Carrier carrier,
                            ValueName measure) {
         if (carrier == null) {
             return null;
         }
-        Endpoint min = null;
-        Endpoint max = null;
-        for (DeclaredClauses.Conjunct each : DeclaredClauses.allOf(view.wrappers(), source)) {
-            // An end and nothing else. A rule this reads no end from narrows nothing here, and a
-            // rule stepping past the last value of the order states an end no value is at — which
-            // is a declaration with no value, answered where counts are and not by a bound written
-            // at a place nothing can be.
-            if (!((measure == null ? InvariantBound.of(each.expr(), carrier)
-                    : InvariantBound.ofSize(each.expr(), measure))
-                    instanceof InvariantBound.Read.AnEnd placed)) {
-                continue;
-            }
-            InvariantBound read = placed.bound();
-            if (read.lower()) {
-                min = Endpoint.lower(min, read.end());
-            } else {
-                max = Endpoint.upper(max, read.end());
-            }
+        // Nothing wears a rule here, which is a position the rules leave everything rather than one
+        // nothing reads. Told apart from the null above, because a caller asking what is left of a
+        // number needs a number that is left of it.
+        Range everything = new Range(null, null, carrier);
+        if (view.wrappers().isEmpty()
+                || !(view.wrappers().getFirst() instanceof TypeSymbol.AtModule outermost)) {
+            return everything;
         }
-        return new Range(min, max, carrier);
+        NumberAt.OfWhatNumber kind = measure == null
+                ? new NumberAt.OfWhatNumber.OfItsOwnValue()
+                : new NumberAt.OfWhatNumber.OfWhatAnOperationAnswers(measure);
+        FieldDomains own = FieldDomains.of(outermost, reading.source(), reading.policy(),
+                reading.readings());
+        Bounds bounds = placed(own.placedAt(RuleKey.THE_VALUE), kind, carrier);
+        return bounds == null ? everything : bounds.range();
     }
 
     /**
@@ -284,8 +300,8 @@ public final class DeclaredBounds {
      * {@link #of} does — and a caller that had already read the position and handed a type over here
      * would have it read a second time, which is one more answer to which names it wears.
      */
-    public static int leastCountOf(TypeView view, RuleReadingSource source) {
-        return countsHeld(view, source, null).least();
+    public static int leastCountOf(TypeView view, RuleReadingContext reading) {
+        return countsHeld(view, reading, null).least();
     }
 
     /**
@@ -300,8 +316,9 @@ public final class DeclaredBounds {
      * settled once. A second reading here could put a record's {@code > 3} at three while the type's
      * came to four, and the two would disagree about one rule written twice.
      */
-    public static int leastCountOf(TypeView view, RuleReadingSource source, FieldDomains.Held held) {
-        return countsHeld(view, source, held).least();
+    public static int leastCountOf(TypeView view, RuleReadingContext reading,
+                                   FieldDomains.Held held) {
+        return countsHeld(view, reading, held).least();
     }
 
     /**
@@ -312,8 +329,8 @@ public final class DeclaredBounds {
      * none is written on the type as readily as on the record holding one, and a reader finding only
      * the second offered a value at a position the first leaves no room for.
      */
-    public static int mostCountOf(TypeView view, RuleReadingSource source) {
-        return countsHeld(view, source, null).most();
+    public static int mostCountOf(TypeView view, RuleReadingContext reading) {
+        return countsHeld(view, reading, null).most();
     }
 
     /**
@@ -322,8 +339,9 @@ public final class DeclaredBounds {
      * <p>The lower of the two, because both are rules the construction has to satisfy -- which is
      * {@link #leastCountOf}'s argument at the other end.
      */
-    public static int mostCountOf(TypeView view, RuleReadingSource source, FieldDomains.Held held) {
-        return countsHeld(view, source, held).most();
+    public static int mostCountOf(TypeView view, RuleReadingContext reading,
+                                  FieldDomains.Held held) {
+        return countsHeld(view, reading, held).most();
     }
 
     /**
@@ -340,10 +358,11 @@ public final class DeclaredBounds {
      * to walk. That is the model's answer, and a caller that walked an inverted range would step
      * over it silently.
      */
-    public static CountRange countsHeld(TypeView view, RuleReadingSource source,
+    public static CountRange countsHeld(TypeView view, RuleReadingContext reading,
                                         FieldDomains.Held held) {
-        ValueName.Stdlib counts = NumericMeasures.takenOf(view.declared(), source.symbols());
-        Range sized = counts == null ? null : of(view, source, Carrier.WHOLE, counts);
+        ValueName.Stdlib counts =
+                NumericMeasures.takenOf(view.declared(), reading.source().symbols());
+        Range sized = counts == null ? null : of(view, reading, Carrier.WHOLE, counts);
         Endpoint least = sized == null ? null : sized.min();
         Endpoint most = sized == null ? null : sized.max();
         return new CountRange(

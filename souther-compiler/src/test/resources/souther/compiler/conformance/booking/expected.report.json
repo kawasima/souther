@@ -1,5 +1,5 @@
 {
-  "schemaVersion" : 18,
+  "schemaVersion" : 21,
   "compilerVersion" : "<version>",
   "status" : "partial",
   "weakening" : [ "bodies_not_elaborated", "rule_unread" ],
@@ -725,11 +725,13 @@
         "inputs" : [ {
           "declared" : [ ],
           "excluded" : [ ],
+          "obligations" : [ ],
           "status" : "unavailable",
           "reason" : "not_a_sum"
         }, {
           "declared" : [ ],
           "excluded" : [ ],
+          "obligations" : [ ],
           "status" : "unavailable",
           "reason" : "not_a_sum"
         } ]
@@ -931,6 +933,18 @@
       "branch" : {
         "status" : "unavailable",
         "reason" : "no_arm_obligations"
+      },
+      "decision" : {
+        "coverage" : {
+          "status" : "complete"
+        },
+        "obligations" : [ {
+          "obligationId" : {
+            "behavior" : "book",
+            "conditions" : [ ]
+          },
+          "taken" : true
+        } ]
       },
       "findings" : [ ]
     } ]
@@ -1219,11 +1233,13 @@
         "inputs" : [ {
           "declared" : [ ],
           "excluded" : [ ],
+          "obligations" : [ ],
           "status" : "unavailable",
           "reason" : "not_a_sum"
         }, {
           "declared" : [ ],
           "excluded" : [ ],
+          "obligations" : [ ],
           "status" : "unavailable",
           "reason" : "not_a_sum"
         } ]
@@ -2112,7 +2128,64 @@
         "status" : "unavailable",
         "reason" : "no_rows"
       },
-      "findings" : [ ]
+      "decision" : {
+        "coverage" : {
+          "status" : "complete"
+        },
+        "obligations" : [ {
+          "obligationId" : {
+            "behavior" : "redeem",
+            "conditions" : [ {
+              "kind" : "comparison",
+              "condition" : "GT LinearForm[constant=-4, coefs={party=1}]",
+              "outcome" : "denied"
+            }, {
+              "kind" : "not_read",
+              "condition" : "condition 1 of `redeem`",
+              "outcome" : "held"
+            } ]
+          },
+          "taken" : false
+        }, {
+          "obligationId" : {
+            "behavior" : "redeem",
+            "conditions" : [ {
+              "kind" : "comparison",
+              "condition" : "GT LinearForm[constant=-4, coefs={party=1}]",
+              "outcome" : "held"
+            }, {
+              "kind" : "not_read",
+              "condition" : "condition 1 of `redeem`",
+              "outcome" : "held"
+            } ]
+          },
+          "taken" : false
+        }, {
+          "obligationId" : {
+            "behavior" : "redeem",
+            "conditions" : [ {
+              "kind" : "not_read",
+              "condition" : "condition 1 of `redeem`",
+              "outcome" : "denied"
+            } ]
+          },
+          "taken" : false
+        } ]
+      },
+      "findings" : [ {
+        "kind" : "decision_rule_uncovered",
+        "disposition" : "reported",
+        "subject" : "redeem",
+        "obligationId" : {
+          "behavior" : "redeem",
+          "conditions" : [ {
+            "kind" : "not_read",
+            "condition" : "condition 1 of `redeem`",
+            "outcome" : "denied"
+          } ]
+        },
+        "code" : "E1935"
+      } ]
     } ]
   }, {
     "module" : "conformance.waitlist",
@@ -2399,11 +2472,13 @@
         "inputs" : [ {
           "declared" : [ ],
           "excluded" : [ ],
+          "obligations" : [ ],
           "status" : "unavailable",
           "reason" : "not_a_sum"
         }, {
           "declared" : [ ],
           "excluded" : [ ],
+          "obligations" : [ ],
           "status" : "unavailable",
           "reason" : "not_a_sum"
         } ]
@@ -3059,6 +3134,50 @@
         "status" : "unavailable",
         "reason" : "no_rows"
       },
+      "decision" : {
+        "coverage" : {
+          "status" : "complete"
+        },
+        "obligations" : [ {
+          "obligationId" : {
+            "behavior" : "seat",
+            "conditions" : [ {
+              "kind" : "comparison",
+              "condition" : "GT LinearForm[constant=-4, coefs={party=1}]",
+              "outcome" : "denied"
+            }, {
+              "kind" : "not_read",
+              "condition" : "condition 1 of `seat`",
+              "outcome" : "held"
+            } ]
+          },
+          "taken" : false
+        }, {
+          "obligationId" : {
+            "behavior" : "seat",
+            "conditions" : [ {
+              "kind" : "comparison",
+              "condition" : "GT LinearForm[constant=-4, coefs={party=1}]",
+              "outcome" : "held"
+            }, {
+              "kind" : "not_read",
+              "condition" : "condition 1 of `seat`",
+              "outcome" : "held"
+            } ]
+          },
+          "taken" : false
+        }, {
+          "obligationId" : {
+            "behavior" : "seat",
+            "conditions" : [ {
+              "kind" : "not_read",
+              "condition" : "condition 1 of `seat`",
+              "outcome" : "denied"
+            } ]
+          },
+          "taken" : false
+        } ]
+      },
       "findings" : [ ]
     } ]
   }, {
@@ -3085,6 +3204,7 @@
         "inputs" : [ {
           "declared" : [ ],
           "excluded" : [ ],
+          "obligations" : [ ],
           "status" : "unavailable",
           "reason" : "not_a_sum"
         } ]
@@ -3153,6 +3273,7 @@
         "inputs" : [ {
           "declared" : [ ],
           "excluded" : [ ],
+          "obligations" : [ ],
           "status" : "unavailable",
           "reason" : "not_a_sum"
         } ]
@@ -3219,6 +3340,32 @@
       "branch" : {
         "status" : "unavailable",
         "reason" : "no_rows"
+      },
+      "decision" : {
+        "coverage" : {
+          "status" : "complete"
+        },
+        "obligations" : [ {
+          "obligationId" : {
+            "behavior" : "originOf",
+            "conditions" : [ {
+              "kind" : "not_read",
+              "condition" : "condition 0 of `originOf`",
+              "outcome" : "held"
+            } ]
+          },
+          "taken" : false
+        }, {
+          "obligationId" : {
+            "behavior" : "originOf",
+            "conditions" : [ {
+              "kind" : "not_read",
+              "condition" : "condition 0 of `originOf`",
+              "outcome" : "denied"
+            } ]
+          },
+          "taken" : false
+        } ]
       },
       "findings" : [ {
         "kind" : "partition_not_read",

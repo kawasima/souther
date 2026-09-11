@@ -5,6 +5,7 @@ import souther.compiler.coverage.ArmProbe;
 import souther.compiler.coverage.ControlClaim;
 import souther.compiler.coverage.ControlPlace;
 import souther.compiler.check.ReadingPolicy;
+import souther.compiler.check.RuleReadingContext;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.RuleKey;
 import souther.compiler.check.DeclaredBounds;
@@ -178,6 +179,31 @@ public final class Generator {
          * finding is written in.
          */
         record ForAnArm(ArmProbe probe) implements Purpose {
+
+            @Override
+            public List<String> labels() {
+                return List.of();
+            }
+        }
+
+        /**
+         * One rule of the decision a body states: the row a way nothing takes is owed.
+         *
+         * <p>The rule and not where it was found. What a reader is owed a row for is the way
+         * through the body, and a search that stood a value in it stood it somewhere the rule
+         * admits — which is one of the values the rule takes and not the rule.
+         *
+         * <p>No words. What a rule is called is a report's question and is answered by sending a
+         * reader to each condition the way turns on; a name made here would be a second vocabulary
+         * for one thing, free to drift from the one the finding is written in.
+         */
+        record ForADecisionRule(DecisionRule rule) implements Purpose {
+
+            public ForADecisionRule {
+                if (rule == null) {
+                    throw new IllegalArgumentException("a row for a rule is for some rule");
+                }
+            }
 
             @Override
             public List<String> labels() {
@@ -366,6 +392,20 @@ public final class Generator {
              * told the search reached it and stopped.
              */
             THE_ROWS_WERE_NOT_READ,
+            /**
+             * A value was found for it and the block a person is handed has no room left.
+             *
+             * <p>The one word here that says nothing was tried and nothing is missing. What stood
+             * in this was already found — the search that settled the obligation ran a value and
+             * saw it take the way — and what stopped is the number of rows one block offers.
+             *
+             * <p>Its own word beside {@link #THE_SEARCH_LEFT_SOMETHING_UNTRIED}, which is the
+             * nearest thing and is not this: that one says a search stopped before it had an
+             * answer, and a reader acts on it by raising what the search may walk. This says the
+             * answer is in hand and the list was cut, which is a different limit and a different
+             * thing to raise.
+             */
+            THE_BLOCK_IS_AS_LONG_AS_IT_MAY_BE,
             /** The generated classes would not link, so the decoders could not be reached. Told
              * apart from the one above it because they were there, which is not what that says. */
             LINKAGE_FAILED,
@@ -439,6 +479,7 @@ public final class Generator {
                          NOTHING_TO_BUILD_AGAINST, NO_VALUES_WERE_ASKED_FOR, LINKAGE_FAILED,
                          NO_CERTIFIED_WITNESS, THE_GROUP_WAS_NOT_OFFERED,
                          THE_POSITION_WAS_WITHHELD, THE_ROWS_WERE_NOT_READ,
+                         THE_BLOCK_IS_AS_LONG_AS_IT_MAY_BE,
                          THE_WAY_IN_PLACES_AT_NO_CLASS, NO_CANDIDATE_WAS_OFFERED,
                          NO_READING_OF_THE_LINE_COULD_BE_SEARCHED -> false;
                 };
@@ -522,6 +563,7 @@ public final class Generator {
                          NO_VALUES_WERE_ASKED_FOR, LINKAGE_FAILED, NO_CERTIFIED_WITNESS,
                          THE_GROUP_WAS_NOT_OFFERED, THE_POSITION_WAS_WITHHELD,
                          THE_ROWS_WERE_NOT_READ, THE_WAY_IN_PLACES_AT_NO_CLASS,
+                         THE_BLOCK_IS_AS_LONG_AS_IT_MAY_BE,
                          NO_CANDIDATE_WAS_OFFERED, NO_READING_OF_THE_LINE_COULD_BE_SEARCHED ->
                             throw new IllegalStateException(
                                     "no walk of a coverage item comes back with this: " + this);
@@ -842,7 +884,7 @@ public final class Generator {
      * handed over here would leave that to whatever collection the caller happened to hold — so
      * this takes the answer rather than the collection it was kept in.
      */
-    public static GenerationPlan planOver(MeasuredInput subject, List<ClassOwed> classes,
+    public static GenerationPlan planOver(MeasuredInput subject, List<ClassOfAPosition> classes,
                                           List<ArmProbe> arms) {
         return new GenerationPlan(subject, classes, arms.stream().map(ArmOwed::new).toList());
     }
@@ -858,7 +900,7 @@ public final class Generator {
                                         CandidateCheck check,
                                         souther.compiler.reading.CoverageRead.Read read,
                                         Trial trial, List<Baseline> baselines,
-                                        List<ClassOwed> classesOwed,
+                                        List<ClassOfAPosition> classesOwed,
                                         List<ArmProbe> armsOwed,
                                         AdequacyPolicy.OfTheGeneration budget) {
         return fill(planOver(subject, classesOwed, armsOwed), existing, check, read, trial,
@@ -909,18 +951,94 @@ public final class Generator {
         return out;
     }
 
-    /** One class of one position, which is what a row can be owed for. */
-    public record ClassOwed(AxisId at, String classId) {}
+    /**
+     * What became of one arm, over every place a run through it is recorded at.
+     *
+     * <p>Built wins over everything, because a row through any splice goes through the arm the
+     * author wrote. Where none built, the reasons of every place are kept together: they are not
+     * one fact and they do not order against each other — one splice the model refuses says the arm
+     * may be unreachable there, one nothing can steer a row to says this compiler fell short, and a
+     * reader handed whichever came first was handed the order the walk took.
+     *
+     * <p>And where nothing was tried anywhere, what the reading made of every place — which is what
+     * an arm with nowhere to be looked for has, and is not one answer. One splice of a helper may
+     * be somewhere the model proves no run reaches while another is somewhere this compiler cannot
+     * state the way to, and those are a fact about the model and a shortfall of ours. Read off
+     * whichever place came first, the same body with its two call sites swapped answered one and
+     * then the other.
+     */
+    private static ArmDisposition armAnswer(ArmOwed asked, Map<ArmProbe, RowId> built,
+                                            Map<ArmProbe, List<UnresolvedCombination>> failed,
+                                            Set<ArmProbe> cutOff,
+                                            souther.compiler.reading.CoverageRead.Read read) {
+        List<UnresolvedCombination> why = new ArrayList<>();
+        boolean anyCutOff = false;
+        for (ArmProbe probe : asked.occurrences()) {
+            RowId row = built.get(probe);
+            if (row != null) {
+                return new ArmDisposition.Built(row, probe);
+            }
+            why.addAll(failed.getOrDefault(probe, List.of()));
+            anyCutOff |= cutOff.contains(probe);
+        }
+        if (anyCutOff) {
+            why.add(new UnresolvedCombination(List.of(),
+                    UnresolvedCombination.Reason.THE_SEARCH_LEFT_SOMETHING_UNTRIED));
+        }
+        if (!why.isEmpty()) {
+            return new ArmDisposition.Unresolved(why);
+        }
+        List<PathAccess> nowhere = new ArrayList<>();
+        for (ArmProbe probe : asked.occurrences()) {
+            PathAccess access = read.armAt(probe);
+            if (!nowhere.contains(access)) {
+                nowhere.add(access);
+            }
+        }
+        return new ArmDisposition.NoWayIn(nowhere);
+    }
 
     /**
-     * One arm of the body, which is the other thing a row can be owed for.
+     * Which arm of the body a search steers a row towards, and every place it may steer to.
      *
-     * <p>Named the way {@link ClassOwed} is rather than carried as the number the plan gave it. The
-     * two are the halves of what one run is asked for and are answered side by side; one of them
-     * spelled as a bare {@code int} put the obligations into two vocabularies, and anything holding
-     * both had to say which kind of thing a number was every time it read one.
+     * <p>A handle and not an identity. What a row is owed for is one arm the author wrote, however
+     * many times a helper carrying it is spliced in; a probe is one of those occurrences, and it is
+     * what a search has to name because a run is recorded at an occurrence. So a proposal says
+     * which obligation it targets and carries one of these to reach it, and the two are not the
+     * same value.
+     *
+     * <p><b>All of the occurrences, and not one chosen for the arm.</b> What steers a row into a
+     * splice is what stands on the way to <em>that</em> splice, and two splices of one arm are
+     * reached by different ways: a helper called under a decision this compiler can state and again
+     * under one it cannot has one arm nothing can steer a row to and one it can. Asked at a single
+     * occurrence, the answer was whichever the walk wrote first — the same body with its two call
+     * sites swapped offered a row for the arm in one order and said nothing could steer one in the
+     * other, and no measure was in a position to notice.
+     *
+     * <p>Named rather than carried as the number the plan gave it. Spelled as a bare {@code int} it
+     * put the things a run is asked about into two vocabularies, and anything holding both had to
+     * say which kind of thing a number was every time it read one.
      */
-    public record ArmOwed(ArmProbe probe) {}
+    public record ArmOwed(List<ArmProbe> occurrences) {
+
+        public ArmOwed {
+            occurrences = List.copyOf(occurrences);
+            if (occurrences.isEmpty()) {
+                throw new IllegalArgumentException(
+                        "an arm a row can be steered to is recorded somewhere");
+            }
+        }
+
+        /** An arm the caller has one place for, which is what a search stood up on its own has. */
+        public ArmOwed(ArmProbe probe) {
+            this(List.of(probe));
+        }
+
+        /** Whether {@code probe} is one of the places a run through this arm is recorded at. */
+        public boolean recordedAt(ArmProbe probe) {
+            return occurrences.contains(probe);
+        }
+    }
 
     /**
      * Every class of every position no row the author wrote sits in.
@@ -938,12 +1056,12 @@ public final class Generator {
      * one element under a line and one over it — and each of them is covered. Read as one class,
      * the rest would be asked for again, which is work the author has already done.
      */
-    public static List<ClassOwed> everyClassNoRowSitsIn(MeasuredInput subject,
+    public static List<ClassOfAPosition> everyClassNoRowSitsIn(MeasuredInput subject,
                                                        List<ObservedRow> existing) {
         // Gathered once apiece and handed over in the order the walk reached them, which is the
         // order the search fixes the positions in. The set is how "once apiece" is kept; what a
         // caller is given is the order, because that is what the plan is asking for.
-        Set<ClassOwed> out = new LinkedHashSet<>();
+        Set<ClassOfAPosition> out = new LinkedHashSet<>();
         for (Axis axis : ordered(subject).axes()) {
             Set<String> covered = new LinkedHashSet<>();
             for (ObservedRow row : existing) {
@@ -954,7 +1072,7 @@ public final class Generator {
             }
             for (PartitionClass cls : axis.classes()) {
                 if (!covered.contains(cls.id())) {
-                    out.add(new ClassOwed(axis.id(), cls.id()));
+                    out.add(new ClassOfAPosition(axis.id(), cls.id()));
                 }
             }
         }
@@ -976,8 +1094,13 @@ public final class Generator {
                                         Trial trial, List<Baseline> baselines,
                                         AdequacyPolicy.OfTheGeneration budget) {
         MeasuredInput subject = plan.subject();
-        List<ClassOwed> classesOwed = plan.classesOwed();
-        List<ArmProbe> armsOwed = plan.armsOwed().stream().map(ArmOwed::probe).toList();
+        List<ClassOfAPosition> classesOwed = plan.classesOwed();
+        // Every place a run through an owed arm is recorded at, which is where a row may be
+        // steered. Flattened here because the search looks in one place at a time; what each of
+        // them came to is folded back onto the arm below, so a row through any occurrence fills
+        // the arm the author wrote.
+        List<ArmProbe> armsOwed = plan.armsOwed().stream()
+                .flatMap(each -> each.occurrences().stream()).distinct().toList();
         MeasuredInput.MeasuredAxes ordered = ordered(subject);
         // A position where some row's value could not be read is a position nothing is known about.
         // A row generated for a class there may be a row that is already written, and telling an
@@ -1031,7 +1154,7 @@ public final class Generator {
         for (int i = 0; i < axes.size(); i++) {
             for (int c = 0; c < axes.get(i).classes().size(); c++) {
                 if (classesOwed.contains(
-                        new ClassOwed(axes.get(i).id(), axes.get(i).classes().get(c).id()))) {
+                        new ClassOfAPosition(axes.get(i).id(), axes.get(i).classes().get(c).id()))) {
                     owed.add(new int[] {i, c});
                 }
             }
@@ -1056,7 +1179,7 @@ public final class Generator {
         // Which row answered which class. A row is a line in the file and the same line can answer
         // several things, so what says a class was answered is the entry naming the row rather than
         // anything written on the row itself.
-        Map<ClassOwed, RowId> answeredAt = new LinkedHashMap<>();
+        Map<ClassOfAPosition, RowId> answeredAt = new LinkedHashMap<>();
         List<UnresolvedCombination> unresolved = new ArrayList<>();
         List<GenerationReason> reasons = new ArrayList<>(undecided);
         // The classes first. What each is owed is one row, and the arms below are looked for among
@@ -1092,7 +1215,7 @@ public final class Generator {
                     // answered by rows written the same way and are still two rows the search
                     // composed one apiece — each is offered for its own class, and merging them
                     // would take one of the two classes its answer.
-                    answeredAt.put(new ClassOwed(attempt.at(), attempt.classId()),
+                    answeredAt.put(new ClassOfAPosition(attempt.at(), attempt.classId()),
                             compose(composed, made.row().inputs()));
                 }
                 case ClassAttempt.Unresolved none -> unresolved.add(none.why());
@@ -1105,6 +1228,15 @@ public final class Generator {
         // in first — which is a preference between two answers and not one of them standing in for
         // the other. An arm no combination is over is answered from its way in all the same.
         Set<ArmProbe> left = new LinkedHashSet<>(armsOwed);
+        // The other places each owed arm stands in, so that one row down one splice ends the
+        // search for that arm rather than starting it again at the next.
+        Map<ArmProbe, List<ArmProbe>> siblings = new LinkedHashMap<>();
+        for (ArmOwed asked : plan.armsOwed()) {
+            for (ArmProbe probe : asked.occurrences()) {
+                siblings.put(probe, asked.occurrences().stream()
+                        .filter(each -> !each.equals(probe)).toList());
+            }
+        }
         Map<ArmProbe, RowId> built = new LinkedHashMap<>();
         Map<ArmProbe, List<UnresolvedCombination>> failed = new LinkedHashMap<>();
         // Arms the row budget ran out before, which is what the search stopping looks like from an
@@ -1197,6 +1329,11 @@ public final class Generator {
                     built.put(each, kept);
                     left.remove(each);
                 });
+                // And the other places this same arm stands in. What is owed is the arm the author
+                // wrote, and a row down one splice of it goes through the arm — so looking in the
+                // rest composes a second row for work that has one, and the run would hold rows
+                // nothing points at.
+                siblings.getOrDefault(probe, List.of()).forEach(left::remove);
                 break;
             }
             if (built.containsKey(probe) || cutOff.contains(probe) || failed.containsKey(probe)
@@ -1223,26 +1360,14 @@ public final class Generator {
         // cut off carries that beside whatever was tried before it: a place the model refuses says
         // nothing about the ones nobody got to, and an arm answered by the first alone was reported
         // as settled by the model on the strength of a search that stopped.
+        // One entry per arm the plan named, folded over every place a run through it is recorded
+        // at. A row through any of them goes through the arm the author wrote, so one built answer
+        // settles it however many splices came to nothing; where none built, what a reader is owed
+        // is what every place came to, since a splice nothing can steer a row to says nothing
+        // about the one beside it.
         Map<ArmOwed, ArmDisposition> armAnswers = new LinkedHashMap<>();
-        for (ArmProbe probe : armsOwed) {
-            RowId row = built.get(probe);
-            List<UnresolvedCombination> why = new ArrayList<>(
-                    failed.getOrDefault(probe, List.of()));
-            ArmOwed asked = new ArmOwed(probe);
-            if (row != null) {
-                armAnswers.put(asked, new ArmDisposition.Built(row));
-            } else if (cutOff.contains(probe)) {
-                why.add(new UnresolvedCombination(List.of(),
-                        UnresolvedCombination.Reason.THE_SEARCH_LEFT_SOMETHING_UNTRIED));
-                armAnswers.put(asked, new ArmDisposition.Unresolved(why));
-            } else if (!why.isEmpty()) {
-                armAnswers.put(asked, new ArmDisposition.Unresolved(why));
-            } else {
-                // Nothing was tried, and the reading says why: no run reaches the arm, or this
-                // compiler cannot state what steers a row there. Either way it is an answer about
-                // the arm and not an absence for a reader to make one of.
-                armAnswers.put(asked, new ArmDisposition.NoWayIn(read.armAt(probe)));
-            }
+        for (ArmOwed asked : plan.armsOwed()) {
+            armAnswers.put(asked, armAnswer(asked, built, failed, cutOff, read));
         }
         // Said once, at the end, and about both searches. One that ran out on the classes stopped
         // whether or not the arms had anything left to do, and two limits reported apart would be
@@ -1281,15 +1406,15 @@ public final class Generator {
         // position for. A class of a position that was held back was never a thing to look for, and
         // it says that here rather than being left out — a class the plan named and nothing
         // answered for is what a reader downstream had to invent a sentence about.
-        Map<ClassOwed, ClassDisposition> classAnswers = new LinkedHashMap<>();
+        Map<ClassOfAPosition, ClassDisposition> classAnswers = new LinkedHashMap<>();
         for (ClassAttempt attempt : attempts) {
-            ClassOwed key = new ClassOwed(attempt.at(), attempt.classId());
+            ClassOfAPosition key = new ClassOfAPosition(attempt.at(), attempt.classId());
             classAnswers.put(key, switch (attempt) {
                 case ClassAttempt.Built _ -> new ClassDisposition.Built(answeredAt.get(key));
                 case ClassAttempt.Unresolved none -> new ClassDisposition.Unresolved(none.why());
             });
         }
-        for (ClassOwed asked : classesOwed) {
+        for (ClassOfAPosition asked : classesOwed) {
             if (classAnswers.containsKey(asked)) {
                 continue;
             }
@@ -3033,8 +3158,8 @@ public final class Generator {
         // there is measured on as well, and the two are one value only for as long as no term
         // arrives where they part.
         souther.compiler.inputs.TermOrders on = subject.quantities().ordersOf(target.term());
-        return edgeFrom(TermRealizations.at(writtenAt, on, at, within, subject.rules(),
-                subject.inputs().policy()), target, at);
+        return edgeFrom(TermRealizations.at(writtenAt, on, at, within, subject.ruleReading()),
+                target, at);
     }
 
     /**
@@ -3096,7 +3221,7 @@ public final class Generator {
      * beside the obligation. A label copied into the obligation would be a second spelling of the
      * class, free to disagree with the axis the day either moved.
      */
-    static String labelOf(MeasuredInput subject, ClassOwed owed) {
+    static String labelOf(MeasuredInput subject, ClassOfAPosition owed) {
         for (Axis axis : subject.axes().axes()) {
             if (!axis.id().equals(owed.at())) {
                 continue;
@@ -3673,7 +3798,7 @@ public final class Generator {
                 subject.inputs().policy(), under(root, settled), subject.machines());
         ConstructionPlan.Result planned = ConstructionPlan.of(subject.types().get(p), root,
                 subject.symbols(), decided.keySet(), additional,
-                (at, building) -> heldRange(under, at, building, subject.rules()));
+                (at, building) -> heldRange(under, at, building, subject.ruleReading()));
         ConstructionPlan plan;
         switch (planned) {
             case ConstructionPlan.Result.Planned made -> plan = made.plan();
@@ -3905,9 +4030,9 @@ public final class Generator {
      */
     private static DeclaredBounds.CountRange heldRange(FieldDomains rules, TermPath path,
                                                        Type building,
-                                                       RuleReadingSource ruleSource) {
+                                                       RuleReadingContext reading) {
         RuleKey field = fieldUnder(path);
-        return Partitions.heldRange(building, ruleSource,
+        return Partitions.heldRange(building, reading,
                 field == null ? null : rules.heldAt(field));
     }
 
@@ -3931,8 +4056,8 @@ public final class Generator {
                 java.util.EnumSet.noneOf(CompositionBudget.class);
         for (ConstructionPlan.Slot each : plan.slots()) {
             RuleKey field = fieldUnder(each.at());
-            budgets.addAll(Partitions.notBuilt(each.type(), subject.rules(),
-                    subject.inputs().policy(), field == null ? null : rules.heldAt(field)));
+            budgets.addAll(Partitions.notBuilt(each.type(), subject.ruleReading(),
+                    field == null ? null : rules.heldAt(field)));
         }
         return new HeldBack(budgets, plan.cutBy());
     }
@@ -4055,7 +4180,7 @@ public final class Generator {
             if (!budget.spend()) {
                 return null;
             }
-            FixtureTemplate whole = compose(plan.root(), chosen, subject.rules(), subject.inputs().policy());
+            FixtureTemplate whole = compose(plan.root(), chosen, subject.ruleReading());
             return whole != null && check.refuse(p, whole).isEmpty() ? whole : null;
         }
         ConstructionPlan.Slot position = positions.get(index);
@@ -4093,8 +4218,8 @@ public final class Generator {
         FieldDomains left = rulesOf(subject.types().get(p), subject.rules(),
                 subject.inputs().policy(), under(at, settled), subject.machines());
         RuleKey field = fieldUnder(position.at());
-        return Partitions.displacedRepresentativesOf(position.type(), subject.rules(),
-                subject.inputs().policy(), field == null ? null : left.at(field).bounds(),
+        return Partitions.displacedRepresentativesOf(position.type(), subject.ruleReading(),
+                field == null ? null : left.at(field).bounds(),
                 field == null ? null : left.heldAt(field));
     }
 
@@ -4158,8 +4283,9 @@ public final class Generator {
     private static Choices choicesOf(MeasuredInput subject, int p, ConstructionPlan plan,
                                      Map<TermPath, List<FixtureTemplate>> decided,
                                      Map<TermPath, Place> settled) {
-        RuleReadingSource ruleSource = subject.rules();
-        ReadingPolicy policy = subject.inputs().policy();
+        RuleReadingContext reading = subject.ruleReading();
+        RuleReadingSource ruleSource = reading.source();
+        ReadingPolicy policy = reading.policy();
         TermPath at = TermPath.of(subject.parameters().get(p));
         List<TermPath> paths = new ArrayList<>(decided.keySet());
         List<List<FixtureTemplate>> values = new ArrayList<>(decided.values());
@@ -4175,8 +4301,8 @@ public final class Generator {
             RuleKey field = fieldUnder(slot.at());
             souther.compiler.numeric.NumericDomain.Bounds here =
                     field == null ? null : left.at(field).bounds();
-            List<FixtureTemplate> stands = Partitions.representativesHolding(slot.type(), ruleSource,
-                    policy, here, field == null ? null : left.heldAt(field));
+            List<FixtureTemplate> stands = Partitions.representativesHolding(slot.type(), reading,
+                    here, field == null ? null : left.heldAt(field));
             if (stands.isEmpty()) {
                 // Nothing could be written at all: a position of a type nothing stands for. Which is
                 // not the same as a value that was written and refused, and reporting it as one sends
@@ -4193,7 +4319,7 @@ public final class Generator {
             }
             paths.add(slot.at());
             values.add(stands);
-            reserves.add(Partitions.inReserve(slot.type(), ruleSource, policy, here));
+            reserves.add(Partitions.inReserve(slot.type(), reading, here));
         }
         return new Choices(plan, paths, values, reserves, null, java.util.Set.of());
     }
@@ -4553,6 +4679,10 @@ public final class Generator {
     private static Outcome over(MeasuredInput subject, int p, ConstructionPlan plan, List<TermPath> at,
                                 List<List<FixtureTemplate>> values, CandidateCheck check) {
         int positions = at.size();
+        // The world every assignment below is composed in, taken once. Each of them writes the same
+        // row out of the same declarations, so a walk that asked the subject again per assignment
+        // would be saying the world it reads in is a thing that turns on which assignment it is.
+        RuleReadingContext reading = subject.ruleReading();
         ArrayDeque<int[]> next = new ArrayDeque<>();
         Set<String> seen = new LinkedHashSet<>();
         int[] first = new int[positions];
@@ -4575,7 +4705,7 @@ public final class Generator {
             for (int i = 0; i < positions; i++) {
                 chosen.put(at.get(i), values.get(i).get(assignment[i]));
             }
-            FixtureTemplate built = compose(plan.root(), chosen, subject.rules(), subject.inputs().policy());
+            FixtureTemplate built = compose(plan.root(), chosen, reading);
             if (built != null && check.refuse(p, built).isEmpty()) {
                 return new Outcome.Built(built);
             }
@@ -4618,9 +4748,9 @@ public final class Generator {
      * Composed without that, the row carries a value of a type the parameter does not declare.
      */
     private static FixtureTemplate compose(ConstructionPlan.Node node,
-                                           Map<TermPath, FixtureTemplate> chosen, RuleReadingSource ruleSource,
-                                           ReadingPolicy policy) {
-        return PlanComposer.compose(node, new FromTheAssignment(chosen), ruleSource, policy);
+                                           Map<TermPath, FixtureTemplate> chosen,
+                                           RuleReadingContext reading) {
+        return PlanComposer.compose(node, new FromTheAssignment(chosen), reading);
     }
 
     /**

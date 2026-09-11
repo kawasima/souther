@@ -3,6 +3,7 @@ package souther.compiler.partition;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.check.DeclaredSig;
+import souther.compiler.check.RuleReadingContext;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.RuleReadings;
 import souther.compiler.core.Core;
@@ -73,8 +74,8 @@ class AnArmsBinderNamesTheNarrowedPositionTest {
         Partitions.Partitioning base = Partitions.of("read", read, rules,
                 ReadAs.THE_COMPILATION_DOES);
         return Partitions.withThresholds(base, read.quantities(rules), guards.thresholds(),
-                rules, ReadAs.THE_COMPILATION_DOES, guards.noLine(), guards.singled(),
-                guards.between(),
+                RuleReadingContext.unshared(rules, ReadAs.THE_COMPILATION_DOES),
+                guards.noLine(), guards.singled(), guards.between(),
                 souther.compiler.values.Allowance.of(souther.compiler.regex.PatternPlan.Budget.OF_BEHAVIOR_DISTINCTIONS)).axes();
     }
 

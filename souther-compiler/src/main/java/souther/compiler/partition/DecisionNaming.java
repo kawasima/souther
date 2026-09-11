@@ -3,8 +3,6 @@ package souther.compiler.partition;
 import souther.compiler.core.Core;
 import souther.compiler.flow.Naming;
 import souther.compiler.inputs.InputReads;
-import souther.compiler.numeric.Rel;
-import souther.compiler.inputs.TermPath;
 import souther.compiler.types.ModelOccurrence;
 
 /**
@@ -33,13 +31,13 @@ import souther.compiler.types.ModelOccurrence;
 final class DecisionNaming implements Naming<DecisionPath> {
 
     /**
-     * What a condition of this body states, made once beside the walk.
+     * What a condition of this body decides, made once beside the walk.
      *
      * <p>Not held as the reading of the input itself. This value is at a program point the way the
      * environment is, so a reading kept in it would be copied into every step and asked of whichever
      * copy a reader holds.
      */
-    private final ConditionMeanings meanings;
+    private final DecisionMeanings meanings;
 
     private final InputReads reads;
 
@@ -54,7 +52,7 @@ final class DecisionNaming implements Naming<DecisionPath> {
 
     private final int mostArrivals;
 
-    DecisionNaming(ConditionMeanings meanings, InputReads reads, ConditionNumbering numbering,
+    DecisionNaming(DecisionMeanings meanings, InputReads reads, ConditionNumbering numbering,
                    int mostArrivals) {
         this.meanings = meanings;
         this.reads = reads;
@@ -79,7 +77,8 @@ final class DecisionNaming implements Naming<DecisionPath> {
 
     @Override
     public Naming<DecisionPath> insideArm(Core.Match match, Core.Case arm) {
-        return new DecisionNaming(meanings, reads.insideArm(match, arm, meanings.symbols()),
+        return new DecisionNaming(meanings,
+                reads.insideArm(match, arm, meanings.states().symbols()),
                 numbering, mostArrivals);
     }
 
@@ -97,11 +96,11 @@ final class DecisionNaming implements Naming<DecisionPath> {
      */
     @Override
     public DecisionPath side(Core value, boolean held) {
-        Condition condition = Condition.of(value, reads, meanings.symbols(), numbering);
+        Condition condition = Condition.of(value, reads, meanings.states().symbols(), numbering);
         DecisionPath path = DecisionPath.NOWHERE;
-        for (OnTheWay each : meanings.stating(condition, held)) {
-            DecidedCondition answer = answerOf(each, held);
-            path = path.and(answer, shownBy(answer, condition, held), each);
+        for (DecisionMeanings.Read each : meanings.deciding(condition, held)) {
+            path = path.and(each.answer(), shownBy(each.answer(), condition, held),
+                    each.onTheWay());
             if (path == null) {
                 return null;
             }
@@ -111,13 +110,12 @@ final class DecisionNaming implements Naming<DecisionPath> {
 
     @Override
     public DecisionPath matchCase(Core.Match match, int part) {
-        OnTheWay states = meanings.entering(match, part, reads, numbering);
-        DecidedCondition answer = answerOf(states, true);
+        DecisionMeanings.Read read = meanings.entering(match, part, reads, numbering);
         ModelOccurrence fork =
                 ModelOccurrence.statedAt(match.place().occurrence()).orElse(null);
-        return DecisionPath.NOWHERE.and(answer, fork == null
-                ? new ShownBy.NothingIsRecorded(answer.condition())
-                : new ShownBy.AtAnArm(fork, part), states);
+        return DecisionPath.NOWHERE.and(read.answer(), fork == null
+                ? new ShownBy.NothingIsRecorded(read.answer().condition())
+                : new ShownBy.AtAnArm(fork, part), read.onTheWay());
     }
 
     /**
@@ -141,26 +139,6 @@ final class DecisionNaming implements Naming<DecisionPath> {
     @Override
     public int mostArrivals() {
         return mostArrivals;
-    }
-
-    /** One thing on the way, read as a column and an answer about it. */
-    private static DecidedCondition answerOf(OnTheWay one, boolean held) {
-        return switch (one) {
-            case OnTheWay.TakenIn taken -> {
-                Rel proposition = taken.cut().rel().orItsDenial();
-                yield new DecidedCondition.Compared(
-                        new DecisionCondition.AComparison(taken.cut().form(), proposition),
-                        taken.cut().rel() == proposition);
-            }
-            case OnTheWay.Narrowed narrowed -> {
-                TermPath at = narrowed.position();
-                yield new DecidedCondition.Narrowed(
-                        new DecisionCondition.APosition(at.narrowedFrom()), at.narrowing());
-            }
-            case OnTheWay.Declined declined -> new DecidedCondition.Unread(
-                    new DecisionCondition.AConditionNotRead(
-                            declined.condition(), declined.why()), held);
-        };
     }
 
     /**

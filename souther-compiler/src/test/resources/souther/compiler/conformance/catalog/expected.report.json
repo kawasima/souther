@@ -1,8 +1,8 @@
 {
-  "schemaVersion" : 18,
+  "schemaVersion" : 21,
   "compilerVersion" : "<version>",
   "status" : "partial",
-  "weakening" : [ "rule_unread" ],
+  "weakening" : [ "rule_unread", "decision_of_row_unreadable" ],
   "adequacy" : "not_satisfied",
   "keptOpenBy" : [ ],
   "modules" : [ {
@@ -594,11 +594,13 @@
         "inputs" : [ {
           "declared" : [ ],
           "excluded" : [ ],
+          "obligations" : [ ],
           "status" : "unavailable",
           "reason" : "not_a_sum"
         }, {
           "declared" : [ ],
           "excluded" : [ ],
+          "obligations" : [ ],
           "status" : "unavailable",
           "reason" : "not_a_sum"
         } ]
@@ -953,6 +955,32 @@
         } ],
         "denominatorSettled" : true
       },
+      "decision" : {
+        "coverage" : {
+          "status" : "complete"
+        },
+        "obligations" : [ {
+          "obligationId" : {
+            "behavior" : "discount",
+            "conditions" : [ {
+              "kind" : "not_read",
+              "condition" : "condition 0 of `discount`",
+              "outcome" : "held"
+            } ]
+          },
+          "taken" : true
+        }, {
+          "obligationId" : {
+            "behavior" : "discount",
+            "conditions" : [ {
+              "kind" : "not_read",
+              "condition" : "condition 0 of `discount`",
+              "outcome" : "denied"
+            } ]
+          },
+          "taken" : true
+        } ]
+      },
       "findings" : [ {
         "kind" : "partition_not_derivable",
         "disposition" : "reported",
@@ -1025,6 +1053,7 @@
         "inputs" : [ {
           "declared" : [ ],
           "excluded" : [ ],
+          "obligations" : [ ],
           "status" : "unavailable",
           "reason" : "not_a_sum"
         } ]
@@ -1107,7 +1136,7 @@
   }, {
     "module" : "conformance.shipping",
     "status" : "partial",
-    "weakening" : [ "rule_unread" ],
+    "weakening" : [ "rule_unread", "decision_of_row_unreadable" ],
     "incompleteness" : [ ],
     "declarations" : [ {
       "owners" : [ {
@@ -1275,6 +1304,7 @@
         "inputs" : [ {
           "declared" : [ ],
           "excluded" : [ ],
+          "obligations" : [ ],
           "status" : "unavailable",
           "reason" : "not_a_sum"
         } ]
@@ -1472,7 +1502,7 @@
       "rows" : 11,
       "pending" : 0,
       "status" : "partial",
-      "weakening" : [ "rule_unread" ],
+      "weakening" : [ "rule_unread", "decision_of_row_unreadable" ],
       "signature" : {
         "status" : "complete",
         "output" : {
@@ -1486,6 +1516,7 @@
         "inputs" : [ {
           "declared" : [ ],
           "excluded" : [ ],
+          "obligations" : [ ],
           "status" : "unavailable",
           "reason" : "not_a_sum"
         } ]
@@ -2729,6 +2760,103 @@
           "disposition" : "met"
         } ],
         "denominatorSettled" : true
+      },
+      "decision" : {
+        "coverage" : {
+          "status" : "partial",
+          "weakening" : [ "decision_of_row_unreadable" ]
+        },
+        "obligations" : [ {
+          "obligationId" : {
+            "behavior" : "出荷する",
+            "conditions" : [ {
+              "kind" : "comparison",
+              "condition" : "GT LinearForm[constant=-30000, coefs={指示.重量=1}]",
+              "outcome" : "denied"
+            }, {
+              "kind" : "not_read",
+              "condition" : "condition 4 of `出荷する`",
+              "outcome" : "held"
+            }, {
+              "kind" : "case",
+              "condition" : "conformance.shipping.台帳へ書く(指示)",
+              "outcome" : "書けなかった"
+            } ]
+          },
+          "taken" : false
+        }, {
+          "obligationId" : {
+            "behavior" : "出荷する",
+            "conditions" : [ {
+              "kind" : "comparison",
+              "condition" : "GE LinearForm[constant=-10000.00, coefs={conformance.catalog.現価を引く(指示.品目)=1}]",
+              "outcome" : "held"
+            }, {
+              "kind" : "comparison",
+              "condition" : "GT LinearForm[constant=-30000, coefs={指示.重量=1}]",
+              "outcome" : "denied"
+            }, {
+              "kind" : "not_read",
+              "condition" : "condition 4 of `出荷する`",
+              "outcome" : "held"
+            }, {
+              "kind" : "case",
+              "condition" : "conformance.shipping.台帳へ書く(指示)",
+              "outcome" : "出荷済み"
+            } ]
+          },
+          "taken" : false
+        }, {
+          "obligationId" : {
+            "behavior" : "出荷する",
+            "conditions" : [ {
+              "kind" : "comparison",
+              "condition" : "GE LinearForm[constant=-10000.00, coefs={conformance.catalog.現価を引く(指示.品目)=1}]",
+              "outcome" : "denied"
+            }, {
+              "kind" : "comparison",
+              "condition" : "GT LinearForm[constant=-30000, coefs={指示.重量=1}]",
+              "outcome" : "denied"
+            }, {
+              "kind" : "not_read",
+              "condition" : "condition 4 of `出荷する`",
+              "outcome" : "held"
+            }, {
+              "kind" : "case",
+              "condition" : "conformance.shipping.台帳へ書く(指示)",
+              "outcome" : "出荷済み"
+            } ]
+          },
+          "taken" : false
+        }, {
+          "obligationId" : {
+            "behavior" : "出荷する",
+            "conditions" : [ {
+              "kind" : "comparison",
+              "condition" : "GE LinearForm[constant=-12, coefs={Time.hour(指示.集荷時刻)=1}]",
+              "outcome" : "held"
+            }, {
+              "kind" : "comparison",
+              "condition" : "GT LinearForm[constant=-30000, coefs={指示.重量=1}]",
+              "outcome" : "denied"
+            }, {
+              "kind" : "not_read",
+              "condition" : "condition 5 of `出荷する`",
+              "outcome" : "denied"
+            } ]
+          },
+          "taken" : false
+        }, {
+          "obligationId" : {
+            "behavior" : "出荷する",
+            "conditions" : [ {
+              "kind" : "comparison",
+              "condition" : "GT LinearForm[constant=-30000, coefs={指示.重量=1}]",
+              "outcome" : "held"
+            } ]
+          },
+          "taken" : true
+        } ]
       },
       "findings" : [ {
         "kind" : "domain_point_uncovered",

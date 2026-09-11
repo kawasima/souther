@@ -336,7 +336,10 @@ public final class PublicationOrders {
                 WeakeningWord.QUESTION_UNANSWERED,
                 WeakeningWord.PAIR_SPACE_TRUNCATED,
                 WeakeningWord.PROOF_CONTRADICTED,
-                WeakeningWord.ARMS_UNSETTLED)) {
+                WeakeningWord.ARMS_UNSETTLED,
+                WeakeningWord.DECISION_NOT_FULLY_READ,
+                WeakeningWord.DECISION_OF_ROW_UNREADABLE,
+                WeakeningWord.DECISION_RUN_NOT_WATCHED)) {
             out.add(new WeakeningVocabulary.AWordOfThisDocuments(word));
         }
         return out;

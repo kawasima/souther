@@ -181,6 +181,9 @@ class AnUnderivablePositionIsPublishedWithSomethingToActOnTest {
                  About.ACaseNoRowAppliesItTo _, About.AClassNoRowIsIn _,
                  About.APointOfABorder _, About.APointOfADeclaredBorder _,
                  About.AnArmNoRowGoesThrough _, About.ARowAtAnArmAwaitsItsAnswer _,
+            // A way through the body no row takes, which is about the rows and not about how far
+            // any reading of a position got.
+                 About.ARuleNoRowTakes _,
                  About.AnUnansweredRow _ -> null;
         };
     }

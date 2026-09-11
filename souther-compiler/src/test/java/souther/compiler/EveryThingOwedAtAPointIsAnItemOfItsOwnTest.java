@@ -5,7 +5,7 @@ import souther.compiler.query.Adequacy;
 import souther.compiler.query.BorderObligationPointAssessment;
 import souther.compiler.query.Compilation;
 import souther.compiler.query.GenerationScope;
-import souther.compiler.query.OfferItem;
+import souther.compiler.partition.ObligationIdentity;
 import souther.compiler.query.Composition;
 import souther.compiler.query.OfferingRequest;
 import souther.compiler.query.RowKey;
@@ -121,8 +121,8 @@ class EveryThingOwedAtAPointIsAnItemOfItsOwnTest {
     /** The points the offering was asked about, in the order it asks them. */
     private static List<BorderObligationPoint> pointsOf(Settlements table) {
         List<BorderObligationPoint> asked = new ArrayList<>();
-        for (OfferItem item : table.requested()) {
-            if (item instanceof OfferItem.APointOfALine(var point)) {
+        for (ObligationIdentity item : table.requested()) {
+            if (item instanceof ObligationIdentity.OfALine(var point)) {
                 asked.add(point);
             }
         }
@@ -135,17 +135,17 @@ class EveryThingOwedAtAPointIsAnItemOfItsOwnTest {
         Settlements table = Settlements.of(compilation.db(), composed(compilation));
 
         // The obligations that share a point, which is what a row there answers at once.
-        Map<String, Set<OfferItem>> byPoint = new LinkedHashMap<>();
-        for (OfferItem item : table.requested()) {
-            if (item instanceof OfferItem.APointOfALine(var point)) {
+        Map<String, Set<ObligationIdentity>> byPoint = new LinkedHashMap<>();
+        for (ObligationIdentity item : table.requested()) {
+            if (item instanceof ObligationIdentity.OfALine(var point)) {
                 byPoint.computeIfAbsent(point.line() + " " + point.role(),
                         _ -> new LinkedHashSet<>()).add(item);
             }
         }
-        List<Set<OfferItem>> shared = byPoint.values().stream().filter(at -> at.size() > 1).toList();
+        List<Set<ObligationIdentity>> shared = byPoint.values().stream().filter(at -> at.size() > 1).toList();
         assertFalse(shared.isEmpty(), "a point of this model is owed more than once: " + byPoint);
 
-        for (Set<OfferItem> at : shared) {
+        for (Set<ObligationIdentity> at : shared) {
             Set<RowKey> composedThere = new LinkedHashSet<>();
             at.forEach(item -> composedThere.add(table.composedFor().get(item)));
             assertEquals(1, composedThere.size(),

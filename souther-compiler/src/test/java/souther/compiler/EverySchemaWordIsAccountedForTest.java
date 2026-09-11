@@ -200,6 +200,31 @@ class EverySchemaWordIsAccountedForTest {
         return words;
     }
 
+    /**
+     * The words a rule's identity gives one of its conditions, one per shape of the reading.
+     *
+     * <p>Spelled here and held against the arms, the way the owners above are: which words a
+     * consumer joining on a rule must handle is a decision about the contract, and a shape renamed
+     * inside the compiler is not one. What this keeps out is a shape added to the reading and
+     * written into the document under no word at all.
+     */
+    private static Set<String> conditionWords() {
+        Map<String, String> spelling = new LinkedHashMap<>();
+        spelling.put("AComparison", "comparison");
+        spelling.put("ATruth", "truth");
+        spelling.put("ACase", "case");
+        spelling.put("AConditionNotRead", "not_read");
+        Set<String> words = new LinkedHashSet<>();
+        for (Class<?> shape
+                : armsOf(souther.compiler.partition.DecisionCondition.class)) {
+            String word = spelling.get(shape.getSimpleName());
+            assertNotNull(word, shape.getSimpleName() + " may be a column of a rule and this"
+                    + " document has no word for it");
+            words.add(word);
+        }
+        return words;
+    }
+
     /** The names a branch measure can give an arm, spelled by the writer's own encoder. */
     private static Set<String> armWords() {
         return Arrays.stream(souther.compiler.coverage.OutcomeName.values())
@@ -298,6 +323,13 @@ class EverySchemaWordIsAccountedForTest {
             new Vocabulary("status", List.of("$defs", "status"), STATUS_WORDS),
             Vocabulary.of("branch.reason", List.of("$defs", "branch", "properties", "reason"),
                     Adequacy.BranchEvidence.class),
+            // Why nobody read which rules of a body's decision the rows took. Its own field beside
+            // the branch's, because the two measures fall short of different things: an arm is one
+            // branch of the body and a rule is one way through it, and a reading that placed no run
+            // has said nothing about the rules while the arms may be counted in full.
+            Vocabulary.of("decision.coverage.reason",
+                    List.of("$defs", "decision", "properties", "coverage", "properties", "reason"),
+                    souther.compiler.query.DecisionEvidence.class),
             new Vocabulary("findings[].kind",
                     List.of("$defs", "findings", "items", "properties", "kind"),
                     Adequacy.Kind.class),
@@ -316,6 +348,14 @@ class EverySchemaWordIsAccountedForTest {
             new Vocabulary("keptOpenBy[].about.measure",
                     List.of("$defs", "subject", "oneOf", "13", "properties", "measure"),
                     souther.compiler.publish.MeasureWord.class),
+            // Which distinction one column of a rule's identity is. Projected off the shapes of
+            // the reading rather than listed, so a shape added to what a body can decide by has to
+            // teach this document its word before the schema will pass.
+            new Vocabulary("findings[].obligationId.conditions[].kind",
+                    List.of("$defs", "ruleObligationId", "properties", "conditions", "items",
+                            "properties", "kind"),
+                    List.of(souther.compiler.partition.DecisionCondition.class),
+                    conditionWords(), Set.of()),
             new Vocabulary("findings[].disposition",
                     List.of("$defs", "findings", "items", "properties", "disposition"),
                     Adequacy.Finding.Disposition.class),

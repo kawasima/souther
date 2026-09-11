@@ -1,7 +1,7 @@
 package souther.compiler.partition;
 
 import souther.compiler.check.Carrier;
-import souther.compiler.check.ReadingPolicy;
+import souther.compiler.check.RuleReadingContext;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.TypeView;
 import souther.compiler.inputs.NumericTerm;
@@ -216,11 +216,12 @@ final class TermRealizations {
      */
     static Realization at(Type sourceType, TermOrders orders,
                           Place answer, souther.compiler.inputs.SearchRegion within,
-                          RuleReadingSource ruleSource, ReadingPolicy policy) {
+                          RuleReadingContext reading) {
         if (sourceType == null) {
             return new Realization.None(
                     Generator.UnresolvedCombination.Reason.NOTHING_COMPOSES_ONE);
         }
+        RuleReadingSource ruleSource = reading.source();
         // Which number is being written for, read off the answer that says which number it is of.
         // Handed in beside it, it was a second name for the same thing and a caller could give two
         // — and this would then write a value for one number on the order of another.
@@ -235,9 +236,9 @@ final class TermRealizations {
                     oneValue(FixtureTemplate.on(orders.answered(), answer, ruleSource.symbols().scope()::reach),
                             sourceType, ruleSource);
             case NumericTerm.TakenOf taken -> taken(taken.takenAs(), sourceType, orders,
-                    answer, within, ruleSource, policy);
+                    answer, within, reading);
             case NumericTerm.TakenOver over -> overARun(over.takenAs(), sourceType, orders,
-                    answer, within, ruleSource, policy);
+                    answer, within, reading);
         };
     }
 
@@ -253,17 +254,18 @@ final class TermRealizations {
     private static Realization taken(TakenAs how, Type sourceType,
                                      TermOrders orders, Place answer,
                                      souther.compiler.inputs.SearchRegion within,
-                                     RuleReadingSource ruleSource, ReadingPolicy policy) {
+                                     RuleReadingContext reading) {
+        RuleReadingSource ruleSource = reading.source();
         return switch (how) {
             // A container has no order of its own and is built out of what it holds, so this arm
             // takes none. That is the arm's own answer and not an order standing in for nothing.
-            case TakenAs.HowManyItHolds _ -> holding(sourceType, answer, ruleSource, policy);
+            case TakenAs.HowManyItHolds _ -> holding(sourceType, answer, reading);
             // A container whose elements come to the total, which is what a row has to hold for
             // this number to be there. What that takes is choosing how many elements and what each
             // of them holds — one question whether the number is added up out of the container
             // itself or out of a path inside its elements, and answered for both in one place.
             case TakenAs.TheSumOfWhatItHolds _ -> ContainersAddingUp.to(answer, sourceType,
-                    orders, within, ruleSource, policy);
+                    orders, within, reading);
             // And this one writes on the order the value is written on. Written on the order the
             // answer is measured on, the thirteenth hour would be offered as the thirteenth second —
             // the same mistake the reading makes in the other direction, which is why the pair
@@ -291,10 +293,10 @@ final class TermRealizations {
     private static Realization overARun(TakenAs how, Type sourceType,
                                         TermOrders orders, Place answer,
                                         souther.compiler.inputs.SearchRegion within,
-                                        RuleReadingSource ruleSource, ReadingPolicy policy) {
+                                        RuleReadingContext reading) {
         return switch (how) {
             case TakenAs.TheSumOfWhatItHolds _ -> ContainersAddingUp.to(answer, sourceType,
-                    orders, within, ruleSource, policy);
+                    orders, within, reading);
             case TakenAs.HowManyItHolds _, TakenAs.PartOfTime _, TakenAs.PartOfDate _ ->
                     new Realization.None(
                             Generator.UnresolvedCombination.Reason.NOTHING_COMPOSES_ONE);
@@ -302,13 +304,13 @@ final class TermRealizations {
     }
 
     /** Values of the position holding exactly that many, which is {@link Witnesses}' answer. */
-    private static Realization holding(Type sourceType, Place answer, RuleReadingSource ruleSource,
-                                       ReadingPolicy policy) {
+    private static Realization holding(Type sourceType, Place answer, RuleReadingContext reading) {
         int many = CountDomain.asCount(answer);
         if (many < 0) {
             return new Realization.None(
                     Generator.UnresolvedCombination.Reason.NOTHING_COMPOSES_ONE);
         }
+        RuleReadingSource ruleSource = reading.source();
         TypeView holder = TypeView.of(sourceType, ruleSource.symbols());
         // A name this module cannot write leaves no value to write, which is a position nothing
         // composes one for rather than a value written without the name. Asked of the position
@@ -317,7 +319,7 @@ final class TermRealizations {
             return new Realization.None(
                     Generator.UnresolvedCombination.Reason.NOTHING_COMPOSES_ONE);
         }
-        Witnesses.Sized built = Witnesses.ofSize(holder.shape(), many, ruleSource, policy, Set.of());
+        Witnesses.Sized built = Witnesses.ofSize(holder.shape(), many, reading, Set.of());
         if (built.values().isEmpty()) {
             // Read off the build that was already done. `Witnesses` keeps what it made and why it
             // stopped as two halves of one answer for exactly this, and asking it again would be

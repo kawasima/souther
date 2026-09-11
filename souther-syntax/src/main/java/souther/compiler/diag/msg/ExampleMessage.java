@@ -300,6 +300,39 @@ public sealed interface ExampleMessage extends Message {
             implements ExampleMessage, Supporting {}
 
     /**
+     * No row takes one of the rules of the decision a body states.
+     *
+     * <p>The behavior and nothing else. A rule is told apart by the distinctions it consulted,
+     * written the one way round that makes a comparison and its denial one column — which is what
+     * an account keys on and is not what an author wrote. Said here, an author would be shown a
+     * comparison they did not write, the wrong way round. Which rule it is, is said underneath: one
+     * note per condition, sending the reader to the construct that drew it.
+     */
+    @Code(DiagnosticCode.E1935)
+    record NoRowTakesADecisionRule(String behavior) implements ExampleMessage, Reported {}
+
+    /**
+     * One condition of that rule: a comparison the author wrote, which the rule takes holding.
+     *
+     * <p>Carries nothing. Which comparison it is is where the label is put, so a reader reads the
+     * comparison they wrote rather than one this compiler spelled from the proposition its account
+     * keys on — {@code n > 100} in a body is held there as {@code n <= 100} denied.
+     */
+    record TheRuleTakesThisComparisonHolding() implements ExampleMessage, Supporting {}
+
+    /** The same, where the rule takes it failing. Two entries and not one that selects a word: a
+     *  wording that turns on a value is two messages. */
+    record TheRuleTakesThisComparisonFailing() implements ExampleMessage, Supporting {}
+
+    /** One condition of that rule: a fork of the body, and which of its arms the rule goes down. */
+    record TheRuleGoesThroughThisArm(souther.compiler.diag.Localizable arm)
+            implements ExampleMessage, Supporting {}
+
+    /** A condition of the rule with nothing to send a reader to, so that a rule is never described
+     *  by fewer conditions than it turns on. */
+    record OneConditionOfTheRuleIsNotShown() implements ExampleMessage, Supporting {}
+
+    /**
      * No row is at one of the points a border owes, the rule that drew it having a name.
      *
      * <p>{@code point} is which of them, in the word domain testing gives it (ISTQB CTAL-TA v4.0
