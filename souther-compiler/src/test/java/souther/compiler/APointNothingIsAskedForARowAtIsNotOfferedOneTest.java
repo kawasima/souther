@@ -136,7 +136,8 @@ class APointNothingIsAskedForARowAtIsNotOfferedOneTest {
         var declared = Adequacy.accountFor(compilation.db(),
                 "example.declaredwritten", new GenerationScope.Module());
         Composition composed = Composition.composed(
-                OfferingRequest.overTheModule("example.declaredwritten", true), generated, declared);
+                OfferingRequest.overTheModule("example.declaredwritten", true), generated,
+                declared);
         Settlements table = Settlements.of(compilation.db(), composed);
 
         Set<BorderObligationPoint> asked = table.requested().stream()

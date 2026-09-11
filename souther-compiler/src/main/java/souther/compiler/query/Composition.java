@@ -68,30 +68,36 @@ public record Composition(OfferingRequest request,
         Map<String, List<Generator.GeneratedRow>> owed = account == null
                 ? Map.of() : account.rowsByCarrier();
         SequencedMap<String, Map<RowKey, OfferedRow>> byBehavior = new LinkedHashMap<>();
-        for (Map.Entry<String, Adequacy.Filling> behavior : generated.entrySet()) {
-            // The fill's rows and the ones the requirement search stood in the rules, which is a
-            // second search of this behavior's own the way the lines are a third. One block per
-            // behavior all the same: rows of one behavior written under two headings are legal and
-            // read as two lists of something, which they are not.
+        // Every behavior with rows, its own and the ones it carries for a declaration alike. Walked
+        // as one list because a row of either kind is a row of that behavior, and a walk that took
+        // the second somewhere else is a way into the block that the first one's rules never
+        // reached — which is what let a carrier's rows out standing nothing in.
+        SequencedMap<String, Object> behaviors = new LinkedHashMap<>();
+        generated.keySet().forEach(name -> behaviors.put(name, name));
+        owed.keySet().forEach(name -> behaviors.put(name, name));
+        for (String behavior : behaviors.keySet()) {
+            Adequacy.Filling filling = generated.get(behavior);
             // The fill's rows and the ones the requirement search stood in the rules, which is a
             // second search of this behavior's own the way the lines are a third. Taken as rows
             // that say what they were composed for rather than as lines: two searches arriving at
             // one stimulus is one row offered for both things, and a row that kept only the first
             // purpose would be work a person is handed under half of what it does.
-            take(byBehavior, behavior.getKey(), behavior.getValue().composed().rows(),
-                    request.boundaries() ? atTheLines(owed.get(behavior.getKey())) : List.of(),
-                    behavior.getValue().rules().byRule().values());
-        }
-        // A behavior with nothing of its own to fill can still be the one reading that composed the
-        // row a declaration is owed. Left out, that row would be resolved and then dropped on the
-        // way to the block.
-        for (Map.Entry<String, List<Generator.GeneratedRow>> carrier : owed.entrySet()) {
-            if (!generated.containsKey(carrier.getKey())) {
-                take(byBehavior, carrier.getKey(), List.of(), carrier.getValue(), List.of());
-            }
+            //
+            // Every one of them already stands the behavior's dependencies in. A row is composed
+            // with its stand-ins on it, and a search that could compose none of them composed no
+            // rows — so there is nothing to check here, and a check would be a second place
+            // deciding what a row needs to be run.
+            take(byBehavior, behavior,
+                    filling == null ? List.of() : filling.composed().rows(),
+                    request.boundaries() ? atTheLines(owed.get(behavior)) : List.of(),
+                    filling == null ? List.of() : filling.rules().byRule().values());
         }
         SequencedMap<String, List<OfferedRow>> out = new LinkedHashMap<>();
-        byBehavior.forEach((behavior, here) -> out.put(behavior, List.copyOf(here.values())));
+        byBehavior.forEach((behavior, here) -> {
+            if (!here.isEmpty()) {
+                out.put(behavior, List.copyOf(here.values()));
+            }
+        });
         return new Composition(request, out, new LinkedHashMap<>(generated), account);
     }
 
@@ -107,7 +113,7 @@ public record Composition(OfferingRequest request,
         for (Generator.GeneratedRow row : cells) {
             RowKey key = RowKey.of(behavior, row);
             here.put(key, here.computeIfAbsent(key,
-                    _ -> new OfferedRow(key, row.inputs(), List.of())).and(row.purposes()));
+                    _ -> new OfferedRow(key, row.inputs(), row.answers(), List.of())).and(row.purposes()));
         }
         // The lines, joined on the stimulus and never on what they were composed for. A row at a
         // point carries a purpose no offered row may be named after — {@link OfferedRow} refuses
@@ -121,7 +127,7 @@ public record Composition(OfferingRequest request,
         // answer and not this row's label.
         for (Generator.GeneratedRow row : lines) {
             RowKey key = RowKey.of(behavior, row);
-            here.putIfAbsent(key, new OfferedRow(key, row.inputs(), List.of()));
+            here.putIfAbsent(key, new OfferedRow(key, row.inputs(), row.answers(), List.of()));
         }
         // And the rules, after the lines. What a row settles decides whether it is kept and the
         // order decides which of two that settle the same things is; the body's own lines are
@@ -134,7 +140,7 @@ public record Composition(OfferingRequest request,
         for (Generator.GeneratedRow row : rules) {
             RowKey key = RowKey.of(behavior, row);
             here.put(key, here.computeIfAbsent(key,
-                    _ -> new OfferedRow(key, row.inputs(), List.of())).and(row.purposes()));
+                    _ -> new OfferedRow(key, row.inputs(), row.answers(), List.of())).and(row.purposes()));
         }
     }
 

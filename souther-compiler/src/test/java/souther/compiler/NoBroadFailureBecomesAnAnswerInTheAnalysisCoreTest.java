@@ -281,14 +281,15 @@ class NoBroadFailureBecomesAnAnswerInTheAnalysisCoreTest {
                             + " pattern the engine refused"),
             new Permission("souther.compiler.query.Adequacy$ARowBuiltAndRun", "attempt",
                     "(Ljava/lang/String;Ljava/util/Map;"
-                            + "Lsouther/compiler/partition/Reachability$Reaching;)"
+                            + "Lsouther/compiler/partition/Reachability$Reaching;"
+                            + "Lsouther/compiler/partition/AnswersDemanded;)"
                             + "Lsouther/compiler/partition/Generator$BoundaryAttempt;",
                     "java.lang.LinkageError",
                     "whether the classes generated for this model link, asked by building a row"
                             + " out of them — answered as nothing tried, which is not everything"
                             + " tried being refused"),
             new Permission("souther.compiler.query.Adequacy$ARowBuiltAndRun", "read",
-                    "(Ljava/util/List;)Lsouther/compiler/query/RowAsRead;",
+                    "(Lsouther/compiler/partition/RowToRun;)Lsouther/compiler/query/RowAsRead;",
                     "java.lang.LinkageError",
                     "the same, asked by reading a row through them — answered as a row nothing"
                             + " built, which is not a row seen to stand somewhere else"),

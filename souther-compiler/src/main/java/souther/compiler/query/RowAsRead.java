@@ -3,6 +3,7 @@ package souther.compiler.query;
 import souther.compiler.check.Sig;
 import souther.compiler.execute.BoundaryValues;
 import souther.compiler.observe.ObservedValue;
+import souther.compiler.partition.RowToRun;
 import souther.compiler.partition.FixtureTemplate;
 import souther.compiler.partition.Generator;
 import souther.compiler.partition.ObservedInputs;
@@ -42,15 +43,16 @@ public record RowAsRead(List<ObservedValue> values, Settlement.Reason whyNotRead
     }
 
     /**
-     * {@code inputs} built and run.
+     * {@code row} built and run.
      *
      * <p>The account of the run is taken whatever the values came to. A row the model would not
      * take is still a row something may have watched, and the two answers are about different
      * things.
      */
     public static RowAsRead of(Sig sig, BoundaryValues building, Generator.Trial trial,
-                               List<FixtureTemplate> inputs) {
-        Generator.Watched watched = trial.run(inputs);
+                               RowToRun row) {
+        List<FixtureTemplate> inputs = row.inputs();
+        Generator.Watched watched = trial.run(row);
         if (building == null || sig == null) {
             return new RowAsRead(null, Settlement.Reason.NOTHING_BUILT_THE_VALUES, watched);
         }

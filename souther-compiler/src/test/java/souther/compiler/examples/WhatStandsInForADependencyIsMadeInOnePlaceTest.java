@@ -48,16 +48,18 @@ class WhatStandsInForADependencyIsMadeInOnePlaceTest {
     }
 
     /**
-     * And what a run applies the behavior with is built there too.
+     * And what a run applies the behavior with is minted in one place.
      *
-     * <p>The two halves in one class is what makes them one reading. Built somewhere else, the
-     * fixtures behind a stand-in would be applied a second time — charged twice against the row's
-     * budget, and doing whatever they do twice.
+     * <p>Two readings need one and they are different readings: what a written row states, read
+     * where the rest of the row is, and what a search composed a candidate to stand in with. Each
+     * works out what it answers for itself — that is the reading, and the two above hold it where it
+     * belongs — and what a stand-in <em>is</em> is said once. Minted per reader, the day one of them
+     * has to carry something more it would be carried by whichever reader was edited.
      */
     @Test
     void andSoIsWhatTheRunAppliesTheBehaviorWith() {
-        assertEquals(List.of("souther.compiler.examples.ExampleVerifier"),
+        assertEquals(List.of("souther.compiler.examples.StandingIn"),
                 List.copyOf(WhatWasCompiled.callersOf(DependencyStandin.class, "<init>")),
-                "what a run stands in with is built where the row's stand-ins are read");
+                "what a run stands in with is made in one place");
     }
 }
