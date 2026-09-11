@@ -1,5 +1,6 @@
 package souther.compiler.query;
 
+import souther.compiler.cst.SourceLayout;
 import souther.compiler.Reserved;
 import souther.compiler.source.SourceId;
 
@@ -227,6 +228,28 @@ public final class Front {
             } catch (CompileException e) {
                 return Answer.absent(e);
             }
+        }
+    }
+
+    /**
+     * How one source is laid out: where its meaningful tokens and its lines fall.
+     *
+     * <p>Its own question and not a reading of {@link Text}. What reads this wants where a place
+     * sits — a debug table, a document that writes line numbers — and that is a narrower fact than
+     * what the file says: a comment reworded to a line of the same width lays out identically, so
+     * this comes out equal and what asked it is left alone. Read from the text instead, every such
+     * reader would move for every keystroke anywhere in the file.
+     */
+    public record LayoutOf(SourceId id) implements Key<SourceLayout> {
+        @Override
+        public SourceId sourceId() {
+            return id;
+        }
+
+        @Override
+        public Answer<SourceLayout> compute(Db db) {
+            Answer<String> text = db.ask(new Text(id));
+            return text.present() ? Answer.of(SourceLayout.of(text.value(), id)) : Answer.absent();
         }
     }
 

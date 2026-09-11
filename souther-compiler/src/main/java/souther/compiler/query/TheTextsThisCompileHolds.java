@@ -52,8 +52,10 @@ public final class TheTextsThisCompileHolds implements SourceLayouts {
     private LaidOutText lay(QuotedFrom text) {
         return switch (text) {
             case QuotedFrom.ASourceThisCompileHolds(SourceId source) -> {
-                Answer<String> held = db.ask(new Front.Text(source));
-                yield held.present() ? SourceLayout.of(held.value(), source) : null;
+                // How it is laid out, not what it says: a reader turning a place into a line has no
+                // business moving for a word written in a comment.
+                Answer<SourceLayout> held = db.ask(new Front.LayoutOf(source));
+                yield held.present() ? held.value() : null;
             }
             // The module's own, as it was read back. The text was put together out of what the
             // module carries, so laying one out here would be laying out a second text and taking

@@ -49,33 +49,56 @@ public final class SourceLayout implements LaidOutText {
     /** Which text this is, asked once — a placement answers it and does not publish it. */
     private final QuotedFrom text;
 
+    /**
+     * Where each meaningful token sits, one line and column packed into a long, in order.
+     *
+     * <p>What this layout can be asked and the whole of it, so it is what one layout being another
+     * comes to. Held rather than worked out on a comparison: what holds one of these compares it
+     * against the one it replaces on every edit.
+     */
+    private final long[] sits;
+
     private SourceLayout(String source, Placement read, int[][] tokenStart) {
         this.source = source;
         this.read = read;
         this.text = read.at(0, 0).quotedFrom();
         this.lines = new LineIndex(source);
         this.tokenStart = tokenStart;
+        int count = 0;
+        for (int[] construct : tokenStart) {
+            count += construct.length;
+        }
+        this.sits = new long[count];
+        int at = 0;
+        for (int[] construct : tokenStart) {
+            for (int offset : construct) {
+                sits[at++] = ((long) lines.lineOf(offset) << 32) | lines.columnOf(offset);
+            }
+        }
     }
 
     /**
-     * Two layouts of one text are one layout.
+     * Two texts laid out the same way are one layout.
      *
-     * <p>Said, because one of these travels in what a compilation remembers about a module it read
-     * back, and what a compilation remembers is a value. Held as the object it happens to be, a
-     * module read twice from one unchanged artifact would come back as a module that changed.
+     * <p>What this answers is where each of a text's places sits, so that is what two of them being
+     * one comes to. Rewording a comment moves no token to another line or column, so the layout it
+     * was read from is equal to the one it replaces, and what depends on the layout — a debug
+     * table, a document that writes line numbers — is not worked out again for it. Compared by the
+     * text, that dependency would be on everything the file says rather than on how it is laid
+     * out, which is the wider question and not the one anything here asks.
      *
-     * <p>The tokens are not compared. They are what this text is made of, worked out here and
-     * nowhere else, so two layouts of one text agree about them or this class is wrong.
+     * <p>Said at all because one of these travels in what a compilation remembers about a module it
+     * read back, and what a compilation remembers is a value.
      */
     @Override
     public boolean equals(Object other) {
-        return other instanceof SourceLayout it && source.equals(it.source)
-                && read.equals(it.read);
+        return other instanceof SourceLayout it && read.equals(it.read)
+                && java.util.Arrays.equals(sits, it.sits);
     }
 
     @Override
     public int hashCode() {
-        return source.hashCode() * 31 + read.hashCode();
+        return java.util.Arrays.hashCode(sits) * 31 + read.hashCode();
     }
 
     /** The layout of {@code text}, parsed to find its tokens. */
