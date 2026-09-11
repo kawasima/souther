@@ -90,10 +90,13 @@ public record DecisionEvidence(DecisionReading read, Taken taken) {
                     int rowsNotWatched) implements Taken {
 
             public Read {
-                if (wentWithout.isEmpty() != (rowsNotPlaced == 0)) {
+                // A row this reading could not place says what stopped it. The other way round is
+                // not held: a row nothing watched leaves the reading short of the same claim and
+                // is counted apart, so a reading can go without something with every row it was
+                // given placed.
+                if (rowsNotPlaced > 0 && wentWithout.isEmpty()) {
                     throw new IllegalArgumentException("a row this reading could not place says"
-                            + " what stopped it: " + rowsNotPlaced + " unplaced, "
-                            + wentWithout.causes().size() + " reasons");
+                            + " what stopped it, and " + rowsNotPlaced + " say nothing");
                 }
                 // Sealed and not only copied. What the account answers about a behavior is read
                 // off this — which rules were covered, which were not — and a set a caller can add
@@ -164,6 +167,20 @@ public record DecisionEvidence(DecisionReading read, Taken taken) {
     }
 
     /**
+     * What this reading of the runs went without, which a finding about a rule carries.
+     *
+     * <p>The whole of it, so that a caller hands over the thing it is looking at rather than a set
+     * worked out above: a row this reading could not place and a row nothing watched both leave a
+     * rule nothing was seen taking as one a row may already take, and a finding given only the
+     * first would be refused over where it should be undecided.
+     *
+     * <p>Beside {@link #derivation}, which is about not having the rules at all.
+     */
+    public WeakeningSet weakening() {
+        return taken instanceof Taken.Read read ? read.wentWithout() : WeakeningSet.none();
+    }
+
+    /**
      * What the rows of one behavior came to, one answer per row.
      *
      * <p>Walked over the rows and never over what came back watched. A row nothing watched is a row
@@ -171,8 +188,13 @@ public record DecisionEvidence(DecisionReading read, Taken taken) {
      * number here — which is a reading that went without something reporting that it did not.
      *
      * @param watched what watched each row, which is an account or the fact that there is none
+     * @param whatTheRowsWentWithout what the reading of the rows went without, folded in where a
+     *                               row was not watched. A row nothing watched went somewhere as
+     *                               surely as one this reading could not place, so the rule it took
+     *                               is as unknown
      */
-    public static Taken of(String behavior, RulesTaken against, List<Generator.Watched> watched) {
+    public static Taken of(String behavior, RulesTaken against, List<Generator.Watched> watched,
+                           WeakeningSet whatTheRowsWentWithout) {
         Set<DecisionRule> took = new LinkedHashSet<>();
         List<Weakening> whyNotPlaced = new java.util.ArrayList<>();
         int placed = 0;
@@ -202,7 +224,8 @@ public record DecisionEvidence(DecisionReading read, Taken taken) {
                 }
             }
         }
+        WeakeningSet went = WeakeningSet.ofAll(whyNotPlaced);
         return new Taken.Read(watched.size(), took, placed, notPlaced,
-                WeakeningSet.ofAll(whyNotPlaced), notWatched);
+                notWatched == 0 ? went : went.union(whatTheRowsWentWithout), notWatched);
     }
 }

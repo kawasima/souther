@@ -1093,7 +1093,8 @@ public final class Adequacy {
                 watched.add(ObservedInputs.of(row, numbering).watched());
             }
             return DecisionEvidence.of(rules.behavior(),
-                    souther.compiler.partition.RulesTaken.of(rules, emitted, plan), watched);
+                    souther.compiler.partition.RulesTaken.of(rules, emitted, plan), watched,
+                    observed.measured().weakening());
         }
     }
 
@@ -4519,6 +4520,20 @@ public final class Adequacy {
             return new Finding(subject, found.weakening(), about);
         }
 
+        /**
+         * The same, where what found it is the reading of a body's decision.
+         *
+         * <p>A fourth and not one of the three, because what a decision reading went without is
+         * neither a measure's status nor a fold of the readings of a line: a row it could not place
+         * among the rules and a row nothing watched each leave a rule nothing was seen taking as
+         * one a row may already take. Taken whole for the reason the others are — a rule of a body
+         * rests on one reading of one set of runs, and a caller handing over a set assembled beside
+         * it could give one rule's finding what another behavior's reading went without.
+         */
+        public static Finding by(FindingSubject subject, DecisionEvidence found, About about) {
+            return new Finding(subject, found.weakening(), about);
+        }
+
         /** The same, about a behavior. */
         public static Finding by(String behavior, ObligationCoverage found, About about) {
             return by(new FindingSubject.OfABehavior(behavior), found, about);
@@ -5149,48 +5164,16 @@ public final class Adequacy {
             if (settled == null) {
                 return;
             }
-            // What the reading of the runs went without, which is what keeps a gap from being
-            // asserted out of it. Worked out once for the behavior: every rule of one body rests
-            // on the same reading of the same runs.
-            WeakeningSet went = whatTheReadingWentWithout(decision.taken(),
-                    RowReadings.readingFor(db.ask(new RowReadings(module)).value(), behavior));
+            // Made from the reading that found it, which is what says whether a build may refuse
+            // over one: a rule nothing was seen taking, where a row could not be placed, is one a
+            // row may already take.
             for (souther.compiler.partition.DecisionReading.Ruled ruled
                     : decision.read().found()) {
                 if (settled.get(ruled.rule()) instanceof RuleRequirement.Required) {
-                    out.add(new Finding(new FindingSubject.OfABehavior(behavior), went,
+                    out.add(Finding.by(new FindingSubject.OfABehavior(behavior), decision,
                             new About.ARuleNoRowTakes(behavior, ruled)));
                 }
             }
-        }
-
-        /**
-         * What the reading of this behavior's runs went without, which is what a gap about a rule
-         * may not be asserted out of.
-         *
-         * <p>A row this reading could not place went somewhere, and a rule reported as taken by
-         * nothing may be where it went — so an author told to write a row for it may be told to
-         * write one that is already in the file. Carried as a weakening rather than as a reason to
-         * say nothing: the rule is still owed a row and the account still counts it, and what
-         * changes is that a build does not refuse over it ({@link Finding#disposition}).
-         *
-         * <p><b>No rows at all is not one of these.</b> A behavior nobody wrote a row for is one
-         * where every rule is taken by nothing, and that is known rather than unread — there is no
-         * run to have gone anywhere. The other measures here call it not measured; a rule the
-         * search settled as required and no row takes is missing, and reporting it as unread would
-         * be a third meaning mixed into the two the account has.
-         *
-         * <p>A run nothing watched is the other half and is read here too. It went somewhere as
-         * surely as one this reading could not place, so the rule it took is as unknown — and what
-         * a row that never came back leaves the measurement short of is the row reading's own
-         * fact, in the words that reading already holds it in.
-         */
-        private static WeakeningSet whatTheReadingWentWithout(DecisionEvidence.Taken taken,
-                                                              RowReading observed) {
-            if (!(taken instanceof DecisionEvidence.Taken.Read read)) {
-                return WeakeningSet.none();
-            }
-            return read.everyRowWasWatched() ? read.wentWithout()
-                    : read.wentWithout().union(observed.measured().weakening());
         }
 
         /**

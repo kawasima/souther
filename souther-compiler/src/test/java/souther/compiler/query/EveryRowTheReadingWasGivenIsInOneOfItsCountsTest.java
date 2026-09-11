@@ -71,7 +71,8 @@ class EveryRowTheReadingWasGivenIsInOneOfItsCountsTest {
     void andARowNothingWatchedIsCountedAsOne() {
         DecisionEvidence.Taken.Read read = assertInstanceOf(DecisionEvidence.Taken.Read.class,
                 DecisionEvidence.of("classify", rulesTakenOf(compiled()),
-                        List.of(new Generator.Watched.NoAccount())),
+                        List.of(new Generator.Watched.NoAccount()),
+                        souther.compiler.query.WeakeningSet.none()),
                 "a row is read whether or not anything watched it");
         assertEquals(1, read.rowsRead(), () -> "the row is one the reading was given: " + read);
         assertEquals(1, read.rowsNotWatched(), () -> "and nothing watched it: " + read);
