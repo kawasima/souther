@@ -703,7 +703,7 @@ final class Coverages {
          * read by the walk that reads the file's rows and never by a second account written where
          * the candidate was composed.
          */
-        RowAsRead read(java.util.List<souther.compiler.partition.FixtureTemplate> inputs);
+        RowAsRead read(souther.compiler.partition.RowToRun row);
     }
 
     /**
@@ -1123,7 +1123,7 @@ final class Coverages {
             List<ComparisonEmissionSite> site,
             souther.compiler.partition.Generator.BoundaryAttempt.Built built) {
         souther.compiler.partition.ObservedInputs read =
-                probe.read(built.row().inputs()).asInputs();
+                probe.read(built.row().toRun()).asInputs();
         if (read == null) {
             // Nothing came back to read the row off, which is not an observation of it and is not a
             // position holding no value either. What did not happen here is the running: the values

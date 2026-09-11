@@ -118,14 +118,24 @@ public final class Generator {
      * name made by joining theirs, which reads as an obligation that was never raised; held as
      * none but the first, the second went unanswered beside a row that answered it.
      *
+     * <p><b>And what it stands the behavior's dependencies in with.</b> A row is offered to be
+     * completed and run, and a row with nothing standing in for a dependency its target requires is
+     * one nothing can run — which is true of every dependency the target has, not only of the ones
+     * the body decides on. Which of them each answer is about is
+     * {@link StoodInAnswer}'s, and what a block writes it as — a {@code with} on the row or a row
+     * of a table beside it — is a projection of these rather than a second account of them.
+     *
      * @param purposes what the row was composed for, in the order the things were taken
      * @param inputs   one value per parameter, in the order the behavior takes them
+     * @param answers  what it stands each asking of a dependency in with
      */
-    public record GeneratedRow(List<Purpose> purposes, List<FixtureTemplate> inputs) {
+    public record GeneratedRow(List<Purpose> purposes, List<FixtureTemplate> inputs,
+                               List<StoodInAnswer> answers) {
 
         public GeneratedRow {
             purposes = List.copyOf(purposes);
             inputs = List.copyOf(inputs);
+            answers = List.copyOf(answers);
             if (purposes.isEmpty()) {
                 throw new IllegalArgumentException("a row is composed for something");
             }
@@ -133,7 +143,12 @@ public final class Generator {
 
         /** One row composed for one thing, which is what most of the searches here compose. */
         public GeneratedRow(Purpose purpose, List<FixtureTemplate> inputs) {
-            this(List.of(purpose), inputs);
+            this(List.of(purpose), inputs, List.of());
+        }
+
+        /** The row as everything it takes to run one. */
+        public RowToRun toRun() {
+            return new RowToRun(inputs, answers);
         }
 
         /** What the row is about, where this package has a name for it. An arm is named by the
@@ -787,8 +802,8 @@ public final class Generator {
     @FunctionalInterface
     public interface Trial {
 
-        /** What running {@code inputs} through the behavior came to. */
-        Watched run(List<FixtureTemplate> inputs);
+        /** What running {@code row} through the behavior came to. */
+        Watched run(RowToRun row);
 
         /** Nothing runs here — what a caller with no runtime to run against uses. */
         Trial NOTHING_RUNS = _ -> new Watched.NoAccount();
@@ -3516,7 +3531,7 @@ public final class Generator {
                 // thing.
                 GeneratedRow named = new GeneratedRow(
                         takes.stream().map(Purpose.ForAnArm::new).map(Purpose.class::cast).toList(),
-                        last.row().inputs());
+                        last.row().inputs(), last.row().answers());
                 // Run once per set of values, however many places a row of them was looked for.
                 // What a run of one row did is one fact: two arms searched on their own can come to
                 // the same values, and running them again would be the same row applied twice and
@@ -3533,7 +3548,7 @@ public final class Generator {
                         return Taken.NOT_TAKEN;   // this candidate is the run nobody did
                     }
                     runs++;
-                    watched = trial.run(named.inputs());
+                    watched = trial.run(named.toRun());
                     applied.put(written, watched);
                 }
                 switch (watched) {

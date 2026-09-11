@@ -155,6 +155,6 @@ public record FillResult(GenerationPlan plan, SequencedMap<RowId, ComposedRow> c
                 purposes.add(new Generator.Purpose.ForAnArm(built.at()));
             }
         }
-        return new Generator.GeneratedRow(purposes, row.inputs());
+        return new Generator.GeneratedRow(purposes, row.inputs(), List.of());
     }
 }

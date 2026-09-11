@@ -23,13 +23,20 @@ import java.util.List;
  * for two behaviors are two rows in two blocks, and a key that left the behavior out would join them
  * into one piece of work nobody can write.
  *
+ * <p><b>And what it stands the dependencies in with.</b> A row of a behavior that decides on what
+ * one answers is written with the answer beside the values, and two rows that write one set of
+ * values under two answers are two pieces of work that go two different ways. Left out, the second
+ * would be joined onto the first and a person would be handed one row said to answer both.
+ *
  * @param behavior the behavior the row is written under
  * @param written  one value per parameter, as the source an author is handed
+ * @param stoodIn  what each asking of a dependency is answered with, as the source says it
  */
-public record RowKey(String behavior, List<String> written) {
+public record RowKey(String behavior, List<String> written, List<String> stoodIn) {
 
     public RowKey {
         written = List.copyOf(written);
+        stoodIn = List.copyOf(stoodIn);
         if (behavior == null) {
             throw new IllegalArgumentException("a row is written under some behavior");
         }
@@ -37,7 +44,10 @@ public record RowKey(String behavior, List<String> written) {
 
     /** The key of one composed row, under the behavior whose block it belongs in. */
     public static RowKey of(String behavior, Generator.GeneratedRow row) {
-        return new RowKey(behavior, row.inputs().stream().map(FixtureTemplate::text).toList());
+        return new RowKey(behavior, row.inputs().stream().map(FixtureTemplate::text).toList(),
+                row.answers().stream()
+                        .map(each -> each.answer().spelled() + " = " + each.value().text())
+                        .toList());
     }
 
     /** The values as one line, which is how a row reads where it is written. */

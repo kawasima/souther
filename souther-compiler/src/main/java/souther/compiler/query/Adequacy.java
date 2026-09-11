@@ -1936,7 +1936,8 @@ public final class Adequacy {
             Coverages.Probe probe = subject == null ? null
                     : probing(sig, subject, constructing(db, name),
                             runningRowsOf(trialling(db, name), behavior, sig,
-                                    numberingOf(db, name)));
+                                    numberingOf(db, name),
+                                    RequiredDependencies.of(db, name, behavior)));
             if (probe == null) {
                 // Nothing builds the values, so no candidate goes through anything. Absent rather
                 // than an answer saying nothing stands anywhere, which is what a search that ran
@@ -2011,8 +2012,8 @@ public final class Adequacy {
                         new Generator.UnresolvedCombination(List.of(),
                                 Generator.UnresolvedCombination.Reason.NOTHING_COMPOSES_ONE));
             }
-            List<souther.compiler.partition.FixtureTemplate> inputs = built.row().inputs();
-            if (!(probe.read(inputs).watched() instanceof Generator.Watched.Ran(var seen))) {
+            souther.compiler.partition.RowToRun composed = built.row().toRun();
+            if (!(probe.read(composed).watched() instanceof Generator.Watched.Ran(var seen))) {
                 return new RuleRequirement.Unsettled.NothingWatchedTheRow();
             }
             // What the row did, and not what it was composed against. A row steered here by a
@@ -2026,7 +2027,7 @@ public final class Adequacy {
             return switch (taken.takenBy(seen)) {
                 case souther.compiler.partition.RulesTaken.WhichRule.TookThis took
                         when took.rule().equals(ruled.rule()) ->
-                        new RuleRequirement.Required(inputs);
+                        new RuleRequirement.Required(composed);
                 case souther.compiler.partition.RulesTaken.WhichRule.TookThis _ ->
                         new RuleRequirement.Unsettled.AComposedRowWentElsewhere();
                 case souther.compiler.partition.RulesTaken.WhichRule.CouldNotTell couldNot ->
@@ -2097,7 +2098,8 @@ public final class Adequacy {
             return Answer.of(Coverages.merged(Coverages.searched(measured, subject,
                     probing(sig, subject, constructing(db, name),
                             runningRowsOf(trialling(db, name), behavior, sig,
-                                    numberingOf(db, name))),
+                                    numberingOf(db, name),
+                                    RequiredDependencies.of(db, name, behavior))),
                     divided.reaching())));
         }
 
@@ -2165,9 +2167,9 @@ public final class Adequacy {
         }
 
         @Override
-        public RowAsRead read(List<souther.compiler.partition.FixtureTemplate> inputs) {
+        public RowAsRead read(souther.compiler.partition.RowToRun row) {
             try {
-                return RowAsRead.of(sig, building, trial, inputs);
+                return RowAsRead.of(sig, building, trial, row);
             } catch (LinkageError _) {
                 // The same, asked by reading a row through them — answered as a row nothing built,
                 // which is not a row seen to stand somewhere else.
@@ -3549,7 +3551,8 @@ public final class Adequacy {
                         RowReadings.readingFor(byTarget, behavior),
                         constructing(db, name),
                         read,
-                        runningRowsOf(trialling(db, name), behavior, sig, numbering),
+                        runningRowsOf(trialling(db, name), behavior, sig, numbering,
+                                RequiredDependencies.of(db, name, behavior)),
                         levelOf(db).runsInstrumentedRows(),
                         db.ask(new Front.Adequacy()).value().generation());
             } catch (LinkageError _) {
@@ -3726,7 +3729,8 @@ public final class Adequacy {
                     break;
                 }
                 out.put(each.getKey(), new Generator.GeneratedRow(
-                        List.of(new Generator.Purpose.ForADecisionRule(each.getKey())), stoodBy));
+                        List.of(new Generator.Purpose.ForADecisionRule(each.getKey())),
+                        stoodBy.inputs(), stoodBy.answers()));
             }
             return new RowsForRules(asked, out, stopped
                     ? Generator.UnresolvedCombination.Reason.THE_BLOCK_IS_AS_LONG_AS_IT_MAY_BE
@@ -4386,23 +4390,34 @@ public final class Adequacy {
      * of them would settle.
      */
     static Generator.Trial runningRowsOf(RowTrials trials, String behavior, Sig sig,
-                                         Optional<SiteNumbering> numbering) {
-        if (trials == null || numbering.isEmpty()) {
-            // Nothing runs where nothing applies the behavior, and nothing is read where the module
-            // has no numbering to read it under — which is the same module, so the second follows
-            // the first and is said rather than assumed.
+                                         Optional<SiteNumbering> numbering,
+                                         RequiredDependencies requires) {
+        if (trials == null || numbering.isEmpty() || requires == null) {
+            // Nothing runs where nothing applies the behavior, nothing is read where the module has
+            // no numbering to read it under, and nothing is applied where what the behavior
+            // requires could not be worked out — the three are the same module, so the rest follow
+            // the first and are said rather than assumed.
             return Generator.Trial.NOTHING_RUNS;
         }
         RowTrials.OfBehavior application = trials.forBehavior(behavior, sig);
-        return inputs -> application
-                .run(inputs.stream()
-                        .map(souther.compiler.partition.FixtureTemplate::value).toList())
+        return row -> {
+            List<RowTrials.AnsweredWith> standing = requires.standingIn(row.answers());
+            if (standing == null) {
+                // A row short of a stand-in the behavior requires is a row nothing applies, which
+                // is said here rather than by a construction failing: what comes back from that is
+                // a row nothing was seen doing, and so is this — but only this one knows why.
+                return new Generator.Watched.NoAccount();
+            }
+            return application
+                .run(row.inputs().stream()
+                        .map(souther.compiler.partition.FixtureTemplate::value).toList(), standing)
                 // Read under the numbering the caller is asking about. What a run left behind says
                 // which numbering it was made under, so a recording of classes numbered otherwise
                 // is refused here rather than answered about places it was never near.
                 .<Generator.Watched>map(seen -> new Generator.Watched.Ran(
                         numbering.orElseThrow().align(seen)))
                 .orElseGet(Generator.Watched.NoAccount::new);
+        };
     }
 
     /**

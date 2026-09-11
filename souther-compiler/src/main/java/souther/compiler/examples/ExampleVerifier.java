@@ -2094,7 +2094,7 @@ public final class ExampleVerifier {
                     // writing what a dependency answers, so that a reader of a row has one question
                     // to ask of either.
                     yield new StoodInFor.Read(
-                            new DependencyStandin(dependency, depSig.ins().size(), _ -> value),
+                            StandingIn.by(dependency, depSig.ins().size(), _ -> value),
                             RowStatements.StandInRead.of(dependency, w.pos(), takes(depSig),
                                     List.of(), new StoodIn.Otherwise.Answer(
                                             fixtures.observed(value), w.value().pos())));
@@ -2237,7 +2237,7 @@ public final class ExampleVerifier {
         StoodIn.Otherwise otherwise = fallback == null ? new StoodIn.Otherwise.NothingStated()
                 : new StoodIn.Otherwise.Answer(fixtures.observed(fallback.answer().value()),
                         fallback.row().output().pos());
-        return new StoodInFor.Read(new DependencyStandin(dependency, arity, body),
+        return new StoodInFor.Read(StandingIn.by(dependency, arity, body),
                 RowStatements.StandInRead.of(dependency, fk.pos(), takes(depSig), entries,
                         otherwise));
     }

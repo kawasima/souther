@@ -2,6 +2,8 @@ package souther.compiler.query;
 
 import souther.compiler.partition.FixtureTemplate;
 import souther.compiler.partition.Generator;
+import souther.compiler.partition.RowToRun;
+import souther.compiler.partition.StoodInAnswer;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -36,14 +38,19 @@ import java.util.List;
  * is for. What it has no word for is a name — a rule is told from the rules beside it by the
  * conditions it turns on, and those are said under the row rather than in it.
  *
+ * @param answers  what the row stands each asking of a dependency in with. A row of a behavior
+ *                 that requires one is not a row anybody can run until something answers for it,
+ *                 so the stand-ins go out with the row — every dependency the target requires, and
+ *                 not only the ones its decision turns on
  * @param namedFor the classes, arms and rules this row was composed for, in the order they were
  *                 taken
  */
-public record OfferedRow(RowKey key, List<FixtureTemplate> inputs,
+public record OfferedRow(RowKey key, List<FixtureTemplate> inputs, List<StoodInAnswer> answers,
                          List<Generator.Purpose> namedFor) {
 
     public OfferedRow {
         inputs = List.copyOf(inputs);
+        answers = List.copyOf(answers);
         namedFor = List.copyOf(namedFor);
         for (Generator.Purpose purpose : namedFor) {
             if (!(purpose instanceof Generator.Purpose.ForAClass
@@ -56,6 +63,11 @@ public record OfferedRow(RowKey key, List<FixtureTemplate> inputs,
         }
     }
 
+    /** The row as everything it takes to run one. */
+    public RowToRun toRun() {
+        return new RowToRun(inputs, answers);
+    }
+
     /** The row with {@code more} added to what it may be named after. */
     OfferedRow and(List<Generator.Purpose> more) {
         if (more.isEmpty()) {
@@ -63,6 +75,6 @@ public record OfferedRow(RowKey key, List<FixtureTemplate> inputs,
         }
         List<Generator.Purpose> both = new ArrayList<>(namedFor);
         both.addAll(more);
-        return new OfferedRow(key, inputs, both);
+        return new OfferedRow(key, inputs, answers, both);
     }
 }

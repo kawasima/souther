@@ -16,6 +16,7 @@ import souther.compiler.generated.ProbeImage;
 import souther.compiler.jvm.ClassFileImage;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -29,11 +30,13 @@ import java.util.Optional;
  *
  * <p>The same classes an evaluation runs against, reached the same way a written row reaches them —
  * the values are built through this module's own decoders and handed to the answerer this compile
- * emitted. What differs is that there is no row: no expectation to hold the answer to, no fakes, no
- * stand-ins. So a behavior that depends on another cannot be applied this way, and neither can one
- * whose implementation is out of reach. Both are said outright by the layer that would have applied
- * it, and both come back as nothing having run — which is asked of that layer rather than worked out
- * here from what a behavior declares, there being one question and no reason for two answers to it.
+ * emitted. What differs is that there is no row: no expectation to hold the answer to, and no
+ * module's table behind what its dependencies answer. What a candidate stands them in with travels
+ * with the candidate, because which answer a rule takes is part of what the candidate is; a
+ * behavior whose implementation is out of reach still cannot be applied, which is said outright by
+ * the layer that would have applied it and comes back as nothing having run — asked of that layer
+ * rather than worked out here from what a behavior declares, there being one question and no reason
+ * for two answers to it.
  *
  * <p>A run that aborts still went where it went. An invariant refusing the answer, a budget running
  * out, an {@code unreachable} being reached — each of them happens after the row has passed whatever
@@ -70,7 +73,7 @@ public final class RowTrial {
                               EvaluationPolicy steps) {
         MemoryClassLoader loader = new MemoryClassLoader(classes, parent);
         Answerer answerer = Answering.generatedHere().over(generated, loader);
-        return (behavior, sig) -> inputs -> {
+        return (behavior, sig) -> (inputs, answers) -> {
             if (!(answerer.of(behavior) instanceof Answerer.Answer.Something applies)) {
                 return Optional.empty();   // nothing applies this behavior, so nothing ran
             }
@@ -78,7 +81,7 @@ public final class RowTrial {
             // expands a value is that row's, and a reader kept between them would be a session
             // spanning every candidate of every combination.
             return went(new FixtureReader(module, symbols, fields, values, loader), applies, behavior, sig,
-                    inputs, probes, steps);
+                    inputs, answers, probes, steps);
         };
     }
 
@@ -92,8 +95,9 @@ public final class RowTrial {
      */
     private static Optional<Observation> went(FixtureReader fixtures,
                                               Answerer.Answer.Something applies, String behavior,
-                                              Sig sig, List<Hir.Expr> inputs, ProbeImage probes,
-                                              EvaluationPolicy steps) {
+                                              Sig sig, List<Hir.Expr> inputs,
+                                              List<RowTrials.AnsweredWith> answers,
+                                              ProbeImage probes, EvaluationPolicy steps) {
         List<BoundaryInput> ins = sig.ins();
         if (inputs.size() != ins.size()) {
             return Optional.empty();   // not a row of this behavior, so this is not the thing to run
@@ -111,7 +115,7 @@ public final class RowTrial {
                 String what = "input " + (i + 1) + " of `" + behavior + "`";
                 over.add(new Handed(built, () -> fixtures.neutral(built, at, what)));
             }
-            applying = applies.applying(List.of());
+            applying = applies.applying(standingIn(fixtures, answers));
         } catch (StandinNotBuilt | LinkageError e) {
             // Nothing was applied, and these are the two ways that happens before an application:
             // a stand-in that could not be made, and this compiler's own output not linking. Named
@@ -143,6 +147,53 @@ public final class RowTrial {
             }
         };
     }
+
+    /**
+     * What the candidate stands its target's dependencies in with, built.
+     *
+     * <p>The values go through the reader this row is being built by, so a dependency's answer is
+     * one of this module's own values exactly as an input of the row is. Built here rather than
+     * where the candidate was composed, for the reason a row's inputs are: what a search chose is
+     * text and a tree, and what an implementation is constructed with is of the loader it came
+     * from.
+     *
+     * <p>Which entry answers a call is the same rule a written table dispatches by
+     * ({@link ExampleStatements.Standins#answering}), asked of what this built rather than
+     * re-decided here. An entry answering for every call is the {@code with} a row writes, and it
+     * is the fallback — so a call none of the stated ones names is answered rather than refused: a
+     * candidate is being run to find out where it goes, and a run that stopped at an unforeseen
+     * call would say nothing about that.
+     */
+    private static List<DependencyStandin> standingIn(FixtureReader fixtures,
+                                                      List<RowTrials.AnsweredWith> answers) {
+        List<DependencyStandin> out = new ArrayList<>(answers.size());
+        for (RowTrials.AnsweredWith each : answers) {
+            List<BoundaryInput> takes = each.signature().ins();
+            List<Entry> stated = new ArrayList<>();
+            Entry otherwise = null;
+            for (RowTrials.AnsweredWith.Answer answer : each.answers()) {
+                Object value = fixtures.buildFixture(answer.answers(), each.signature().out())
+                        .value();
+                if (answer.forEveryCall()) {
+                    otherwise = new Entry(null, value);
+                    continue;
+                }
+                Object[] key = new Object[takes.size()];
+                for (int i = 0; i < key.length; i++) {
+                    key[i] = fixtures.built(answer.whenAppliedTo().get(i), takes.get(i));
+                }
+                stated.add(new Entry(key, value));
+            }
+            Entry fallback = otherwise;
+            out.add(StandingIn.by(each.dependency(), takes.size(), applied ->
+                    ExampleStatements.Standins.answering(stated, fallback, Entry::arguments,
+                            Arrays.copyOf(applied, takes.size())).value()));
+        }
+        return List.copyOf(out);
+    }
+
+    /** One entry of what a candidate stands a dependency in with, built. */
+    private record Entry(Object[] arguments, Object value) {}
 
     /**
      * Applies the behavior, and says whether it was applied at all.

@@ -107,7 +107,7 @@ public record Composition(OfferingRequest request,
         for (Generator.GeneratedRow row : cells) {
             RowKey key = RowKey.of(behavior, row);
             here.put(key, here.computeIfAbsent(key,
-                    _ -> new OfferedRow(key, row.inputs(), List.of())).and(row.purposes()));
+                    _ -> new OfferedRow(key, row.inputs(), row.answers(), List.of())).and(row.purposes()));
         }
         // The lines, joined on the stimulus and never on what they were composed for. A row at a
         // point carries a purpose no offered row may be named after — {@link OfferedRow} refuses
@@ -121,7 +121,7 @@ public record Composition(OfferingRequest request,
         // answer and not this row's label.
         for (Generator.GeneratedRow row : lines) {
             RowKey key = RowKey.of(behavior, row);
-            here.putIfAbsent(key, new OfferedRow(key, row.inputs(), List.of()));
+            here.putIfAbsent(key, new OfferedRow(key, row.inputs(), row.answers(), List.of()));
         }
         // And the rules, after the lines. What a row settles decides whether it is kept and the
         // order decides which of two that settle the same things is; the body's own lines are
@@ -134,7 +134,7 @@ public record Composition(OfferingRequest request,
         for (Generator.GeneratedRow row : rules) {
             RowKey key = RowKey.of(behavior, row);
             here.put(key, here.computeIfAbsent(key,
-                    _ -> new OfferedRow(key, row.inputs(), List.of())).and(row.purposes()));
+                    _ -> new OfferedRow(key, row.inputs(), row.answers(), List.of())).and(row.purposes()));
         }
     }
 
