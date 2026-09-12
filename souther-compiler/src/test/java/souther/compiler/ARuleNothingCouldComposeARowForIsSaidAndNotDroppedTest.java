@@ -277,6 +277,61 @@ class ARuleNothingCouldComposeARowForIsSaidAndNotDroppedTest {
         }
     }
 
+    /**
+     * The same fork, where each call site hands the helper a rule of its own.
+     *
+     * <p>{@code look} decides partly by a rule the caller writes, so the two calls are two
+     * obligations at one authored arm rather than one — which is what an obligation carries beyond
+     * where it was written. The arm for {@code Off} is out of reach at the call whose value refuses
+     * it and reachable at the other, so what is owed there is a row, and the two must not be
+     * matched to each other by what they have in common.
+     *
+     * @param first which of the two is written first, which nothing about the model turns on
+     */
+    private static String eachWithItsOwnRule(String first) {
+        String never = "check(n -> n < 0, age.value)";
+        String ever = "check(n -> n < 100, any)";
+        return """
+                module example.supplied
+
+                data Age = Int invariant value >= 0
+                data Answer = Int
+
+                let check (p: (Int) -> Bool, n: Int): Answer =
+                    if p(n) then Answer(1) else Answer(0)
+
+                behavior pick : (age: Age, any: Int) -> Answer
+                    constructs Answer
+                let pick (age, any) = Answer(
+                """
+                + ("never".equals(first) ? "    " + never + ".value + " + ever + ".value)\n"
+                        : "    " + ever + ".value + " + never + ".value)\n")
+                + """
+
+                example pick
+                  | "one" : (Age(5), 5) -> Answer(1)
+                """;
+    }
+
+    /**
+     * A rule handed in at one call and not holding there leaves the other call's ways owed.
+     *
+     * <p>Two calls handing two rules are two obligations at one authored fork, and one of these
+     * rules cannot hold for what it is applied to. What is owed of the other call is untouched by
+     * that: a way through it is a way an author writes a row for, and reporting it as one the
+     * model's own rules excuse would be answering about one call with what was found at the next.
+     */
+    @Test
+    void aRuleThatCannotHoldAtOneCallLeavesTheOtherCallsWaysOwed() {
+        for (String first : List.of("never", "ever")) {
+            List<String> said = requirementsOf(eachWithItsOwnRule(first));
+
+            assertFalse(said.contains("excluded"),
+                    () -> "the call handing the second rule reaches the arm, so nothing shows the"
+                            + " ways down it out of reach (" + first + " first): " + said);
+        }
+    }
+
     @Test
     void andTheAnswerIsTheSameWhicheverCallSiteIsWrittenFirst() {
         // As a tally and not in the document's order. Writing the two arms the other way round is

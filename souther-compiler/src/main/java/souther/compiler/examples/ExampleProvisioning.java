@@ -2,7 +2,6 @@ package souther.compiler.examples;
 
 import souther.compiler.ast.Hir;
 import souther.compiler.check.FakeTables;
-import souther.compiler.check.Prepared;
 import souther.compiler.types.ValueName;
 
 import java.util.ArrayList;
@@ -17,10 +16,11 @@ import java.util.List;
  * E1908; one written for more than once is a refusal said where the blocks are, and the row is
  * left with nothing to run against and nothing of its own to say.
  *
- * <p>Said here rather than inside the verifier that reports it, because the question is asked twice
- * over: once by a run about to build a stand-in, and once by a reader that only wants to know what a
- * row still owes and has no values to build. What was written and where is handed back rather than a
- * yes or no, since those two do different things with it.
+ * <p>Said here rather than inside the verifier that reports it, because the question is asked over
+ * and over: by a run about to build a stand-in, by a reader that only wants to know what a row still
+ * owes and has no values to build, and by a search composing a row nobody has written — which asks
+ * it of the empty row and gets back what the module answers on its own. What was written and where
+ * is handed back rather than a yes or no, since each of them does something different with it.
  *
  * <p>What a row contributes is the {@code with}s on it, taken as a list rather than as the row, so
  * that a row nobody has written yet can be asked the same question by contributing none.
@@ -57,15 +57,18 @@ public final class ExampleProvisioning {
      * What stands in for {@code dependency}, given what the row supplies of its own.
      *
      * @param onTheRow the {@code with}s written on the row; empty for a row not written yet
+     * @param declared what the module's {@code fake} blocks declare, which is all of a module this
+     *                 question reads — so a search composing a row it has no module in hand for
+     *                 asks it the same way a verifier with one does
      */
     public static Standin standingIn(List<Hir.With> onTheRow, ValueName.Behavior dependency,
-                                     Prepared.ForExamples module) {
+                                     FakeTables declared) {
         for (Hir.With written : onTheRow) {
             if (dependency.equals(written.standsInFor())) {
                 return new Standin.OnTheRow(written);
             }
         }
-        return switch (module.fakes().declaredFor(dependency)) {
+        return switch (declared.declaredFor(dependency)) {
             case FakeTables.Declaration.Missing _ -> new Standin.Nothing();
             case FakeTables.Declaration.One(FakeTables.Occurrence.Resolved table) ->
                     new Standin.InTheModule(table);
@@ -82,10 +85,10 @@ public final class ExampleProvisioning {
      */
     public static List<ValueName.Behavior> unsupplied(List<Hir.With> onTheRow,
                                                       List<ValueName.Behavior> required,
-                                                      Prepared.ForExamples module) {
+                                                      FakeTables declared) {
         List<ValueName.Behavior> owed = new ArrayList<>();
         for (ValueName.Behavior dependency : required) {
-            if (standingIn(onTheRow, dependency, module) instanceof Standin.Nothing) {
+            if (standingIn(onTheRow, dependency, declared) instanceof Standin.Nothing) {
                 owed.add(dependency);
             }
         }

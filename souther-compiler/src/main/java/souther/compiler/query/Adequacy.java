@@ -23,6 +23,7 @@ import souther.compiler.coverage.CoverageSites;
 import souther.compiler.examples.FixtureReader;
 import souther.compiler.ast.Hir;
 import souther.compiler.check.AnalysisBody;
+import souther.compiler.check.FakeTables;
 import souther.compiler.check.AtomSpace;
 import souther.compiler.check.BoundaryOutput;
 import souther.compiler.check.ElementBindings;
@@ -2617,8 +2618,13 @@ public final class Adequacy {
     private static AnswersForARule answering(Db db, String module, String behavior,
                                              souther.compiler.partition.MeasuredInput subject) {
         RequiredDependencies requires = RequiredDependencies.of(db, module, behavior);
-        return requires == null ? null
-                : new AnswersForARule(requires, standingForEach(db, module, subject, requires));
+        // What the module states for its dependencies, which is the environment a row is composed
+        // inside. Absent where resolution did not reach the blocks, and a row composed as though
+        // the module stated none would write over a table it was about to be pasted beside.
+        FakeTables blocks = db.ask(new Names.FakeTables(module)).value();
+        return requires == null || blocks == null ? null
+                : new AnswersForARule(requires, standingForEach(db, module, subject, requires),
+                        blocks);
     }
 
     /**

@@ -4,8 +4,11 @@ import souther.compiler.execute.EvaluationPolicy;
 import souther.compiler.execute.RowTrials;
 import souther.compiler.ast.Hir;
 import souther.compiler.check.BoundaryInput;
+import souther.compiler.check.FakeTables;
+import souther.compiler.check.Prepared;
 import souther.compiler.check.Sig;
 import souther.compiler.check.Symbols;
+import souther.compiler.core.Contract;
 import souther.compiler.coverage.NumberingIdentity;
 import souther.compiler.coverage.Observation;
 import souther.compiler.coverage.Probe;
@@ -14,6 +17,8 @@ import souther.compiler.generated.GeneratedImplementations;
 import souther.compiler.generated.MemoryClassLoader;
 import souther.compiler.generated.ProbeImage;
 import souther.compiler.jvm.ClassFileImage;
+import souther.compiler.observe.FieldTypes;
+import souther.compiler.types.ValueName;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -29,8 +34,9 @@ import java.util.Optional;
  *
  * <p>The same classes an evaluation runs against, reached the same way a written row reaches them —
  * the values are built through this module's own decoders and handed to the answerer this compile
- * emitted. What differs is that there is no row: no expectation to hold the answer to, and no
- * module's table behind what its dependencies answer. What a candidate stands them in with travels
+ * emitted, and a dependency the module states a table for is answered by that table exactly as it is
+ * for a row somebody wrote. What differs is that there is no row: no expectation to hold the answer
+ * to. What a candidate stands them in with travels
  * with the candidate, because which answer a rule takes is part of what the candidate is; a
  * behavior whose implementation is out of reach still cannot be applied, which is said outright by
  * the layer that would have applied it and comes back as nothing having run — asked of that layer
@@ -59,19 +65,27 @@ public final class RowTrial {
      * went nowhere — so a caller with unmeasured classes must not build one of these, and every
      * combination would otherwise come back missed.
      *
+     * @param signatures what each behavior this module reaches takes and answers, and
+     *                   {@code contracts} what it states of its answer. Both are what a module's
+     *                   tables are held to before one stands anything in, which is the same holding
+     *                   a written row's run is under — a search running against a table a written
+     *                   row is refused would be certifying rows in an environment nothing else has
      * @param steps how many counted points a row may pass, and how deep a recursive helper may go.
      *              A composed row is not a row anyone wrote, so a model that loops on it is this
      *              search's problem to stop rather than an author's to be told about
      */
-    public static RowTrials over(souther.compiler.check.Prepared.ForExamples module,
-                              Symbols symbols, souther.compiler.observe.FieldTypes fields,
+    public static RowTrials over(Prepared.ForExamples module,
+                              Symbols symbols, FieldTypes fields,
                               Map<String, ClassFileImage> classes,
                               ClassLoader parent,
                               Map<String, Hir.FnDef> values, GeneratedImplementations generated,
+                              Map<ValueName.Behavior, Sig> signatures,
+                              Map<ValueName.Behavior, Contract> contracts,
                               ProbeImage probes,
                               EvaluationPolicy steps) {
         MemoryClassLoader loader = new MemoryClassLoader(classes, parent);
         Answerer answerer = Answering.generatedHere().over(generated, loader);
+        EnsuresChecks ensures = new EnsuresChecks(loader, contracts, signatures.keySet());
         return (behavior, sig) -> (inputs, answers) -> {
             if (!(answerer.of(behavior) instanceof Answerer.Answer.Something applies)) {
                 return Optional.empty();   // nothing applies this behavior, so nothing ran
@@ -79,8 +93,8 @@ public final class RowTrial {
             // One reader per row, the way a written row has one: what a reading builds up while it
             // expands a value is that row's, and a reader kept between them would be a session
             // spanning every candidate of every combination.
-            return went(new FixtureReader(module, symbols, fields, values, loader), applies, behavior, sig,
-                    inputs, answers, probes, steps);
+            return went(new FixtureReader(module, symbols, fields, values, loader), module, ensures,
+                    applies, behavior, sig, inputs, answers, probes, steps);
         };
     }
 
@@ -93,6 +107,8 @@ public final class RowTrial {
      * nothing.
      */
     private static Optional<Observation> went(FixtureReader fixtures,
+                                              Prepared.ForExamples module,
+                                              EnsuresChecks ensures,
                                               Answerer.Answer.Something applies, String behavior,
                                               Sig sig, List<Hir.Expr> inputs,
                                               List<RowTrials.AnsweredWith> answers,
@@ -114,7 +130,14 @@ public final class RowTrial {
                 String what = "input " + (i + 1) + " of `" + behavior + "`";
                 over.add(new Handed(built, () -> fixtures.neutral(built, at, what)));
             }
-            applying = applies.applying(standingIn(fixtures, answers));
+            List<DependencyStandin> standins = standingIn(fixtures, module, ensures, answers);
+            if (standins == null) {
+                // A table the row leans on is not one to stand in with, so there was nothing to
+                // apply the behavior with and nothing ran. What is wrong with it is wrong about
+                // what the module wrote and is said where the block is.
+                return Optional.empty();
+            }
+            applying = applies.applying(standins);
         } catch (StandinNotBuilt | LinkageError e) {
             // Nothing was applied, and these are the two ways that happens before an application:
             // a stand-in that could not be made, and this compiler's own output not linking. Named
@@ -156,18 +179,59 @@ public final class RowTrial {
      * text and a tree, and what an implementation is constructed with is of the loader it came
      * from.
      *
-     * <p>One answer for every call, which is what a row's {@code with} states and what a candidate
-     * carries. A candidate is run to find out where it goes, so a call this reading did not foresee
-     * is answered rather than refused — a run that stopped at one would say nothing about that.
+     * <p>One answer for every call where the candidate wrote a value, which is what a row's
+     * {@code with} states. A candidate is run to find out where it goes, so a call this reading did
+     * not foresee is answered rather than refused — a run that stopped at one would say nothing
+     * about that.
+     *
+     * <p>And the module's table where the candidate leaned on it, dispatching call by call the way
+     * it does under a row somebody wrote. Which answer a call gets is then the table's, which is
+     * the point: a candidate leaning on the table is a candidate whose way through the body the
+     * module's own environment decides, and running it against anything else would certify a row
+     * that goes somewhere else once it is pasted in.
+     *
+     * <p>Null where a table the candidate leans on is not one to stand in with, which is a row that
+     * cannot be run rather than one that ran and reached nothing.
      */
     private static List<DependencyStandin> standingIn(FixtureReader fixtures,
+                                                      Prepared.ForExamples module,
+                                                      EnsuresChecks ensures,
                                                       List<RowTrials.AnsweredWith> answers) {
         List<DependencyStandin> out = new ArrayList<>(answers.size());
         for (RowTrials.AnsweredWith each : answers) {
-            Object value = fixtures.buildFixture(each.answers(), each.signature().out()).value();
-            out.add(StandingIn.by(each.dependency(), each.signature().ins().size(), _ -> value));
+            switch (each) {
+                case RowTrials.AnsweredWith.OnTheRow(var dependency, var signature, var written) -> {
+                    Object value = fixtures.buildFixture(written, signature.out()).value();
+                    out.add(StandingIn.by(dependency, signature.ins().size(), _ -> value));
+                }
+                case RowTrials.AnsweredWith.InTheModule(var dependency, var signature) -> {
+                    StandingIn.OffATable stood = statedFor(fixtures, module, ensures, dependency,
+                            signature);
+                    if (stood == null) {
+                        return null;
+                    }
+                    out.add(stood.applies());
+                }
+            }
         }
         return List.copyOf(out);
+    }
+
+    /**
+     * The stand-in the module's table gives for {@code dependency}, or null where there is none to
+     * give.
+     *
+     * <p>Asked of the module here rather than carried on the candidate. What a module states is one
+     * table however many candidates lean on it, and a candidate carrying a copy would be running
+     * against whatever the table said when it was composed.
+     */
+    private static StandingIn.OffATable statedFor(FixtureReader fixtures,
+                                                  Prepared.ForExamples module,
+                                                  EnsuresChecks ensures,
+                                                  ValueName.Behavior dependency, Sig signature) {
+        return module.fakes().declaredFor(dependency)
+                instanceof FakeTables.Declaration.One(var stated)
+                ? StandingIn.byTheTable(fixtures, ensures, stated, dependency, signature) : null;
     }
 
     /**
