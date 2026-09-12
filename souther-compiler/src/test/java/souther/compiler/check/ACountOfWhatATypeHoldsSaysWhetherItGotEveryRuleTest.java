@@ -66,10 +66,9 @@ class ACountOfWhatATypeHoldsSaysWhetherItGotEveryRuleTest {
                 "every rule of this model can be read");
 
         TypeKey held = new TypeKey(module, "Held");
-        RuleReadingSource shortOfOne = new RuleReadingSource(whole.symbols(),
-                named -> named.equals(held)
-                        ? new ExpandedClauseResult.Unavailable(named) : whole.invariants().of(named),
-                whole.states(), whole.written());
+        RuleReadingSource shortOfOne = new RuleReadingSource(whole.symbols(), whole.invariants(),
+                named -> named.equals(held) ? null : whole.published().of(named),
+                whole.written());
 
         assertFalse(TypeCardinality.solve(declarations, shortOfOne, policy).everyRuleReached(),
                 "a count that walked into a declaration whose rules could not be worked out has not"

@@ -113,14 +113,14 @@ class EveryClauseADeclarationPassesTypesInTheDischargeRepresentationTest {
             assertNotNull(prepared);
 
             Clauses clauses = new Clauses(new RuleReadingSource(symbols, declared,
-                    ClauseMeanings.NONE, ClauseLocations.NONE));
+                    PublishedDeclarations.NONE, ClauseLocations.NONE));
             int read = 0;
             for (Hir.Def def : prepared.defs().stream().map(each -> each.declaration().node()).toList()) {
                 if (!(def instanceof Hir.Data data)) {
                     continue;
                 }
                 TypeSymbol.AtModule named = TypeSymbols.declared(new TypeKey(module, data.name()));
-                for (TypeOps.Declared each : clauses.of(named).reached()) {
+                for (TypeOps.Declared each : clauses.declaredHere(named)) {
                     assertNotNull(clauses.typed(each.asExpanded(), named),
                             "`" + data.name() + "` declares a clause this check could not type:\n"
                                     + source);

@@ -35,16 +35,17 @@ final class Clauses {
     private final Symbols symbols;
     private final ExpandedClauseLookup expandedClauses;
     private final ClauseLocations written;
-    /** Where what each clause of a declaration states is answered from — the declaration's own
-     *  reading of it, and not one this reader makes out of the tree it was handed. */
-    private final ClauseMeanings meanings;
+    /** Where what a declaration says is answered from — the declaration's own reading of it, and
+     *  not one this reader makes out of the tree it was handed. Which clauses it has, what each of
+     *  them states, and what it spreads all come from here. */
+    private final PublishedDeclarations published;
     private final Map<TypeSymbol.AtModule, Map<String, Type>> fields = new HashMap<>();
     private final Map<TypeSymbol.AtModule, Map<String, BindingId>> bindings =
             new HashMap<>();
     /** Remembered per declaration, not per clause: a clause an include brings in is one expression
      * reached under two names, and what it types to is read against the fields of the one asking. */
     private final Map<TypeSymbol, Map<Hir.Expr, TypedClause>> typed = new HashMap<>();
-    private final Map<TypeSymbol.AtModule, ExpandedRules> effective = new HashMap<>();
+    private final Map<TypeSymbol.AtModule, PublishedRules> effective = new HashMap<>();
     /** Which of a declaration's own fields each typed clause reads — what a construction has to have
      * filled for the clause to be read at all. */
     private final Map<Core, Set<String>> readsFields = new IdentityHashMap<>();
@@ -63,24 +64,12 @@ final class Clauses {
         this.symbols = source.symbols();
         this.expandedClauses = source.invariants();
         this.written = source.written();
-        this.meanings = source.states();
+        this.published = source.published();
     }
 
     /** Where this reads, for a reader that has to hand it on rather than ask for one of its own. */
     RuleReadingSource source() {
         return source;
-    }
-
-    /** The representation this reads a declaration's clauses in, for a reader that has to hand it
-     *  on rather than ask for one of its own. */
-    ExpandedClauseLookup expandedClauses() {
-        return expandedClauses;
-    }
-
-    /** Where what each clause of a declaration states is answered from, for a reader that has to
-     *  hand it on rather than ask for one of its own. */
-    ClauseMeanings states() {
-        return meanings;
     }
 
     /** Where a clause of a declaration is written, for the same reader — asked where a sentence
@@ -89,14 +78,26 @@ final class Clauses {
         return written;
     }
 
-    /** Every rule that applies to {@code named}, in the expanded representation, with whether every
-     * one of them was reached. */
-    ExpandedRules of(TypeSymbol.AtModule named) {
+    /** Every rule that applies to {@code named}, as the declarations that wrote them publish them,
+     * with whether every one of them was reached. */
+    PublishedRules of(TypeSymbol.AtModule named) {
         return effective.computeIfAbsent(named, name ->
-                TypeOps.expandedInvariants(name, symbols, expandedClauses));
+                PublishedRules.governing(name, symbols, published));
     }
 
-    private final Map<TypeSymbol.AtModule, List<TypeOps.Declared>> declaredClauses =
+    /**
+     * The clauses {@code named} itself writes, in the representation an expansion left them in.
+     *
+     * <p>The one way a tree of a declaration is reached here, and it is the producing side's: what
+     * a declaration states is worked out from the clauses its own module expanded, and published
+     * so that every reader elsewhere takes it from {@link #of} instead. Its own and not the ones it
+     * spreads in, because what this is for is a declaration answering for what it wrote.
+     */
+    List<TypeOps.Declared> declaredHere(TypeSymbol.AtModule named) {
+        return TypeOps.writtenOn(named, expandedClauses);
+    }
+
+    private final Map<TypeSymbol.AtModule, List<ClauseMeaning>> declaredClauses =
             new HashMap<>();
 
     /** What {@code named}'s fields are, read from this reading's own world for the reason
@@ -175,12 +176,12 @@ final class Clauses {
      * that is not there, and the clause is left to the run-time check rather than read against
      * nothing.
      */
-    private AsStated statedAt(TypeOps.Declared clause, TypeSymbol.AtModule named,
+    private AsStated statedAt(ClauseMeaning clause, TypeSymbol.AtModule named,
                               Map<BindingId, Core> given) {
         // Fail-open: a clause with no form leaves its run-time check standing, whichever way the
         // form went missing. Which of the two it was matters to a reader that publishes a sentence
         // about the clause, and this is not one.
-        if (!(meaningOf(clause) instanceof ClauseMeaning.Stated it)
+        if (!(clause instanceof ClauseMeaning.Stated it)
                 || !everyFieldRead(given, named, it.fieldsRead())) {
             return null;
         }
@@ -231,28 +232,9 @@ final class Clauses {
      * and there is nothing to substitute. The same statement the reading below puts a
      * construction's values into, taken the same way and from the same place.
      */
-    AsStated stated(TypeOps.Declared clause) {
-        return meaningOf(clause) instanceof ClauseMeaning.Stated it
+    AsStated stated(ClauseMeaning clause) {
+        return clause instanceof ClauseMeaning.Stated it
                 ? new AsStated(it.states().termForClauseReading(), it.parts()) : null;
-    }
-
-    /**
-     * What the declaration that wrote {@code clause} says it states, or {@code null} where it says
-     * nothing about it.
-     *
-     * <p>Asked of the declaration the clause was written on and not of the one being read. A clause
-     * a spread brought in was written elsewhere and is that declaration's to answer for, so a
-     * reading that asked the declaration in hand would be asking a declaration about a clause it
-     * did not write.
-     */
-    private ClauseMeaning meaningOf(TypeOps.Declared clause) {
-        Clause.Id wanted = Clause.Ref.of(clause).id();
-        for (ClauseMeaning each : meanings.of(clause.declaredOn().key())) {
-            if (each.ref().id().equals(wanted)) {
-                return each;
-            }
-        }
-        return null;
     }
 
     /** Whether {@code given} holds a value for every one of {@code fields}, which are named as the
@@ -280,8 +262,8 @@ final class Clauses {
     StatedClauses statedAt(TypeSymbol.AtModule named, Map<BindingId, Core> given) {
         List<Stated> stated = new ArrayList<>();
         List<RuleRef.Invariant> lost = new ArrayList<>();
-        for (TypeOps.Declared inv : declared(named)) {
-            Clause.Ref clause = Clause.Ref.of(inv);
+        for (ClauseMeaning inv : declared(named)) {
+            Clause.Ref clause = inv.ref();
             AsStated one = statedAt(inv, named, given);
             if (one != null) {
                 // The clause as one reading, and the parts its author wrote as subtrees of that
@@ -370,8 +352,8 @@ final class Clauses {
         }
     }
 
-    /** Every clause of {@code named}, each with the declaration that wrote it. */
-    List<TypeOps.Declared> declared(TypeSymbol.AtModule named) {
+    /** Every clause of {@code named}, as the declaration that wrote it publishes it. */
+    List<ClauseMeaning> declared(TypeSymbol.AtModule named) {
         return declaredClauses.computeIfAbsent(named, name -> of(name).reached());
     }
 

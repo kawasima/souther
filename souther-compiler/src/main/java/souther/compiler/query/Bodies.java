@@ -2014,7 +2014,7 @@ public final class Bodies {
                             // scopes, so a reading made here is not a reading made there and says
                             // so.
                             new RuleReadingSource(scope.value(), Shapes.expandedClauses(db),
-                                    Shapes.clauseMeanings(db), Shapes.clauseLocations(db)),
+                                    Shapes.publishedDeclarations(db), Shapes.clauseLocations(db)),
                             db.readings(),
                             contracts.present() ? contracts.value() : Map.of())
                     : null;

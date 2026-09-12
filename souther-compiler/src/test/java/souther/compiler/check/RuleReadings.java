@@ -42,7 +42,7 @@ public final class RuleReadings {
      *  about a declaration is asking for a reading this never had, and it answers that nothing
      *  declares one rather than the tree the declaration happens to carry. */
     public static RuleReadingSource ofNoClauseFiled(Symbols symbols) {
-        return new RuleReadingSource(symbols, noClauseFiled(), ClauseMeanings.NONE,
+        return new RuleReadingSource(symbols, noClauseFiled(), PublishedDeclarations.NONE,
                 ClauseLocations.NONE);
     }
 

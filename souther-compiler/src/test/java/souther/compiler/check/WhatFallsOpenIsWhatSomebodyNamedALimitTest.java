@@ -6,6 +6,7 @@ import souther.compiler.check.InvariantChecker.GaveUp;
 import souther.compiler.core.Core;
 import souther.compiler.query.Compilation;
 import souther.compiler.query.Scopes;
+import souther.compiler.query.Shapes;
 import souther.compiler.types.BindingId;
 import souther.compiler.types.BindingOwner;
 import souther.compiler.types.Type;
@@ -216,10 +217,10 @@ class WhatFallsOpenIsWhatSomebodyNamedALimitTest {
     /**
      * A failure nobody named a limit leaves the analysis rather than being recorded as one.
      *
-     * <p>Raised where this compiler reads its own answers — a lookup of a declaration's expanded
-     * clauses — because that is what the swallowed failures were: not the program being unreadable,
-     * but this compiler failing to produce what it says it produces. Swallowed, it would leave a
-     * behavior with no findings, which is what a behavior whose every construction is proven leaves.
+     * <p>Raised where this compiler reads its own answers — a lookup of what a declaration says —
+     * because that is what the swallowed failures were: not the program being unreadable, but this
+     * compiler failing to produce what it says it produces. Swallowed, it would leave a behavior
+     * with no findings, which is what a behavior whose every construction is proven leaves.
      */
     @Test
     void aFailureNobodyNamedALimitLeavesTheAnalysis() {
@@ -230,11 +231,11 @@ class WhatFallsOpenIsWhatSomebodyNamedALimitTest {
         Scope params = heldTo(new Type.Ref(TypeSymbols.declared(new TypeKey("demo", "制限木"))));
 
         assertEquals(InvariantChecker.Status.COMPLETE,
-                InvariantChecker.analyze(body, readingOf(c, lookupOf(c)),
+                InvariantChecker.analyze(body, readingOf(c, saidBy(c)),
                         DeclarationReadings.NONE, Map.of(), params, POLICY).status(),
                 "the control: read through a lookup that answers, this analysis runs to the end");
 
-        ExpandedClauseLookup broken = _ -> {
+        PublishedDeclarations broken = _ -> {
             throw new IllegalStateException("this compiler could not read its own answer");
         };
         IllegalStateException why = assertThrows(IllegalStateException.class,
@@ -346,11 +347,15 @@ class WhatFallsOpenIsWhatSomebodyNamedALimitTest {
         return RuleReadings.declaredBy(c.db(), c.modules().get(0));
     }
 
-    /** {@code c}'s scope, reading its clauses from {@code clauses} — a source this test assembles,
-     *  which is what lets it put a lookup of its own where the compilation's would be. */
-    private static RuleReadingSource readingOf(Compilation c, ExpandedClauseLookup clauses) {
-        return new RuleReadingSource(symbolsOf(c), clauses, ClauseMeanings.NONE,
-                ClauseLocations.NONE);
+    /** Where what {@code c}'s declarations say is answered from. */
+    private static PublishedDeclarations saidBy(Compilation c) {
+        return Shapes.publishedDeclarations(c.db());
+    }
+
+    /** {@code c}'s scope, reading what its declarations say from {@code said} — a source this test
+     *  assembles, which is what lets it put a lookup of its own where the compilation's would be. */
+    private static RuleReadingSource readingOf(Compilation c, PublishedDeclarations said) {
+        return new RuleReadingSource(symbolsOf(c), lookupOf(c), said, ClauseLocations.NONE);
     }
 
     private static Hir.Data declarationOf(Compilation c, TypeSymbol.AtModule named) {

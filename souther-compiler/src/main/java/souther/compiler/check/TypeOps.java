@@ -1481,6 +1481,23 @@ public final class TypeOps {
         };
     }
 
+    /**
+     * The clauses {@code named} itself writes, in the representation a reading of rules takes.
+     *
+     * <p>Its own and not the ones it spreads in, which is what tells this from
+     * {@link #expandedInvariants}: that one answers which rules govern a value of the declaration,
+     * and this one answers which rules the declaration wrote. The first is what a reading asks and
+     * the second is what a declaration answering for itself asks — and a walk that reached spreads
+     * would put a rule another declaration wrote into what this one says.
+     *
+     * <p>A declaration whose clauses could not be worked out writes none here. Whether every rule
+     * about a value was reached is the other question's, and nothing that asks this one is asking
+     * it.
+     */
+    static List<Declared> writtenOn(TypeSymbol.AtModule named, ExpandedClauseLookup form) {
+        return rulesOf(named, form.of(named.key())).reached();
+    }
+
     /** The type a newtype wraps ({@code data X = Y} gives {@code Y}), or null when {@code name} is not
      * a newtype — the implicit inner field is {@code value}. */
     public static Type newtypeInner(TypeSymbol name, Symbols symbols) {

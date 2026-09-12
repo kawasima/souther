@@ -142,8 +142,8 @@ final class TypeGuarantees {
     private boolean beyond(Type type, ValueReading here, Set<Object> stated) {
         ValueReading there = ValueReading.of(type, symbols);
         for (ValueReading.Owner owner : there.owners()) {
-            for (TypeOps.Declared each : clauses.declared(owner.named())) {
-                if (!stated.contains(Clause.Ref.of(each))) {
+            for (ClauseMeaning each : clauses.declared(owner.named())) {
+                if (!stated.contains(each.ref())) {
                     return true;
                 }
             }

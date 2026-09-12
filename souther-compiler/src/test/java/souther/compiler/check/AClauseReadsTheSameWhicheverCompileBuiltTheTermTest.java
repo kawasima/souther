@@ -101,8 +101,8 @@ class AClauseReadsTheSameWhicheverCompileBuiltTheTermTest {
                 there.states().termForClauseReading().pos(),
                 "and wrote them at two places, which is what the readings being equal is about");
 
-        Clauses.StatedClauses own = readOf(mine, Shapes.clauseMeanings(mine.db()));
-        Clauses.StatedClauses crossed = readOf(mine, Shapes.clauseMeanings(moved.db()));
+        Clauses.StatedClauses own = readOf(mine, Shapes.publishedDeclarations(mine.db()));
+        Clauses.StatedClauses crossed = readOf(mine, Shapes.publishedDeclarations(moved.db()));
 
         assertFalse(own.clauses().isEmpty(), "the reading under test reads the clause at all");
         assertEquals(said(own), said(crossed),
@@ -116,7 +116,9 @@ class AClauseReadsTheSameWhicheverCompileBuiltTheTermTest {
 
     /** What {@code Held}'s one clause states, as {@code c} publishes it. */
     private static ClauseMeaning.Stated published(Compilation c) {
-        List<ClauseMeaning> clauses = Shapes.clauseMeanings(c.db()).of(HELD.key());
+        List<ClauseMeaning> clauses = assertInstanceOf(DeclarationMeaning.Product.class,
+                Shapes.publishedDeclarations(c.db()).of(HELD.key()),
+                "the declaration under test is a product").clauses();
         assertEquals(1, clauses.size(), "the declaration under test writes one clause");
         return assertInstanceOf(ClauseMeaning.Stated.class, clauses.getFirst(),
                 "and this reading has a form for it");
@@ -139,16 +141,16 @@ class AClauseReadsTheSameWhicheverCompileBuiltTheTermTest {
     }
 
     /**
-     * {@code Held}'s clauses as {@code mine} reads them, told by {@code states} what they state,
-     * with every field given a value.
+     * {@code Held}'s clauses as {@code mine} reads them, told by {@code said} what the declaration
+     * says, with every field given a value.
      *
      * <p>Every field, so that a clause is not left to its run-time check for want of one — which is
      * the answer a reader that could not tell which fields are read would fall into.
      */
-    private static Clauses.StatedClauses readOf(Compilation mine, ClauseMeanings states) {
+    private static Clauses.StatedClauses readOf(Compilation mine, PublishedDeclarations said) {
         Clauses reading = new Clauses(new RuleReadingSource(
                 Scopes.resolved(mine.db(), "demo").value(),
-                RuleReadings.declaredBy(mine.db(), "demo"), states, ClauseLocations.NONE));
+                RuleReadings.declaredBy(mine.db(), "demo"), said, ClauseLocations.NONE));
         Map<BindingId, Core> given = new LinkedHashMap<>();
         reading.bindingsOf(HELD).values()
                 .forEach(each -> given.put(each, new Core.Bool(true, Type.BOOL, POS)));
