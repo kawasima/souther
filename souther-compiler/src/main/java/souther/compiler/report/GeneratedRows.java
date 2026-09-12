@@ -436,10 +436,11 @@ public final class GeneratedRows {
     /**
      * The {@code with} clause a row carries, or nothing where it stands nothing in.
      *
-     * <p>A projection and not a decision. Every answer a row carries is one value answering every
-     * call that row makes, which is what a {@code with} states — settled where the row was composed
-     * and not read back out here. A way needing a dependency to answer by what it was applied to is
-     * one nothing composed a row for at all, so no row reaching this is short of a clause it needed.
+     * <p>A projection and not a decision. Which of the two things that answer a dependency answers
+     * this one was settled where the row was composed, and is read here rather than decided again.
+     * A row leaning on the module's table writes nothing at that dependency — the table is already
+     * in the file the row is pasted into, and a {@code with} put there would take the row out of
+     * the environment every written row of the module runs in.
      *
      * <p>The dependency spelled the way a person writes one, asked of the rule that answers it
      * ({@link Requirements#writtenIn}). A behavior another module declares is reachable through
@@ -450,8 +451,9 @@ public final class GeneratedRows {
     private static String standingIn(String module, OfferedRow row) {
         List<String> written = new ArrayList<>();
         for (StoodInAnswer each : row.answers()) {
-            written.add(Requirements.writtenIn(module, each.dependency())
-                    + " = " + each.value().text());
+            if (each instanceof StoodInAnswer.OnTheRow(var dependency, var value)) {
+                written.add(Requirements.writtenIn(module, dependency) + " = " + value.text());
+            }
         }
         return written.isEmpty() ? "" : " with " + String.join(", ", written);
     }

@@ -2085,7 +2085,7 @@ public final class ExampleVerifier {
         BoundaryOutput outType = depSig.out();
         // What stands in, and where it was written, is ExampleProvisioning's; building the value it
         // answers with is this reader's.
-        return switch (ExampleProvisioning.standingIn(row.withs(), dependency, module)) {
+        return switch (ExampleProvisioning.standingIn(row.withs(), dependency, module.fakes())) {
             case ExampleProvisioning.Standin.OnTheRow onTheRow -> {
                 Hir.With w = onTheRow.written();
                 try {
@@ -2177,67 +2177,33 @@ public final class ExampleVerifier {
         return d.hint(new ExampleMessage.WriteAFakeLikeThis(detail)).build();
     }
 
-    /** Precomputes a function fake's input→output table (decoded fixtures) as a tuple-keyed lookup, and
-     * answers by matching an actual input tuple by value equality, falling back to the {@code _}
-     * default or a miss. Works for any arity: a 0/1-input dep's tuple has 0/1 elements, a 2+-input
-     * dep's has one per parameter (issue #57). What the row states of the table is read off the same
-     * build, so the two say what one table was written to answer. */
+    /** What the module's table stands the dependency in with, and what this row's report says the
+     * table answers. Both off the one build ({@link StandingIn#byTheTable}), so what is listed is
+     * what the run was held against — and a table that is not one to stand in with leaves the row
+     * saying nothing of its own, what is wrong with it being said where it is written. */
     private StoodInFor tableStandin(FixtureReader fixtures,
                                     souther.compiler.check.FakeTables.Occurrence.Resolved standingIn,
                                     ValueName.Behavior dependency, Sig depSig) {
         Hir.Fake fk = standingIn.read();
-        // The dependency's own signature, which admitted what its boundary carries. Rebuilding the
-        // types from what it declared would put them through that walk a second time, and a
-        // stand-in stands where the behavior does.
-        List<BoundaryInput> paramTypes = depSig.ins();
-        // Built the one way a table is built ({@link ExampleStatements#standins}), on this row's own
-        // reader, so a row that does not finish inside a table's helper is still inside a helper. What
-        // is wrong with the table is said where the fake is written, and said once: this row and every
-        // other row reaching the same fake would each repeat the one thing wrong with the one table.
-        ExampleStatements.BuiltTable built =
-                ExampleStatements.standins(fixtures, fk, paramTypes, depSig.out(), new ArrayList<>());
-        if (built == null) {
+        StandingIn.OffATable stood =
+                StandingIn.byTheTable(fixtures, ensures, standingIn, dependency, depSig);
+        if (stood == null) {
             return notRead(dependency, fk.pos());
         }
-        if (!ExampleStatements.notKept(ensures, standingIn, built).isEmpty()) {
-            // A table stating what the dependency declares cannot happen is not one to stand in
-            // with, as a table that will not build is not. The row stops without a fake and says
-            // nothing of its own: what is wrong is wrong about the table, and is said once where the
-            // table is written. Running against it would put the rest of this behavior in a state
-            // the model rules out, and everything the row then reported would be about a run that
-            // cannot happen.
-            return notRead(dependency, fk.pos());
-        }
-        // The dispatch, which is what a row runs against. What the table was written with and cannot
-        // dispatch to is said where the fake is written, and is nothing a stand-in can answer with.
-        ExampleStatements.Standins table = built.standins();
-        String depName = ExampleStatements.wrote(fk);
-        int arity = paramTypes.size();
-        java.util.function.Function<Object[], Object> body = a -> {
-            Object[] key = java.util.Arrays.copyOf(a, arity);
-            // The table's own rule, which is the rule the reading that holds it against the rows
-            // recorded for the behavior asks too. One answer to "which row answers this" (E1919).
-            ExampleStatements.Standin answering = table.answering(key);
-            if (answering == null) {
-                throw new FakeMissException("`" + depName + "` has no output for "
-                        + java.util.Arrays.toString(key));
-            }
-            return answering.answer().value();
-        };
-        // What the table was written to answer, off the same build the dispatch above is. The rows
-        // it cannot dispatch to are not among them: a reader walking these is walking answers the
+        // What the table was written to answer, off the same build the dispatch is. The rows it
+        // cannot dispatch to are not among them: a reader walking these is walking answers the
         // stand-in can give, and which rows those are is the table's own rule to have decided.
         List<RowStatements.StandInRead.EntryRead> entries = new ArrayList<>();
-        for (ExampleStatements.Standin.Explicit entry : table.explicit()) {
+        for (ExampleStatements.Standin.Explicit entry : stood.table().explicit()) {
             entries.add(ExampleStatements.carried(fixtures, entry));
         }
         // The `_` row's answer, quoted where that answer is written rather than where the row
         // begins: it is the only value the row states, and it is the one a reader is sent to.
-        ExampleStatements.Standin.Fallback fallback = table.fallback();
+        ExampleStatements.Standin.Fallback fallback = stood.table().fallback();
         StoodIn.Otherwise otherwise = fallback == null ? new StoodIn.Otherwise.NothingStated()
                 : new StoodIn.Otherwise.Answer(fixtures.observed(fallback.answer().value()),
                         fallback.row().output().pos());
-        return new StoodInFor.Read(StandingIn.by(dependency, arity, body),
+        return new StoodInFor.Read(stood.applies(),
                 RowStatements.StandInRead.of(dependency, fk.pos(), takes(depSig), entries,
                         otherwise));
     }
@@ -2385,13 +2351,5 @@ public final class ExampleVerifier {
                          List<Diagnostic> out, RowState state) {
         out.add(mismatch(fixtures, row, fixtures.shown(stated), "aborted: " + why, null));
         state.failed(FailurePhase.INVOCATION);
-    }
-
-    /** A fake table had no output for an input the behavior asked for (and no {@code _} default). */
-    private static final class FakeMissException extends RuntimeException {
-        private static final long serialVersionUID = 1L;
-        FakeMissException(String message) {
-            super(message);
-        }
     }
 }
