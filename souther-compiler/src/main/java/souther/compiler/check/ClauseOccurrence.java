@@ -22,8 +22,9 @@ package souther.compiler.check;
  * ({@code AnOccurrenceIsACoordinateOfTheTreeAReadingWasBuiltOverTest}).
  *
  * <p>So this names a part among the parts of one reading, and no answer crossing out of a reading
- * may be keyed by it. What survives a construction is which statement of which conjunct the part is
- * ({@link InvariantStatementId}), counted over what the author wrote.
+ * may be keyed by it. What survives a construction is what the author wrote there — the construct
+ * their text counted and the copy of it this is ({@link ConstructOccurrence}) — which is the same
+ * whichever tree a substitution built.
  *
  * <p>Which occurrences a clause has is decided where the clause is read into its shape
  * ({@link ClauseExpr}) and nowhere else: a reader that numbered them for itself would be a second

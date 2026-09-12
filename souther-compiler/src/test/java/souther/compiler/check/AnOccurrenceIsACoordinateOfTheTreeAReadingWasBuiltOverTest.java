@@ -23,8 +23,9 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
  *
  * <p>So an occurrence names a part among the parts of one reading. It is not what a declaration
  * could publish about a clause: two constructions of one declaration are two trees, and the part
- * an author wrote in one place is at two numbers. What does not move is which statement of which
- * conjunct it is ({@link InvariantStatementId}), which is counted over what the author wrote.
+ * an author wrote in one place is at two numbers. What does not move is what the author wrote
+ * there — the construct their text counted and the copy of it a reading met
+ * ({@link souther.compiler.types.ConstructOccurrence}).
  *
  * <p>The control is the other half and is what makes this a measurement of the coordinate rather
  * than of trees being different: a connective substituted after the part leaves its number alone,

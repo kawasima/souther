@@ -1,6 +1,7 @@
 package souther.compiler.inputs;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -88,16 +89,26 @@ public record RuleReasons(List<Said> said) {
     }
 
     /**
-     * These, each once, in the order they were met.
+     * These, each once, in a steady order that is nobody's.
      *
      * <p>Told apart by the reason, by what it is about and by where it sends a reader, which is
      * what makes two choices of one clause two entries. Kept by the word alone — which is what this
      * did while a word was the whole of what travelled — the second of them was dropped as a repeat
      * of the first.
+     *
+     * <p><b>Steady, and that is all it is.</b> Nothing here says which of two reasons an author
+     * wrote first; what settles that is where they wrote them, and that is asked where the places
+     * are. What the order must not be is the one a walk happened to meet them in: a projection out
+     * of this reaches a document, so a sequence left to the walk would have one compiler over one
+     * source publish two. So the members are put in the order their vocabulary declares them
+     * ({@link BlockReason.RuleReadingStopped#inASteadyOrder}), and two alike in the word fall back
+     * to the order they arrived in.
      */
     public static RuleReasons from(List<Said> these) {
-        Set<Said> out = new LinkedHashSet<>(these);
-        return new RuleReasons(List.copyOf(out));
+        List<Said> sorted = new ArrayList<>(new LinkedHashSet<>(these));
+        sorted.sort(Comparator.comparingInt(
+                each -> BlockReason.RuleReadingStopped.inASteadyOrder(each.reason())));
+        return new RuleReasons(List.copyOf(sorted));
     }
 
     /** One reason about the whole of its rule, which is most of what this compiler is short of. */

@@ -89,7 +89,7 @@ record RuleShortfall(ConstructOccurrence occurrence, RuleSite site, RuleShortfal
      * otherwise reads perfectly well.
      *
      * <p>Not what tells two of these apart on its own. Which part it is about is
-     * {@link #origin}, and two decisions of different kinds about one part are two of these because
+     * {@link #site}, and two decisions of different kinds about one thing are two of these because
      * they are two things for a reader to do.
      */
     enum Kind {

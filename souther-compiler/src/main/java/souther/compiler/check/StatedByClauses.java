@@ -103,7 +103,7 @@ sealed interface StatedByClauses {
      * <p>Which choice it is, is where it stands in the clause. This tree is one rule's, so the
      * occurrence tells it from every other choice anything here can meet; what pairs it with its
      * clause is the rule, which is the caller's and is put on where the fates of every rule are
-     * gathered ({@link ChoiceId}).
+     * gathered ({@link ChoicesDecided}).
      */
     record Either(ClauseOccurrence at, Core writtenAt, StatedByClauses left, StatedByClauses right)
             implements StatedByClauses {

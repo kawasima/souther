@@ -21,11 +21,15 @@ import souther.compiler.types.SourceConstructOrigin;
  *
  * <h2>What makes two of them one</h2>
  *
- * <p>An author's editing place, and not how many times a reading met the operator. How many times
- * it was met is the reading's own answer, an identity two constructions of one declaration give
- * differently and which no published answer may hold. What an author is owed is how many places
- * they have to go, and one part written once is one place however often an expansion copies it:
- * rewriting it there answers every copy.
+ * <p>An author's editing place, and not how many things they are left with. How many there are is
+ * the copy's answer ({@link souther.compiler.types.ConstructOccurrence}), which a published answer
+ * does hold and which this deliberately does not: a helper expanded at two calls leaves two things
+ * to lift and one place to go, and an author told to go twice would be acting on how often this
+ * compiler copied the operator. Rewriting it where they wrote it answers every copy.
+ *
+ * <p>What may not be held is the coordinate of the tree a reading walked
+ * ({@code check.ClauseOccurrence}), which two constructions of one declaration give differently.
+ * The copy is not that: it is counted over expansion sites the source settles.
  */
 public sealed interface RuleSite {
 

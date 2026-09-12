@@ -3419,17 +3419,36 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             PublishedAt where = placeInTheRule(each.about(), parts).orElse(null);
             if (where == null || !(where.at().quotedFrom()
                     instanceof QuotedFrom.ASourceThisCompileHolds(SourceId in))) {
-                return ReportedReason.inNoAuthoredOrder(these);
+                return ReportedReason.inNoAuthoredOrder(steady(these));
             }
             at.put(each, where.at());
             texts.add(in);
         }
         if (texts.size() != 1) {
-            return ReportedReason.inNoAuthoredOrder(these);
+            return ReportedReason.inNoAuthoredOrder(steady(these));
         }
-        List<ReportedReason.Stop> sorted = new ArrayList<>(these);
+        List<ReportedReason.Stop> sorted = steady(these);
         sorted.sort(Comparator.comparing(at::get, SourcePos.IN_WRITTEN_ORDER));
         return ReportedReason.asTheAuthorWroteThem(AuthoredOrder.asWritten(sorted));
+    }
+
+    /**
+     * These in a steady order that is nobody's, which is what both arms above are built on.
+     *
+     * <p>Read twice for two reasons. Where nothing an author wrote puts these in an order, this is
+     * the whole of what a document may say: a sequence left to the walk would have one compiler
+     * over one source write two documents, and which one a reader saw would be the run they
+     * happened to make. Where an author did put them in an order, two of them at one place are told
+     * apart by nothing they wrote — so the sort by place is stable over this and the tie falls back
+     * to it rather than to the walk.
+     *
+     * <p>The vocabulary's own order, which is a set of words and says nothing about a model. What
+     * an author wrote is asked of the places.
+     */
+    private static List<ReportedReason.Stop> steady(List<ReportedReason.Stop> these) {
+        List<ReportedReason.Stop> out = new ArrayList<>(these);
+        out.sort(Comparator.comparing(ReportedReason.Stop::reason));
+        return out;
     }
 
     /**

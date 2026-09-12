@@ -11,7 +11,8 @@ package souther.compiler.check;
  * had already settled.
  *
  * <p><b>So this is equal to itself and to nothing else</b>, and it is made where the leaf is read —
- * once per line an author wrote, as a {@link ChoiceId} is made once per choice. The tree is walked
+ * once per line an author wrote, as a {@link ClauseOccurrence} is made once per occurrence of a
+ * clause. The tree is walked
  * once and the settled reading is composed over what that walk produced, so two of these are two
  * places in the source and never one place counted twice.
  *

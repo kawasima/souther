@@ -174,6 +174,40 @@ public sealed interface BlockReason {
     sealed interface RuleReadingStopped extends StoppedWithoutALine, QuestionStandingReason {
 
         /**
+         * Where this stands among these, for a reader putting some of them in a steady order.
+         *
+         * <p>Beside the members and not inside whoever sorts them. A sealed type is a set and not a
+         * sequence — {@code getPermittedSubclasses} says so itself, answering in no order it
+         * specifies — so a walk reading its array as a sequence takes an order from something that
+         * has none. Written here, whoever adds a member places it; written where a carrier sorts,
+         * the next carrier to need an order writes a second one.
+         *
+         * <p><b>Steady and nothing else.</b> What the numbers mean is nothing beyond which comes
+         * first, and they say nothing about what an author wrote: that is a fact about where the
+         * rules stand and is asked where the places are ({@code AdequacyReport}). This is what
+         * keeps one compiler over one source publishing one document where nobody wrote an order.
+         *
+         * <p>A switch and no {@code default}, so a reason added to the vocabulary is placed by
+         * whoever adds it rather than arriving wherever the runtime happened to put it.
+         */
+        static int inASteadyOrder(RuleReadingStopped reason) {
+            return switch (reason) {
+                case UnreadComparisonForm _ -> 0;
+                case UnreadComparisonDomain _ -> 1;
+                case ValueRuleRelatingTwoPositions _ -> 2;
+                case CasePairingNotDetermined _ -> 3;
+                case RuleAboutADerivedValue _ -> 4;
+                case UnreadValueRule _ -> 5;
+                case PatternTooDeeplyNested _ -> 6;
+                case PatternTooCostly _ -> 7;
+                case OrderedExtentTooCostly _ -> 8;
+                case RuleAboutAnElementOfSeveralSequences _ -> 9;
+                case EndLeftOpenByAChoice _ -> 10;
+                case ValueRuleLeftOpenByAChoice _ -> 11;
+            };
+        }
+
+        /**
          * Whether a position holding this rule has values nothing can claim are what the rules
          * leave.
          *
@@ -548,8 +582,8 @@ public sealed interface BlockReason {
      * ({@link souther.compiler.check.RuleCitation}): there is nowhere in what a document says about
      * such a rule to put a second place. Split without one, the two are the same sentence twice.
      *
-     * <p>So the choices are kept where they are told apart — the reading's own
-     * ({@code check.ChoiceSite}) — and what reaches a position says how many there were
+     * <p>So the choices are kept where they are told apart — the construct each was written as,
+     * and the copy of it ({@code ChoiceToLift}) — and what reaches a position says how many
      * ({@link EndLeftOpen}). What is missing is a way for a document to name a place inside a named
      * rule, and it is the same thing missing wherever the two readings' accounts of one choice are
      * to be put together.
