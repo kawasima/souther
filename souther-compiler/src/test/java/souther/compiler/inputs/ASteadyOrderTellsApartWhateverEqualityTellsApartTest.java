@@ -9,7 +9,6 @@ import souther.compiler.check.RuleRef;
 import souther.compiler.diag.QuotedFrom;
 import souther.compiler.diag.SourceProvenance;
 import souther.compiler.regex.Meter;
-import souther.compiler.source.SourceId;
 import souther.compiler.types.SourceConstruct;
 import souther.compiler.types.SourceConstructOrigin;
 import souther.compiler.types.TypeKey;
