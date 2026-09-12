@@ -16,6 +16,7 @@ import java.math.BigDecimal;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 
 /**
  * Where each position has to stand for a row to be at one coverage item.
@@ -826,7 +827,7 @@ public final class LevelRealizer {
             case Criterion.Within within ->
                     whatTheValuesAre(term, looking.admitted())
                             instanceof AdmittedValues.Admitted.Values(ValueSet admits)
-                            ? someValueIn(within, carrier, bounds, admits, looking.meter())
+                            ? someValueIn(within, carrier, bounds, admits, looking::meter)
                             : null;
         };
         if (offered == null) {
@@ -874,9 +875,17 @@ public final class LevelRealizer {
      * bounded by a rule about one number of the position starts at the one value a rule about another
      * refuses, and nothing about the run says so. The set is crossed with the run rather than asked
      * on its own, so a value it holds inside the run is not lost to whichever value it names first.
+     *
+     * <p><b>An allowance per crossing, which is why what arrives is the way to get one.</b> An item
+     * is a region and a region is as many runs as the rules leave it, so this crosses the set with
+     * each of them in turn — and a meter spends down. Shared between the runs, what the first
+     * crossing cost would be taken off what the second may spend, and whether a run is answered
+     * would follow from where it came in the order they are looked at. Which order that is is a
+     * searching policy and no answer about the values ({@link LevelRegion}).
      */
     private static Place someValueIn(Criterion.Within within, Carrier carrier,
-                                     NumericDomain.Bounds bounds, ValueSet admits, Meter meter) {
+                                     NumericDomain.Bounds bounds, ValueSet admits,
+                                     Supplier<Meter> allowance) {
         LevelSpace space = LevelSpace.onACarrier(carrier);
         List<LevelInterval> runs = within.runsInside(carrier, bounds.min(), bounds.max());
         for (LevelInterval look : runs) {
@@ -888,7 +897,7 @@ public final class LevelRealizer {
         for (LevelInterval look : runs) {
             OrderedInterval run = runOf(look, carrier);
             Place held = run == null ? null
-                    : carrier.somewhereIn(admits, run, List.of(), meter);
+                    : carrier.somewhereIn(admits, run, List.of(), allowance.get());
             if (held != null) {
                 return held;
             }
@@ -907,8 +916,9 @@ public final class LevelRealizer {
     private static OrderedInterval runOf(LevelInterval look, Carrier carrier) {
         Endpoint low = endOf(look.low(), carrier);
         Endpoint high = endOf(look.high(), carrier);
-        return look.low() != null && low == null || look.high() != null && high == null
-                ? null : new OrderedInterval(low, high);
+        boolean lost = (look.low() != null && low == null)
+                || (look.high() != null && high == null);
+        return lost ? null : new OrderedInterval(low, high);
     }
 
     /** One end of such a run, or null where it is not a place of the position. */

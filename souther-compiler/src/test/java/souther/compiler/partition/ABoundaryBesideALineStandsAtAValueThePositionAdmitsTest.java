@@ -16,6 +16,7 @@ import souther.compiler.values.Value;
 import souther.compiler.values.ValueSet;
 
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
@@ -236,6 +237,51 @@ class ABoundaryBesideALineStandsAtAValueThePositionAdmitsTest {
         assertInstanceOf(Realization.Found.class, made,
                 "a count is composed for a boundary on a length, and the strings the position holds"
                         + " are not what says whether one is");
+    }
+
+    /**
+     * Each crossing of the set with a run is given an allowance of its own.
+     *
+     * <p>An item is a region and a region is as many runs as the rules leave it: a value singled out
+     * of the middle of a band leaves the run under it and the run over it. Both are crossed with the
+     * set in turn, and a meter spends down — so one shared between them would take what the first
+     * crossing cost off what the second may spend, and whether the second is answered would follow
+     * from the order the runs are looked at. Which order that is is a searching policy and says
+     * nothing about the values.
+     *
+     * <p>Counted rather than starved. A test that made the first crossing expensive enough to starve
+     * the second would be pinning how large a machine of these strings comes out, which is not what
+     * is being promised here.
+     */
+    @Test
+    void everyCrossingOfTheSetWithARunIsGivenItsOwnAllowance() {
+        Carrier whole = new Carrier.Whole();
+        // A band with a value singled out of the middle of it, which is two runs.
+        Band band = new Band(Band.endAt(null, Bound.at(count(whole, 0), true), Towards.ABOVE),
+                Band.endAt(null, Bound.at(count(whole, 10), true), Towards.BELOW));
+        Criterion where = new Criterion.Within(band, count(whole, 5), Towards.ABOVE);
+        // Nothing the order offers at the near end of either run, and a value only the upper one
+        // holds — so the lower run is crossed, answers nothing, and the upper is crossed after it.
+        ValueSet onlyEight = new ValueSet.Finite(Set.of(new Value.Number(
+                java.math.BigDecimal.valueOf(8))));
+        java.util.concurrent.atomic.AtomicInteger taken = new java.util.concurrent.atomic.AtomicInteger();
+        WitnessSearch counting = new WitnessSearch(
+                AdmittedValues.of(Map.of(CODE, onlyEight)),
+                () -> {
+                    taken.incrementAndGet();
+                    return PatternPlan.Budget.OF_A_WITNESS.meter();
+                });
+
+        new LevelRealizer().realize(
+                new Standing.OfOneCoordinate(VALUE, whole, where),
+                NothingTheRulesSay.REGION, counting);
+
+        assertTrue(taken.get() > 1,
+                () -> "one allowance per crossing, and this item is more than one run: " + taken);
+    }
+
+    private static Level count(Carrier on, long at) {
+        return new Level.OnACarrier(on, souther.compiler.numeric.Count.of(at));
     }
 
     private static Place at(Realization made) {
