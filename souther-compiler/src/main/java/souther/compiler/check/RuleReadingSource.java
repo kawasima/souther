@@ -43,6 +43,10 @@ package souther.compiler.check;
  *                   declaration says is worked out well above that, so a reader telling a sum from
  *                   a product depends on the first alone — and may ask it where asking the second
  *                   would be asking for an answer still being worked out
+ * @param newtypes   which declarations were written as one value wearing a name. Beside
+ *                   {@code kinds} and not a fourth value of it: a product written over again as a
+ *                   sum changes form and is no more a newtype than it was, so a reader asking only
+ *                   this keeps its answer through that edit
  * @param written    where a clause of a declaration is written, for the sentences this reading
  *                   produces that point at one. Beside {@code invariants} and not inside it: what a
  *                   clause states is what the reading is built on, and where it is written is what
@@ -52,11 +56,12 @@ package souther.compiler.check;
  */
 public record RuleReadingSource(Symbols symbols, ExpandedClauseLookup invariants,
                                 PublishedDeclarations published, DeclarationKinds kinds,
-                                ClauseLocations written, Origin origin) {
+                                DeclarationNewtypes newtypes, ClauseLocations written,
+                                Origin origin) {
 
     public RuleReadingSource {
         if (symbols == null || invariants == null || published == null || kinds == null
-                || written == null || origin == null) {
+                || newtypes == null || written == null || origin == null) {
             throw new IllegalArgumentException(
                     "reading a declaration's rules takes a scope, somewhere to read clauses from,"
                             + " somewhere to read what a declaration says, somewhere to read where"
@@ -67,8 +72,8 @@ public record RuleReadingSource(Symbols symbols, ExpandedClauseLookup invariants
     /** A source made for a reading of its own, which nobody else can name. */
     public RuleReadingSource(Symbols symbols, ExpandedClauseLookup invariants,
                              PublishedDeclarations published, DeclarationKinds kinds,
-                             ClauseLocations written) {
-        this(symbols, invariants, published, kinds, written, AReadingOfItsOwn.next());
+                             DeclarationNewtypes newtypes, ClauseLocations written) {
+        this(symbols, invariants, published, kinds, newtypes, written, AReadingOfItsOwn.next());
     }
 
     /**

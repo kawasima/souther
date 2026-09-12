@@ -34,6 +34,7 @@ public final class TheCompilationsSources {
     private final ExpandedClauseLookup clauses;
     private final PublishedDeclarations published;
     private final DeclarationKinds kinds;
+    private final DeclarationNewtypes newtypes;
     private final ClauseLocations written;
 
     /** Which mint this is, told to nobody: what it stamps says this and what another stamps says
@@ -51,9 +52,9 @@ public final class TheCompilationsSources {
      */
     public TheCompilationsSources(Function<String, Symbols> scopeOf, ExpandedClauseLookup clauses,
                                   PublishedDeclarations published, DeclarationKinds kinds,
-                                  ClauseLocations written) {
+                                  DeclarationNewtypes newtypes, ClauseLocations written) {
         if (scopeOf == null || clauses == null || published == null || kinds == null
-                || written == null) {
+                || newtypes == null || written == null) {
             throw new IllegalArgumentException(
                     "a compilation reads its modules under a scope, reads clauses somewhere, reads"
                             + " what a declaration says somewhere, and reads where one is written"
@@ -63,6 +64,7 @@ public final class TheCompilationsSources {
         this.clauses = clauses;
         this.published = published;
         this.kinds = kinds;
+        this.newtypes = newtypes;
         this.written = written;
     }
 
@@ -71,7 +73,7 @@ public final class TheCompilationsSources {
     public RuleReadingSource of(String module) {
         Symbols scope = scopeOf.apply(module);
         return scope == null ? null
-                : new RuleReadingSource(scope, clauses, published, kinds, written,
+                : new RuleReadingSource(scope, clauses, published, kinds, newtypes, written,
                         new AModulesRules(mint, module));
     }
 }

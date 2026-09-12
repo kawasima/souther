@@ -33,12 +33,13 @@ final class GuaranteeWalk {
     private final TypeGuarantees guarantees;
 
     /** Asked whether following a name reaches somewhere else, which is what says where a name this
-     *  walk followed is written down. */
-    private final Symbols symbols;
+     *  walk followed is written down. How the declaration was written is the whole of what that
+     *  turns on, so it is what this holds rather than the declarations themselves. */
+    private final DeclarationNewtypes newtypes;
 
-    GuaranteeWalk(TypeGuarantees guarantees, Symbols symbols) {
+    GuaranteeWalk(TypeGuarantees guarantees, DeclarationNewtypes newtypes) {
         this.guarantees = guarantees;
-        this.symbols = symbols;
+        this.newtypes = newtypes;
     }
 
     /**
@@ -248,7 +249,7 @@ final class GuaranteeWalk {
             // Whether following the name reaches somewhere else is `Location.isStep`'s answer,
             // asked here because here is where the name is written down. A newtype's `value` is
             // this same value under a name, so a walk into one keeps the path it came with.
-            RuleKey there = Location.isStep(root.type(), under.name(), symbols)
+            RuleKey there = Location.isStep(root.type(), under.name(), newtypes)
                     ? path.then(under.name()) : path;
             walk(under.value(), there, at, depth + 1, scope, entered, reader);
         }

@@ -2,8 +2,7 @@ package souther.compiler.inputs;
 
 import org.junit.jupiter.api.Test;
 
-import souther.compiler.DefaultStdlib;
-import souther.compiler.check.Symbols;
+import souther.compiler.check.DeclarationNewtypes;
 import souther.compiler.core.Core;
 import souther.compiler.diag.SourcePos;
 import souther.compiler.types.BindingId;
@@ -54,7 +53,7 @@ class HowManyNamesAClosuresAnswerStandsUnderDoesNotDecideItsProjectionTest {
         held.put(new BindingId(OWNER, names), new Core.FieldAccess(read("一件", ELEMENT), "金額",
                 Type.INT, POS));
         return ElementProjection.read(read("a1", new BindingId(OWNER, 1)), ELEMENT, held,
-                Symbols.none(DefaultStdlib.get()));
+                DeclarationNewtypes.NONE);
     }
 
     /** One name between the answer and the field, or sixteen: the way inside the element is one
@@ -82,6 +81,6 @@ class HowManyNamesAClosuresAnswerStandsUnderDoesNotDecideItsProjectionTest {
         }
 
         assertEquals(null, ElementProjection.read(read("a1", new BindingId(OWNER, 1)), ELEMENT,
-                held, Symbols.none(DefaultStdlib.get())));
+                held, DeclarationNewtypes.NONE));
     }
 }

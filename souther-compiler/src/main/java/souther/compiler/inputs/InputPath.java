@@ -152,7 +152,11 @@ final class InputPath {
             // field is not a step of a path — a newtype's own value is the value under it — the
             // place is the target's, which is the step this takes there.
             case Core.FieldAccess fa -> named(fa.target(), names).deeper(
-                    Location.isStep(fa.target().type(), fa.field(), symbols)
+                    // Answered from the declarations this walk is already holding rather than from
+                    // the compilation: what it asks besides — which name stands for what, what an
+                    // element came from — is read from them too, so asking elsewhere here would
+                    // leave the walk depending on them all the same.
+                    Location.isStepAsWritten(fa.target().type(), fa.field(), symbols)
                             ? base -> base.then(fa.field()) : base -> base);
             // What an expression that binds a name comes to is what its body comes to, under that
             // name. Whether the name may stand for the position its value names is not asked here

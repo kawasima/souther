@@ -151,7 +151,8 @@ class AClauseReadsTheSameWhicheverCompileBuiltTheTermTest {
         Clauses reading = new Clauses(new RuleReadingSource(
                 Scopes.resolved(mine.db(), "demo").value(),
                 RuleReadings.declaredBy(mine.db(), "demo"), said,
-                Shapes.declarationKinds(mine.db()), ClauseLocations.NONE));
+                Shapes.declarationKinds(mine.db()), Shapes.declarationNewtypes(mine.db()),
+                ClauseLocations.NONE));
         Map<BindingId, Core> given = new LinkedHashMap<>();
         reading.bindingsOf(HELD).values()
                 .forEach(each -> given.put(each, new Core.Bool(true, Type.BOOL, POS)));

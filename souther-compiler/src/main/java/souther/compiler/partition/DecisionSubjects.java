@@ -3,6 +3,7 @@ package souther.compiler.partition;
 import souther.compiler.check.AffineForms;
 import souther.compiler.check.Location;
 import souther.compiler.check.DeclarationKinds;
+import souther.compiler.check.DeclarationNewtypes;
 import souther.compiler.check.PublishedDeclarations;
 import souther.compiler.check.Symbols;
 import souther.compiler.numeric.LinearForm;
@@ -35,7 +36,8 @@ import java.util.Set;
  *                     stands in for
  */
 record DecisionSubjects(InputDomain inputs, Symbols symbols, PublishedDeclarations published,
-                        DeclarationKinds kinds, Set<ValueName.Behavior> dependencies) {
+                        DeclarationKinds kinds, DeclarationNewtypes newtypes,
+                        Set<ValueName.Behavior> dependencies) {
 
     DecisionSubjects {
         dependencies = Set.copyOf(dependencies);
@@ -61,7 +63,7 @@ record DecisionSubjects(InputDomain inputs, Symbols symbols, PublishedDeclaratio
             // one. Read as a step, `riskScore(c).value` and `riskScore(c)` would be two columns
             // over one answer.
             if (under instanceof Core.FieldAccess field) {
-                if (Location.isStep(field.target().type(), field.field(), symbols)) {
+                if (Location.isStep(field.target().type(), field.field(), newtypes)) {
                     steps.add(new TermPath.Step.Field(field.field()));
                 }
                 under = field.target();

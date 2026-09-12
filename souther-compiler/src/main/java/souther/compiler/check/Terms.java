@@ -88,6 +88,12 @@ final class Terms {
         return ruleReading.source().kinds();
     }
 
+    /** Which of the declarations this reading was made against wear one value, for the readings
+     *  below that ask where reading a field goes. */
+    DeclarationNewtypes newtypes() {
+        return ruleReading.source().newtypes();
+    }
+
     /**
      * What a clause states, read through this very reading.
      *
@@ -359,7 +365,7 @@ final class Terms {
         this.clauses = new Clauses(ruleReading.source());
         this.predicates = new Predicates(this);
         this.guarantees = new TypeGuarantees(symbols, clauses, predicates);
-        this.walk = new GuaranteeWalk(guarantees, symbols);
+        this.walk = new GuaranteeWalk(guarantees, newtypes());
     }
 
     /** The clauses this reading is over, for a reader beside it that asks what a declaration
@@ -607,7 +613,7 @@ final class Terms {
                     // a computed value too. Without it `f(x).value` is one value where the same call
                     // given a name is the arithmetic its body wrote.
                     return !isAPlace(fa.target(), at)
-                            && !Location.isStep(fa.target().type(), fa.field(), symbols);
+                            && !Location.isStep(fa.target().type(), fa.field(), newtypes());
                 }
             };
 
@@ -2451,7 +2457,7 @@ final class Terms {
                         : interned.evaluated(evaluationIdOf(e));
             }
             case Core.FieldAccess fa ->
-                    Location.isStep(fa.target().type(), fa.field(), symbols)
+                    Location.isStep(fa.target().type(), fa.field(), newtypes())
                             ? interned.on(subjectKey(fa.target(), at), List.of(fa.field()))
                             : subjectKey(fa.target(), at);
             default -> interned.evaluated(evaluationIdOf(e));
@@ -2474,7 +2480,7 @@ final class Terms {
             // nothing. A chain is asked of this only once it has been found not to be a place.
             case Core.Read r -> at.termOf(r.binding());
             case Core.FieldAccess fa -> {
-                if (!Location.isStep(fa.target().type(), fa.field(), symbols)) {
+                if (!Location.isStep(fa.target().type(), fa.field(), newtypes())) {
                     yield keyOfNowhere(fa.target(), at);
                 }
                 Term base = keyOfNowhere(fa.target(), at);
@@ -2532,7 +2538,7 @@ final class Terms {
      * term grammar names a chain by. A reader that only wants to know whether there is one asks
      * {@link #isAPlace}. */
     Location locationOf(Core e, Denotations at) {
-        return Location.of(e, symbols, at::locationOf);
+        return Location.of(e, newtypes(), at::locationOf);
     }
 
     /**

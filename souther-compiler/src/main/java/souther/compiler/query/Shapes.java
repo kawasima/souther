@@ -8,6 +8,7 @@ import souther.compiler.check.DeclarationKind;
 import souther.compiler.check.DeclarationKinds;
 import souther.compiler.check.DeclarationLocations;
 import souther.compiler.check.DeclarationMeaning;
+import souther.compiler.check.DeclarationNewtypes;
 import souther.compiler.check.Normalized;
 import souther.compiler.check.PublishedDeclarations;
 import souther.compiler.stdlib.Stdlib;
@@ -975,6 +976,20 @@ public final class Shapes {
         return declaration -> {
             Answer<DeclarationKind> kind = db.ask(new Names.DeclarationKindOf(declaration));
             return kind.present() ? kind.value() : null;
+        };
+    }
+
+    /**
+     * Which declarations are one value wearing a name, for a reader that only has to know that much.
+     *
+     * <p>One of these for the whole compilation, for the reason {@link #expandedClauses} gives. A
+     * reader taking one depends on how the declarations it asks about were written and on nothing
+     * else — not on which form they are, and not on what they say.
+     */
+    public static DeclarationNewtypes declarationNewtypes(Db db) {
+        return declaration -> {
+            Answer<Boolean> newtype = db.ask(new Names.DeclarationIsNewtype(declaration));
+            return newtype.present() && newtype.value();
         };
     }
 

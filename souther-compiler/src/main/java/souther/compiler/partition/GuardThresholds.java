@@ -163,7 +163,7 @@ public final class GuardThresholds {
         return states == null ? Guards.NONE
                 : of(behavior, states, emitted, plan, inputs.reading(source),
                         ElementBindings.of(states.core(),
-                                states.elements(), source.symbols()),
+                                states.elements(), source.newtypes()),
                         PathReachability.Answers.NONE,
                         new RuleReachNumbering(source.symbols().module(), behavior));
     }

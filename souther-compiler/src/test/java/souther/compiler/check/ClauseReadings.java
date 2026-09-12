@@ -65,7 +65,7 @@ final class ClauseReadings {
         Clauses clauses = new Clauses(
                 new RuleReadingSource(symbols, RuleReadings.declaredBy(db, module),
                         PublishedDeclarations.NONE, Shapes.declarationKinds(db),
-                        ClauseLocations.NONE));
+                        Shapes.declarationNewtypes(db), ClauseLocations.NONE));
         Map<Clause.Ref, TermMeaning> stated = new LinkedHashMap<>();
         List<Clause.Ref> stopped = new ArrayList<>();
         for (TypeOps.Declared each : clauses.declaredHere(named)) {
@@ -90,7 +90,7 @@ final class ClauseReadings {
         return DeclarationMeaning.of(symbols.declaredNode(named),
                 new Clauses(new RuleReadingSource(symbols, RuleReadings.declaredBy(db, module),
                         PublishedDeclarations.NONE, Shapes.declarationKinds(db),
-                        ClauseLocations.NONE)));
+                        Shapes.declarationNewtypes(db), ClauseLocations.NONE)));
     }
 
     /** One declaration, the module that wrote it, and a module that reads it without having. */

@@ -360,7 +360,8 @@ class WhatFallsOpenIsWhatSomebodyNamedALimitTest {
      *  assembles, which is what lets it put a lookup of its own where the compilation's would be. */
     private static RuleReadingSource readingOf(Compilation c, PublishedDeclarations said) {
         return new RuleReadingSource(symbolsOf(c), lookupOf(c), said,
-                Shapes.declarationKinds(c.db()), ClauseLocations.NONE);
+                Shapes.declarationKinds(c.db()), Shapes.declarationNewtypes(c.db()),
+                ClauseLocations.NONE);
     }
 
     private static Hir.Data declarationOf(Compilation c, TypeSymbol.AtModule named) {

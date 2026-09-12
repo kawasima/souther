@@ -73,7 +73,8 @@ class WhatATypeGuaranteesIsOneAnswerWhoeverAsksTest {
             RuleReadingContext.unshared(rules, souther.compiler.query.ReadAs.THE_COMPILATION_DOES),
             Terms.Of.THE_DISCHARGE_TREE);
 
-    private final GuaranteeWalk walk = new GuaranteeWalk(engine.guarantees(), symbols);
+    private final GuaranteeWalk walk =
+            new GuaranteeWalk(engine.guarantees(), DeclarationNewtypes.asWritten(symbols));
 
     private static RuleReadingSource rules() {
         Compilation compilation = Compilation.ofSource(SOURCE, "Main");

@@ -273,7 +273,7 @@ record AffineReading(LinearForm<NumericTerm> form, BigDecimal cut, ComparisonCla
                     case PathResolution.MayStandAt _ -> true;
                 };
                 return !stands
-                        && !Location.isStep(fa.target().type(), fa.field(), ruleSource.symbols());
+                        && !Location.isStep(fa.target().type(), fa.field(), ruleSource.newtypes());
             }
         };
     }

@@ -199,7 +199,7 @@ class ADeclarationIsReadOnceForEveryQuestionThatReachesItTest {
         // answers for no clause anybody wrote.
         RuleReadingSource ofItsOwn = new RuleReadingSource(asTheCompilationReads.symbols(),
                 RuleReadings.noClauseFiled(), PublishedDeclarations.NONE, DeclarationKinds.NONE,
-                ClauseLocations.NONE);
+                DeclarationNewtypes.NONE, ClauseLocations.NONE);
         long beforeItsOwn = InvariantChecker.readingsMade();
         InvariantChecker.seedFields(code, ofItsOwn, AS_THE_COMPILE_READS, readings);
 
@@ -211,7 +211,8 @@ class ADeclarationIsReadOnceForEveryQuestionThatReachesItTest {
         // answers for nothing, saying of what they make the name the compilation writes.
         RuleReadingSource minted = new TheCompilationsSources(
                 _ -> asTheCompilationReads.symbols(), RuleReadings.noClauseFiled(),
-                PublishedDeclarations.NONE, DeclarationKinds.NONE, ClauseLocations.NONE)
+                PublishedDeclarations.NONE, DeclarationKinds.NONE, DeclarationNewtypes.NONE,
+                ClauseLocations.NONE)
                 .of("demo");
         long beforeMinted = InvariantChecker.readingsMade();
         InvariantChecker.seedFields(code, minted, AS_THE_COMPILE_READS, readings);

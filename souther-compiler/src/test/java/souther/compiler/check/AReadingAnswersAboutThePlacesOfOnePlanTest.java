@@ -285,7 +285,7 @@ class AReadingAnswersAboutThePlacesOfOnePlanTest {
                     .ask(new Adequacy.Inputs(module)).value().get("pick");
             AnalysisBody analysis = checked.analysisBodies().get("pick");
             return GuardThresholds.of("pick", analysis, body, plan, inputs.reading(rules),
-                    ElementBindings.of(analysis.core(), analysis.elements(), rules.symbols()),
+                    ElementBindings.of(analysis.core(), analysis.elements(), rules.newtypes()),
                     against, new RuleReachNumbering(module, "pick"));
         }
 

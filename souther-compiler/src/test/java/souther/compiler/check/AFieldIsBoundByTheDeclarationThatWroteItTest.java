@@ -98,7 +98,8 @@ class AFieldIsBoundByTheDeclarationThatWroteItTest {
     private static Clauses readBy(Compilation c, String reading) {
         return new Clauses(new RuleReadingSource(Scopes.resolved(c.db(), reading).value(),
                 RuleReadings.declaredBy(c.db(), reading), Shapes.publishedDeclarations(c.db()),
-                Shapes.declarationKinds(c.db()), ClauseLocations.NONE));
+                Shapes.declarationKinds(c.db()), Shapes.declarationNewtypes(c.db()),
+                ClauseLocations.NONE));
     }
 
     /**

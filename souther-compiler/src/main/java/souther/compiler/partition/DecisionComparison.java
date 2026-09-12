@@ -172,7 +172,7 @@ record DecisionComparison(InputDomain inputs, RuleReadingSource rules, DecisionS
                     case PathResolution.MayStandAt _ -> true;
                 };
                 return !stands
-                        && !Location.isStep(fa.target().type(), fa.field(), rules.symbols());
+                        && !Location.isStep(fa.target().type(), fa.field(), rules.newtypes());
             }
         };
     }

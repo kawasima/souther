@@ -176,6 +176,7 @@ public final class Db implements StoreWork {
                     named -> ask(new Shapes.ClausesExpandedFor(named)).value(),
                     Shapes.publishedDeclarations(this),
                     Shapes.declarationKinds(this),
+                    Shapes.declarationNewtypes(this),
                     Shapes.clauseLocations(this));
         }
         return sources.of(module);

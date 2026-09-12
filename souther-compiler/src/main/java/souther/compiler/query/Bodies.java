@@ -2119,6 +2119,7 @@ public final class Bodies {
                                             Shapes.expandedClauses(db),
                                             Shapes.publishedDeclarations(db),
                                             Shapes.declarationKinds(db),
+                                            Shapes.declarationNewtypes(db),
                                             Shapes.clauseLocations(db)),
                                     policy, db.readings()),
                             contracts.present() ? contracts.value() : Map.of())
@@ -2149,7 +2150,7 @@ public final class Bodies {
                 return Answer.of(new CheckedBody(
                         GrowingFold.rewrite(core, scope.value().theWalk()),
                         souther.compiler.check.ElementBindings.of(core,
-                                body.value().provenance(), scope.value()),
+                                body.value().provenance(), Shapes.declarationNewtypes(db)),
                         // Who owns the rule each fork decides by, read off the declarations that
                         // wrote them. Read here because here is where the declarations are: after
                         // expansion a fork carries the argument the call site put in and says

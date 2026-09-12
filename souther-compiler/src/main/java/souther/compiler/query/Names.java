@@ -415,6 +415,41 @@ public final class Names {
         }
     }
 
+    /**
+     * Whether the declaration at {@code named} is written as one value wearing a name.
+     *
+     * <p>Beside the form and not part of it. A product written over again as a sum changes which
+     * form it is and says nothing different about whether it is a newtype — both are false — so a
+     * reader that asks only this keeps its answer through an edit that changes only that. Answered
+     * together as one four-valued form, every such reader would be worked out again.
+     *
+     * <p>Settled where the module was indexed, like the form: it is which way the declaration was
+     * written, and resolution copies it rather than deciding it.
+     */
+    public record DeclarationIsNewtype(TypeKey named) implements Key<Boolean> {
+        @Override
+        public String module() {
+            return named.module();
+        }
+
+        @Override
+        public Answer<Boolean> compute(Db db) {
+            Answer<Ast.Def> mine = db.ask(new Declaration(named));
+            if (mine.present()) {
+                return Answer.of(mine.value() instanceof Ast.Data data && data.newtype());
+            }
+            // What the language declares, read where the library is, for the reason the form is read
+            // there: a reader asking this of a library name is asking about a declaration, and being
+            // told nothing declares it is a different answer from being told it is not a newtype.
+            Answer<Stdlib> library = db.ask(new Front.Library());
+            Hir.Def declared =
+                    library.present() ? library.value().languageDeclaration(named) : null;
+            return declared == null
+                    ? Answer.absent()
+                    : Answer.of(declared instanceof Hir.Data data && data.newtype());
+        }
+    }
+
     /** The same, with every written name in it resolved. */
     public record ResolvedDeclaration(TypeKey named) implements Key<Hir.Def> {
         @Override
