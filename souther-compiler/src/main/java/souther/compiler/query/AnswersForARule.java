@@ -2,6 +2,7 @@ package souther.compiler.query;
 
 import souther.compiler.check.FakeTables;
 import souther.compiler.examples.ExampleProvisioning;
+import souther.compiler.examples.ExampleStatements;
 import souther.compiler.partition.AnAnswerComposed;
 import souther.compiler.partition.AnswerDemand;
 import souther.compiler.partition.AnswersDemanded;
@@ -121,10 +122,24 @@ record AnswersForARule(RequiredDependencies requires,
                         Generator.UnresolvedCombination.Reason.A_TABLE_IS_WHAT_THIS_NEEDS);
     }
 
-    /** Whether the module answers {@code dependency} without a row writing anything for it. */
+    /**
+     * Whether the module answers {@code dependency} for whatever a row asks of it.
+     *
+     * <p>Both halves, and the second is not a reading of what this way needs. A table the module
+     * states with no {@code _} row answers the calls its rows state and refuses the rest, and a row
+     * leaning on it is a row that fails where it is pasted the moment it asks about anything else —
+     * which is a call only running the row finds, and which the surfaces that offer a row without
+     * running it would never find at all.
+     *
+     * <p>So what is asked here is of the table alone: can it refuse a call. A way whose calls a
+     * partial table happens to answer is a row this compiler then does not offer, which is a row
+     * lost rather than a row wrong — and the answer for such a way is the one it had before, that a
+     * table is what it needs and this compiler writes none.
+     */
     private boolean stated(ValueName.Behavior dependency) {
         return ExampleProvisioning.standingIn(List.of(), dependency, blocks)
-                instanceof ExampleProvisioning.Standin.InTheModule;
+                instanceof ExampleProvisioning.Standin.InTheModule(var table)
+                && ExampleStatements.answersEveryCall(table.read());
     }
 
     private static AnswersStoodIn byTheModule(RequiredDependencies.Required required) {
