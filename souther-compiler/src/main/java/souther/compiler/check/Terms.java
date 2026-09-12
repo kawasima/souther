@@ -2291,11 +2291,20 @@ final class Terms {
         List<Core> sides = List.of(b.left(), b.right());
         ComparisonClaim placed = Comparison.of(b).map(Comparison::claim).orElse(null);
         if (placed != null) {
-            return over(sides, at, bound, depth, leaf,
-                    ps -> interned.comparison(placed.canonical(ps.get(0), ps.get(1))));
+            return over(sides, at, bound, depth, leaf, ps -> comparisonTerm(placed, ps));
         }
-        return over(sides, at, bound, depth, leaf,
-                ps -> interned.operator(b.op(), ps.get(0), ps.get(1)));
+        return over(sides, at, bound, depth, leaf, ps -> operatorTerm(b, ps));
+    }
+
+    /** The term a comparison is: what the claim says it states, over the terms its two sides are. */
+    private Term comparisonTerm(ComparisonClaim placed, List<Term> sides) {
+        return interned.comparison(placed.canonical(sides.get(0), sides.get(1)));
+    }
+
+    /** The term a binary that placed no comparison is: the operator it was written with, over the
+     * terms its two operands are. */
+    private Term operatorTerm(Core.Binary b, List<Term> sides) {
+        return interned.operator(b.op(), sides.get(0), sides.get(1));
     }
 
     /** {@code made} of the terms {@code parts} are, or null where any of them is named by nothing. */

@@ -283,9 +283,11 @@ public final class PathReachability {
         // limit and said as one: the analysis this borrows is open about what it reads, so a
         // comparison it reached and settled nothing about leaves the obligation standing. A failure
         // of the walk itself is not this and is not caught — it is this compiler's.
-        unanswered(body, plan, out, arriving).ifPresent(why ->
-                InvariantChecker.gaveUp("reachability",
-                        WhatTheCheckCannotRead.theWalkLeftAnAnswerUnmade(why)));
+        Optional<String> unmade = unanswered(body, plan, out, arriving);
+        if (unmade.isPresent()) {
+            InvariantChecker.gaveUp("reachability",
+                    WhatTheCheckCannotRead.theWalkLeftAnAnswerUnmade(unmade.get()));
+        }
         return new Answers(Optional.of(plan.identity()), out, arriving);
     }
 

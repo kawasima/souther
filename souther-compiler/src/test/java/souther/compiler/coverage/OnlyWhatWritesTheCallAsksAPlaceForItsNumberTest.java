@@ -55,7 +55,7 @@ class OnlyWhatWritesTheCallAsksAPlaceForItsNumberTest {
     private record Licence(String who, int calls, String why) { }
 
     private static final List<Licence> MAY_ASK = List.of(
-            new Licence("souther.compiler.codegen.BodyGen.lambda$comparisonProbe$0", 2,
+            new Licence("souther.compiler.codegen.BodyGen.comparisonProbeAt", 2,
                     "where the call is written: a probed class is handed the number because that is"
                             + " what the instruction carries, and it has no numbering to ask what"
                             + " the number addresses. Twice for the one act — the emitter records"

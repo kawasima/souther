@@ -206,7 +206,7 @@ class WhereAnOperatorMayStillBeHeldIsWrittenDownTest {
             new Held("souther.compiler.check.Terms.numericMeaningOf",
                     "asks whether it computes a number, and keys the meaning by it"),
             new Held("souther.compiler.check.Terms.namedByRule", "asks whether it computes a number"),
-            new Held("souther.compiler.check.Terms.lambda$binary$1",
+            new Held("souther.compiler.check.Terms.operatorTerm",
                     "hands it to the interner, for a binary the recognition beside it found to be"
                             + " no comparison"),
             new Held("souther.compiler.check.Terms.asOperator",
@@ -306,7 +306,7 @@ class WhereAnOperatorMayStillBeHeldIsWrittenDownTest {
             new Held("souther.compiler.codegen.BodyGen.binary",
                     "which instructions the operator is emitted as, and — for the six it emits a"
                             + " comparison for — the recognition everything below it holds"),
-            new Held("souther.compiler.codegen.BodyGen.lambda$binary$0",
+            new Held("souther.compiler.codegen.BodyGen.placedNothing",
                     "names the operator in what it says of a comparison that placed nothing"),
 
             // And whether it compares at all, asked of the one place that says so — by a reader
