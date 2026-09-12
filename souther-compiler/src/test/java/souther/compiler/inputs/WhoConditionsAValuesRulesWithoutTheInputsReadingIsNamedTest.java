@@ -46,6 +46,12 @@ class WhoConditionsAValuesRulesWithoutTheInputsReadingIsNamedTest {
             // declaration and not an input — no behavior, no parameter, no path rooted at one — so
             // the declaration's own words are the right ones and there is nothing to translate.
             "souther.compiler.partition.Partitions",
+            // What one position of a row's value can take, which is the same subject as the reader
+            // below and the settling it does at each step. Its own name because the answers are
+            // kept: a search reaches one settling by many routes and asks the same position about
+            // it at each of them, and that is a fact about how the search walks rather than about
+            // what the rules mean.
+            "souther.compiler.partition.ConditionedCandidates",
             // A row's value for one parameter, composed a position at a time. Its positions are
             // where a value has to be built and not what the behavior declares it takes: a class
             // naming a constructor for a sum puts positions under it that no reading of the
@@ -89,13 +95,18 @@ class WhoConditionsAValuesRulesWithoutTheInputsReadingIsNamedTest {
      * settlings — so a check on the name alone would report every reader of a declaration as one
      * that settles a position of it.
      *
+     * <p>Every member that hands back settled rules and not the one a caller happened to reach for.
+     * Which of them a settling comes back as says what the caller may then ask, and says nothing
+     * about whether the settling happened — a register that read one of them would go quiet for
+     * every caller that used the other.
+     *
      * <p>Whether the settlings are taken, and not where in the list they are. A reader may be
      * handed something else beside them — where it borrows what has already been made of the
      * declaration is one such thing — and a check that looked at the last argument would go quiet
      * the day one was added, which is a check that reads nothing while reporting nothing.
      */
     private static boolean conditions(String member, java.lang.constant.MethodTypeDesc taken) {
-        if (member.equals("given")) {
+        if (member.equals("given") || member.equals("composing")) {
             return true;
         }
         return (member.equals("of") || member.equals("unshared"))

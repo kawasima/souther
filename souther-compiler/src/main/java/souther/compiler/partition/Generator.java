@@ -4263,8 +4263,14 @@ public final class Generator {
         positions.addAll(
                 found.stream().filter(each -> !decided.containsKey(each.at())).toList());
         Budget budget = new Budget();
+        // The rules of the value being composed, read once for the whole search. Every position's
+        // turn is answered by taking what the positions before it took onto this, which is the
+        // reading a settling states and not a second one of the declaration.
+        ConditionedCandidates candidates = new ConditionedCandidates(subject.ruleReading(),
+                rulesOf(subject.types().get(p), subject.rules(), subject.inputs().policy(),
+                        Map.of(), subject.machines()));
         FixtureTemplate built = descend(subject, p, plan, positions, 0, new LinkedHashMap<>(),
-                new LinkedHashMap<>(settled), decided, check, budget);
+                new LinkedHashMap<>(settled), decided, check, budget, candidates);
         if (built != null) {
             return new Outcome.Built(built);
         }
@@ -4311,13 +4317,15 @@ public final class Generator {
      * @param chosen  what the positions before this one took
      * @param settled the numbers among them, which is what a projection can be asked about
      * @param budget  assignments left to compose, shared down the whole search
+     * @param candidates what a position can take under a settling, shared down the whole search
      */
     private static FixtureTemplate descend(MeasuredInput subject, int p, ConstructionPlan plan,
                                            List<ConstructionPlan.Slot> positions, int index,
                                            Map<TermPath, FixtureTemplate> chosen,
                                            Map<TermPath, Place> settled,
                                            Map<TermPath, List<FixtureTemplate>> decided,
-                                           CandidateCheck check, Budget budget) {
+                                           CandidateCheck check, Budget budget,
+                                           ConditionedCandidates candidates) {
         if (index == positions.size()) {
             if (!budget.spend()) {
                 return null;
@@ -4327,14 +4335,15 @@ public final class Generator {
         }
         ConstructionPlan.Slot position = positions.get(index);
         TermPath where = position.at();
-        for (FixtureTemplate candidate : candidatesAt(subject, p, position, settled, decided)) {
+        for (FixtureTemplate candidate
+                : candidatesAt(subject, p, position, settled, decided, candidates)) {
             chosen.put(where, candidate);
             Place number = Counts.writtenIn(candidate.value());
             if (number != null) {
                 settled.put(where, number);
             }
             FixtureTemplate found = descend(subject, p, plan, positions, index + 1, chosen, settled,
-                    decided, check, budget);
+                    decided, check, budget, candidates);
             if (found != null) {
                 return found;
             }
@@ -4351,18 +4360,14 @@ public final class Generator {
     private static List<FixtureTemplate> candidatesAt(MeasuredInput subject, int p,
                                                       ConstructionPlan.Slot position,
                                                       Map<TermPath, Place> settled,
-                                                      Map<TermPath, List<FixtureTemplate>> decided) {
+                                                      Map<TermPath, List<FixtureTemplate>> decided,
+                                                      ConditionedCandidates candidates) {
         List<FixtureTemplate> fixed = decided.get(position.at());
         if (fixed != null) {
             return fixed;
         }
         TermPath at = TermPath.of(subject.parameters().get(p));
-        FieldDomains left = rulesOf(subject.types().get(p), subject.rules(),
-                subject.inputs().policy(), under(at, settled), subject.machines());
-        RuleKey field = fieldUnder(position.at());
-        return Partitions.displacedRepresentativesOf(position.type(), subject.ruleReading(),
-                field == null ? null : left.at(field).bounds(),
-                field == null ? null : left.heldAt(field));
+        return candidates.at(position, under(at, settled));
     }
 
     /**
