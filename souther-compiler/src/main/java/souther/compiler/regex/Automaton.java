@@ -568,12 +568,20 @@ final class Automaton {
      *
      * <p>What a round asks of a state is a row — the block it is in, and then the block each symbol
      * leads to — and what it groups is the states whose rows are equal. A row is as wide as the runs
-     * the labels cut, and two rows are equal exactly when their cells are, so the rows of a round go
-     * into one array that the next round writes over and the grouping is an open table read off
-     * those cells: the hash below is the cells, and a collision is settled by comparing them. The
-     * table is sized once for the states there are, which is as many rows as a round can have, so no
-     * round grows it. Blocks are numbered in the order a row is first seen; which numbers they get
-     * is nothing {@link #numbered} reads, since it renames them by walking the machine.
+     * the labels cut, and two rows are equal exactly when their cells are, so the grouping is an
+     * open table read off those cells: the hash below is the cells, and a collision is settled by
+     * comparing them.
+     *
+     * <p>What is kept is a row per block and not a row per state. Every row a state is compared
+     * against is the first row of some block, so a row per state would be holding what the grouping
+     * has already brought together — as many rows as the machine has states, each as wide as its
+     * alphabet. A state's row is written where the next block's would begin and stays there only if
+     * it opened one, which is why nothing is copied to keep it. The table of slots is the one thing
+     * sized for the states there are, because a round can put that many rows in it, and it never
+     * grows.
+     *
+     * <p>Blocks are numbered in the order a row is first seen; which numbers they get is nothing
+     * {@link #numbered} reads, since it renames them by walking the machine.
      */
     private static int[] smallest(List<int[]> table, BitSet accepting) {
         int states = table.size();
@@ -582,7 +590,7 @@ final class Automaton {
         for (int state = 0; state < states; state++) {
             block[state] = accepting.get(state) ? 1 : 0;
         }
-        int[] cells = new int[states * width];
+        int[] shown = new int[width];
         int[] next = new int[states];
         int slots = 4;
         while (slots < states * 2) {
@@ -594,27 +602,30 @@ final class Automaton {
             Arrays.fill(seen, 0);
             int found = 0;
             for (int state = 0; state < states; state++) {
-                int at = state * width;
-                cells[at] = block[state];
-                int[] row = table.get(state);
-                for (int over = 0; over < row.length; over++) {
-                    cells[at + 1 + over] = block[row[over]];
+                if (shown.length < (found + 1) * width) {
+                    shown = Arrays.copyOf(shown, shown.length * 2);
+                }
+                int at = found * width;
+                shown[at] = block[state];
+                int[] out = table.get(state);
+                for (int over = 0; over < out.length; over++) {
+                    shown[at + 1 + over] = block[out[over]];
                 }
                 int hash = 1;
                 for (int cell = at; cell < at + width; cell++) {
-                    hash = 31 * hash + cells[cell];
+                    hash = 31 * hash + shown[cell];
                 }
                 int probe = (hash ^ (hash >>> 16)) & (slots - 1);
                 while (true) {
                     int held = seen[probe];
                     if (held == 0) {
-                        seen[probe] = state + 1;
+                        seen[probe] = found + 1;
                         next[state] = found++;
                         break;
                     }
-                    if (Arrays.equals(cells, (held - 1) * width, held * width,
-                            cells, at, at + width)) {
-                        next[state] = next[held - 1];
+                    if (Arrays.equals(shown, (held - 1) * width, held * width,
+                            shown, at, at + width)) {
+                        next[state] = held - 1;
                         break;
                     }
                     probe = (probe + 1) & (slots - 1);
