@@ -63,7 +63,8 @@ class AQuotientNoDecimalWritesIsAProofAndNotAGivingUpTest {
                 LevelSpace.overFiniteDecimals(new BigDecimal("3")),
                 new Criterion.AtTheLevel(new Level.ACount(Count.of(BigDecimal.ONE))));
 
-        assertInstanceOf(Realization.Impossible.class, new LevelRealizer().realize(aThird, region()));
+        assertInstanceOf(Realization.Impossible.class, new LevelRealizer().realize(aThird, region(),
+                        NothingTheDeclarationsRefuse.at()));
     }
 
     /** And one it does reach comes back as the row rather than as a proof, so the check above is not
@@ -77,7 +78,8 @@ class AQuotientNoDecimalWritesIsAProofAndNotAGivingUpTest {
                 LevelSpace.overFiniteDecimals(new BigDecimal("3")),
                 new Criterion.AtTheLevel(new Level.ACount(Count.of(new BigDecimal("6")))));
 
-        assertInstanceOf(Realization.Found.class, new LevelRealizer().realize(aWhole, region()));
+        assertInstanceOf(Realization.Found.class, new LevelRealizer().realize(aWhole, region(),
+                        NothingTheDeclarationsRefuse.at()));
     }
 
     private static NumericTerm value(String field) {

@@ -10,6 +10,7 @@ import souther.compiler.report.AdequacyReport;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * A choice of bounds on one position leaves the line its alternatives leave together.
@@ -123,10 +124,18 @@ class AChoiceOfBoundsLeavesTheLineTheAlternativesLeaveTest {
     /**
      * And what the choice leaves is where the lines are and not which values stand there.
      *
-     * <p>Two alternatives naming one value each leave the run between them, and no value has a
-     * number in there. The outermost ends are two and five and the model draws a line at each; what
-     * is between them is a run nothing can be written in, and it comes back saying so. Read as the
-     * values the rules admit, the run would be offered as somewhere a row could stand.
+     * <p>Two alternatives naming one value each draw a line at each of them, and what each line
+     * leaves beside it is a run reaching the other — {@code 2 < n <= 5} from the first and
+     * {@code 2 <= n < 5} from the second. So what the choice settles is where the values part, and
+     * the numbers in the label are the lines rather than a claim about which values a row may be
+     * written at: a reading that took them for the run's own values would have the same two named
+     * values coming back as ends nothing lies at.
+     *
+     * <p>Each run does hold a value, and it is one of the named ones — a run beside one line reaches
+     * the next and stops there, less the value the line it is named for stands at
+     * ({@link souther.compiler.partition.Criterion.Within}). That a row at five answers the run
+     * above two as well as the point at five is two demands one row satisfies, which is what
+     * {@code Criterion.sameAs} already says about a level and a run one value wide.
      */
     @Test
     void andWhatTheChoiceLeavesIsWhereTheLinesAreAndNotWhichValuesStandThere() {
@@ -135,9 +144,14 @@ class AChoiceOfBoundsLeavesTheLineTheAlternativesLeaveTest {
         assertEquals(List.of("border      borders 2   obligations 0/0"),
                 lines.stream().filter(each -> each.startsWith("border")).toList(),
                 "the outermost ends of the two named values are the lines the rules draw");
-        assertEquals(2, lines.stream()
-                        .filter(each -> each.contains("nothing composed one")).count(),
-                "and the runs between them hold no value, which is said rather than offered");
+        assertEquals(List.of("2 < n <= 5", "2 <= n < 5"),
+                lines.stream().filter(each -> each.contains("IN point n in "))
+                        .map(each -> each.replaceAll(".*IN point n in ", "")
+                                .replaceAll(" \\(invariant.*", ""))
+                        .toList(),
+                "the run each line leaves, named by that line and reaching the other");
+        assertTrue(lines.stream().noneMatch(each -> each.contains("nothing composed one")),
+                "and a value stands in each of them, which the named values are: " + lines);
     }
 
     /**

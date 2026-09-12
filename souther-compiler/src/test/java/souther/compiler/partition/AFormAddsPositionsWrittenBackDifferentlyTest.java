@@ -200,7 +200,8 @@ class AFormAddsPositionsWrittenBackDifferentlyTest {
                 "the standing carries the order each position's number is measured on, which is"
                         + " what the search writes a value back on");
         assertInstanceOf(Realization.Found.class,
-                new LevelRealizer().realize(standing, region()),
+                new LevelRealizer().realize(standing, region(),
+                        NothingTheDeclarationsRefuse.at()),
                 "a difference of two and a half is reached by a decimal and a whole number, and by"
                         + " no two whole numbers");
     }
@@ -228,7 +229,7 @@ class AFormAddsPositionsWrittenBackDifferentlyTest {
         Realization made = new LevelRealizer().realize(
                 over.standingAt(
                         new Criterion.AtTheLevel(new Level.ACount(Count.of(BigDecimal.ONE)))),
-                region());
+                region(), NothingTheDeclarationsRefuse.at());
 
         assertInstanceOf(Realization.Found.class, made,
                 "a level the rules leave a row at is not a level nothing stands at");
