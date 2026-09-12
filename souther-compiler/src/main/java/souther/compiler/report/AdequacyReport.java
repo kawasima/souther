@@ -50,6 +50,7 @@ import souther.compiler.query.Measure;
 import souther.compiler.query.Sites;
 import souther.compiler.query.Measurement;
 import souther.compiler.query.RuleRequirement;
+import souther.compiler.query.RuleSettlement;
 import souther.compiler.query.SearchOutcomes;
 import souther.compiler.query.Weakening;
 import souther.compiler.query.WeakeningSet;
@@ -436,7 +437,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
      *                  can open it says only that its writing module places it, so every one of
      *                  them would be one key — what makes the question whole is the rule it is
      *                  about, which is what a handle is
-     * @param ruleRequirements what the search settled about each rule no row took, or empty where
+     * @param ruleSettlements what the search came to about each rule no row took, or empty where
      *                  nothing asked it. Beside the findings rather than among them: a finding is
      *                  an obligation and a rule nothing could show a row for is owed none, while a
      *                  page or a document that showed only the findings would say a rule count and
@@ -450,14 +451,14 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                                  Map<ConditionReportAnchor, Citation> conditionPlaces,
                                  Map<RuleCitation.Written, Citation> rulePlaces,
                                  Map<DecisionReading.Ruled, List<ShownCondition>> ruleReadings,
-                                 Map<DecisionRule, RuleRequirement> ruleRequirements) {
+                                 Map<DecisionRule, RuleSettlement> ruleSettlements) {
         public BehaviorReport {
             reported = List.copyOf(reported);
             armPlaces = Map.copyOf(armPlaces);
             conditionPlaces = Map.copyOf(conditionPlaces);
             rulePlaces = Map.copyOf(rulePlaces);
             ruleReadings = Map.copyOf(ruleReadings);
-            ruleRequirements = Map.copyOf(ruleRequirements);
+            ruleSettlements = Map.copyOf(ruleSettlements);
         }
 
         /**
@@ -727,7 +728,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             // What the search of the rules no row took came to. Asked where the account asks it
             // and under the same guard, so a page costs a module nothing the findings did not
             // already pay for.
-            Map<DecisionRule, RuleRequirement> requirements = ruleRequirements(compilation, name,
+            Map<DecisionRule, RuleSettlement> requirements = ruleSettlements(compilation, name,
                     behavior.name(),
                     decisions == null ? null : decisions.get(behavior.name()));
             behaviors.add(new BehaviorReport(behavior.name(),
@@ -822,7 +823,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
      */
     private static Map<DecisionReading.Ruled, List<ShownCondition>> ruleReadings(
             Compilation compilation, String module, String behavior, DecisionEvidence decision,
-            Map<DecisionRule, RuleRequirement> requirements) {
+            Map<DecisionRule, RuleSettlement> requirements) {
         if (decision == null) {
             return Map.of();
         }
@@ -832,7 +833,8 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             // The rules a finding is about, which are the ones a page describes condition by
             // condition. What is owed no row is counted under its reason rather than written out,
             // so describing one would be work for a line nobody reads.
-            if (!(requirements.get(rule.rule()) instanceof RuleRequirement.Required)) {
+            RuleSettlement came = requirements.get(rule.rule());
+            if (came == null || !(came.requirement() instanceof RuleRequirement.Required)) {
                 continue;
             }
             List<ShownCondition> shown = new ArrayList<>();
@@ -855,15 +857,15 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
      * not a set of anything, and a rule this compiler never looked for a row at is not one it
      * looked for and did not find.
      */
-    private static Map<DecisionRule, RuleRequirement> ruleRequirements(Compilation compilation,
-                                                                       String module,
-                                                                       String behavior,
-                                                                       DecisionEvidence decision) {
+    private static Map<DecisionRule, RuleSettlement> ruleSettlements(Compilation compilation,
+                                                                      String module,
+                                                                      String behavior,
+                                                                      DecisionEvidence decision) {
         if (decision == null || decision.took().made().isEmpty()
                 || decision.notTakenByRows().isEmpty()) {
             return Map.of();
         }
-        Map<DecisionRule, RuleRequirement> settled = compilation.db()
+        Map<DecisionRule, RuleSettlement> settled = compilation.db()
                 .ask(new Adequacy.DecisionSearch(module, behavior)).value();
         return settled == null ? Map.of() : settled;
     }
@@ -2525,11 +2527,11 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
         Map<String, Integer> counted = new LinkedHashMap<>();
         int all = 0;
         for (DecisionReading.Ruled ruled : decision.read().found()) {
-            RuleRequirement settled = behavior.ruleRequirements().get(ruled.rule());
-            if (!answer.isInstance(settled)) {
+            RuleSettlement came = behavior.ruleSettlements().get(ruled.rule());
+            if (came == null || !answer.isInstance(came.requirement())) {
                 continue;
             }
-            Said said = said(settled);
+            Said said = said(came);
             order.put(said.order(), said.text());
             counted.merge(said.text(), 1, Integer::sum);
             all++;
@@ -2560,15 +2562,23 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
      */
     private record Said(int order, String text) { }
 
-    /** What a search's answer about one rule says, and where among the answers it is said. */
-    private static Said said(RuleRequirement settled) {
-        return switch (settled) {
+    /**
+     * What a search's answer about one rule says, and where among the answers it is said.
+     *
+     * <p>Both axes, because what a reader is owed is one sentence. Where the composing came to
+     * nothing, what the sentence says is the shortfall — which is this compiler's and is what
+     * could be done about it — and the requirement's own word for it says only that there was
+     * nothing to try the rule with, which no reader acts on.
+     */
+    private static Said said(RuleSettlement came) {
+        return switch (came.requirement()) {
             // Composed and run first, because they are what a reader can tell this compiler about:
             // a row that went elsewhere is a way this steered wrong and the model may be fine.
             case RuleRequirement.Unsettled.AComposedRowWentElsewhere _ ->
                     new Said(1, "a row composed for one took another rule of the same body");
-            case RuleRequirement.Unsettled.NothingComposedARow(var composing) ->
-                    new Said(2 + composing.reason().ordinal(), whyUnresolved(composing));
+            case RuleRequirement.Unsettled.NothingWasComposedToTry _ ->
+                    new Said(2 + came.synthesisShortfall().reason().ordinal(),
+                            whyUnresolved(came.synthesisShortfall()));
             case RuleRequirement.Unsettled.CouldNotTellWhereTheRowWent(var reading) ->
                     new Said(100 + reading.ordinal(), switch (reading) {
                         case NO_RULE_IS_RECOGNISABLE ->
@@ -4437,16 +4447,23 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             // Whether a row is owed here at all, where something asked. Beside `taken` and not
             // folded into it: a rule no row took and nothing could show a row for is not a gap,
             // and a consumer reading `taken` alone would count it as one.
-            RuleRequirement settled = behavior.ruleRequirements().get(ruled.rule());
-            if (settled != null) {
-                one.put("requirement", wire(settled));
+            RuleSettlement came = behavior.ruleSettlements().get(ruled.rule());
+            if (came != null) {
+                one.put("requirement", wire(came.requirement()));
                 // And which answer it was, rule by rule. The page counts these under their reason
                 // rather than writing one line apiece, so a consumer that could not tell two
                 // unsettled rules apart could not arrive at the page from this document — and a
                 // projection nobody can take is the two surfaces agreeing by coincidence.
-                String because = because(settled);
+                String because = because(came.requirement());
                 if (because != null) {
                     one.put("because", because);
+                }
+                // And what the composing managed, which is a different axis and gets a field of
+                // its own. A row this compiler could not compose is its shortfall and says nothing
+                // about whether the model owes one there, so a consumer reading `requirement` is
+                // never handed a generator's failure as the answer to that question.
+                if (came.synthesisShortfall() != null) {
+                    one.put("synthesisShortfall", word(came.synthesisShortfall().reason()));
                 }
             }
         }
@@ -4462,11 +4479,15 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
     }
 
     /**
-     * Which answer of the search this was, or null where the answer has no reason beside it.
+     * Which answer about the requirement this was, or null where the answer has no reason beside it.
      *
-     * <p>One word per way a rule can come to be owed no row or left unsettled, which is what a page
-     * groups by. A rule owed a row has none: what settles it is the row that was seen standing in,
-     * and there is nothing beside the word for that.
+     * <p>One word per way a rule comes to be owed no row or left unsettled, and every one of them
+     * about the inquiry or about the model. What the composing fell short on is not here: it is a
+     * different question and has a field of its own, and a word from its vocabulary written into
+     * this one would be the answer to "is a row owed" carrying the answer to "could one be built".
+     *
+     * <p>A rule owed a row has none. What settles it is the row that was seen standing in, and
+     * there is nothing beside the word for that.
      */
     private static String because(RuleRequirement settled) {
         return switch (settled) {
@@ -4479,8 +4500,8 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             case RuleRequirement.Unsettled.CouldNotTellWhereTheRowWent _ ->
                     "the_rule_the_row_took_could_not_be_told";
             case RuleRequirement.Unsettled.NothingWatchedTheRow _ -> "nothing_watched_the_row";
-            case RuleRequirement.Unsettled.NothingComposedARow(var composing) ->
-                    word(composing.reason());
+            case RuleRequirement.Unsettled.NothingWasComposedToTry _ ->
+                    "nothing_was_composed_to_try";
         };
     }
 

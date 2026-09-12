@@ -2,7 +2,6 @@ package souther.compiler.query;
 
 import souther.compiler.coverage.CoverageSites;
 import souther.compiler.inputs.Requirements;
-import souther.compiler.partition.Generator;
 import souther.compiler.partition.RowToRun;
 import souther.compiler.partition.RulesTaken;
 
@@ -72,16 +71,17 @@ public sealed interface RuleRequirement {
          * arm, have every candidate refused, and report the model's own answer as this compiler
          * having looked and not found.
          *
-         * <p>The arm the author wrote and not a place a run through it is recorded at. A helper
-         * carrying a fork stands once per call site, and an arm one call site cannot reach is one
-         * another may — so what shows the way out of reach is the arm being out of the count, which
-         * is settled over every copy of it at once.
+         * <p>The arm the author wrote and not a place a run through it is recorded at, nor one
+         * obligation of it. A helper carrying a fork stands once per call site, and a fork the
+         * caller decides is one obligation per rule handed in — an arm one of those cannot reach is
+         * one another may. So what shows the way out of reach is every obligation the author's arm
+         * names being out of the count, settled over all of them at once.
          *
          * <p>Arms and not every construct on the way. What a comparison's outcome was proven to be
          * is the other half of the same reading and the sites have no place for it to be asked at,
          * so a rule turning on one is settled the way it was before.
          */
-        record AnArmNothingReaches(CoverageSites.Obligation arm) implements Excluded {
+        record AnArmNothingReaches(CoverageSites.AsWritten arm) implements Excluded {
 
             public AnArmNothingReaches {
                 if (arm == null) {
@@ -144,15 +144,17 @@ public sealed interface RuleRequirement {
             }
         }
 
-        /** Nothing composed a row against the rule, in the words a search comes back with. */
-        record NothingComposedARow(Generator.UnresolvedCombination why) implements Unsettled {
-
-            public NothingComposedARow {
-                if (why == null) {
-                    throw new IllegalArgumentException("a search that came to nothing says what of");
-                }
-            }
-        }
+        /**
+         * The synthesis produced no candidate, so there was nothing to try the rule with.
+         *
+         * <p>A fact about the inquiry and not about the rule. What the synthesis fell short on
+         * travels on its own axis ({@link RuleSettlement#synthesisShortfall()}) and is carried
+         * nowhere here: a generator's failure is not a requirement answer, and a reason from its
+         * vocabulary sitting inside this one would make it one — a reader of the requirement would
+         * be told a way is unsettled *because* a table is what this compiler does not write, which
+         * says nothing about whether a row is owed there.
+         */
+        record NothingWasComposedToTry() implements Unsettled {}
 
         /**
          * A row was composed and nothing watched it run.

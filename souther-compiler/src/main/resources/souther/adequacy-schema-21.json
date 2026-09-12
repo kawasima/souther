@@ -2131,13 +2131,19 @@
                 ]
               },
               "because": {
-                "description": "Which answer the search came to, beside whether a row is owed. Present with `requirement` except where that is `required`, whose answer is the row that was seen standing in and has nothing beside it. Two are the model's: `the_way_needs_one_position_to_be_two` is a way asking a position to be two things at once, and `an_arm_nothing_reaches` a way through an arm no value arrives at. Three are what this compiler did with a row it composed — it took another rule, this reading could not place it, or nothing watched it. The rest are the words a composing that came to nothing gives, which is the vocabulary every search of this compiler answers in rather than one written for rules. A human report counts the rules under each of these rather than writing one line apiece, so this is what such a count is taken over.",
+                "description": "How the requirement came to that answer. Present with `requirement` except where that is `required`, whose answer is the row that was seen standing in and has nothing beside it. Two are the model's: `the_way_needs_one_position_to_be_two` is a way asking a position to be two things at once, and `an_arm_nothing_reaches` a way through an arm no value arrives at. The rest are about the inquiry — a row was composed and took another rule, a run this reading could not place, a run nothing watched, or there was nothing composed to try the rule with. That last says only that the inquiry had no candidate; what the composing fell short on is `synthesisShortfall`, a different question with a field of its own. A human report counts the rules under these rather than writing one line apiece, so this is what such a count is taken over.",
                 "enum": [
                   "the_way_needs_one_position_to_be_two",
                   "an_arm_nothing_reaches",
                   "a_composed_row_went_elsewhere",
                   "the_rule_the_row_took_could_not_be_told",
                   "nothing_watched_the_row",
+                  "nothing_was_composed_to_try"
+                ]
+              },
+              "synthesisShortfall": {
+                "description": "What this compiler's composing came to where it produced no candidate for the rule, present exactly where `because` is `nothing_was_composed_to_try`. This compiler's shortfall and never an answer about the model: a way nothing here composed a value for may be the easiest row in the file to write by hand, so whether a row is owed at the rule stays `unsettled` rather than settled by this. The words are the vocabulary every search of this compiler answers in rather than one written for rules.",
+                "enum": [
                   "nothing_composes_one",
                   "all_candidates_rejected",
                   "nothing_stands_in_for_a_dependency",

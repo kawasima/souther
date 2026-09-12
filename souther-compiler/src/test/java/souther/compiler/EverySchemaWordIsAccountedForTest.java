@@ -250,12 +250,11 @@ class EverySchemaWordIsAccountedForTest {
     }
 
     /**
-     * What a document may say a search came to about one rule, beside whether a row is owed.
+     * What a document may say about how the requirement of one rule came to its answer.
      *
-     * <p>Two vocabularies under one field. The answers a search has are shapes and are spelled
-     * here, held against the arms so that one added has to be given a word; what a composing that
-     * came to nothing gives is an enum of this compiler's and its own names are the words, so a
-     * reason added there is carried without anybody editing this.
+     * <p>The answers a search has, spelled here and held against the arms so that one added has to
+     * be given a word. What the composing fell short on is not among them: that is the other axis
+     * and has a field of its own, whose words are an enum's.
      */
     private static Set<String> requirementBecauseWords() {
         Map<String, String> spelling = new LinkedHashMap<>();
@@ -264,10 +263,8 @@ class EverySchemaWordIsAccountedForTest {
         spelling.put("AComposedRowWentElsewhere", "a_composed_row_went_elsewhere");
         spelling.put("CouldNotTellWhereTheRowWent", "the_rule_the_row_took_could_not_be_told");
         spelling.put("NothingWatchedTheRow", "nothing_watched_the_row");
-        // The one arm with no word of its own. What it carries is the composing's answer, and the
-        // document writes that rather than a word saying a composing answered.
-        spelling.put("NothingComposedARow", null);
-        // And a rule owed a row, whose answer is the row that was seen standing in.
+        spelling.put("NothingWasComposedToTry", "nothing_was_composed_to_try");
+        // A rule owed a row, whose answer is the row that was seen standing in and is not a reason.
         spelling.put("Required", null);
         Set<String> words = new LinkedHashSet<>();
         for (Class<?> answer : armsOf(souther.compiler.query.RuleRequirement.class)) {
@@ -278,7 +275,6 @@ class EverySchemaWordIsAccountedForTest {
                 words.add(spelling.get(answer.getSimpleName()));
             }
         }
-        words.addAll(wordsOf(souther.compiler.partition.Generator.UnresolvedCombination.Reason.class));
         return words;
     }
 
@@ -402,6 +398,13 @@ class EverySchemaWordIsAccountedForTest {
                     List.of("$defs", "decision", "properties", "obligations", "items",
                             "properties", "because"),
                     requirementBecauseWords()),
+            // And what the composing fell short on, which is the other axis. Held against the
+            // vocabulary every search of this compiler answers in, so a reason added there is
+            // carried without anybody editing the schema by hand.
+            new Vocabulary("decision.obligations[].synthesisShortfall",
+                    List.of("$defs", "decision", "properties", "obligations", "items",
+                            "properties", "synthesisShortfall"),
+                    souther.compiler.partition.Generator.UnresolvedCombination.Reason.class),
             new Vocabulary("findings[].kind",
                     List.of("$defs", "findings", "items", "properties", "kind"),
                     Adequacy.Kind.class),

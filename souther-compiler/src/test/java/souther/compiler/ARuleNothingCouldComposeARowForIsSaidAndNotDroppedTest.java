@@ -13,6 +13,8 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -110,6 +112,45 @@ class ARuleNothingCouldComposeARowForIsSaidAndNotDroppedTest {
                 .mapToInt(line -> Integer.parseInt(
                         line.replaceAll(".*?(\\d+) decision rules?\\b.*", "$1")))
                 .sum();
+    }
+
+    @Test
+    void whatTheComposingFellShortOnIsNotWhatTheRequirementAnswers() {
+        JsonNode rules = JSON.readTree(json(TWO_CALLS))
+                .get("modules").get(0).get("behaviors").get(1)
+                .get("decision").get("obligations");
+
+        JsonNode unsettled = null;
+        for (JsonNode rule : rules) {
+            if ("unsettled".equals(rule.get("requirement").stringValue())) {
+                unsettled = rule;
+            }
+        }
+        assertNotNull(unsettled, () -> "the way needing two answers is the one nothing settled: "
+                + rules);
+        // The requirement says the inquiry had no candidate, and that is the whole of what it
+        // says. What this compiler fell short on is the other axis: a way it writes no table for
+        // may be the easiest row in the file to write by hand, and a requirement carrying that
+        // reason would be the generator's failure answering whether a row is owed.
+        assertEquals("nothing_was_composed_to_try", unsettled.get("because").stringValue());
+        assertEquals("a_table_is_what_this_needs",
+                unsettled.get("synthesisShortfall").stringValue());
+    }
+
+    @Test
+    void aRuleOwedARowCarriesNoShortfall() {
+        JsonNode rules = JSON.readTree(json(TWO_CALLS))
+                .get("modules").get(0).get("behaviors").get(1)
+                .get("decision").get("obligations");
+
+        rules.forEach(rule -> {
+            if ("required".equals(rule.get("requirement").stringValue())) {
+                assertNull(rule.get("synthesisShortfall"),
+                        () -> "a row was composed for it and run, so nothing fell short: " + rule);
+                assertNull(rule.get("because"),
+                        () -> "and what settles it is the row that was seen standing in: " + rule);
+            }
+        });
     }
 
     @Test
