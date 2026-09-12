@@ -459,7 +459,9 @@ class WhatAnApplicationStatesComesFromTheDeclarationItAppliesTest {
 
     private DeclaredTypeReading readingOver(FieldTypes world) {
         return new DeclaredTypeReading(
-                new DeclarationFacts(new FieldRead(symbols, world, FieldRead.Unreadable.REFUSED)),
+                new DeclarationFacts(new FieldRead(symbols, ScopedDeclarations.of(symbols),
+                        ScopedDeclarations.kindsOf(symbols), world,
+                        FieldRead.Unreadable.REFUSED)),
                 values, compilation.db().ask(new Bodies.Reachable(module)).value());
     }
 
@@ -483,7 +485,8 @@ class WhatAnApplicationStatesComesFromTheDeclarationItAppliesTest {
         Map<String, Hir.FnDef> declared =
                 read.db().ask(new Bodies.ModuleDefinitions(module)).value();
         return new DeclaredTypeReading(
-                new DeclarationFacts(new FieldRead(scope, new ResolvedFieldTypes(scope),
+                new DeclarationFacts(new FieldRead(scope, ScopedDeclarations.of(scope),
+                        ScopedDeclarations.kindsOf(scope), new ResolvedFieldTypes(scope),
                         FieldRead.Unreadable.REFUSED)),
                 declared, read.db().ask(new Bodies.Reachable(module)).value())
                 .declaredTypeOf(assertInstanceOf(Hir.FnBody.Written.class,

@@ -35,6 +35,17 @@ public record DeclarationFacts(FieldRead read) {
         return read.symbols();
     }
 
+    /** What the declarations a reading is made against say, which is the reading's for the reason
+     *  above: two that could differ are two answers about what a declaration states. */
+    public PublishedDeclarations published() {
+        return read.published();
+    }
+
+    /** Which form each of those declarations was written in. */
+    public DeclarationKinds kinds() {
+        return read.kinds();
+    }
+
     /**
      * Whether a value of {@code type} is held to a rule its declarations wrote.
      *

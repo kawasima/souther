@@ -52,7 +52,9 @@ public final class ExecutableInvariants {
      *     body check reads, because a clause naming a total helper names the same one a body does
      * @throws CompileException where a clause is not a condition
      */
-    public static ValueShape of(Hir.Data data, DerivedSymbols symbols, Map<String, Type> helpers) {
+    public static ValueShape of(Hir.Data data, DerivedSymbols symbols,
+                                PublishedDeclarations published, DeclarationKinds kinds,
+                                Map<String, Type> helpers) {
         Map<String, Type> types = TypeOps.fieldTypes(data, symbols);
         Map<String, BindingId> bindings =
                 TypeOps.fieldBindings(data.declares(), symbols);
@@ -64,7 +66,7 @@ public final class ExecutableInvariants {
                 new ValueShape.Field(field, type, bindings.get(field))));
 
         Scope reading = DataChecker.fieldScope(data.declares(), data, symbols).reaching(helpers);
-        CheckContext ctx = CheckContext.executableInvariant(symbols, data);
+        CheckContext ctx = CheckContext.executableInvariant(symbols, published, kinds, data);
         List<ValueShape.Invariant> invariants = new ArrayList<>();
         for (Hir.InvariantClause clause : TypeOps.settledClausesGoverning(data.declares(), symbols)) {
             // Desugared first, the way a body is: a clause writing a comprehension states the same

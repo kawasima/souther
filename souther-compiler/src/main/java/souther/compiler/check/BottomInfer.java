@@ -90,11 +90,11 @@ public final class BottomInfer {
      * the walk here beyond its own contract. Shared by the checker's call typing and the backend's
      * fold materialisation so both pin the same accumulator type. */
     public static void pinResultTypeVars(Type result, Type expected, Map<String, Type> bind,
-                                         Symbols symbols) {
+                                         PublishedDeclarations published) {
         if (expected == null) {
             return;
         }
-        TypeOps.unify(result, expected, bind, symbols);
+        TypeOps.unify(result, expected, bind, published);
     }
 
     /** Whether a step-typing error is the unresolved-bottom error (an operand/branch reported as the

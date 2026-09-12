@@ -179,7 +179,8 @@ public final class DeclaredBounds {
      * the value and not about anything taken of it. */
     public static Range of(TypeView view, RuleReadingContext reading) {
         return of(view, reading,
-                Carrier.ofValue(view.declared(), reading.source().symbols()), null);
+                Carrier.ofValue(view.declared(), reading.source().symbols(),
+                        reading.source().kinds(), reading.source().published()), null);
     }
 
     /**

@@ -311,7 +311,7 @@ final class TermRealizations {
                     Generator.UnresolvedCombination.Reason.NOTHING_COMPOSES_ONE);
         }
         RuleReadingSource ruleSource = reading.source();
-        TypeView holder = TypeView.of(sourceType, ruleSource.symbols());
+        TypeView holder = TypeView.of(sourceType, ruleSource.symbols(), ruleSource.published());
         // A name this module cannot write leaves no value to write, which is a position nothing
         // composes one for rather than a value written without the name. Asked of the position
         // before anything is built for it, since it is the same answer for every value.
@@ -364,7 +364,7 @@ final class TermRealizations {
         Place seconds = Count.of(count.at()
                 .multiply(java.math.BigDecimal.valueOf(part.seconds())));
         FixtureTemplate standing = WornNames.under(
-                TypeView.of(sourceType, ruleSource.symbols()).wrappers(),
+                TypeView.of(sourceType, ruleSource.symbols(), ruleSource.published()).wrappers(),
                 FixtureTemplate.on(observed, seconds, ruleSource.symbols().scope()::reach), ruleSource);
         return standing == null
                 ? new Realization.None(
@@ -405,7 +405,7 @@ final class TermRealizations {
                     Generator.UnresolvedCombination.Reason.NOTHING_COMPOSES_ONE);
         }
         FixtureTemplate standing = WornNames.under(
-                TypeView.of(sourceType, ruleSource.symbols()).wrappers(),
+                TypeView.of(sourceType, ruleSource.symbols(), ruleSource.published()).wrappers(),
                 FixtureTemplate.on(observed, Dates.dayOf(on), ruleSource.symbols().scope()::reach),
                 ruleSource);
         return standing == null
@@ -472,7 +472,7 @@ final class TermRealizations {
     /** One value, wearing every name the position declares, or the reason there is none. */
     private static Realization oneValue(FixtureTemplate bare, Type sourceType, RuleReadingSource ruleSource) {
         FixtureTemplate standing = WornNames.under(
-                TypeView.of(sourceType, ruleSource.symbols()).wrappers(), bare, ruleSource);
+                TypeView.of(sourceType, ruleSource.symbols(), ruleSource.published()).wrappers(), bare, ruleSource);
         return standing == null
                 ? new Realization.None(
                         Generator.UnresolvedCombination.Reason.NOTHING_COMPOSES_ONE)

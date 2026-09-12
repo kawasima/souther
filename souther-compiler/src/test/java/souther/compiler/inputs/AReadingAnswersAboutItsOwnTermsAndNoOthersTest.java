@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import souther.compiler.DefaultStdlib;
 import souther.compiler.check.RuleReadingSource;
+import souther.compiler.check.ScopedDeclarations;
 import souther.compiler.check.RuleReadings;
 import souther.compiler.check.Symbols;
 import souther.compiler.query.ReadAs;
@@ -119,7 +120,8 @@ class AReadingAnswersAboutItsOwnTermsAndNoOthersTest {
     /** What the answer would have been, which is what makes the refusal load-bearing. */
     @Test
     void theAnswerItWouldHaveGivenIsHalfOne() {
-        TermOrders would = TermOrdering.of(lengthOfS(), null, SYMBOLS);
+        TermOrders would = TermOrdering.of(lengthOfS(), null, SYMBOLS,
+                ScopedDeclarations.kindsOf(SYMBOLS), ScopedDeclarations.of(SYMBOLS));
 
         assertEquals(souther.compiler.check.Carrier.WHOLE, would.answered(),
                 "the operation answers with a whole number wherever it was applied");

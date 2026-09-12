@@ -84,7 +84,7 @@ class WhatADotMayNameIsOneAnswerForEveryReaderOfItTest {
      */
     private final FieldTypes world = new ResolvedFieldTypes(symbols);
     private final FieldRead read =
-            new FieldRead(symbols, world, FieldRead.Unreadable.REFUSED);
+            new FieldRead(symbols, ScopedDeclarations.of(symbols), ScopedDeclarations.kindsOf(symbols),world, FieldRead.Unreadable.REFUSED);
 
     // --- what one position makes readable -------------------------------------------------------
 
@@ -166,7 +166,7 @@ class WhatADotMayNameIsOneAnswerForEveryReaderOfItTest {
     @Test
     void aWorldDoesNotDecideWhatAWornNameMakesReadable() {
         FieldTypes inventsOne = _ -> Map.of("value", Type.INT, "andAnother", Type.STRING);
-        FieldRead reading = new FieldRead(symbols, inventsOne, FieldRead.Unreadable.REFUSED);
+        FieldRead reading = new FieldRead(symbols, ScopedDeclarations.of(symbols), ScopedDeclarations.kindsOf(symbols),inventsOne, FieldRead.Unreadable.REFUSED);
 
         assertEquals(Map.of("value", Type.INT), reading.at(Type.ref(named("Wrapped"))),
                 "a name makes its one written field readable and nothing the world adds");
@@ -194,7 +194,7 @@ class WhatADotMayNameIsOneAnswerForEveryReaderOfItTest {
         FieldTypes checked = ExampleExecutions.of(COMPILATION.db(), "demo").fieldTypes();
         Type declared = new DeclaredTypeReading(
                 new DeclarationFacts(
-                        new FieldRead(symbols, checked, FieldRead.Unreadable.REFUSED)),
+                        new FieldRead(symbols, ScopedDeclarations.of(symbols), ScopedDeclarations.kindsOf(symbols),checked, FieldRead.Unreadable.REFUSED)),
                 definitions(), COMPILATION.db().ask(new Bodies.Reachable("demo")).value())
                 .declaredTypeOf(bodyOf("taken"));
         assertEquals(Type.STRING, declared,
@@ -266,11 +266,11 @@ class WhatADotMayNameIsOneAnswerForEveryReaderOfItTest {
             FieldTypes text = new ResolvedFieldTypes(scope);
 
             assertEquals(Map.of(),
-                    new FieldRead(scope, text, FieldRead.Unreadable.MAKES_NOTHING_READABLE)
+                    new FieldRead(scope, ScopedDeclarations.of(scope), ScopedDeclarations.kindsOf(scope), text,FieldRead.Unreadable.MAKES_NOTHING_READABLE)
                             .at(position),
                     () -> "a text still being typed is answered at " + Type.show(position));
             assertThrows(CompileException.class,
-                    () -> new FieldRead(scope, text, FieldRead.Unreadable.REFUSED).at(position),
+                    () -> new FieldRead(scope, ScopedDeclarations.of(scope), ScopedDeclarations.kindsOf(scope), text,FieldRead.Unreadable.REFUSED).at(position),
                     () -> "and a check reads the same position and refuses it, at "
                             + Type.show(position));
         }

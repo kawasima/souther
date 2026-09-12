@@ -2,6 +2,7 @@ package souther.compiler.inputs;
 
 import souther.compiler.DefaultStdlib;
 import souther.compiler.ast.Ast;
+import souther.compiler.check.ScopedDeclarations;
 import souther.compiler.ast.Hir;
 import souther.compiler.check.Resolve;
 import souther.compiler.check.Shape;
@@ -58,7 +59,7 @@ class APositionAReadingIsMadeOfIsProvedToBeOneTest {
     }
 
     private Shape.ReadablePositionShape admit(Type type) {
-        return ReadablePosition.of(type, symbols).shape();
+        return ReadablePosition.of(type, symbols, ScopedDeclarations.of(symbols)).shape();
     }
 
     private Type named(String name) {

@@ -38,7 +38,7 @@ class WhatBuildsASizeSaysWhatItCouldNotBuildTest {
 
     /** What a position of this type is, which is what the builder is asked about. */
     private static Shape shape(Type type) {
-        return TypeView.of(type, NONE.symbols()).shape();
+        return TypeView.of(type, NONE.symbols(), NONE.published()).shape();
     }
 
     @Test

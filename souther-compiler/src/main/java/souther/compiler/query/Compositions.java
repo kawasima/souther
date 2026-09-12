@@ -50,7 +50,8 @@ public final class Compositions {
                 if (behavior instanceof Hir.PipeBehavior pipe) {
                     try {
                         out.put(new ValueName.Behavior(module.name(), pipe.name()),
-                                PipelineSigs.composition(pipe, sigs.value(), scope.value(), stages));
+                                PipelineSigs.composition(pipe, sigs.value(), scope.value(),
+                                        Shapes.publishedDeclarations(db), stages));
                     } catch (Unanswerable _) {
                         // A stage that names nothing was reported where it was written, and this
                         // composition has nothing to route. Left out for the reason its signature

@@ -39,6 +39,8 @@ final class Clauses {
      *  not one this reader makes out of the tree it was handed. Which clauses it has, what each of
      *  them states, and what it spreads all come from here. */
     private final PublishedDeclarations published;
+    /** Which form each of those declarations was written in. */
+    private final DeclarationKinds kinds;
     private final Map<TypeSymbol.AtModule, Map<String, Type>> fields = new HashMap<>();
     private final Map<TypeSymbol.AtModule, Map<String, BindingId>> bindings =
             new HashMap<>();
@@ -67,6 +69,7 @@ final class Clauses {
         this.expandedClauses = source.invariants();
         this.written = source.written();
         this.published = source.published();
+        this.kinds = source.kinds();
     }
 
 
@@ -154,7 +157,7 @@ final class Clauses {
             Hir.Data data = declarationOf(named);
             return new SecondaryClauseReading.Over(
                     DataChecker.fieldScope(named, data, symbols),
-                    CheckContext.of(symbols).forData(data).forDischarge());
+                    CheckContext.of(symbols, published, kinds).forData(data).forDischarge());
         };
     }
 

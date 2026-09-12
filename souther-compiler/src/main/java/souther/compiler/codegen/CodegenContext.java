@@ -10,6 +10,8 @@ import souther.compiler.core.KernelSignature;
 import souther.compiler.core.KernelSignatures;
 import souther.compiler.core.ValueShape;
 import souther.compiler.check.DerivedSymbols;
+import souther.compiler.check.DeclarationKinds;
+import souther.compiler.check.PublishedDeclarations;
 import souther.compiler.ast.Hir;
 import souther.compiler.diag.PhysicalPos;
 import souther.compiler.diag.QuotedFrom;
@@ -46,6 +48,13 @@ final class CodegenContext {
 
     final String pkg;
     final DerivedSymbols symbols;
+    /** What the declarations an emitted class names say about themselves. Beside {@link #symbols}
+     *  and not read off it, for the reason {@code PublishedDeclarations} gives. */
+    final PublishedDeclarations published;
+
+    /** Which form each declaration was written in, for the emissions that only have to tell a sum
+     *  from anything else. */
+    final DeclarationKinds kinds;
 
     /**
      * What the language declares of its kernels: what each takes and answers, as the compilation
@@ -435,7 +444,9 @@ final class CodegenContext {
         return r != null ? r.descriptorString() : null;
     }
 
-    CodegenContext(String pkg, DerivedSymbols symbols, KernelSignatures kernels,
+    CodegenContext(String pkg, DerivedSymbols symbols, PublishedDeclarations published,
+                   DeclarationKinds kinds,
+                   KernelSignatures kernels,
                    Map<String, List<GeneratedClass>> caseToSums,
                    Map<String, String> typePackage, boolean exposeAll, Set<String> exposed,
                    Map<String, Type> standingCalls, SourceLayouts layouts, QuotedFrom home) {
@@ -443,6 +454,8 @@ final class CodegenContext {
         this.home = Objects.requireNonNull(home, "the classes of a module are of the text it was read from");
         this.pkg = pkg;
         this.symbols = symbols;
+        this.published = published;
+        this.kinds = kinds;
         this.kernels = kernels;
         this.caseToSums = caseToSums;
         this.typePackage = typePackage;
@@ -546,7 +559,7 @@ final class CodegenContext {
             return List.of();
         }
         List<TypeSymbol> bridged = new ArrayList<>();
-        for (TypeSymbol member : AtomSpace.subjectAtoms(out, symbols)) {
+        for (TypeSymbol member : AtomSpace.subjectAtoms(out, published)) {
             if (member.isDeclaredByLanguage()
                     || !(member instanceof TypeSymbol.AtModule at)
                     || !at.module().equals(module)) {

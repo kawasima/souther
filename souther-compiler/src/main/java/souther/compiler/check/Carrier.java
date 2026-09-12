@@ -164,7 +164,7 @@ public sealed interface Carrier extends ValueOrder {
      * that answers. None of them falls out of range on this account.
      */
     static Carrier ofPrimitive(Type type) {
-        return type instanceof Type.Prim ? ofValue(type, null) : null;
+        return type instanceof Type.Prim ? ofValue(type, null, DeclarationKinds.NONE, null) : null;
     }
 
     /**
@@ -193,12 +193,13 @@ public sealed interface Carrier extends ValueOrder {
      * makes {@code data Cutoff = Date} the same carrier as a bare {@code Date}, and
      * {@code data StageN = Stage} the same carrier as a bare {@code Stage}.
      */
-    static Carrier ofValue(Type type, Symbols symbols) {
+    static Carrier ofValue(Type type, Symbols symbols, DeclarationKinds kinds,
+                           PublishedDeclarations published) {
         // Which order a value of this type is compared on is {@link Ordering}'s, and this asks it
         // rather than deciding what an enumeration is a second time. Every one of its answers is
         // answered for here, so an order added there is one this has to place or say it has no
         // count for — the direction #856 went silent in was a reader measuring what another refused.
-        Ordering how = Ordering.of(type, symbols);
+        Ordering how = Ordering.of(type, symbols, kinds, published);
         if (how == null) {
             return null;
         }
@@ -212,7 +213,8 @@ public sealed interface Carrier extends ValueOrder {
             // comparable on their sum's order without ranging over it, and a position declared as
             // one case, given the sum's counts, was asked for a row at a value it cannot hold.
             case Ordering.Places places -> base instanceof Type.Ref ref
-                    && ref.name().equals(places.enumeration()) ? ordinalOf(places, symbols) : null;
+                    && ref.name().equals(places.enumeration())
+                    ? ordinalOf(places, published) : null;
             // `opened` answers for the value with the names off, which is never one still wearing
             // them.
             case Ordering.Wrapped _ ->
@@ -241,11 +243,12 @@ public sealed interface Carrier extends ValueOrder {
 
     /** The cases in the order they are declared, which is the order itself and not a set. The
      *  declaration is read for that list alone: whether this is an enumeration is already answered. */
-    private static Carrier ordinalOf(Ordering.Places places, Symbols symbols) {
-        if (!(symbols.declaredNode(places.enumeration()) instanceof Hir.SumData sum)) {
+    private static Carrier ordinalOf(Ordering.Places places, PublishedDeclarations published) {
+        if (!(places.enumeration() instanceof TypeSymbol.AtModule at)
+                || !(published.of(at.key()) instanceof DeclarationMeaning.Sum)) {
             return null;
         }
-        List<TypeSymbol> cases = AtomSpace.subjectAtoms(Type.ref(sum.declares()), symbols);
+        List<TypeSymbol> cases = AtomSpace.subjectAtoms(Type.ref(places.enumeration()), published);
         return cases.isEmpty() ? null : new Ordinal(places.enumeration(), cases);
     }
 

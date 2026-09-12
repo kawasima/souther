@@ -123,7 +123,7 @@ class ASettlingBelowAFieldIsTakenOnLikeAnyOtherTest {
         Map<String, DeclaredSig> sigs =
                 compilation.db().ask(new Bodies.DeclaredSignatures(module)).value();
         Type window = sigs.get("take").inputs().get(0).type();
-        if (!(TypeView.of(window, source.symbols()).shape()
+        if (!(TypeView.of(window, source.symbols(), source.published()).shape()
                 instanceof Shape.Product(TypeSymbol.AtModule declared, Map<String, Type> _))) {
             throw new IllegalStateException("the behavior above takes a record");
         }

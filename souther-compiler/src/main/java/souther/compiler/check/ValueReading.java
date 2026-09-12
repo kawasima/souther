@@ -106,8 +106,8 @@ sealed interface ValueReading {
     }
 
     /** What the model writes where a value of {@code type} stands. */
-    static ValueReading of(Type type, Symbols symbols) {
-        TypeView view = TypeView.of(type, symbols);
+    static ValueReading of(Type type, Symbols symbols, PublishedDeclarations published) {
+        TypeView view = TypeView.of(type, symbols, published);
         if (view.isWrapped() && symbols.declaredNode(view.wrappers().getFirst())
                 instanceof Hir.Data worn) {
             // The outermost name is the reading's, and what is readable under it is written on that
@@ -132,7 +132,7 @@ sealed interface ValueReading {
             // case, and a reading of it is opened where a match opens the case.
             case Shape.Sum sum ->
                     new AtAValue(sum.name(), owning(readable.declaredBy(), symbols), readable,
-                            cases(sum.name(), symbols));
+                            cases(sum.name(), published));
             // A unit data holds nothing and may write no rule about it (spec §unit-data), and a
             // primitive is written under no declaration of its own.
             case Shape.Unit unit -> new AtAValue(unit.name(), List.of(), readable, List.of());
@@ -165,9 +165,9 @@ sealed interface ValueReading {
     }
 
     /** A sum's cases, as the one closure over them answers. */
-    private static List<Type> cases(TypeSymbol sum, Symbols symbols) {
+    private static List<Type> cases(TypeSymbol sum, PublishedDeclarations published) {
         List<Type> out = new ArrayList<>();
-        for (TypeSymbol leaf : AtomSpace.subjectAtoms(Type.ref(sum), symbols)) {
+        for (TypeSymbol leaf : AtomSpace.subjectAtoms(Type.ref(sum), published)) {
             out.add(Type.ref(leaf));
         }
         return out;

@@ -274,7 +274,8 @@ class WhatFallsOpenIsWhatSomebodyNamedALimitTest {
         Supplier<SecondaryClauseReading.Over> over =
                 () -> new SecondaryClauseReading.Over(
                         DataChecker.fieldScope(named, data, symbolsOf(c)),
-                        CheckContext.of(symbolsOf(c)).forData(data).forDischarge());
+                        CheckContext.of(symbolsOf(c), Shapes.publishedDeclarations(c.db()),
+                                Shapes.declarationKinds(c.db())).forData(data).forDischarge());
 
         assertInstanceOf(TypedClause.Stopped.class,
                 SecondaryClauseReading.of(clause.asExpanded(), over, "a test"),
@@ -305,7 +306,8 @@ class WhatFallsOpenIsWhatSomebodyNamedALimitTest {
         java.util.function.Supplier<SecondaryClauseReading.Over> over =
                 () -> new SecondaryClauseReading.Over(
                         DataChecker.fieldScope(named, data, symbolsOf(c)),
-                        CheckContext.of(symbolsOf(c)).forData(data).forDischarge());
+                        CheckContext.of(symbolsOf(c), Shapes.publishedDeclarations(c.db()),
+                                Shapes.declarationKinds(c.db())).forData(data).forDischarge());
 
         assertInstanceOf(TypedClause.Stopped.class,
                 SecondaryClauseReading.of(clause.asExpanded(), over, "a test"),
@@ -355,7 +357,8 @@ class WhatFallsOpenIsWhatSomebodyNamedALimitTest {
     /** {@code c}'s scope, reading what its declarations say from {@code said} — a source this test
      *  assembles, which is what lets it put a lookup of its own where the compilation's would be. */
     private static RuleReadingSource readingOf(Compilation c, PublishedDeclarations said) {
-        return new RuleReadingSource(symbolsOf(c), lookupOf(c), said, ClauseLocations.NONE);
+        return new RuleReadingSource(symbolsOf(c), lookupOf(c), said,
+                Shapes.declarationKinds(c.db()), ClauseLocations.NONE);
     }
 
     private static Hir.Data declarationOf(Compilation c, TypeSymbol.AtModule named) {

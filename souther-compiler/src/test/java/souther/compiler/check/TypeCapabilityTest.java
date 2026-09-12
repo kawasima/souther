@@ -20,14 +20,14 @@ class TypeCapabilityTest {
     void aTupleComparesButDoesNotOrder() {
         Type pair = Type.tuple(List.of(Type.STRING, Type.STRING));
         assertTrue(TypeOps.supportsEquality(pair));
-        assertFalse(TypeOps.supportsOrdering(pair, null));
+        assertFalse(TypeOps.supportsOrdering(pair, null, DeclarationKinds.NONE, PublishedDeclarations.NONE));
     }
 
     @Test
     void aFunctionAnswersNoneOfTheThree() {
         Type fn = Type.fn(List.of(Type.INT), Type.BOOL);
         assertFalse(TypeOps.supportsEquality(fn));
-        assertFalse(TypeOps.supportsOrdering(fn, null));
+        assertFalse(TypeOps.supportsOrdering(fn, null, DeclarationKinds.NONE, PublishedDeclarations.NONE));
         assertFalse(TypeOps.hasExternalForm(fn, null));
     }
 
@@ -43,25 +43,25 @@ class TypeCapabilityTest {
 
     @Test
     void aListOfOrderedElementsIsNotItselfOrdered() {
-        assertFalse(TypeOps.supportsOrdering(Type.list(Type.INT), null));
+        assertFalse(TypeOps.supportsOrdering(Type.list(Type.INT), null, DeclarationKinds.NONE, PublishedDeclarations.NONE));
         assertTrue(TypeOps.supportsEquality(Type.list(Type.INT)));
     }
 
     @Test
     void theOrderedPrimitivesAreTheFiveThatCarryAnOrder() {
-        assertTrue(TypeOps.supportsOrdering(Type.INT, null));
-        assertTrue(TypeOps.supportsOrdering(Type.STRING, null));
-        assertTrue(TypeOps.supportsOrdering(Type.DECIMAL, null));
-        assertTrue(TypeOps.supportsOrdering(Type.DATE, null));
-        assertTrue(TypeOps.supportsOrdering(Type.DATETIME, null));
+        assertTrue(TypeOps.supportsOrdering(Type.INT, null, DeclarationKinds.NONE, PublishedDeclarations.NONE));
+        assertTrue(TypeOps.supportsOrdering(Type.STRING, null, DeclarationKinds.NONE, PublishedDeclarations.NONE));
+        assertTrue(TypeOps.supportsOrdering(Type.DECIMAL, null, DeclarationKinds.NONE, PublishedDeclarations.NONE));
+        assertTrue(TypeOps.supportsOrdering(Type.DATE, null, DeclarationKinds.NONE, PublishedDeclarations.NONE));
+        assertTrue(TypeOps.supportsOrdering(Type.DATETIME, null, DeclarationKinds.NONE, PublishedDeclarations.NONE));
     }
 
     @Test
     void boolAndRawCompareButDoNotOrder() {
         assertTrue(TypeOps.supportsEquality(Type.BOOL));
-        assertFalse(TypeOps.supportsOrdering(Type.BOOL, null));
+        assertFalse(TypeOps.supportsOrdering(Type.BOOL, null, DeclarationKinds.NONE, PublishedDeclarations.NONE));
         assertTrue(TypeOps.supportsEquality(Type.RAW));
-        assertFalse(TypeOps.supportsOrdering(Type.RAW, null));
+        assertFalse(TypeOps.supportsOrdering(Type.RAW, null, DeclarationKinds.NONE, PublishedDeclarations.NONE));
     }
 
     @Test

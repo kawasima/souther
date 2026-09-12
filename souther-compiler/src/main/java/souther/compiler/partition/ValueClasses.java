@@ -1,5 +1,7 @@
 package souther.compiler.partition;
 
+import souther.compiler.check.DeclarationKinds;
+import souther.compiler.check.PublishedDeclarations;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.Shape;
 import souther.compiler.check.Symbols;
@@ -44,7 +46,8 @@ final class ValueClasses {
         }
         Recognition is = Recognition.Under.of(worn,
                 new Recognition.AtAValue(value,
-                        placeOf(value, view.declared(), ruleSource.symbols())));
+                        placeOf(value, view.declared(), ruleSource.symbols(),
+                                ruleSource.kinds(), ruleSource.published())));
         FixtureTemplate stands = WornNames.under(view.wrappers(), bare, ruleSource);
         return (stands == null
                 // A name the position wears that nothing here writes. The class is the position's
@@ -71,13 +74,15 @@ final class ValueClasses {
      * a value written in a shape that order does not hold. Both are answers about this class rather
      * than reasons to stop building it — the class is still what a row is read against.
      */
-    private static souther.compiler.numeric.Place placeOf(Value value, Type type, Symbols symbols) {
+    private static souther.compiler.numeric.Place placeOf(Value value, Type type, Symbols symbols,
+                                                          DeclarationKinds kinds,
+                                                          PublishedDeclarations published) {
         return placeOf(switch (value) {
             case Value.Text text -> new ObservedValue.Text(text.value());
             case Value.Truth truth -> new ObservedValue.Bool(truth.value());
             case Value.Number number -> new ObservedValue.Decimal(number.value());
             case Value.Case one -> new ObservedValue.Unit(one.data());
-        }, type, symbols);
+        }, type, symbols, kinds, published);
     }
 
     /**
@@ -89,8 +94,11 @@ final class ValueClasses {
      * order: which order a case of an enumeration is placed on is the enumeration's, and a unit data
      * that is a case of two sums is at a different place in each.
      */
-    static souther.compiler.numeric.Place placeOf(ObservedValue value, Type type, Symbols symbols) {
-        souther.compiler.check.Carrier carrier = souther.compiler.check.Carrier.ofValue(type, symbols);
+    static souther.compiler.numeric.Place placeOf(ObservedValue value, Type type, Symbols symbols,
+                                                  DeclarationKinds kinds,
+                                                  PublishedDeclarations published) {
+        souther.compiler.check.Carrier carrier =
+                souther.compiler.check.Carrier.ofValue(type, symbols, kinds, published);
         return carrier == null ? null : carrier.placeOf(value);
     }
 

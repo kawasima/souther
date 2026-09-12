@@ -67,9 +67,10 @@ public final class InvariantSettled {
      * @throws CompileException where a clause the module spreads cannot be read
      */
     public static InvariantSettled settle(Expandable expandable, Symbols scope,
+                                          DeclarationKinds kinds,
                                           Map<String, Hir.FnDef> published) {
         return new InvariantSettled(
-                ClauseHelpers.withSettledInvariants(expandable.module(), scope, published));
+                ClauseHelpers.withSettledInvariants(expandable.module(), scope, kinds, published));
     }
 
     /**

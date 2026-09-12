@@ -56,6 +56,10 @@ class WhatSelectingACaseCoversIsResolvedWhereTheSubjectIsTest {
     private final Hir.Module module = resolved(MODULE);
     private final Symbols symbols = TypeChecker.symbols(module, DefaultStdlib.get());
 
+    private final PublishedDeclarations said = ScopedDeclarations.of(symbols);
+
+    private final DeclarationKinds forms = ScopedDeclarations.kindsOf(symbols);
+
     @Test
     void aCaseThatIsASumCoversTheLeavesUnderIt() {
         assertEquals(List.of("Station", "Hospital"), covered("VisitKind", "OnceKind"),
@@ -85,7 +89,7 @@ class WhatSelectingACaseCoversIsResolvedWhereTheSubjectIsTest {
     @Test
     void theAtomsOfACaseComeInTheOrderItDeclaresThem() {
         assertEquals(List.of("Station", "Hospital", "Renkei"),
-                CaseSpace.of(type("VisitKind"), symbols).selectors().stream()
+                CaseSpace.of(type("VisitKind"), forms, said).selectors().stream()
                         .flatMap(each -> each.atoms().stream()).map(TypeSymbol::name).toList());
     }
 
@@ -99,11 +103,11 @@ class WhatSelectingACaseCoversIsResolvedWhereTheSubjectIsTest {
      */
     @Test
     void anOptionalsCarrierCoversItselfAndNotWhatItHolds() {
-        CaseSpace space = CaseSpace.of(Type.option(type("VisitKind")), symbols);
+        CaseSpace space = CaseSpace.of(Type.option(type("VisitKind")), forms, said);
         assertInstanceOf(CaseSpace.Optional.class, space);
-        ResolvedCase some = space.selector(TypeSymbol.SOME, symbols);
+        ResolvedCase some = space.selector(TypeSymbol.SOME, said);
         assertEquals(List.of(TypeSymbol.SOME), some.atoms());
-        assertEquals(List.of(TypeSymbol.NONE), space.selector(TypeSymbol.NONE, symbols).atoms());
+        assertEquals(List.of(TypeSymbol.NONE), space.selector(TypeSymbol.NONE, said).atoms());
         assertInstanceOf(Refinement.OptionPresent.class, some.refinement(),
                 "the carrier still binds the element; only what it covers is its own name");
         assertEquals(type("VisitKind"), some.bound());
@@ -112,7 +116,7 @@ class WhatSelectingACaseCoversIsResolvedWhereTheSubjectIsTest {
     /** A subject with no cases hands out none, so there is nothing to resolve. */
     @Test
     void aSubjectWithNoCasesHasNothingToCover() {
-        assertEquals(List.of(), CaseSpace.of(type("Station"), symbols).selectors());
+        assertEquals(List.of(), CaseSpace.of(type("Station"), forms, said).selectors());
     }
 
     /**
@@ -215,7 +219,7 @@ class WhatSelectingACaseCoversIsResolvedWhereTheSubjectIsTest {
     }
 
     private ResolvedCase resolvedCase(String subject, String caseName) {
-        return CaseSpace.of(type(subject), symbols).selector(named(caseName), symbols);
+        return CaseSpace.of(type(subject), forms, said).selector(named(caseName), said);
     }
 
     private Type type(String name) {

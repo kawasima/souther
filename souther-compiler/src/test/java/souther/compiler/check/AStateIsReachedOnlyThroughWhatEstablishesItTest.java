@@ -194,7 +194,7 @@ class AStateIsReachedOnlyThroughWhatEstablishesItTest {
     @Test
     void everyWayIntoAStateIsTheOperationThatEstablishesIt() {
         assertEquals(Set.of("check(Module, Map, Stdlib)"), waysInto(Expandable.class));
-        assertEquals(Set.of("settle(Expandable, Symbols, Map)"), waysInto(InvariantSettled.class));
+        assertEquals(Set.of("settle(Expandable, Symbols, DeclarationKinds, Map)"), waysInto(InvariantSettled.class));
         assertEquals(Set.of(), waysInto(InvariantSettled.Def.class),
                 "a settled declaration is projected from the module it is one of");
         assertEquals(Set.of("of(Def, ResolvedSymbols)", "ofLanguage(Def)"),
@@ -203,7 +203,9 @@ class AStateIsReachedOnlyThroughWhatEstablishesItTest {
                         + "left to write as one. Every kind of declaration goes through it, a "
                         + "product among them: what a product needs derived is a representation, "
                         + "which is the rung below and not this one");
-        assertEquals(Set.of("derive(Def, ResolvedSymbols)", "ofLanguage(Def)"),
+        assertEquals(
+                Set.of("derive(Def, ResolvedSymbols, DeclarationKinds, PublishedDeclarations)",
+                        "ofLanguage(Def)"),
                 waysInto(Derived.Def.class),
                 "the second is for what the language declares, where there is no representation to "
                         + "derive: a sum's is worked out where it is read and a unit has none, so "
@@ -636,7 +638,8 @@ class AStateIsReachedOnlyThroughWhatEstablishesItTest {
                 """);
         ResolvedSymbols scope = TypeChecker.symbols(resolved, DefaultStdlib.get());
         InvariantSettled settled =
-                InvariantSettled.settle(Expandable.check(resolved, Map.of(), DefaultStdlib.get()), scope, Map.of());
+                InvariantSettled.settle(Expandable.check(resolved, Map.of(), DefaultStdlib.get()),
+                        scope, ScopedDeclarations.kindsOf(scope), Map.of());
         InvariantSettled.Def amount = settled.defs().stream()
                 .filter(d -> d.name().equals("Amount")).findFirst().orElseThrow();
 
@@ -872,13 +875,17 @@ class AStateIsReachedOnlyThroughWhatEstablishesItTest {
     void anAssemblyRefusesAnAnswerForAnotherModulesDeclaration() {
         ResolvedSymbols scopeA = TypeChecker.symbols(resolvedA(), DefaultStdlib.get());
         InvariantSettled a = InvariantSettled.settle(
-                Expandable.check(resolvedA(), Map.of(), DefaultStdlib.get()), scopeA, Map.of());
+                Expandable.check(resolvedA(), Map.of(), DefaultStdlib.get()), scopeA,
+                ScopedDeclarations.kindsOf(scopeA), Map.of());
         ResolvedSymbols scopeB = TypeChecker.symbols(resolvedB(), DefaultStdlib.get());
         InvariantSettled b = InvariantSettled.settle(
-                Expandable.check(resolvedB(), Map.of(), DefaultStdlib.get()), scopeB, Map.of());
+                Expandable.check(resolvedB(), Map.of(), DefaultStdlib.get()), scopeB,
+                ScopedDeclarations.kindsOf(scopeB), Map.of());
 
-        Derived.Def ofA = Derived.Def.derive(Normalized.Def.of(defNamed(a, "Amount"), scopeA), scopeA);
-        Derived.Def ofB = Derived.Def.derive(Normalized.Def.of(defNamed(b, "Amount"), scopeB), scopeB);
+        Derived.Def ofA = Derived.Def.derive(Normalized.Def.of(defNamed(a, "Amount"), scopeA),
+                scopeA, ScopedDeclarations.kindsOf(scopeA), ScopedDeclarations.of(scopeA));
+        Derived.Def ofB = Derived.Def.derive(Normalized.Def.of(defNamed(b, "Amount"), scopeB),
+                scopeB, ScopedDeclarations.kindsOf(scopeB), ScopedDeclarations.of(scopeB));
         assertEquals("Amount", ofB.name(), "the same bare name, so the map key does not tell them apart");
         assertNotEquals(ofA.declaredKey(), ofB.declaredKey());
 
@@ -894,9 +901,13 @@ class AStateIsReachedOnlyThroughWhatEstablishesItTest {
     void anAssemblyRefusesAnAnswerForAnotherModulesDefinition() {
         ResolvedSymbols scopeA = TypeChecker.symbols(resolvedA(), DefaultStdlib.get());
         Derived.Module a = Derived.Module.assemble(
-                InvariantSettled.settle(Expandable.check(resolvedA(), Map.of(), DefaultStdlib.get()), scopeA, Map.of()),
+                InvariantSettled.settle(Expandable.check(resolvedA(), Map.of(), DefaultStdlib.get()),
+                        scopeA, ScopedDeclarations.kindsOf(scopeA), Map.of()),
                 Map.of("Amount", Derived.Def.derive(Normalized.Def.of(defNamed(InvariantSettled.settle(
-                        Expandable.check(resolvedA(), Map.of(), DefaultStdlib.get()), scopeA, Map.of()), "Amount"), scopeA), scopeA)));
+                        Expandable.check(resolvedA(), Map.of(), DefaultStdlib.get()), scopeA,
+                        ScopedDeclarations.kindsOf(scopeA), Map.of()), "Amount"), scopeA),
+                        scopeA, ScopedDeclarations.kindsOf(scopeA),
+                        ScopedDeclarations.of(scopeA))));
         Hir.FnDef ofA = a.fns().get(0);
         Hir.FnDef ofB = new Hir.FnDef(ofA.written(), "b", ofA.params(), ofA.declaredReturn(),
                 ofA.body(), ofA.modifiers(), ofA.pos());
@@ -1011,8 +1022,9 @@ class AStateIsReachedOnlyThroughWhatEstablishesItTest {
         assertTrue(clauseOf(expandable.module().defs(), "Amount") instanceof Hir.Apply,
                 "the clause is a call to the helper until something expands it");
 
-        InvariantSettled settled = InvariantSettled.settle(expandable,
-                TypeChecker.symbols(expandable.module(), DefaultStdlib.get()), Map.of());
+        ResolvedSymbols scope = TypeChecker.symbols(expandable.module(), DefaultStdlib.get());
+        InvariantSettled settled = InvariantSettled.settle(expandable, scope,
+                ScopedDeclarations.kindsOf(scope), Map.of());
 
         assertFalse(clauseOf(settled.defs().stream().map(InvariantSettled.Def::def).toList(),
                         "Amount") instanceof Hir.Apply,

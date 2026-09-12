@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import souther.compiler.ast.Hir;
 import souther.compiler.check.DeclaredBounds;
 import souther.compiler.check.Prepared;
+import souther.compiler.check.ScopedDeclarations;
 import souther.compiler.check.Sig;
 import souther.compiler.check.Symbols;
 import souther.compiler.inputs.Case;
@@ -114,7 +115,7 @@ class APlanIsMadeWhereItsRequirementsArePutTogetherTest {
         TermPath tag = TermPath.of("query").then("tag");
 
         ConstructionPlan.Result asked = ConstructionPlan.of(typeOf(), TermPath.of("query"),
-                symbols(), Set.of(tag.refine(caseOf("Tag"))),
+                symbols(), ScopedDeclarations.of(symbols()), Set.of(tag.refine(caseOf("Tag"))),
                 Requirements.NONE.and(tag, caseOf("NoTag")), ANY);
 
         ConstructionPlan.ModelRefusal.Conflict against = assertInstanceOf(
@@ -145,7 +146,8 @@ class APlanIsMadeWhereItsRequirementsArePutTogetherTest {
         TermPath tag = TermPath.of("query").then("tag");
 
         IllegalStateException said = assertThrows(IllegalStateException.class,
-                () -> ConstructionPlan.of(typeOf(), TermPath.of("query"), symbols(), Set.of(tag),
+                () -> ConstructionPlan.of(typeOf(), TermPath.of("query"), symbols(),
+                        ScopedDeclarations.of(symbols()), Set.of(tag),
                         Requirements.NONE.and(tag, caseOf("Tag")), ANY));
 
         assertTrue(said.getMessage().contains("query.tag") && said.getMessage().contains("Tag"),
@@ -179,7 +181,7 @@ class APlanIsMadeWhereItsRequirementsArePutTogetherTest {
 
         IllegalStateException said = assertThrows(IllegalStateException.class,
                 () -> ConstructionPlan.of(heldType(), TermPath.of("query"), heldSymbols(),
-                        Set.of(),
+                        ScopedDeclarations.of(heldSymbols()), Set.of(),
                         Requirements.NONE.and(tag, Refinement.of(new Case.Presence(false)))
                                 .and(absent, caseOf("Tag")),
                         ANY));
@@ -202,7 +204,7 @@ class APlanIsMadeWhereItsRequirementsArePutTogetherTest {
 
         IllegalStateException said = assertThrows(IllegalStateException.class,
                 () -> ConstructionPlan.of(heldType(), TermPath.of("query"), heldSymbols(),
-                        Set.of(absent.then("value")),
+                        ScopedDeclarations.of(heldSymbols()), Set.of(absent.then("value")),
                         Requirements.NONE.and(tag, Refinement.of(new Case.Presence(false))),
                         ANY));
 
@@ -220,8 +222,8 @@ class APlanIsMadeWhereItsRequirementsArePutTogetherTest {
 
     private static ConstructionPlan planned(Set<TermPath> decided, Requirements additional) {
         return assertInstanceOf(ConstructionPlan.Result.Planned.class,
-                ConstructionPlan.of(typeOf(), TermPath.of("query"), symbols(), decided, additional,
-                        ANY),
+                ConstructionPlan.of(typeOf(), TermPath.of("query"), symbols(),
+                        ScopedDeclarations.of(symbols()), decided, additional, ANY),
                 "nothing here asks one position to be two things").plan();
     }
 

@@ -72,7 +72,13 @@ class ACrossingMapKeyIsClassifiedByOneRuleTest {
     }
 
     private MapKeyRepresentation classify(Type key) {
-        return TypeOps.classifyConcreteMapKey(key, symbols);
+        return TypeOps.classifyConcreteMapKey(key, symbols, ScopedDeclarations.kindsOf(symbols),
+                ScopedDeclarations.of(symbols));
+    }
+
+    private boolean admissible(Type key) {
+        return TypeOps.isMapKeyAdmissibleInSignature(key, symbols,
+                ScopedDeclarations.kindsOf(symbols), ScopedDeclarations.of(symbols));
     }
 
     private Type named(String name) {
@@ -184,16 +190,16 @@ class ACrossingMapKeyIsClassifiedByOneRuleTest {
     @Test
     void aTypeVariableIsAdmissibleInASignatureAndClassifiesAsNothing() {
         Type var = Type.var("'k");
-        assertTrue(TypeOps.isMapKeyAdmissibleInSignature(var, symbols));
+        assertTrue(admissible(var));
         assertNull(classify(var));
     }
 
     @Test
     void aSignatureAdmitsExactlyWhatClassifiesPlusTheVariable() {
-        assertTrue(TypeOps.isMapKeyAdmissibleInSignature(Type.STRING, symbols));
-        assertTrue(TypeOps.isMapKeyAdmissibleInSignature(named("Outcome"), symbols));
-        assertTrue(TypeOps.isMapKeyAdmissibleInSignature(named("C"), symbols));
-        assertFalse(TypeOps.isMapKeyAdmissibleInSignature(Type.INT, symbols));
-        assertFalse(TypeOps.isMapKeyAdmissibleInSignature(named("WrappedNo"), symbols));
+        assertTrue(admissible(Type.STRING));
+        assertTrue(admissible(named("Outcome")));
+        assertTrue(admissible(named("C")));
+        assertFalse(admissible(Type.INT));
+        assertFalse(admissible(named("WrappedNo")));
     }
 }

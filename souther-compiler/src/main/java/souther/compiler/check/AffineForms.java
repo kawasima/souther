@@ -66,6 +66,15 @@ public final class AffineForms {
          *  rather than reaching for a library of its own. */
         Symbols symbols();
 
+        /** What the declarations the expression was written against say. Asked beside the symbols
+         *  because what a carrier is depends on which of them is a sum and what its cases are, and
+         *  that is the declaration's own answer rather than the tree it was written in. */
+        PublishedDeclarations published();
+
+        /** Which form each of those declarations was written in, for the carrier's question about
+         *  whether one is a sum. */
+        DeclarationKinds kinds();
+
         /** {@code e} as a form, where nothing here composes one: an atom, a value read through, or
          *  null where the caller can say nothing about it. */
         LinearForm<A> leafOf(Core e, E at);
@@ -378,6 +387,16 @@ public final class AffineForms {
         }
 
         @Override
+        public PublishedDeclarations published() {
+            return of.published();
+        }
+
+        @Override
+        public DeclarationKinds kinds() {
+            return of.kinds();
+        }
+
+        @Override
         public LinearForm<A> leafOf(Core e, E at) {
             return of.leafOf(e, at);
         }
@@ -620,7 +639,8 @@ public final class AffineForms {
             // one rule: that one asks what a written value counts as and stops where nothing is
             // written, and this one asks what the arithmetic under the name comes to.
             case Core.Construct nd when !nd.values().isEmpty()
-                    && TypeView.of(Type.ref(nd.typeName()), reading.symbols()).isWrapped() ->
+                    && TypeView.of(Type.ref(nd.typeName()), reading.symbols(), reading.published())
+                            .isWrapped() ->
                     formOf(nd.values().get(0).value(), at, reading, following, stopped);
             // One arm, holding two proofs that this projection is the value it reads. The
             // structural one is asked first and is asked as whether it produced a successor rather
@@ -681,7 +701,8 @@ public final class AffineForms {
      * not recognise would stop a reading the grammar below can still take apart.
      */
     private static <A, E> LinearForm<A> literal(Core e, Reading<A, E> reading) {
-        Carrier carrier = Carrier.ofValue(e.type(), reading.symbols());
+        Carrier carrier =
+                Carrier.ofValue(e.type(), reading.symbols(), reading.kinds(), reading.published());
         if (carrier == null || !carrier.counts()) {
             return null;
         }

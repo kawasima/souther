@@ -70,7 +70,8 @@ class AKeptCallsFunctionArgumentIsRefusedWhereItIsWrittenTest {
                 CALL, null);
 
         CompileException e = assertThrows(CompileException.class,
-                () -> Elaborator.elaborate(call, Scope.NONE, CheckContext.of(Symbols.none(DefaultStdlib.get()))
+                () -> Elaborator.elaborate(call, Scope.NONE, CheckContext.of(Symbols.none(DefaultStdlib.get()), PublishedDeclarations.NONE,
+                        DeclarationKinds.NONE)
                         .preserving(Preserved.byTheLanguagesOwnOperations())));
 
         assertEquals(ARGUMENT,
@@ -94,7 +95,8 @@ class AKeptCallsFunctionArgumentIsRefusedWhereItIsWrittenTest {
                 CALL, null);
 
         CompileException e = assertThrows(CompileException.class,
-                () -> Elaborator.elaborate(call, Scope.NONE, CheckContext.of(Symbols.none(DefaultStdlib.get()))
+                () -> Elaborator.elaborate(call, Scope.NONE, CheckContext.of(Symbols.none(DefaultStdlib.get()), PublishedDeclarations.NONE,
+                        DeclarationKinds.NONE)
                         .preserving(Preserved.byTheLanguagesOwnOperations())));
 
         TypeMessage.ItDoesNotHaveTheTypeItNeedsHere said = assertInstanceOf(

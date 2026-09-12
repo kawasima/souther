@@ -55,7 +55,23 @@ public sealed interface DeclarationMeaning {
         // it is not a reading under the one the caller handed over and does not say it is.
         return of(declared, new Clauses(
                 new RuleReadingSource(source.symbols(), source.invariants(),
-                        PublishedDeclarations.THE_ONE_THAT_MAKES_THEM, source.written())));
+                        besidesItself(declared.declares().key(), source.published()),
+                        source.kinds(), source.written())));
+    }
+
+    /**
+     * {@code said} with the one declaration being worked out taken out of it.
+     *
+     * <p>A clause of a declaration names other declarations — which case a comparison is over, what
+     * a sum an operand is of divides into — and those are looked up like anywhere else. The one
+     * that cannot be looked up is the declaration whose meaning this call is making: asking would
+     * be asking for the answer being worked out, and answering nothing would say instead that
+     * nothing declares it, which every clause of it would then be reported under.
+     */
+    private static PublishedDeclarations besidesItself(TypeKey making, PublishedDeclarations said) {
+        return declaration -> making.equals(declaration)
+                ? PublishedDeclarations.THE_ONE_THAT_MAKES_THEM.of(declaration)
+                : said.of(declaration);
     }
 
     /**

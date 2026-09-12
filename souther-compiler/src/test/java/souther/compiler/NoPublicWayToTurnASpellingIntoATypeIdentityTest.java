@@ -223,6 +223,7 @@ class NoPublicWayToTurnASpellingIntoATypeIdentityTest {
                         "Registry.java: address",
                         "Declarations.java: address",
                         "Stdlib.java: address",
+                        "TypeOps.java: address",
                         // The declaration a store question is keyed by, which the reading that asked
                         // it had already resolved: the question reads that declaration and no other.
                         "Machines.java: named"),

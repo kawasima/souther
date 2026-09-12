@@ -30,6 +30,7 @@ import souther.compiler.check.ElementBindings;
 import souther.compiler.check.DeclarationCitations;
 import souther.compiler.check.DeclarationReadings;
 import souther.compiler.check.DeclaredSig;
+import souther.compiler.check.DeclarationKinds;
 import souther.compiler.check.PublishedDeclarations;
 import souther.compiler.check.RuleRef;
 import souther.compiler.publish.PublicationOrders;
@@ -1392,7 +1393,9 @@ public final class Adequacy {
                         case BoundaryForMeasurement.NotDerived why ->
                                 SignatureEvidence.notMeasurable(behavior, why);
                         case BoundaryForMeasurement.Derived(Sig sig, InputForMeasurement input) ->
-                                evidenceOf(behavior.name(), sig, scope.value(), asked,
+                                evidenceOf(behavior.name(), sig, scope.value(),
+                                        Shapes.publishedDeclarations(db),
+                                        Shapes.declarationKinds(db), asked,
                                         RowReadings.readingFor(byTarget, behavior.name()),
                                         InputPositions.of(input),
                                         InputCaseExclusions.of(input),
@@ -3589,7 +3592,8 @@ public final class Adequacy {
             try {
                 composed = rowsFor(spec, sig, Shapes.ruleReading(db, name).value(), asked,
                         baselines(name, spec, sig, definitions.value(), reachable.value(),
-                                prepared.value(), symbols,
+                                prepared.value(), symbols, Shapes.publishedDeclarations(db),
+                                Shapes.declarationKinds(db),
                                 // What the declarations of this module denote, and not what a check
                                 // settled about them: a generation is a measurement of a module
                                 // that need not have been accepted — this same answer is worked out
@@ -4172,7 +4176,8 @@ public final class Adequacy {
         private static List<Generator.Baseline> baselines(
                 String module, Hir.SpecBehavior spec, Sig sig, Map<String, Hir.FnDef> values,
                 Map<ValueName.Behavior, Sig> behaviors,
-                CheckSurface prepared, Symbols symbols,
+                CheckSurface prepared, Symbols symbols, PublishedDeclarations published,
+                DeclarationKinds kinds,
                 souther.compiler.observe.FieldTypes fields) {
             List<Generator.Baseline> out = new ArrayList<>();
             // What the author has already written, first and whole. A row of theirs names a set of
@@ -4193,7 +4198,8 @@ public final class Adequacy {
             // Then every value the module states of a parameter's own type, in the order it states
             // them, one origin per turn. Narrowed to the only value of a type, a module that states
             // a second one lost the spread from every row of every behavior taking it.
-            out.addAll(named(module, spec, sig, values, behaviors, symbols, fields));
+            out.addAll(named(module, spec, sig, values, behaviors, symbols, published, kinds,
+                    fields));
             return List.copyOf(out);
         }
 
@@ -4237,6 +4243,8 @@ public final class Adequacy {
                                                       Map<String, Hir.FnDef> values,
                                                       Map<ValueName.Behavior, Sig> behaviors,
                                                       Symbols symbols,
+                                                      PublishedDeclarations published,
+                                                      DeclarationKinds kinds,
                                                       souther.compiler.observe.FieldTypes fields) {
             // What a value is declared to be, asked of the one walk that answers it. A second
             // reading of a definition's type here would be a second answer about what a row may
@@ -4247,7 +4255,8 @@ public final class Adequacy {
             souther.compiler.check.DeclaredTypeReading evidence =
                     new souther.compiler.check.DeclaredTypeReading(
                             new souther.compiler.check.DeclarationFacts(
-                                    new souther.compiler.check.FieldRead(symbols, fields,
+                                    new souther.compiler.check.FieldRead(symbols, published, kinds,
+                                            fields,
                                             souther.compiler.check.FieldRead.Unreadable.REFUSED)),
                             values, behaviors);
             Map<TypeSymbol, List<String>> stated = new LinkedHashMap<>();
@@ -6397,8 +6406,10 @@ public final class Adequacy {
      * numerator answering with the outermost of them, so every row would land outside the set it is
      * counted in: {@code 1} of {@code 2} covered, and both of the two still owed a row.
      */
-    private static Set<TypeSymbol> inputCoverableCases(Type t, Symbols symbols) {
-        return casesOfSum(TypeOps.base(t, symbols), symbols);
+    private static Set<TypeSymbol> inputCoverableCases(Type t, Symbols symbols,
+                                                       DeclarationKinds kinds,
+                                                       PublishedDeclarations published) {
+        return casesOfSum(TypeOps.base(t, symbols), kinds, published);
     }
 
     /**
@@ -6414,15 +6425,17 @@ public final class Adequacy {
      * <p>The arm check is wider than this on purpose: it uses the single name of a position that is
      * not a sum at all to catch a row that wrote the wrong one.
      */
-    private static Set<TypeSymbol> outputCoverableCases(Type t, Symbols symbols) {
-        return casesOfSum(t, symbols);
+    private static Set<TypeSymbol> outputCoverableCases(Type t, DeclarationKinds kinds,
+                                                        PublishedDeclarations published) {
+        return casesOfSum(t, kinds, published);
     }
 
     /** What a sum divides into, and nothing for a type that is not one. The one thing the two
      *  measures above share; what tells them apart is which type each hands it. */
-    private static Set<TypeSymbol> casesOfSum(Type t, Symbols symbols) {
-        return TypeOps.isSumType(t, symbols)
-                ? new LinkedHashSet<>(AtomSpace.subjectAtoms(t, symbols))
+    private static Set<TypeSymbol> casesOfSum(Type t, DeclarationKinds kinds,
+                                              PublishedDeclarations published) {
+        return TypeOps.isSumType(t, kinds)
+                ? new LinkedHashSet<>(AtomSpace.subjectAtoms(t, published))
                 : Set.of();
     }
 
@@ -6433,7 +6446,9 @@ public final class Adequacy {
      *                 for ever. Handed the answer and not the reading it was read off, so that a
      *                 behavior with no reading of its own has nothing to be handed in its place
      */
-    static SignatureEvidence evidenceOf(String name, Sig sig, Symbols symbols, boolean asked,
+    static SignatureEvidence evidenceOf(String name, Sig sig, Symbols symbols,
+                                        PublishedDeclarations published, DeclarationKinds kinds,
+                                        boolean asked,
                                         RowReading seen,
                                         InputPositions layout,
                                         InputCaseExclusions excluded,
@@ -6444,7 +6459,8 @@ public final class Adequacy {
         // The cases the output type has, less the ones only an arm nothing reaches produces. A case
         // no reachable producer answers with is not a gap in the rows.
         Set<TypeSymbol> declaredOut = souther.compiler.partition.ProducedCases.of(
-                body, plan, reachable.answers(), outputCoverableCases(sig.outputType(), symbols));
+                body, plan, reachable.answers(),
+                outputCoverableCases(sig.outputType(), kinds, published));
         Set<TypeSymbol> specified = new LinkedHashSet<>();
         Set<TypeSymbol> observed = new LinkedHashSet<>();
         Set<TypeSymbol> verified = new LinkedHashSet<>();
@@ -6459,7 +6475,7 @@ public final class Adequacy {
         List<Set<TypeSymbol>> inExcluded = new ArrayList<>(ins.size());
         int[] unreadableIn = new int[ins.size()];
         for (int i = 0; i < ins.size(); i++) {
-            Set<TypeSymbol> declared = inputCoverableCases(ins.get(i), symbols);
+            Set<TypeSymbol> declared = inputCoverableCases(ins.get(i), symbols, kinds, published);
             declaredIn.add(declared);
             inSpecified.add(new LinkedHashSet<>());
             inExecuted.add(new LinkedHashSet<>());

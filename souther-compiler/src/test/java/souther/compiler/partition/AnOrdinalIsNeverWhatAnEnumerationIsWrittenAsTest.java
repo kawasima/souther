@@ -119,10 +119,14 @@ class AnOrdinalIsNeverWhatAnEnumerationIsWrittenAsTest {
 
         assertNull(Carrier.ofValue(
                 souther.compiler.types.Type.ref(TypeSymbols.declared(new TypeKey("example.onecase", "Qualified"))),
-                symbols), "one case of a sum is not the sum");
+                symbols, souther.compiler.query.Shapes.declarationKinds(compilation.db()),
+                souther.compiler.query.Shapes.publishedDeclarations(compilation.db())),
+                "one case of a sum is not the sum");
         assertNotNull(Carrier.ofValue(
                 souther.compiler.types.Type.ref(TypeSymbols.declared(new TypeKey("example.onecase", "Stage"))),
-                symbols), "and the sum itself still is");
+                symbols, souther.compiler.query.Shapes.declarationKinds(compilation.db()),
+                souther.compiler.query.Shapes.publishedDeclarations(compilation.db())),
+                "and the sum itself still is");
     }
 
     /** A row writes the case, which is what naming it builds. */

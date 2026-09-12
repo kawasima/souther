@@ -72,6 +72,17 @@ final class Terms {
         return symbols;
     }
 
+    /** What the declarations this reading was made against say, for the readings below that ask
+     *  which of them is a sum and what its cases are. */
+    PublishedDeclarations published() {
+        return rules.published();
+    }
+
+    /** Which form each declaration this reading was made against was written in. */
+    DeclarationKinds kinds() {
+        return rules.kinds();
+    }
+
     /**
      * What a clause states, read through this very reading.
      *
@@ -474,6 +485,16 @@ final class Terms {
             }
 
             @Override
+            public PublishedDeclarations published() {
+                return Terms.this.published();
+            }
+
+            @Override
+            public DeclarationKinds kinds() {
+                return Terms.this.kinds();
+            }
+
+            @Override
             public LinearForm<FactSubject> leafOf(Core e, Denotations where) {
                 LinearForm<FactSubject> named = affineReading.leafOf(e, where);
                 return named == null || named.coefs().keySet().stream().allMatch(names)
@@ -519,6 +540,16 @@ final class Terms {
                 @Override
                 public Symbols symbols() {
                     return Terms.this.symbols;
+                }
+
+                @Override
+                public PublishedDeclarations published() {
+                    return Terms.this.published();
+                }
+
+                @Override
+                public DeclarationKinds kinds() {
+                    return Terms.this.kinds();
                 }
 
                 @Override
@@ -845,7 +876,7 @@ final class Terms {
 
     /** The same, of a type a caller already holds. */
     private boolean carriesANumber(Type t) {
-        Carrier carrier = Carrier.ofValue(t, symbols);
+        Carrier carrier = Carrier.ofValue(t, symbols, kinds(), published());
         return carrier != null && carrier.counts();
     }
 
@@ -1436,7 +1467,7 @@ final class Terms {
      * failure of this compiler.
      */
     private NumericDomain.Bounds extentOf(Type type) {
-        Carrier carrier = Carrier.ofValue(type, symbols);
+        Carrier carrier = Carrier.ofValue(type, symbols, kinds(), published());
         if (carrier == null) {
             return null;
         }
@@ -1684,7 +1715,7 @@ final class Terms {
      * in it.
      */
     Granularity granularityOf(Type t) {
-        Carrier carrier = Carrier.ofValue(t, symbols);
+        Carrier carrier = Carrier.ofValue(t, symbols, kinds(), published());
         if (carrier == null || !carrier.counts()) {
             throw new IllegalStateException("not a number the domain carries: " + Type.show(t));
         }
@@ -2806,7 +2837,7 @@ final class Terms {
      * readable there. What a value has of its own is the one reading's answer, so a field every case
      * of a sum spreads is read off the sum here exactly as it is where a body reads one. */
     Type fieldType(Type owner, String field) {
-        return ValueReading.of(owner, symbols).named().get(field);
+        return ValueReading.of(owner, symbols, published()).named().get(field);
     }
 
     /** What a container hands its closure: a list's or set's element, a map's value (the key is the

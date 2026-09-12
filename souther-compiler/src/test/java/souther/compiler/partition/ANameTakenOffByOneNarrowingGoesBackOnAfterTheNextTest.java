@@ -114,7 +114,8 @@ class ANameTakenOffByOneNarrowingGoesBackOnAfterTheNextTest {
 
         ConstructionPlan plan = assertInstanceOf(ConstructionPlan.Result.Planned.class,
                 ConstructionPlan.of(read.sig().inputs().get(0).type(),
-                        TermPath.of(read.parameter()), read.rules().symbols(), Set.of(),
+                        TermPath.of(read.parameter()), read.rules().symbols(),
+                        read.rules().published(), Set.of(),
                         axis.requiring(cls), ONE_AT_LEAST),
                 "nothing here asks one position to be two things").plan();
 

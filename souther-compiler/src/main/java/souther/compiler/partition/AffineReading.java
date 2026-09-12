@@ -5,6 +5,8 @@ import souther.compiler.check.Comparison;
 import souther.compiler.check.StatedComparison;
 import souther.compiler.check.ComparisonClaim;
 import souther.compiler.check.Location;
+import souther.compiler.check.DeclarationKinds;
+import souther.compiler.check.PublishedDeclarations;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.Symbols;
 import souther.compiler.core.Core;
@@ -203,6 +205,16 @@ record AffineReading(LinearForm<NumericTerm> form, BigDecimal cut, ComparisonCla
             @Override
             public Symbols symbols() {
                 return ruleSource.symbols();
+            }
+
+            @Override
+            public PublishedDeclarations published() {
+                return ruleSource.published();
+            }
+
+            @Override
+            public DeclarationKinds kinds() {
+                return ruleSource.kinds();
             }
 
             @Override

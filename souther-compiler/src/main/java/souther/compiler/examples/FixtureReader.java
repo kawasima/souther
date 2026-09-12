@@ -5,6 +5,8 @@ import souther.compiler.generated.MemoryClassLoader;
 import souther.compiler.ast.Hir;
 import souther.compiler.check.AtomSpace;
 import souther.compiler.check.CallElaborator;
+import souther.compiler.check.DeclarationKinds;
+import souther.compiler.check.PublishedDeclarations;
 import souther.compiler.check.Symbols;
 import souther.compiler.cst.SyntaxKind;
 import souther.compiler.core.Kernel;
@@ -77,6 +79,8 @@ public final class FixtureReader {
 
     private final souther.compiler.check.Prepared.ForExamples module;
     private final Symbols symbols;
+    /** What the declarations a fixture names say about themselves. */
+    private final PublishedDeclarations published;
     /** The values a row may name: this module's own, and the ones its imports bring in. */
     private final Map<String, Hir.FnDef> values;
     private final MemoryClassLoader loader;
@@ -88,23 +92,26 @@ public final class FixtureReader {
     private final ValueTypes types;
 
     FixtureReader(souther.compiler.check.Prepared.ForExamples module, Symbols symbols,
+                  PublishedDeclarations published, DeclarationKinds kinds,
                   FieldTypes fields, Map<String, Hir.FnDef> values,
                   MemoryClassLoader loader) {
         this.module = module;
         this.symbols = symbols;
+        this.published = published;
         this.values = values;
         this.loader = loader;
         this.operands = new OperandRunner(module.name(), loader);
         // What a declaration is laid out as reaches this reading through the two that read a value
         // by it, and is not held beside them: a reader here asks one of those, and one that asked
         // the declarations itself would be a third answer about what a value's parts are.
-        this.neutral = new NeutralForm(symbols, fields);
+        this.neutral = new NeutralForm(symbols, published, kinds, fields);
         this.types = ValueTypes.over(fields);
     }
 
     /** A way to build values against this module's generated classes, without any rows to run. */
-    public static BoundaryValues constructing(souther.compiler.check.Prepared.ForExamples module, Symbols symbols,
-                                            FieldTypes fields,
+    public static BoundaryValues constructing(souther.compiler.check.Prepared.ForExamples module,
+                                              Symbols symbols, PublishedDeclarations published,
+                                            DeclarationKinds kinds, FieldTypes fields,
                                             Map<String, ClassFileImage> classes, ClassLoader parent,
                                             Map<String, Hir.FnDef> values) {
         // A reader is the whole of it. There are no rows, so nothing runs on a worker and no budget is
@@ -117,8 +124,9 @@ public final class FixtureReader {
         // the loader that is shared, and has to be — it caches the classes it has defined and loaded,
         // and a fake's subclass is generated once.
         MemoryClassLoader loader = new MemoryClassLoader(classes, parent);
-        return (at, fixture) -> new FixtureReader(module, symbols, fields, values, loader)
-                .building(at, fixture);
+        return (at, fixture) ->
+                new FixtureReader(module, symbols, published, kinds, fields, values, loader)
+                        .building(at, fixture);
     }
 
     /** The method emitted for {@code operand}, or null where nothing emitted one — read off the
@@ -320,7 +328,7 @@ public final class FixtureReader {
         if (value == null) {
             return null;
         }
-        for (TypeSymbol candidate : AtomSpace.subjectAtoms(outType, symbols)) {
+        for (TypeSymbol candidate : AtomSpace.subjectAtoms(outType, published)) {
             if (represents(candidate, value)) {
                 return candidate;
             }
@@ -483,7 +491,7 @@ public final class FixtureReader {
                     && spells(v, r.name());
             case Type.Ref _, Type.Union _ -> {
                 TypeSymbol name = named(a);
-                yield name != null && AtomSpace.subjectAtoms(type, symbols).contains(name)
+                yield name != null && AtomSpace.subjectAtoms(type, published).contains(name)
                         && parts(a, name);
             }
             case Type.ListOf l -> a instanceof Asserted.Elements(Asserted.Container stated,
@@ -1041,7 +1049,7 @@ public final class FixtureReader {
             case Type.OptionOf o -> new Admits.OrAbsent(admits(o.element()));
             case Type.Ref r when r.name().isPrimitive() -> NO_NAME;
             case Type.Ref r -> new Admits.OneOf(
-                    new LinkedHashSet<>(AtomSpace.subjectAtoms(Type.ref(r.name()), symbols)));
+                    new LinkedHashSet<>(AtomSpace.subjectAtoms(Type.ref(r.name()), published)));
             case Type.Prim _, Type.ListOf _, Type.SetOf _, Type.MapOf _, Type.TupleOf _ -> NO_NAME;
             case null, default -> UNSAID;
         };

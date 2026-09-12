@@ -94,7 +94,7 @@ final class OrderedReading {
     static OrderedReading of(Terms terms, Map<FactSubject, Type> byName, Symbols symbols) {
         Map<FactSubject, Carrier> carriers = new LinkedHashMap<>();
         byName.forEach((name, type) -> {
-            Carrier carrier = Carrier.ofValue(type, symbols);
+            Carrier carrier = Carrier.ofValue(type, symbols, terms.kinds(), terms.published());
             if (carrier != null) {
                 carriers.put(name, carrier);
             }

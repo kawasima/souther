@@ -75,7 +75,10 @@ public final class RowTrial {
      *              search's problem to stop rather than an author's to be told about
      */
     public static RowTrials over(Prepared.ForExamples module,
-                              Symbols symbols, FieldTypes fields,
+                              Symbols symbols,
+                              souther.compiler.check.PublishedDeclarations published,
+                              souther.compiler.check.DeclarationKinds kinds,
+                              FieldTypes fields,
                               Map<String, ClassFileImage> classes,
                               ClassLoader parent,
                               Map<String, Hir.FnDef> values, GeneratedImplementations generated,
@@ -93,7 +96,8 @@ public final class RowTrial {
             // One reader per row, the way a written row has one: what a reading builds up while it
             // expands a value is that row's, and a reader kept between them would be a session
             // spanning every candidate of every combination.
-            return went(new FixtureReader(module, symbols, fields, values, loader), module, ensures,
+            return went(new FixtureReader(module, symbols, published, kinds, fields, values, loader),
+                    module, ensures,
                     applies, behavior, sig, inputs, answers, probes, steps);
         };
     }

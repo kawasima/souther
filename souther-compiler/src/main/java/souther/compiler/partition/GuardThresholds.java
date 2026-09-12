@@ -2,6 +2,8 @@ package souther.compiler.partition;
 
 import souther.compiler.check.AnalysisBody;
 import souther.compiler.check.Carrier;
+import souther.compiler.check.DeclarationKinds;
+import souther.compiler.check.PublishedDeclarations;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.StatedComparison;
 import souther.compiler.check.ComparisonClaim;
@@ -447,7 +449,8 @@ public final class GuardThresholds {
         UnreadComparison.Quantity.NotRead<TermPath> notRead =
                 new UnreadComparison.Quantity.NotRead<>(here.origin());
         java.util.function.Predicate<TermPath> ordered =
-                at -> met.containsKey(at) && orderable(met.get(at), symbols);
+                at -> met.containsKey(at) && orderable(met.get(at), symbols, read.rules().kinds(),
+                        read.rules().published());
         java.util.SequencedMap<FilingCoordinate, BlockReason.RuleReadingStopped> out =
                 new java.util.LinkedHashMap<>();
         for (FilingCoordinate at : filedAt(comparison, read, reads)) {
@@ -689,8 +692,9 @@ public final class GuardThresholds {
     }
 
     /** Whether a line can be drawn on what this type carries, asked of the one place that says so. */
-    static boolean orderable(Type type, Symbols symbols) {
-        return Carrier.ofValue(type, symbols) != null;
+    static boolean orderable(Type type, Symbols symbols, DeclarationKinds kinds,
+                             PublishedDeclarations published) {
+        return Carrier.ofValue(type, symbols, kinds, published) != null;
     }
 
     /**

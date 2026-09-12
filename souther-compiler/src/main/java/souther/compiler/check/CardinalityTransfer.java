@@ -183,8 +183,9 @@ final class CardinalityTransfer {
      * gets. A type whose values can be written out has at least one of them: a list with nothing in
      * it is not a type, and the count of none is a claim that carries a proof.
      */
-    private static Cardinality howManyValues(Type type, Symbols symbols) {
-        List<Value> every = ValueUniverse.of(type, symbols);
+    private static Cardinality howManyValues(Type type, Symbols symbols, DeclarationKinds kinds,
+                                             PublishedDeclarations published) {
+        List<Value> every = ValueUniverse.of(type, symbols, kinds, published);
         return every == null || every.isEmpty() ? Cardinality.UNKNOWN
                 : Cardinality.atMost(every.size());
     }
@@ -219,7 +220,8 @@ final class CardinalityTransfer {
                 // As many as it has values, which is a question with an answer of its own. Written
                 // here as a number, the count and the values would be two records of one fact with
                 // nothing holding them together.
-                case BOOL -> howManyValues(type, source.symbols());
+                case BOOL ->
+                        howManyValues(type, source.symbols(), source.kinds(), source.published());
                 case INT -> values.wholeValuesAt(path);
                 // Spaced too finely to count between two ends, or not spaced at all. A string bounded
                 // in length and a date bounded at both ends are finite and are not counted here: what

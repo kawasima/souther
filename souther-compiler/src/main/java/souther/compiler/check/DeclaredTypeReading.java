@@ -90,6 +90,16 @@ public record DeclaredTypeReading(DeclarationFacts facts,
         return facts.symbols();
     }
 
+    /** What the declarations a position names say about themselves. */
+    public PublishedDeclarations published() {
+        return facts.published();
+    }
+
+    /** Which form each of those declarations was written in. */
+    public DeclarationKinds kinds() {
+        return facts.kinds();
+    }
+
     /**
      * What {@code e} is declared to be, or null where no declaration says.
      *
@@ -363,7 +373,7 @@ public record DeclaredTypeReading(DeclarationFacts facts,
         private boolean settles(Substitution decided, List<Type> declared, List<Type> arrived) {
             for (int i = 0; i < declared.size(); i++) {
                 if (declared.get(i) != null && arrived.get(i) != null
-                        && decided.decide(declared.get(i), arrived.get(i), symbols())
+                        && decided.decide(declared.get(i), arrived.get(i), published())
                                 instanceof Fit.Disagrees) {
                     return false;
                 }
@@ -392,7 +402,7 @@ public record DeclaredTypeReading(DeclarationFacts facts,
                                  List<Type> arrived) {
             for (int i = 0; i < declared.size(); i++) {
                 if (declared.get(i) != null && arrived.get(i) != null
-                        && decided.hold(declared.get(i), arrived.get(i), symbols())
+                        && decided.hold(declared.get(i), arrived.get(i), published())
                                 instanceof Fit.Disagrees) {
                     return false;
                 }
@@ -403,7 +413,7 @@ public record DeclaredTypeReading(DeclarationFacts facts,
                 Type arrives = given.arrivesAs() == null
                         ? null : TypeOps.resolveParamType(given.arrivesAs());
                 if (takes != null && arrives != null
-                        && decided.hold(takes, arrives, symbols()) instanceof Fit.Disagrees) {
+                        && decided.hold(takes, arrives, published()) instanceof Fit.Disagrees) {
                     return false;
                 }
             }
@@ -419,7 +429,7 @@ public record DeclaredTypeReading(DeclarationFacts facts,
                 return new BindingEvidence.BoundTo(bound.value());
             }
             return new BindingEvidence.DeclaredAs(arrived == null ? required
-                    : Elaborator.carriedType(required, arrived, symbols()));
+                    : Elaborator.carriedType(required, arrived, kinds(), published()));
         }
 
         /** What a {@code let} puts in force while its body is read. */
@@ -594,7 +604,7 @@ public record DeclaredTypeReading(DeclarationFacts facts,
                 // No position is read: what the declaration answers is what this reading is asking
                 // about, and there is nothing above the call requiring anything of it.
                 bindings = SignatureApplication.settledByValues(settling, answers, null,
-                        stated::get, symbols());
+                        stated::get, published());
             } catch (CompileException _) {
                 // What a variable cannot be settled to at once is a disagreement between two
                 // arguments, and what is wrong with it is reported where the call is written.
@@ -602,7 +612,7 @@ public record DeclaredTypeReading(DeclarationFacts facts,
             }
             for (int i = 0; i < settling.size(); i++) {
                 if (!TypeOps.admits(TypeOps.substitute(settling.get(i), bindings), stated.get(i),
-                        symbols())) {
+                        published())) {
                     return new Settlement.Disagrees();
                 }
             }

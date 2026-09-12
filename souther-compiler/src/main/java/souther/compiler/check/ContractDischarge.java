@@ -55,7 +55,7 @@ public record ContractDischarge(List<RuleDischarge> rules,
         for (StatedContract.StatedRule rule : stated.rules()) {
             classified.addAll(of(stated, rule, source, policy));
         }
-        return new ContractDischarge(classified, unstatedCases(stated, source.symbols()));
+        return new ContractDischarge(classified, unstatedCases(stated, source.published()));
     }
 
     /**
@@ -107,7 +107,8 @@ public record ContractDischarge(List<RuleDischarge> rules,
      * reported, because a correct model may say nothing about most of what it answers, and a reader
      * wanting to know asks.
      */
-    private static List<TypeSymbol> unstatedCases(StatedContract contract, Symbols symbols) {
+    private static List<TypeSymbol> unstatedCases(StatedContract contract,
+                                                  PublishedDeclarations published) {
         // Over what the answer can be and not over what it declared. A rule may be written about a
         // case that has cases of its own, and it states something about each of them; counted by
         // name, every leaf under it would come back as unstated (#966).
@@ -118,7 +119,7 @@ public record ContractDischarge(List<RuleDischarge> rules,
             }
         }
         List<TypeSymbol> unstated = new ArrayList<>();
-        for (TypeSymbol atom : AtomSpace.subjectAtoms(contract.output(), symbols)) {
+        for (TypeSymbol atom : AtomSpace.subjectAtoms(contract.output(), published)) {
             if (!stated.contains(atom)) {
                 unstated.add(atom);
             }

@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import souther.compiler.DefaultStdlib;
 import souther.compiler.ast.Hir;
 import souther.compiler.check.AtomSpace;
+import souther.compiler.check.ScopedDeclarations;
 import souther.compiler.check.Boundary;
 import souther.compiler.check.TypeChecker;
 import souther.compiler.meta.ModulePath;
@@ -84,11 +85,14 @@ class ADerivedSumCodecHasOneVariantPerAtomTest {
     }
 
     private Boundary.Alternatives settled(String sum) {
-        return Boundary.of(Type.ref(sumData(sum).declares()), TypeChecker.symbols(derived, DefaultStdlib.get()));
+        return Boundary.of(Type.ref(sumData(sum).declares()),
+                ScopedDeclarations.kindsOf(TypeChecker.symbols(derived, DefaultStdlib.get())),
+                ScopedDeclarations.of(TypeChecker.symbols(derived, DefaultStdlib.get())));
     }
 
     private List<TypeSymbol> atomsOf(String sum) {
-        return AtomSpace.subjectAtoms(Type.ref(sumData(sum).declares()), TypeChecker.symbols(derived, DefaultStdlib.get()));
+        return AtomSpace.subjectAtoms(Type.ref(sumData(sum).declares()),
+                ScopedDeclarations.of(TypeChecker.symbols(derived, DefaultStdlib.get())));
     }
 
     private static List<String> names(List<TypeSymbol> atoms) {

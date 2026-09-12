@@ -1,5 +1,6 @@
 package souther.compiler.partition;
 
+import souther.compiler.check.PublishedDeclarations;
 import souther.compiler.check.ReadableFields;
 import souther.compiler.check.Shape;
 import souther.compiler.check.RuleReadingSource;
@@ -48,6 +49,11 @@ public record BehaviorInputs(List<String> parameters, List<Type> types, RuleRead
     /** The names the reading was made against. */
     public Symbols symbols() {
         return rules.symbols();
+    }
+
+    /** What the declarations the reading was made against say. */
+    public PublishedDeclarations published() {
+        return rules.published();
     }
 
     /**
@@ -187,7 +193,7 @@ public record BehaviorInputs(List<String> parameters, List<Type> types, RuleRead
             List<Standing> next = new ArrayList<>();
             int took = 0;
             for (Standing each : standing) {
-                if (each.step(step, symbols(), next)) {
+                if (each.step(step, symbols(), published(), next)) {
                     took++;
                 }
             }
@@ -239,7 +245,7 @@ public record BehaviorInputs(List<String> parameters, List<Type> types, RuleRead
         }
         Type here = types.get(at);
         for (TermPath.Step step : path.steps()) {
-            here = stepWrittenValue(step, here, symbols());
+            here = stepWrittenValue(step, here, symbols(), published());
             if (here == null) {
                 return null;
             }
@@ -268,8 +274,9 @@ public record BehaviorInputs(List<String> parameters, List<Type> types, RuleRead
      * reader that means to move one is not moving both. The one caller is
      * {@link #typeAtWrittenPath}, and it is watched.
      */
-    static Type stepWrittenValue(TermPath.Step step, Type from, Symbols symbols) {
-        TypeView view = TypeView.of(from, symbols);
+    static Type stepWrittenValue(TermPath.Step step, Type from, Symbols symbols,
+                                 PublishedDeclarations published) {
+        TypeView view = TypeView.of(from, symbols, published);
         return switch (step) {
             case TermPath.Step.Field named -> view.shape() instanceof Shape.Product product
                     ? product.fields().get(named.name()) : null;
@@ -320,12 +327,13 @@ public record BehaviorInputs(List<String> parameters, List<Type> types, RuleRead
          * at under a refinement. A caller reads the first as a walk it could not make and the
          * second as a row that is somewhere else.
          */
-        boolean step(TermPath.Step step, Symbols symbols, List<Standing> out) {
+        boolean step(TermPath.Step step, Symbols symbols, PublishedDeclarations published,
+                     List<Standing> out) {
             if (value.unread() != null) {
                 out.add(this);
                 return true;
             }
-            TypeView view = TypeView.of(type, symbols);
+            TypeView view = TypeView.of(type, symbols, published);
             ObservedValue here = Classifier.inside(view.wrappers(), value);
             if (here.unread() != null) {
                 out.add(new Standing(here, type, reached, at));

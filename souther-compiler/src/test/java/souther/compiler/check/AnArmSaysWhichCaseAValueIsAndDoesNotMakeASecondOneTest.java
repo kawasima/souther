@@ -221,7 +221,7 @@ class AnArmSaysWhichCaseAValueIsAndDoesNotMakeASecondOneTest {
         return new StatedContract(FIND, List.of(), Type.INT,
                 List.of(new StatedContract.StatedRule(
                         new Guard.Case(CaseSpace.resolve(CaseSelector.direct(AN_INT),
-                                Symbols.none(DefaultStdlib.get()))), value,
+                                PublishedDeclarations.NONE)), value,
                         Optional.empty(),
                         List.of(new StatedContract.Conjunct(new PartId<>(ref, 0), POS,
                                 new souther.compiler.check.TypedClause.Typed(states))))))
@@ -289,9 +289,9 @@ class AnArmSaysWhichCaseAValueIsAndDoesNotMakeASecondOneTest {
         TypeSymbol once = named(symbols, "OnceKind");
         TypeSymbol station = named(symbols, "Station");
         Guard aboutOnceKind = new Guard.Case(
-                CaseSpace.resolve(CaseSelector.direct(once), symbols));
+                CaseSpace.resolve(CaseSelector.direct(once), ScopedDeclarations.of(symbols)));
         Guard aboutStation = new Guard.Case(
-                CaseSpace.resolve(CaseSelector.direct(station), symbols));
+                CaseSpace.resolve(CaseSelector.direct(station), ScopedDeclarations.of(symbols)));
 
         assertTrue(reading.impliedBy(aboutOnceKind, single(station)),
                 "a station is one of the values the rule about OnceKind is stated of");
@@ -313,14 +313,15 @@ class AnArmSaysWhichCaseAValueIsAndDoesNotMakeASecondOneTest {
         // Resolved the way the checker resolves an arm, so what the alternatives cover is this
         // compile's answer rather than one written here.
         Core.ResolvedPattern both = new Core.ResolvedPattern.AnyOf(
-                List.of(CaseSpace.resolve(CaseSelector.direct(station), symbols),
-                        CaseSpace.resolve(CaseSelector.direct(hospital), symbols)), visitKind);
+                List.of(CaseSpace.resolve(CaseSelector.direct(station), ScopedDeclarations.of(symbols)),
+                        CaseSpace.resolve(CaseSelector.direct(hospital), ScopedDeclarations.of(symbols))), visitKind);
 
         assertTrue(reading.impliedBy(
-                        new Guard.Case(CaseSpace.resolve(CaseSelector.direct(once), symbols)), both),
+                        new Guard.Case(CaseSpace.resolve(CaseSelector.direct(once),
+                                ScopedDeclarations.of(symbols))), both),
                 "both alternatives are values the rule about OnceKind is stated of");
         assertFalse(reading.impliedBy(
-                        new Guard.Case(CaseSpace.resolve(CaseSelector.direct(station), symbols)), both),
+                        new Guard.Case(CaseSpace.resolve(CaseSelector.direct(station), ScopedDeclarations.of(symbols))), both),
                 "one of the alternatives is a value the rule says nothing of");
     }
 

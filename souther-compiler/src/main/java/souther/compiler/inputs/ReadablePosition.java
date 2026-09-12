@@ -1,5 +1,6 @@
 package souther.compiler.inputs;
 
+import souther.compiler.check.PublishedDeclarations;
 import souther.compiler.check.Shape;
 import souther.compiler.check.Symbols;
 import souther.compiler.check.TypeView;
@@ -38,8 +39,8 @@ record ReadablePosition(TypeView view, Shape.ReadablePositionShape shape) {
      * <p>Exhaustive over {@link Shape}, with no {@code default}: a sixteenth case stops this
      * compiling rather than arriving somewhere further down as a position nothing divides.
      */
-    static ReadablePosition of(Type type, Symbols symbols) {
-        return of(TypeView.of(type, symbols));
+    static ReadablePosition of(Type type, Symbols symbols, PublishedDeclarations published) {
+        return of(TypeView.of(type, symbols, published));
     }
 
     /** The same, of a position already read. The reading is the expensive half and the walk has one

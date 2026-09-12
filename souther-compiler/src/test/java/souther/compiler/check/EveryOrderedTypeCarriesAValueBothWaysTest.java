@@ -79,11 +79,11 @@ class EveryOrderedTypeCarriesAValueBothWaysTest {
         Symbols symbols = symbols();
 
         for (Type each : ordered()) {
-            assertNotNull(Carrier.ofValue(each, symbols), each + " carries a value");
+            assertNotNull(Carrier.ofValue(each, symbols, ScopedDeclarations.kindsOf(symbols), ScopedDeclarations.of(symbols)), each + " carries a value");
         }
 
-        assertNull(Carrier.ofValue(Type.BOOL, symbols), "a `Bool` is not ordered");
-        assertNull(Carrier.ofValue(Type.RAW, symbols), "and neither is a `Raw`");
+        assertNull(Carrier.ofValue(Type.BOOL, symbols, ScopedDeclarations.kindsOf(symbols), ScopedDeclarations.of(symbols)), "a `Bool` is not ordered");
+        assertNull(Carrier.ofValue(Type.RAW, symbols, ScopedDeclarations.kindsOf(symbols), ScopedDeclarations.of(symbols)), "and neither is a `Raw`");
     }
 
     /**
@@ -97,7 +97,7 @@ class EveryOrderedTypeCarriesAValueBothWaysTest {
         Symbols symbols = symbols();
 
         for (Type each : ordered()) {
-            Carrier carrier = Carrier.ofValue(each, symbols);
+            Carrier carrier = Carrier.ofValue(each, symbols, ScopedDeclarations.kindsOf(symbols), ScopedDeclarations.of(symbols));
             for (Place count : places(carrier)) {
                 ObservedValue written = carrier.valueOf(count);
                 assertEquals(count, carrier.placeOf(written),
@@ -146,7 +146,7 @@ class EveryOrderedTypeCarriesAValueBothWaysTest {
         expected.put(colour(), between(Count.of(0), Count.of(2)));
 
         expected.forEach((type, extent) -> assertEquals(extent,
-                Carrier.ofValue(type, symbols).extent(), "where " + type + " stops"));
+                Carrier.ofValue(type, symbols, ScopedDeclarations.kindsOf(symbols), ScopedDeclarations.of(symbols)).extent(), "where " + type + " stops"));
     }
 
     /**
@@ -160,12 +160,12 @@ class EveryOrderedTypeCarriesAValueBothWaysTest {
     void aTemporalIsWrittenTheWayAModelWritesOne() {
         Symbols symbols = symbols();
 
-        Carrier time = Carrier.ofValue(Type.TIME, symbols);
+        Carrier time = Carrier.ofValue(Type.TIME, symbols, ScopedDeclarations.kindsOf(symbols), ScopedDeclarations.of(symbols));
         assertEquals("16:00:00", time.written(Times.secondOf("16:00:00")));
         assertEquals("00:00:00", time.written(Times.MIN));
         assertEquals("23:59:59", time.written(Times.MAX));
 
-        Carrier moment = Carrier.ofValue(Type.INSTANT, symbols);
+        Carrier moment = Carrier.ofValue(Type.INSTANT, symbols, ScopedDeclarations.kindsOf(symbols), ScopedDeclarations.of(symbols));
         assertEquals("2026-08-01T00:00:00Z",
                 moment.written(Instants.nanoOf("2026-08-01T00:00:00Z")));
         assertEquals("2026-07-31T23:59:59.999999999Z",
@@ -183,12 +183,12 @@ class EveryOrderedTypeCarriesAValueBothWaysTest {
     void aCountTheOrderDoesNotReachIsNoPlaceOfIts() {
         Symbols symbols = symbols();
 
-        Carrier time = Carrier.ofValue(Type.TIME, symbols);
+        Carrier time = Carrier.ofValue(Type.TIME, symbols, ScopedDeclarations.kindsOf(symbols), ScopedDeclarations.of(symbols));
         assertNull(time.onTheGrid(Times.MAX.plus(1)), "a day runs out at its last second");
         assertNull(time.onTheGrid(Count.of(new java.math.BigDecimal("0.5"))),
                 "and half a second is a number and no time of day");
 
-        Carrier moment = Carrier.ofValue(Type.INSTANT, symbols);
+        Carrier moment = Carrier.ofValue(Type.INSTANT, symbols, ScopedDeclarations.kindsOf(symbols), ScopedDeclarations.of(symbols));
         assertNull(moment.onTheGrid(Instants.MAX.plus(1)), "the timeline stops where it stops");
     }
 

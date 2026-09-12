@@ -43,7 +43,8 @@ class ATemporalKeepsWhatItWasWrittenAsTest {
 
         return assertInstanceOf(Core.Temporal.class,
                 Elaborator.elaborate(call, Scope.NONE,
-                        CheckContext.of(Symbols.none(DefaultStdlib.get()))));
+                        CheckContext.of(Symbols.none(DefaultStdlib.get()),
+                                PublishedDeclarations.NONE, DeclarationKinds.NONE)));
     }
 
     /** The construction the author wrote arrives on the value it was folded into. */

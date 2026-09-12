@@ -92,7 +92,7 @@ final class ContainersAddingUp {
         // The position, read once. What it holds, how many of them its rules leave it holding, and
         // the names the container is written under are three questions of one reading, and asking
         // the type again for any of them is another answer to which names it wears.
-        TypeView view = TypeView.of(container, ruleSource.symbols());
+        TypeView view = TypeView.of(container, ruleSource.symbols(), ruleSource.published());
         if (!(view.shape() instanceof Shape.Sequence holding)) {
             // A total is taken of a container, and what is declared at the root is not one. Which is
             // a term nobody should have been able to build; said here rather than by composing a
@@ -799,7 +799,7 @@ final class ContainersAddingUp {
             asks++;
             asked = left.removeFirst();
             return ConstructionPlan.of(element, at, reading.source().symbols(),
-                    Set.of(asked), Requirements.NONE,
+                    reading.source().published(), Set.of(asked), Requirements.NONE,
                     (_, building) -> Partitions.heldRange(building, reading, null));
         }
 

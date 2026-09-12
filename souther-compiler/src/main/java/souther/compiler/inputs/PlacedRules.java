@@ -12,6 +12,7 @@ import souther.compiler.check.Requirement;
 import souther.compiler.check.RuleAccounting;
 import souther.compiler.check.RuleCitation;
 import souther.compiler.check.ProjectionEvidence;
+import souther.compiler.check.PublishedDeclarations;
 import souther.compiler.check.Rules;
 import souther.compiler.check.Shape;
 import souther.compiler.check.Symbols;
@@ -97,7 +98,7 @@ record PlacedRules(TermPath root, TypeSymbol value, Rules rules, Reaching alsoRe
     /** The same, of a value narrowed out of another whose rules name some of the same positions. */
     static PlacedRules of(TermPath root, Type type, RuleReadingSource source, ReadingPolicy policy,
                           Reaching alsoReaching, DeclarationReadings machines) {
-        TypeSymbol read = readAs(type, source.symbols());
+        TypeSymbol read = readAs(type, source.symbols(), source.published());
         // One composer for this reading, made where the reading is. What {@link #admits} builds is
         // the set a position of this value finally admits, met out of the rules here and the rules
         // of the value this was narrowed from — one answer, however many paths are asked about it.
@@ -671,11 +672,12 @@ record PlacedRules(TermPath root, TypeSymbol value, Rules rules, Reaching alsoRe
      * an edge a wrapper narrowed was reported as narrowed by the record under it, which is a
      * declaration that may have no clause about the pair at all.
      */
-    private static TypeSymbol readAs(Type type, Symbols symbols) {
+    private static TypeSymbol readAs(Type type, Symbols symbols,
+                                     PublishedDeclarations published) {
         TypeSymbol written = nameOf(type);
         return written != null
                 && symbols.declaredNode(written) instanceof Hir.Data
-                ? written : heldIn(type, symbols);
+                ? written : heldIn(type, symbols, published);
     }
 
     /**
@@ -687,16 +689,18 @@ record PlacedRules(TermPath root, TypeSymbol value, Rules rules, Reaching alsoRe
      * refuses from being called writable. So the answer falls back to the name the signature wrote
      * rather than to nothing.
      */
-    private static TypeSymbol heldIn(Type type, Symbols symbols) {
-        TypeSymbol record = recordIn(type, symbols);
+    private static TypeSymbol heldIn(Type type, Symbols symbols,
+                                     PublishedDeclarations published) {
+        TypeSymbol record = recordIn(type, symbols, published);
         return record != null ? record : nameOf(type);
     }
 
     /** The record a position holds, through the names it is written under: a value of
      *  {@code data SlotN = Slot} is a {@code Slot}, and the clauses relating its fields are
      *  {@code Slot}'s. */
-    private static TypeSymbol recordIn(Type type, Symbols symbols) {
-        return TypeView.of(type, symbols).shape() instanceof Shape.Product product
+    private static TypeSymbol recordIn(Type type, Symbols symbols,
+                                       PublishedDeclarations published) {
+        return TypeView.of(type, symbols, published).shape() instanceof Shape.Product product
                 ? product.name() : null;
     }
 

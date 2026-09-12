@@ -1,6 +1,8 @@
 package souther.compiler.diag;
 
 import souther.compiler.DefaultStdlib;
+import souther.compiler.check.DeclarationKinds;
+import souther.compiler.check.PublishedDeclarations;
 import souther.compiler.doc.SpecDocument;
 import souther.compiler.diag.msg.MessageCodes;
 import souther.compiler.diag.msg.Message;
@@ -428,7 +430,8 @@ public class EveryShippedMessageCatalogIsCompleteAndValidTest {
     void everyCatalogListsTheOrderedPrimitivesAndOnlyThose() throws IOException {
         Set<String> ordered = new TreeSet<>();
         for (Type.Prim prim : Type.Prim.values()) {
-            if (Ordering.of(prim, null) != null) {
+            if (Ordering.of(prim, null, DeclarationKinds.NONE, PublishedDeclarations.NONE)
+                    != null) {
                 ordered.add(prim.shown());
             }
         }

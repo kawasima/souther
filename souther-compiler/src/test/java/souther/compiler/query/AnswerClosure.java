@@ -761,6 +761,15 @@ final class AnswerClosure {
                     part("souther.compiler.partition.MeasuredInput", "written"),
                     part("souther.compiler.partition.BehaviorInputs", "rules"),
                     part("souther.compiler.check.RuleReadingSource", "published")),
+            // Which form each declaration is, beside what it says and for the same reason. Its one
+            // input is which declaration is being asked about, and the answer was settled when the
+            // module was indexed — so a reading holding it holds a way to ask, not a copy of the
+            // forms as they stood when the reading was made.
+            generationReader("souther.compiler.check.DeclarationKinds",
+                    Traversal.Why.NOTHING_CLOSES_IT,
+                    part("souther.compiler.partition.MeasuredInput", "written"),
+                    part("souther.compiler.partition.BehaviorInputs", "rules"),
+                    part("souther.compiler.check.RuleReadingSource", "kinds")),
             generationReader("souther.compiler.inputs.ReadQuantities",
                     part("souther.compiler.partition.MeasuredInput", "quantities"),
                     arm("souther.compiler.inputs.ReadQuantities")),

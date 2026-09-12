@@ -4,6 +4,8 @@ import souther.compiler.ast.Hir;
 import souther.compiler.check.ClauseDischarge;
 import souther.compiler.check.ClauseLocations;
 import souther.compiler.check.DeclarationCitations;
+import souther.compiler.check.DeclarationKind;
+import souther.compiler.check.DeclarationKinds;
 import souther.compiler.check.DeclarationLocations;
 import souther.compiler.check.DeclarationMeaning;
 import souther.compiler.check.Normalized;
@@ -102,7 +104,8 @@ public final class Shapes {
             Map<String, Hir.FnDef> published = imported.present() ? imported.value() : Map.of();
             try {
                 return Answer.of(
-                        InvariantSettled.settle(expandable.value(), scope.value(), published));
+                        InvariantSettled.settle(expandable.value(), scope.value(),
+                                declarationKinds(db), published));
             } catch (CompileException e) {
                 return Answer.absent(e);
             }
@@ -328,7 +331,8 @@ public final class Shapes {
                 // says about itself is read from the normalized declarations and is there either
                 // way.
                 souther.compiler.check.Derived.Def derived =
-                        souther.compiler.check.Derived.Def.derive(def, scope.value());
+                        souther.compiler.check.Derived.Def.derive(def, scope.value(),
+                                declarationKinds(db), publishedDeclarations(db));
                 if (derived != null) {
                     out.put(declared, derived);
                 }
@@ -535,7 +539,8 @@ public final class Shapes {
                 // conjunct that knows where it was written and what it comes to. Nothing here places
                 // an answer, so nothing here can place one wrongly.
                 ClausesForDischarge declaring =
-                        ClausesForDischarge.of(expandable.value(), scope.value(), published);
+                        ClausesForDischarge.of(expandable.value(), scope.value(),
+                                publishedDeclarations(db), declarationKinds(db), published);
                 Map<TypeSymbol, List<ClauseDischarge>> out = new LinkedHashMap<>();
                 for (Hir.Data data : declaring.declarationsThatState()) {
                     List<ClauseDischarge> clauses = new ArrayList<>();
@@ -684,7 +689,8 @@ public final class Shapes {
             Map<String, Hir.FnDef> published = imported.present() ? imported.value() : Map.of();
             try {
                 return Answer.of(ClauseHelpers.expandedClausesOf(
-                        expandable.value(), scope.value(), published));
+                        expandable.value(), scope.value(), publishedDeclarations(db),
+                        declarationKinds(db), published));
             } catch (CompileException e) {
                 return Answer.absent(e);
             }
@@ -954,6 +960,21 @@ public final class Shapes {
     }
 
     /**
+     * Which form any declaration was written in, for a reader telling the forms apart.
+     *
+     * <p>One of these for the whole compilation, for the reason {@link #expandedClauses} gives:
+     * which declaration is being asked about is the only input there is. A reader taking one
+     * depends on the form of the declarations it asks about and on nothing else those declarations
+     * say, so a line moving above one, or a field of one changing, reaches no reader of this.
+     */
+    public static DeclarationKinds declarationKinds(Db db) {
+        return declaration -> {
+            Answer<DeclarationKind> kind = db.ask(new Names.DeclarationKindOf(declaration));
+            return kind.present() ? kind.value() : null;
+        };
+    }
+
+    /**
      * Where any clause is written, for a reader that is about to point at one.
      *
      * <p>One of these for the whole compilation, for the reason {@link #expandedClauses} gives: which
@@ -1047,7 +1068,9 @@ public final class Shapes {
                 }
                 try {
                     shapes.put(data.declares(),
-                            ExecutableInvariants.of(data, scope.value(), helpers.value()));
+                            ExecutableInvariants.of(data, scope.value(),
+                                    publishedDeclarations(db), declarationKinds(db),
+                                    helpers.value()));
                 } catch (Unanswerable _) {
                     // Rests on something already reported where it went wrong.
                 } catch (CompileException e) {

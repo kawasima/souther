@@ -2,6 +2,8 @@ package souther.compiler.partition;
 
 import souther.compiler.check.AffineForms;
 import souther.compiler.check.Location;
+import souther.compiler.check.DeclarationKinds;
+import souther.compiler.check.PublishedDeclarations;
 import souther.compiler.check.Symbols;
 import souther.compiler.numeric.LinearForm;
 import souther.compiler.core.Core;
@@ -32,8 +34,8 @@ import java.util.Set;
  * @param dependencies the behaviors this one declares it depends on, which are the ones a row
  *                     stands in for
  */
-record DecisionSubjects(InputDomain inputs, Symbols symbols,
-                        Set<ValueName.Behavior> dependencies) {
+record DecisionSubjects(InputDomain inputs, Symbols symbols, PublishedDeclarations published,
+                        DeclarationKinds kinds, Set<ValueName.Behavior> dependencies) {
 
     DecisionSubjects {
         dependencies = Set.copyOf(dependencies);
@@ -137,6 +139,16 @@ record DecisionSubjects(InputDomain inputs, Symbols symbols,
             @Override
             public Symbols symbols() {
                 return symbols;
+            }
+
+            @Override
+            public PublishedDeclarations published() {
+                return published;
+            }
+
+            @Override
+            public DeclarationKinds kinds() {
+                return kinds;
             }
 
             @Override

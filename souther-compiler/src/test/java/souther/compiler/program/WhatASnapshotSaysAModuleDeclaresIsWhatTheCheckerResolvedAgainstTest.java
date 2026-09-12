@@ -2,6 +2,7 @@ package souther.compiler.program;
 
 import souther.compiler.ast.Hir;
 import souther.compiler.types.TypeKey;
+import souther.compiler.check.ScopedDeclarations;
 import souther.compiler.check.Symbols;
 import souther.compiler.check.TypeOps;
 import souther.compiler.core.ValueShape;
@@ -121,7 +122,8 @@ class WhatASnapshotSaysAModuleDeclaresIsWhatTheCheckerResolvedAgainstTest {
                 }
                 case Hir.SumData sum -> assertEquals(
                         souther.compiler.check.AtomSpace.subjectAtoms(
-                                souther.compiler.types.Type.ref(sum.declares()), read.symbols()),
+                                souther.compiler.types.Type.ref(sum.declares()),
+                                ScopedDeclarations.of(read.symbols())),
                         assertInstanceOf(CheckedData.Sum.class, published,
                                 declared.getKey()::toString).cases(),
                         () -> "the cases of " + declared.getKey());

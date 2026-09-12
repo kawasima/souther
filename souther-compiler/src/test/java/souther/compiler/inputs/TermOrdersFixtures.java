@@ -35,6 +35,8 @@ public final class TermOrdersFixtures {
      */
     public static TermOrders at(NumericTerm term, souther.compiler.types.Type positionType,
                                 souther.compiler.check.Symbols symbols) {
-        return TermOrdering.of(term, positionType, symbols);
+        return TermOrdering.of(term, positionType, symbols,
+                souther.compiler.check.ScopedDeclarations.kindsOf(symbols),
+                souther.compiler.check.ScopedDeclarations.of(symbols));
     }
 }

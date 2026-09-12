@@ -6,6 +6,7 @@ import souther.compiler.source.SourceId;
 import souther.compiler.ast.Ast;
 import souther.compiler.ast.Hir;
 import souther.compiler.ast.WrittenName;
+import souther.compiler.check.DeclarationKind;
 import souther.compiler.check.DeclarationRefusals;
 import souther.compiler.check.Derived;
 import souther.compiler.check.DerivedSymbols;
@@ -366,6 +367,51 @@ public final class Names {
         @Override
         public Answer<Boolean> compute(Db db) {
             return Answer.of(db.ask(new Declaration(named)).present());
+        }
+    }
+
+    /**
+     * Which form the declaration at {@code named} was written in.
+     *
+     * <p>Beside {@link CompilationDeclares} and not inside it, for the reason they are two
+     * questions: a product rewritten as a sum keeps the presence answer and changes this one, so a
+     * reader that only wanted to know there was a declaration is not told about a change it has no
+     * use for.
+     *
+     * <p>Read off the declarations as they were indexed, which is where the form was settled. What
+     * the declaration says is worked out further up and takes the names in it resolving with it; the
+     * form does not, so a reader asking only which form it is depends on neither. That is what lets
+     * this be asked while a declaration's own meaning is being made, which is where asking what it
+     * says would be asking for the answer being worked out.
+     */
+    public record DeclarationKindOf(TypeKey named) implements Key<DeclarationKind> {
+        @Override
+        public String module() {
+            return named.module();
+        }
+
+        @Override
+        public Answer<DeclarationKind> compute(Db db) {
+            Answer<Ast.Def> mine = db.ask(new Declaration(named));
+            if (mine.present()) {
+                return Answer.of(switch (mine.value()) {
+                    case Ast.Data _ -> DeclarationKind.PRODUCT;
+                    case Ast.SumData _ -> DeclarationKind.SUM;
+                    case Ast.UnitData _ -> DeclarationKind.UNIT;
+                });
+            }
+            // What the language declares, which no module of this compilation wrote and which is
+            // indexed where the library is read. Left out, a reader asking the form of a library
+            // name would be told nothing declares it — and a rule about how one crosses would go
+            // unasked rather than being answered.
+            Answer<Stdlib> library = db.ask(new Front.Library());
+            Hir.Def declared =
+                    library.present() ? library.value().languageDeclaration(named) : null;
+            return declared == null ? Answer.absent() : Answer.of(switch (declared) {
+                case Hir.Data _ -> DeclarationKind.PRODUCT;
+                case Hir.SumData _ -> DeclarationKind.SUM;
+                case Hir.UnitData _ -> DeclarationKind.UNIT;
+            });
         }
     }
 

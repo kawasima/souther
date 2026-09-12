@@ -1,7 +1,7 @@
 package souther.compiler.check;
 
-import souther.compiler.ast.Hir;
 import souther.compiler.types.Type;
+import souther.compiler.types.TypeSymbol;
 import souther.compiler.values.Value;
 
 import java.util.ArrayList;
@@ -34,7 +34,8 @@ final class ValueUniverse {
      * <p>Read through whatever names the type wears: a name wrapped round a boolean is two values
      * like the boolean it wraps.
      */
-    static List<Value> of(Type type, Symbols symbols) {
+    static List<Value> of(Type type, Symbols symbols, DeclarationKinds kinds,
+                          PublishedDeclarations published) {
         Type base = TypeOps.base(type, symbols);
         if (base instanceof Type.Prim prim) {
             return switch (prim) {
@@ -52,13 +53,13 @@ final class ValueUniverse {
         // Read through it, a change to which types carry an order would silently change which types
         // have values that can be written out. Both go to `TypeOps` for what an enumeration is, so
         // this is one reading of that and not two.
-        if (!(base instanceof Type.Ref ref)
-                || !(symbols.declaredNode(ref.name()) instanceof Hir.SumData _)
-                || !TypeOps.isUnitOnlySum(base, symbols)) {
+        if (!(base instanceof Type.Ref(TypeSymbol.AtModule named))
+                || !(published.of(named.key()) instanceof DeclarationMeaning.Sum _)
+                || !TypeOps.isUnitOnlySum(base, kinds, published)) {
             return null;
         }
         List<Value> values = new ArrayList<>();
-        AtomSpace.subjectAtoms(base, symbols).forEach(each -> values.add(Value.of(each)));
+        AtomSpace.subjectAtoms(base, published).forEach(each -> values.add(Value.of(each)));
         return values.isEmpty() ? null : List.copyOf(values);
     }
 }

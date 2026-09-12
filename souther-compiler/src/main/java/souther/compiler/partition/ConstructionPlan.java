@@ -1,6 +1,7 @@
 package souther.compiler.partition;
 
 import souther.compiler.check.DeclaredBounds;
+import souther.compiler.check.PublishedDeclarations;
 import souther.compiler.check.Symbols;
 import souther.compiler.check.TypeView;
 import souther.compiler.inputs.Case;
@@ -422,7 +423,8 @@ final class ConstructionPlan {
      *                   that, because a caller handing over the whole of it is the arrangement this
      *                   exists to stop
      */
-    static Result of(Type declared, TermPath at, Symbols symbols, Set<TermPath> decided,
+    static Result of(Type declared, TermPath at, Symbols symbols,
+                     PublishedDeclarations published, Set<TermPath> decided,
                      Requirements additional, HowManyItHolds howMany) {
         Requirements required = additional;
         for (TermPath fixed : decided) {
@@ -449,7 +451,7 @@ final class ConstructionPlan {
                         + " keeping two accounts of one position");
             }
         }
-        return switch (node(declared, at, symbols, 0, decided, required, howMany)) {
+        return switch (node(declared, at, symbols, published, 0, decided, required, howMany)) {
             case NodeResult.Made(Node root) -> new Result.Planned(new ConstructionPlan(root));
             case NodeResult.Refused(ModelRefusal why) -> new Result.Refused(why);
             case NodeResult.Beyond(Set<CompositionBudget> by) -> new Result.Beyond(by);
@@ -548,13 +550,14 @@ final class ConstructionPlan {
         }
     }
 
-    private static NodeResult node(Type declared, TermPath at, Symbols symbols, int depth,
+    private static NodeResult node(Type declared, TermPath at, Symbols symbols,
+                                   PublishedDeclarations published, int depth,
                                    Set<TermPath> decided, Requirements required,
                                    HowManyItHolds howMany) {
         // What the requirements leave standing here, worked out before anything is decided about
         // the position. Read once and in full: what is built, whether the search chooses it, and
         // where every path below it hangs all follow from it.
-        Settled settled = settle(declared, at, symbols, required);
+        Settled settled = settle(declared, at, symbols, published, required);
         if (settled.exact() != null) {
             refuseWhatWouldStandUnder(settled.at(), decided, required);
             return new NodeResult.Made(
@@ -569,7 +572,7 @@ final class ConstructionPlan {
         }
         TermPath here = settled.at();
         Type building = settled.building();
-        TypeView view = TypeView.of(building, symbols);
+        TypeView view = TypeView.of(building, symbols, published);
         // The names the position wore before the narrowings, and those with the narrowed type's own
         // after them — which is what a value composed here bare needs. Both are what the position
         // declares, kept: a value written under the narrowed type's names alone is of a type the
@@ -610,8 +613,8 @@ final class ConstructionPlan {
             if (asDeepAsThisGoes) {
                 return givenUpAt(descent, here, building, settled.outer(), demanded);
             }
-            NodeResult inside = node(sequence.element(), here.element(), symbols, depth + 1,
-                    decided, required, howMany);
+            NodeResult inside = node(sequence.element(), here.element(), symbols, published,
+                    depth + 1, decided, required, howMany);
             if (!(inside instanceof NodeResult.Made(Node element))) {
                 return inside;
             }
@@ -642,7 +645,7 @@ final class ConstructionPlan {
             // change them — a figure is raised, and this is a narrowing the caller has yet to
             // state.
             if (anythingIsAskedUnder(here, decided, required)) {
-                return new NodeResult.Unnarrowed(here, narrowingsAt(settled, symbols));
+                return new NodeResult.Unnarrowed(here, narrowingsAt(settled, symbols, published));
             }
             return new NodeResult.Made(
                     new Slot(here, building, settled.outer(), new Leaf.Open()));
@@ -655,8 +658,8 @@ final class ConstructionPlan {
         Set<CompositionBudget> beyond = new LinkedHashSet<>();
         NodeResult.Unnarrowed owed = null;
         for (Map.Entry<String, Type> field : composed.fields().entrySet()) {
-            switch (node(field.getValue(), here.then(field.getKey()), symbols, depth + 1, decided,
-                    required, howMany)) {
+            switch (node(field.getValue(), here.then(field.getKey()), symbols, published, depth + 1,
+                    decided, required, howMany)) {
                 case NodeResult.Made(Node built) -> under.put(field.getKey(), built);
                 // The model settling that there is no value ends the walk. Nothing a field further
                 // along could say outranks it, and one proof is the whole of what a reader gets — a
@@ -730,12 +733,14 @@ final class ConstructionPlan {
      * into two values and holds nothing under either, which says, correctly, that stating something
      * here is not what would make the demand reachable.
      */
-    private static List<Refinement> narrowingsAt(Settled settled, Symbols symbols) {
+    private static List<Refinement> narrowingsAt(Settled settled, Symbols symbols,
+                                                 PublishedDeclarations published) {
         List<Refinement> out = new ArrayList<>();
-        for (Case one : Distinctions.ofType(TypeView.of(settled.building(), symbols), symbols)) {
+        for (Case one : Distinctions.ofType(
+                TypeView.of(settled.building(), symbols, published), symbols, published)) {
             Refinement narrowing = Refinement.of(one);
             if (narrowing != null
-                    && applying(settled, narrowing, symbols).exact() == null) {
+                    && applying(settled, narrowing, symbols, published).exact() == null) {
                 out.add(narrowing);
             }
         }
@@ -786,11 +791,11 @@ final class ConstructionPlan {
      * declare. The state is a {@link Settled}, so a step cannot move one half and leave the other.
      */
     private static Settled settle(Type declared, TermPath at, Symbols symbols,
-                                  Requirements required) {
+                                  PublishedDeclarations published, Requirements required) {
         Settled settled = new Settled(at, declared, null, List.of());
         for (Refinement refinement = required.at(settled.at()); refinement != null;
                 refinement = required.at(settled.at())) {
-            settled = applying(settled, refinement, symbols);
+            settled = applying(settled, refinement, symbols, published);
             // Nothing narrows what is not there, so a narrowing that settled the value is the end
             // of the chain whatever else was written.
             if (settled.exact() != null) {
@@ -809,9 +814,10 @@ final class ConstructionPlan {
      * from the declaration — a narrowing may leave a position wearing a name the next one takes off
      * in turn, and the declaration wore neither.
      */
-    private static Settled applying(Settled settled, Refinement refinement, Symbols symbols) {
+    private static Settled applying(Settled settled, Refinement refinement, Symbols symbols,
+                                    PublishedDeclarations published) {
         List<TypeSymbol> outer = outside(settled.outer(),
-                TypeView.of(settled.building(), symbols).wrappers());
+                TypeView.of(settled.building(), symbols, published).wrappers());
         TermPath here = settled.at().refine(refinement);
         if (refinement instanceof Refinement.Presence presence && !presence.present()) {
             // The absence of an optional settles the value rather than narrowing to something to be
@@ -821,7 +827,8 @@ final class ConstructionPlan {
             // the second.
             return new Settled(here, null, FixtureTemplate.none(), outer);
         }
-        return new Settled(here, narrowed(settled.building(), refinement, symbols), null, outer);
+        return new Settled(here, narrowed(settled.building(), refinement, symbols, published),
+                null, outer);
     }
 
     /**
@@ -925,13 +932,15 @@ final class ConstructionPlan {
      * narrowing said is not there. So this returns a type and never null, and a narrowing that
      * settles a value is a case {@link #settle} has to name rather than one this can express.
      */
-    private static Type narrowed(Type declared, Refinement refinement, Symbols symbols) {
+    private static Type narrowed(Type declared, Refinement refinement, Symbols symbols,
+                                 PublishedDeclarations published) {
         return switch (refinement) {
             case Refinement.SumCase one -> Type.ref(one.leaf());
             // What a `Some` leaves at the position is what the optional was declared to hold, which
             // is the same reading the branches under a position are made from
             // (`StructuralInspection.carried`).
-            case Refinement.Presence presence -> presence.present() ? held(declared, symbols)
+            case Refinement.Presence presence ->
+                    presence.present() ? held(declared, symbols, published)
                     : illegal(declared);
         };
     }
@@ -950,8 +959,8 @@ final class ConstructionPlan {
      * <p>Asked of the shape rather than of the written type, since the position may wear names: a
      * {@code data MaybeTagN = Tag?} is an optional and holds a {@code Tag}.
      */
-    private static Type held(Type declared, Symbols symbols) {
-        if (TypeView.of(declared, symbols).shape()
+    private static Type held(Type declared, Symbols symbols, PublishedDeclarations published) {
+        if (TypeView.of(declared, symbols, published).shape()
                 instanceof souther.compiler.check.Shape.Optional optional) {
             return optional.element();
         }

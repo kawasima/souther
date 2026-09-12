@@ -1362,7 +1362,7 @@ public final class InvariantChecker {
         // A name still worn here is one the walk above could not take off, which is a declaration
         // that returns to itself. Its `value` is this very value, so following it names the same
         // thing again a step deeper than anything asks about.
-        Map<String, Type> under = switch (ValueReading.of(worn, symbols)) {
+        Map<String, Type> under = switch (ValueReading.of(worn, symbols, terms.published())) {
             case ValueReading.AtAValue read -> read.named();
             // Every name that comes off has come off above, so a name still worn is a declaration
             // that returns to itself: what it wraps is the value already being read, and reading it
@@ -1964,7 +1964,8 @@ public final class InvariantChecker {
                                                        Map<RuleKey, Type> typeAt) {
         Map<FactSubject, Coordinate> byName = new LinkedHashMap<>();
         keys.forEach((path, key) -> {
-            Carrier carrier = Carrier.ofValue(typeAt.get(path), symbols);
+            Carrier carrier =
+                    Carrier.ofValue(typeAt.get(path), symbols, terms.kinds(), terms.published());
             byName.put(key, new Coordinate(NumberAt.valueOf(path), carrier));
             FactSubject atom = atoms.get(path);
             if (atom != null) {

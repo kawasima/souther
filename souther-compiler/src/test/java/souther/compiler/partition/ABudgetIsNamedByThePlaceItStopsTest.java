@@ -57,7 +57,7 @@ class ABudgetIsNamedByThePlaceItStopsTest {
 
     /** What a position of this type is, which is what the builder is asked about. */
     private static Shape shape(Type type) {
-        return TypeView.of(type, SYMBOLS).shape();
+        return TypeView.of(type, SYMBOLS, RULES.published()).shape();
     }
 
     /**

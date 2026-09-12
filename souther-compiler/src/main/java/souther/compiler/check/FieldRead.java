@@ -35,7 +35,9 @@ import java.util.Map;
  *                   being made in
  * @param unreadable what this reading does where the declarations at a position do not read
  */
-public record FieldRead(Symbols symbols, FieldTypes world, Unreadable unreadable) {
+public record FieldRead(Symbols symbols, PublishedDeclarations published, DeclarationKinds kinds,
+                        FieldTypes world,
+                        Unreadable unreadable) {
 
     /**
      * What a reading does where reading a position refuses.
@@ -157,7 +159,7 @@ public record FieldRead(Symbols symbols, FieldTypes world, Unreadable unreadable
     private Surface surfaceOf(Type position) {
         TypeView view;
         try {
-            view = TypeView.of(position, symbols);
+            view = TypeView.of(position, symbols, published);
         } catch (CompileException doesNotRead) {
             if (unreadable == Unreadable.REFUSED) {
                 throw doesNotRead;

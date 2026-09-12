@@ -47,10 +47,12 @@ final class HelperParams {
      * only by passing it to {@code hold}, whose own parameter the body settles — so the rounds run
      * until nothing new is settled.
      */
-    static Hir.Module settle(Hir.Module module, Symbols symbols, Map<ValueName.Behavior, ReqSig> reqSigs) {
+    static Hir.Module settle(Hir.Module module, Symbols symbols, PublishedDeclarations published,
+                             DeclarationKinds kinds,
+                             Map<ValueName.Behavior, ReqSig> reqSigs) {
         Hir.Module current = module;
         while (true) {
-            Hir.Module next = settleOnce(current, symbols, reqSigs);
+            Hir.Module next = settleOnce(current, symbols, published, kinds, reqSigs);
             if (next == current) {
                 return current;
             }
@@ -59,7 +61,9 @@ final class HelperParams {
     }
 
     /** One round: returns {@code m} itself when no parameter was settled. */
-    private static Hir.Module settleOnce(Hir.Module m, Symbols symbols, Map<ValueName.Behavior, ReqSig> reqSigs) {
+    private static Hir.Module settleOnce(Hir.Module m, Symbols symbols,
+                                         PublishedDeclarations published, DeclarationKinds kinds,
+                                         Map<ValueName.Behavior, ReqSig> reqSigs) {
         if (!hasOpenParam(m)) {
             return m;   // nothing to settle: don't build the inliner (it scans the whole prelude)
         }
@@ -89,7 +93,7 @@ final class HelperParams {
             if (recursive.contains(h.name())) {
                 continue;   // a recursive helper is not inlined and declares its parameters (spec §fn-declaration)
             }
-            Hir.FnDef s = settle(h, inliner, symbols, reqSigs, recursiveHelperFns);
+            Hir.FnDef s = settle(h, inliner, symbols, published, kinds, reqSigs, recursiveHelperFns);
             if (s != null) {
                 settled.put(h.name(), s);
             }
@@ -147,7 +151,7 @@ final class HelperParams {
     static Type readFromBody(Hir.Binder param, Hir.Expr body, Scope env, CheckContext ctx,
                              Type answers) {
         try {
-            return new BodyTyping(ctx.symbols(), ctx.reqs(), Map.of())
+            return new BodyTyping(ctx.symbols(), ctx.published(), ctx.kinds(), ctx.reqs(), Map.of())
                     .typeOf(param, body, env, answers);
         } catch (CompileException | Unanswerable _) {
             // The two ways a body has no type to give: it does not type, and it depends on a name
@@ -159,6 +163,7 @@ final class HelperParams {
 
     /** {@code h} with its determinable parameters typed, or null when none of them is. */
     private static Hir.FnDef settle(Hir.FnDef h, HelperInliner inliner, Symbols symbols,
+                                    PublishedDeclarations published, DeclarationKinds kinds,
                                     Map<ValueName.Behavior, ReqSig> reqSigs, Map<String, Type> recursiveHelperFns) {
         List<Integer> open = new ArrayList<>();
         Scope env = Scope.NONE;
@@ -181,7 +186,8 @@ final class HelperParams {
         }
         Map<Integer, Type> found;
         try {
-            found = determine(h, open, env, body, symbols, reqSigs, recursiveHelperFns, new HashMap<>());
+            found = determine(h, open, env, body, symbols, published, kinds, reqSigs,
+                    recursiveHelperFns, new HashMap<>());
         } catch (Unanswerable _) {
             // A body resting on a name that denotes nothing gives no type, which is an answer this
             // reading is allowed to have: settling reports nothing, and the name was reported where
@@ -254,10 +260,13 @@ final class HelperParams {
      * nothing determined.
      */
     static Map<Integer, Type> determine(Hir.FnDef h, List<Integer> open, Scope env,
-                                        Hir.Expr body, Symbols symbols, Map<ValueName.Behavior, ReqSig> reqSigs,
+                                        Hir.Expr body, Symbols symbols,
+                                        PublishedDeclarations published, DeclarationKinds kinds,
+                                        Map<ValueName.Behavior, ReqSig> reqSigs,
                                         Map<String, Type> recursiveHelperFns,
                                         Map<Integer, OpenUse> openUses) {
-        BodyTyping typing = new BodyTyping(symbols, reqSigs, recursiveHelperFns);
+        BodyTyping typing =
+                new BodyTyping(symbols, published, kinds, reqSigs, recursiveHelperFns);
         Type answers = declaredReturn(h);
         Map<Integer, Type> found = new LinkedHashMap<>();
         List<Integer> value = new ArrayList<>();
@@ -391,6 +400,10 @@ final class HelperParams {
      */
     private static final class BodyTyping {
         private final Symbols symbols;
+        /** What the declarations this body names say about themselves. */
+        private final PublishedDeclarations published;
+        /** Which form each of those declarations was written in. */
+        private final DeclarationKinds kinds;
         private final CheckContext ctx;
         private final Map<ValueName.Behavior, ReqSig> reqSigs;
         private final Map<String, Type> recursiveHelperFns;
@@ -409,19 +422,23 @@ final class HelperParams {
         private final Readings readings = new Readings();
         private OpenUse openUse;
 
-        BodyTyping(Symbols symbols, Map<ValueName.Behavior, ReqSig> reqSigs, Map<String, Type> recursiveHelperFns) {
-            this(symbols, reqSigs, recursiveHelperFns, new Freshening());
+        BodyTyping(Symbols symbols, PublishedDeclarations published, DeclarationKinds kinds,
+                   Map<ValueName.Behavior, ReqSig> reqSigs, Map<String, Type> recursiveHelperFns) {
+            this(symbols, published, kinds, reqSigs, recursiveHelperFns, new Freshening());
         }
 
         /** The walk one step inside a closure reads the calls of the same body, so what those calls
          * decided is the same decision. Deciding again would name two applications alike — the count
          * a name carries starts over with the reader — and unifying them would say the two hold one
          * thing. */
-        BodyTyping(Symbols symbols, Map<ValueName.Behavior, ReqSig> reqSigs, Map<String, Type> recursiveHelperFns,
+        BodyTyping(Symbols symbols, PublishedDeclarations published, DeclarationKinds kinds,
+                   Map<ValueName.Behavior, ReqSig> reqSigs, Map<String, Type> recursiveHelperFns,
                    Freshening freshening) {
             this.freshening = freshening;
             this.symbols = symbols;
-            this.ctx = new CheckContext(symbols, null, reqSigs);
+            this.published = published;
+            this.kinds = kinds;
+            this.ctx = new CheckContext(symbols, published, kinds, null, reqSigs);
             this.reqSigs = reqSigs;
             this.recursiveHelperFns = recursiveHelperFns;
         }
@@ -791,10 +808,10 @@ final class HelperParams {
                 Scope inner = walking(env, lambda, step);
                 try {
                     for (int i = 0; i < lambda.params().size(); i++) {
-                        Type t = new BodyTyping(symbols, reqSigs, recursiveHelperFns, freshening)
+                        Type t = new BodyTyping(symbols, published, kinds, reqSigs, recursiveHelperFns, freshening)
                                 .typeOf(lambda.params().get(i), lambda.body(), inner, step.result());
                         if (t != null   // a position the lambda's body leaves open says nothing
-                                && decided.decide(step.params().get(i), t, symbols)
+                                && decided.decide(step.params().get(i), t, published)
                                         instanceof Fit.Disagrees) {
                             return new Substitution();   // it does not agree; settle nothing from it
                         }
@@ -805,7 +822,7 @@ final class HelperParams {
                     Type answers = typed(lambda.body(), walking(env, lambda,
                             decided.zonk(step) instanceof Type.FnOf f ? f : step));
                     if (answers != null
-                            && decided.decide(step.result(), answers, symbols)
+                            && decided.decide(step.result(), answers, published)
                                     instanceof Fit.Disagrees) {
                         return new Substitution();   // it does not agree; settle nothing from it
                     }
@@ -856,7 +873,7 @@ final class HelperParams {
         /** The type a binding carries into its body, or null where this scope cannot type its value. */
         private Type carried(Hir.RetType declared, Hir.Expr value, Scope env) {
             Type is = typed(value, env);
-            return is == null ? null : Elaborator.carriedType(declared, is, symbols);
+            return is == null ? null : Elaborator.carriedType(declared, is, kinds, published);
         }
 
         /**
@@ -889,7 +906,8 @@ final class HelperParams {
             TypeSymbol arm = c.caseTypes().get(0).answered().type();
             // What the case refines the value to, asked of the subject's cases rather than worked
             // out from the subject's shape a second time.
-            ResolvedCase selected = CaseSpace.of(scrutinee, symbols).selector(arm, symbols);
+            ResolvedCase selected =
+                    CaseSpace.of(scrutinee, kinds, published).selector(arm, published);
             Type bound = selected == null ? null : selected.bound();
             return bound == null ? env : MatchElaborator.bound(env, c.binding(), bound);
         }
@@ -937,12 +955,12 @@ final class HelperParams {
             Type.FnOf known = TypeOps.substitute(step, bind) instanceof Type.FnOf f ? f : step;
             Scope inner = walking(env, lambda, known);
             for (int i = 0; i < lambda.params().size(); i++) {
-                Type t = new BodyTyping(symbols, reqSigs, recursiveHelperFns, freshening)
+                Type t = new BodyTyping(symbols, published, kinds, reqSigs, recursiveHelperFns, freshening)
                         .typeOf(lambda.params().get(i), lambda.body(), inner, known.result());
                 if (t != null) {
                     // only a position the closure's body settled: unifying an undetermined one
                     // against the variable the signature wrote would bind that variable to itself
-                    Fit fit = TypeOps.unify(step.params().get(i), t, bind, symbols);
+                    Fit fit = TypeOps.unify(step.params().get(i), t, bind, published);
                     if (fit instanceof Fit.Disagrees) {
                         return fit;
                     }
@@ -987,7 +1005,7 @@ final class HelperParams {
                     // carries a variable this walk minted says as much as a stated one: the variable
                     // is this parameter's, so solving the callee's against it is what links the two
                     // positions the body read together.
-                    BottomInfer.pinResultTypeVars(sig.result(), expected, bind, symbols);
+                    BottomInfer.pinResultTypeVars(sig.result(), expected, bind, published);
                 }
                 // The stages `CallElaborator.applySignature` types a call in, in that order and
                 // for its reason: an argument that is not a closure binds the variables, and the
@@ -1001,7 +1019,7 @@ final class HelperParams {
                     }               // being typed, and typing it is the question being worked out
                     Type actual = typed(arg, env);
                     if (actual != null
-                            && TypeOps.unify(param, actual, bind, symbols) instanceof Fit.Disagrees) {
+                            && TypeOps.unify(param, actual, bind, published) instanceof Fit.Disagrees) {
                         return sig.params();   // the call does not fit; the check reports it
                     }
                 }

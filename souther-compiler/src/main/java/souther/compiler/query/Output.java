@@ -90,7 +90,8 @@ public final class Output {
             }
             try {
                 Emissions emitted = Backend.generate(
-                        shipped(in), in.scope(), in.scope().library().kernelSignatures(),
+                        shipped(in), in.scope(), in.published(), in.kinds(),
+                        in.scope().library().kernelSignatures(),
                         in.typePackages(), in.sigs(), in.imported(),
                         in.injected(),
                         in.callees(), in.requirements(), in.checked(), in.compositions(),
@@ -131,7 +132,10 @@ public final class Output {
          * ran. Two copies of this would be two chances for the measured classes and the shipped ones to
          * stop being the same program, which is the one thing a measurement of them may not do.
          */
-        record Inputs(Hir.Module lowered, DerivedSymbols scope, Map<String, String> typePackages,
+        record Inputs(Hir.Module lowered, DerivedSymbols scope,
+                      souther.compiler.check.PublishedDeclarations published,
+                      souther.compiler.check.DeclarationKinds kinds,
+                      Map<String, String> typePackages,
                       Map<ValueName.Behavior, Sig> sigs, Map<ValueName.Behavior, Sig> imported,
                       Set<ValueName.Behavior> injected,
                       Map<ValueName.Behavior, ReqSig> callees,
@@ -206,6 +210,7 @@ public final class Output {
                 return null;
             }
             return new Inputs(lowering.value().lowered(), scope.value(),
+                    Shapes.publishedDeclarations(db), Shapes.declarationKinds(db),
                     prepared.value().importedFrom(), signatures.value(), imported.value(),
                     injected.value(),
                     callees.value(), requirements.value(), checked.value(), compositions.value(),
@@ -396,7 +401,8 @@ public final class Output {
                     ? Instrumentation.COUNTING.measuring() : Instrumentation.COUNTING;
             try {
                 Emissions emitted = Backend.generate(
-                        in.lowered(), in.scope(), in.scope().library().kernelSignatures(),
+                        in.lowered(), in.scope(), in.published(), in.kinds(),
+                        in.scope().library().kernelSignatures(),
                         in.typePackages(), in.sigs(), in.imported(),
                         in.injected(),
                         in.callees(), in.requirements(), in.checked(), in.compositions(),

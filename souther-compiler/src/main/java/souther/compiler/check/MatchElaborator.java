@@ -44,7 +44,7 @@ public final class MatchElaborator {
         // Which form the subject is was answered where its cases were worked out. Read as a form
         // rather than by asking the type again, so a form the space gains has to be answered here
         // too rather than falling into the general reading with nobody the wiser.
-        return switch (CaseSpace.of(st, ctx.symbols())) {
+        return switch (CaseSpace.of(st, ctx.kinds(), ctx.published())) {
             case CaseSpace.Plain ignored -> throw CompileException.of(Diagnostic.at(m.pos(), 5)
                     .say(new MatchMessage.TheSubjectIsNotASum(Type.show(st))).build());
             case CaseSpace.Optional option ->
@@ -66,17 +66,19 @@ public final class MatchElaborator {
      * gives is a case of a match this one is written inside of.
      */
     static NotACaseOfThisMatch notCase(Hir.Name written, String what, Hir.Case c,
-                                       Set<TypeSymbol> cases, Symbols symbols) {
+                                       Set<TypeSymbol> cases, Symbols symbols,
+                                       PublishedDeclarations published) {
         String caseName = written.written();
         String otherSum = null;
         for (TypeSymbol name : symbols.scope().visibleNames()) {
-            if (!(symbols.declaredNode(name) instanceof Hir.SumData sum)) {
+            if (!(name instanceof TypeSymbol.AtModule at)
+                    || !(published.of(at.key()) instanceof DeclarationMeaning.Sum sum)) {
                 continue;
             }
-            List<TypeSymbol> others = TypeOps.caseNames(sum);
+            List<TypeSymbol> others = AtomSpace.declaredCases(sum);
             if (written.answered() != null && others.contains(written.answered().type())
                     && !cases.containsAll(others)) {
-                otherSum = sum.name();
+                otherSum = sum.declares().name();
                 break;
             }
         }
@@ -139,8 +141,9 @@ public final class MatchElaborator {
          * so a match further out that also has it is not told, and what comes back from here is no
          * longer something any of them will answer about.
          */
-        CompileException takenFromTheMatchAround(CaseSpace.Cases around, Symbols symbols) {
-            if (named == null || !around.holds(named, symbols)) {
+        CompileException takenFromTheMatchAround(CaseSpace.Cases around,
+                                                PublishedDeclarations published) {
+            if (named == null || !around.holds(named, published)) {
                 return this;
             }
             return CompileException.of(said(caseName, what, at, otherSum, true));
@@ -161,7 +164,8 @@ public final class MatchElaborator {
         // the leaves under it and an arm naming one of those leaves answers for that one. The two
         // are the same kind of arm, and what tells a match apart from what it left out is which
         // atoms nobody took (#966).
-        CasePartition partition = CasePartition.of(AtomSpace.subjectAtoms(scrutinee, ctx.symbols()));
+        CasePartition partition =
+                CasePartition.of(AtomSpace.subjectAtoms(scrutinee, ctx.published()));
         List<Core.Case> arms = new ArrayList<>();
         Type branchType = null;
         for (int armIndex = 0; armIndex < m.cases().size(); armIndex++) {
@@ -170,9 +174,9 @@ public final class MatchElaborator {
             List<ResolvedCase> alternatives = new ArrayList<>();
             for (Hir.Name written : c.caseTypes()) {
                 TypeSymbol caseName = names(written);
-                ResolvedCase resolved = space.selector(caseName, ctx.symbols());
+                ResolvedCase resolved = space.selector(caseName, ctx.published());
                 if (resolved == null) {
-                    throw notCase(written, what, c, cases, ctx.symbols());
+                    throw notCase(written, what, c, cases, ctx.symbols(), ctx.published());
                 }
                 alternatives.add(resolved);
                 answersFor.addAll(resolved.atoms());
@@ -225,9 +229,9 @@ public final class MatchElaborator {
                 body = Elaborator.liftIntoOption(
                         Elaborator.elaborate(c.body(), bound(env, c.binding(), bindType), ctx,
                                 expected),
-                        expected, ctx.symbols());
+                        expected, ctx.published());
             } catch (NotACaseOfThisMatch inner) {
-                throw inner.takenFromTheMatchAround(space, ctx.symbols());
+                throw inner.takenFromTheMatchAround(space, ctx.published());
             }
             arms.add(new Core.Case(pattern, CoreBinders.of(c.binding()), body, c.pos()));
             branchType = mergeBranch(m, branchType, body.type(), c, expected);
@@ -239,7 +243,7 @@ public final class MatchElaborator {
             // subject states them: sorted, a report of a nesting would read in an order nothing
             // wrote.
             throw nonExhaustive(m.pos(), what,
-                    CoveringNames.of(scrutinee, unanswered, ctx.symbols()));
+                    CoveringNames.of(scrutinee, unanswered, ctx.kinds(), ctx.published()));
         }
         if (branchType == null) {
             throw CompileException.of(Diagnostic.at(m.pos(), 5).say(new MatchMessage.ThisMatchHasNoCases()).build());
@@ -263,7 +267,7 @@ public final class MatchElaborator {
             Hir.Name arm = c.caseTypes().get(0);
             String caseType = arm.written();
             TypeSymbol armName = names(arm);
-            ResolvedCase resolved = space.selector(armName, ctx.symbols());
+            ResolvedCase resolved = space.selector(armName, ctx.published());
             if (resolved == null) {
                 throw CompileException.of(Diagnostic.at(c.pos()).say(new MatchMessage.NotACaseOfAnOptional(caseType)).build());
             }
@@ -281,7 +285,7 @@ public final class MatchElaborator {
             }
             Core body = Elaborator.liftIntoOption(
                     Elaborator.elaborate(c.body(), bound(env, c.binding(), bind), ctx, expected),
-                    expected, ctx.symbols());
+                    expected, ctx.published());
             arms.add(new Core.Case(new Core.ResolvedPattern.Single(resolved),
                     CoreBinders.of(c.binding()), body, c.pos()));
             branchType = mergeBranch(m, branchType, body.type(), c, expected);

@@ -59,10 +59,10 @@ public record TypeView(Type declared, List<TypeSymbol> wrappers, Shape shape) {
      * ({@link TypeOps#newtypeSpine}), so this cannot disagree with the carrier or the range about
      * where a value's base is.
      */
-    public static TypeView of(Type type, Symbols symbols) {
+    public static TypeView of(Type type, Symbols symbols, PublishedDeclarations published) {
         TypeOps.NewtypeSpine spine = TypeOps.newtypeSpine(type, symbols);
         return new TypeView(type, spine.layers().stream().map(TypeOps.Layer::named).toList(),
-                shapeOf(spine.terminal(), symbols));
+                shapeOf(spine.terminal(), symbols, published));
     }
 
     /** Whether any name is worn over the shape — which is a fact about how the value is written,
@@ -81,7 +81,8 @@ public record TypeView(Type declared, List<TypeSymbol> wrappers, Shape shape) {
      * newtype here is one whose {@code value} the walk could not reach, which is a name that
      * resolved to nothing usable rather than a shape.
      */
-    private static Shape shapeOf(Type terminal, Symbols symbols) {
+    private static Shape shapeOf(Type terminal, Symbols symbols,
+                                 PublishedDeclarations published) {
         return switch (terminal) {
             case Type.Prim prim -> new Shape.Scalar(prim);
             case Type.Never _ -> new Shape.Uninhabited();
@@ -95,7 +96,7 @@ public record TypeView(Type declared, List<TypeSymbol> wrappers, Shape shape) {
             case Type.OptionOf option -> new Shape.Optional(option.element());
             case Type.TupleOf tuple -> new Shape.Tuple(tuple.elements());
             case Type.FnOf fn -> new Shape.Function(fn.params(), fn.result());
-            case Type.Ref ref -> denoted(ref.name(), symbols);
+            case Type.Ref ref -> denoted(ref.name(), symbols, published);
         };
     }
 
@@ -106,9 +107,11 @@ public record TypeView(Type declared, List<TypeSymbol> wrappers, Shape shape) {
      * <p>A newtype arriving here is one the spine stopped on — its {@code value} was not declared,
      * so there is no base to read a shape from.
      */
-    private static Shape denoted(TypeSymbol name, Symbols symbols) {
+    private static Shape denoted(TypeSymbol name, Symbols symbols,
+                                 PublishedDeclarations published) {
         return switch (symbols.declaredNode(name)) {
-            case Hir.SumData sum -> new Shape.Sum(name, TypeOps.commonSpreadOf(sum, symbols));
+            case Hir.SumData sum ->
+                    new Shape.Sum(name, TypeOps.commonSpreadOf(sum, symbols, published));
             case Hir.UnitData _ -> new Shape.Unit(name);
             case Hir.Data data when data.newtype() -> new Shape.Unresolved(name);
             case Hir.Data data -> new Shape.Product(name, TypeOps.fieldTypes(data, symbols));

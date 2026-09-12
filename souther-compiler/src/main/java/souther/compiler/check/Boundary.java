@@ -53,9 +53,10 @@ public final class Boundary {
      * a bare tag — and is not a claim that the type crosses as a discriminated object. A reader
      * wanting the whole external representation of an arbitrary type is not asking this.
      */
-    public static Alternatives of(Type subject, Symbols symbols) {
-        List<TypeSymbol> atoms = AtomSpace.subjectAtoms(subject, symbols);
-        return new Alternatives(atoms, isEnumerationForm(subject, atoms, symbols)
+    public static Alternatives of(Type subject, DeclarationKinds kinds,
+                                  PublishedDeclarations published) {
+        List<TypeSymbol> atoms = AtomSpace.subjectAtoms(subject, published);
+        return new Alternatives(atoms, isEnumerationForm(subject, atoms, kinds)
                 ? new Representation.Enumeration()
                 : new Representation.Discriminated(DISCRIMINATOR));
     }
@@ -70,11 +71,12 @@ public final class Boundary {
      * adds ({@code CodecGen.generateUnitEncoder}). The atoms answer what the alternatives are; they
      * do not answer whether there is a set of them.
      */
-    private static boolean isEnumerationForm(Type subject, List<TypeSymbol> atoms, Symbols symbols) {
-        return TypeOps.isSumType(subject, symbols)
+    private static boolean isEnumerationForm(Type subject, List<TypeSymbol> atoms,
+                                             DeclarationKinds kinds) {
+        return TypeOps.isSumType(subject, kinds)
                 && !atoms.isEmpty()
-                && atoms.stream().allMatch(atom ->
-                        symbols.declaredNode(atom) instanceof Hir.UnitData);
+                && atoms.stream().allMatch(atom -> atom instanceof TypeSymbol.AtModule at
+                        && kinds.of(at.key()) == DeclarationKind.UNIT);
     }
 
     /**

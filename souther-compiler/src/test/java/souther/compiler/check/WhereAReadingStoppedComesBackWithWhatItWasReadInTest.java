@@ -84,6 +84,16 @@ class WhereAReadingStoppedComesBackWithWhatItWasReadInTest {
             }
 
             @Override
+            public PublishedDeclarations published() {
+                return PublishedDeclarations.NONE;
+            }
+
+            @Override
+            public DeclarationKinds kinds() {
+                return DeclarationKinds.NONE;
+            }
+
+            @Override
             public LinearForm<String> leafOf(Core e, String at) {
                 return null;
             }

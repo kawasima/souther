@@ -4,6 +4,7 @@ import souther.compiler.DefaultStdlib;
 import souther.compiler.ast.Ast;
 import souther.compiler.ast.Hir;
 import souther.compiler.check.Resolve;
+import souther.compiler.check.ScopedDeclarations;
 import souther.compiler.check.SyntaxSymbols;
 import souther.compiler.check.Symbols;
 import souther.compiler.check.TypeView;
@@ -53,9 +54,9 @@ class ALeafIsNotAnAbsenceTest {
     }
 
     private StructuralInspection under(Type type) {
-        TypeView view = TypeView.of(type, symbols);
+        TypeView view = TypeView.of(type, symbols, ScopedDeclarations.of(symbols));
         return StructuralInspection.of(ReadablePosition.of(view).shape(),
-                Distinctions.ofType(view, symbols));
+                Distinctions.ofType(view, symbols, ScopedDeclarations.of(symbols)));
     }
 
     private static StructuralInspection retained(StructuralInspection.Continuation continuation) {
@@ -90,7 +91,9 @@ class ALeafIsNotAnAbsenceTest {
                         List.of(unitCase("Prospecting"), unitCase("Won")))),
                 under(named("Stage")));
 
-        assertFalse(Distinctions.ofType(TypeView.of(named("Stage"), symbols), symbols).isEmpty(),
+        assertFalse(Distinctions.ofType(
+                TypeView.of(named("Stage"), symbols, ScopedDeclarations.of(symbols)),
+                symbols, ScopedDeclarations.of(symbols)).isEmpty(),
                 "the same position divides two ways, which the answer above did not deny");
     }
 

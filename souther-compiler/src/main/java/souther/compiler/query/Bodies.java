@@ -384,7 +384,8 @@ public final class Bodies {
             }
             try {
                 return Answer.of(Ordered.map(SignatureDeclarations.of(
-                        settling.value().behaviors(), scope.value())));
+                        settling.value().behaviors(), scope.value(),
+                        Shapes.declarationKinds(db), Shapes.publishedDeclarations(db))));
             } catch (CompileException e) {
                 return Answer.absent(e);
             }
@@ -420,7 +421,8 @@ public final class Bodies {
             declared.value().forEach((behavior, sig) -> boundaries.put(behavior, sig.boundary()));
             try {
                 return Answer.of(PipelineSigs.signatures(name, settling.value().behaviors(),
-                        boundaries, scope.value(), imported.value()));
+                        boundaries, scope.value(), Shapes.publishedDeclarations(db),
+                        Shapes.declarationKinds(db), imported.value()));
             } catch (CompileException e) {
                 return Answer.absent(e);
             }
@@ -597,7 +599,9 @@ public final class Bodies {
                 // reading that stopped at the first would turn one build into two.
                 try {
                     contracts.put(spec.name(), BehaviorChecker.contractOf(spec, name,
-                            signatures.value().get(spec.name()), scope.value(), helpers.value()));
+                            signatures.value().get(spec.name()), scope.value(),
+                            Shapes.publishedDeclarations(db), Shapes.declarationKinds(db),
+                            helpers.value()));
                 } catch (Unanswerable _) {
                     // Rests on something already reported where it went wrong. Said again here it
                     // would be that one mistake seen from a second angle.
@@ -885,13 +889,17 @@ public final class Bodies {
             Map<String, StatedContract> out = new LinkedHashMap<>();
             try {
                 ClausesForDischarge declaring =
-                        ClausesForDischarge.of(expandable.value(), scope.value(), published);
+                        ClausesForDischarge.of(expandable.value(), scope.value(),
+                                Shapes.publishedDeclarations(db), Shapes.declarationKinds(db),
+                                published);
                 for (Map.Entry<String, Hir.SpecBehavior> each
                         : declaring.behaviorsThatState().entrySet()) {
                     try {
                         BehaviorContract contract = BehaviorChecker.contractAsRead(each.getValue(),
-                                name, signatures.value().get(each.getKey()), scope.value());
+                                name, signatures.value().get(each.getKey()), scope.value(),
+                                Shapes.publishedDeclarations(db), Shapes.declarationKinds(db));
                         out.put(each.getKey(), StatedContract.of(contract, declaring, scope.value(),
+                                Shapes.publishedDeclarations(db), Shapes.declarationKinds(db),
                                 helpers.value()));
                     } catch (Unanswerable | CompileException _) {
                         // The declaration could not be read, which is said where it is held to its
@@ -1164,7 +1172,9 @@ public final class Bodies {
                 return Answer.absent();
             }
             try {
-                return Answer.of(Lower.settle(surface.value(), scope.value(), reqSigs.value()));
+                return Answer.of(Lower.settle(surface.value(), scope.value(),
+                        Shapes.publishedDeclarations(db), Shapes.declarationKinds(db),
+                        reqSigs.value()));
             } catch (CompileException e) {
                 return Answer.absent(e);
             }
@@ -2099,7 +2109,8 @@ public final class Bodies {
                             // scopes, so a reading made here is not a reading made there and says
                             // so.
                             new RuleReadingSource(scope.value(), Shapes.expandedClauses(db),
-                                    Shapes.publishedDeclarations(db), Shapes.clauseLocations(db)),
+                                    Shapes.publishedDeclarations(db), Shapes.declarationKinds(db),
+                                    Shapes.clauseLocations(db)),
                             db.readings(),
                             contracts.present() ? contracts.value() : Map.of())
                     : null;
@@ -2109,7 +2120,9 @@ public final class Bodies {
                         TypeChecker.checkBehavior(spec.value(), fn.value(),
                         body.value().value().writtenBody(),
                         db.ask(new Front.Reading()).value(),
-                        dischargeSource, scope.value(), calleeSigs.value(), reqSigs.value(),
+                        dischargeSource, scope.value(), Shapes.publishedDeclarations(db),
+                        Shapes.declarationKinds(db),
+                        calleeSigs.value(), reqSigs.value(),
                         inliner.value(), sigs.value(), constructs.value(),
                         warnings);
                 Core core = checked.emitted();
@@ -2313,6 +2326,7 @@ public final class Bodies {
                     }
                 }
                 reported = TypeChecker.checkModule(lowering.value().settled(), scope.value(),
+                        Shapes.publishedDeclarations(db), Shapes.declarationKinds(db),
                         withNoValue.value(), Shapes.declarationLocations(db),
                         db.ask(new Front.Reading()).value(),
                         signatures.present() ? signatures.value() : null,
