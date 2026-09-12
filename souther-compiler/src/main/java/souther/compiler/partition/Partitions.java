@@ -36,7 +36,10 @@ import souther.compiler.numeric.Granularity;
 import souther.compiler.numeric.LinearForm;
 import souther.compiler.numeric.NumericDomain;
 import souther.compiler.numeric.Place;
+import souther.compiler.regex.Language;
+import souther.compiler.regex.Meter;
 import souther.compiler.regex.PatternPlan;
+import souther.compiler.regex.PatternSyntax;
 import souther.compiler.types.Type;
 import souther.compiler.types.TypeSymbol;
 import souther.compiler.types.TypeReachName;
@@ -1534,7 +1537,7 @@ public final class Partitions {
         bare.addAll(whereTheRulesLeaveTheValue(view, reading, within));
         bare.addAll(whatAFormatAsksFor(view, ruleSource));
         // What the rules say the value holds, before the value that would hold nothing.
-        bare.addAll(Witnesses.holding(view.shape(), leastHeld(view, reading), reading, inside));
+        bare.addAll(Witnesses.holding(view, leastHeld(view, reading), reading, inside));
         List<FixtureTemplate> ofTheShape =
                 whatTheShapeStandsFor(view.shape(), reading, within, inside);
         bare.addAll(ofTheShape);
@@ -1904,7 +1907,7 @@ public final class Partitions {
     static java.util.Set<CompositionBudget> notBuilt(Type type, RuleReadingContext reading,
                                                      FieldDomains.Held held) {
         TypeView view = TypeView.of(type, reading.source().symbols());
-        return Witnesses.heldBackFor(view.shape(), leastHeld(view, reading, held), reading);
+        return Witnesses.heldBackFor(view, leastHeld(view, reading, held), reading);
     }
 
     /**
@@ -2003,7 +2006,7 @@ public final class Partitions {
         // A name this module cannot write leaves no value to write, which is asked once of the
         // position rather than of each value built for it.
         if (WornNames.of(view.wrappers(), ruleSource) instanceof WornNames.Spelled spelled) {
-            for (FixtureTemplate bare : Witnesses.holding(view.shape(),
+            for (FixtureTemplate bare : Witnesses.holding(view,
                     leastHeld(view, reading, held), reading, expanding)) {
                 candidates.add(RepresentativeSource.under(spelled.names(), bare));
             }
@@ -2107,10 +2110,175 @@ public final class Partitions {
      * own, which meant two answers to "what does this pattern accept" and one model where they
      * could differ.
      */
-    private static String writtenFor(souther.compiler.regex.PatternSyntax syntax) {
-        souther.compiler.regex.Language language = souther.compiler.regex.PatternPlan.of(syntax)
-                .compile(souther.compiler.regex.PatternPlan.Budget.OF_A_WITNESS.meter());
+    private static String writtenFor(PatternSyntax syntax) {
+        Language language = languageOf(syntax, PatternPlan.Budget.OF_A_WITNESS.meter());
         return language == null ? null : language.someWritten();
+    }
+
+    /** The strings {@code syntax} accepts, or null where making the machine costs more than
+     *  {@code meter} allows. */
+    private static Language languageOf(PatternSyntax syntax, Meter meter) {
+        return PatternPlan.of(syntax).compile(meter);
+    }
+
+    /**
+     * Up to {@code many} strings the rules on {@code type} admit, written under the names the
+     * position wears, and none of them the same string twice.
+     *
+     * <p>Asked where several values of one type are needed and they have to differ — the elements of
+     * a set, the keys of a map. The counterpart of {@link #numberInside} over the strings, and it is
+     * here for the same reason: a second value stepped off the first by the carrier alone is a value
+     * the type's own rules may refuse, and a collection filled from those comes back as one every
+     * value tried was refused at while the strings the rule admits are as many as anybody could want.
+     *
+     * <p><b>What the whole of the rules admits, which is not what {@link #whatAFormatAsksFor}
+     * offers.</b> That one is a proposal per rule, put to the decoder one at a time, and a value
+     * refused there costs a caller one candidate. These go inside a collection, where a value the
+     * rules refuse takes the whole collection with it and no other element can make up for it — so
+     * the rules are met with each other first and what comes back is from the meet.
+     *
+     * <p>A rule this could not read is left out of the meet rather than stopping it, which widens
+     * what is offered and never narrows it: these are proposals like any other and the decoder
+     * answers them. Empty where no rule about the strings was read at all — there the position has
+     * nothing to say about which strings, and what a value of one more is is the carrier's to step.
+     */
+    static List<FixtureTemplate> admittedStrings(Type type, RuleReadingContext reading, int many) {
+        if (type == null) {
+            return List.of();
+        }
+        RuleReadingSource ruleSource = reading.source();
+        TypeView view = TypeView.of(type, ruleSource.symbols());
+        List<FixtureTemplate> out = new ArrayList<>();
+        for (String each : textsTheRulesAdmit(view, reading, many)) {
+            FixtureTemplate written =
+                    WornNames.under(view.wrappers(), FixtureTemplate.string(each), ruleSource);
+            if (written == null) {
+                return List.of();   // a name this module cannot write leaves no value to offer
+            }
+            out.add(written);
+        }
+        return List.copyOf(out);
+    }
+
+    /**
+     * A string of exactly {@code size} characters the rules on {@code view} admit, or nothing where
+     * they say nothing about its strings or leave none of that many.
+     *
+     * <p>For a caller that has a count to meet and the position's reading in hand. What a value of
+     * a shape counting that many looks like is {@link Witnesses}'s, asked of the shape and shared
+     * by every caller; which of those strings this position admits is the position's, and a caller
+     * holding both offers this one first and that one after it. Kept apart because the two answer
+     * different questions: whether a string of that length exists at all is a claim about strings,
+     * and a reading of it that had consulted one type's format would be that claim taken from an
+     * opinion about that type.
+     */
+    static List<FixtureTemplate> admittedStringOfSize(TypeView view, RuleReadingContext reading,
+                                                      int size) {
+        if (size < 0 || !(view.shape() instanceof Shape.Scalar scalar)
+                || scalar.prim() != Type.Prim.STRING) {
+            return List.of();
+        }
+        Meter meter = PatternPlan.Budget.OF_A_WITNESS.meter();
+        Language admits = stringsTheRulesAdmit(view, reading, meter);
+        Language counted = admits == null ? null
+                : languageOf(PatternSyntax.ofAnySymbols(size, size), meter);
+        Language both = counted == null ? null : admits.and(counted, meter);
+        String some = both == null ? null : both.someWritten();
+        return some == null ? List.of() : List.of(FixtureTemplate.string(some));
+    }
+
+    /**
+     * Up to {@code many} of the strings the rules on {@code view} admit, no two of them the same.
+     *
+     * <p>One allowance for the whole of the question, which is what looking for these values may
+     * cost: the meet and every string taken out of it are steps of one search, and a fresh figure
+     * per step would be this spending as much as the number asked for.
+     */
+    private static List<String> textsTheRulesAdmit(TypeView view, RuleReadingContext reading,
+                                                   int many) {
+        if (many <= 0 || !(view.shape() instanceof Shape.Scalar scalar)
+                || scalar.prim() != Type.Prim.STRING) {
+            return List.of();
+        }
+        Meter meter = PatternPlan.Budget.OF_A_WITNESS.meter();
+        Language left = stringsTheRulesAdmit(view, reading, meter);
+        List<String> out = new ArrayList<>();
+        while (left != null && out.size() < many) {
+            String some = left.someWritten();
+            if (some == null) {
+                break;   // nothing left in it that anybody could paste
+            }
+            out.add(some);
+            left = left.without(List.of(some), meter);
+        }
+        return List.copyOf(out);
+    }
+
+    /**
+     * The strings every rule about them read on {@code view} admits, or null where nothing says
+     * which strings or the machine costs more than {@code meter} allows.
+     *
+     * <p><b>Both vocabularies the rules reach a string in.</b> Which strings is a predicate over
+     * them; how many characters is a number, counted by the measure the type is written in
+     * ({@link DeclaredBounds#countsHeld}) and read where numbers are read. A value has to clear
+     * both, so a reader of one of them alone hands out a string the other refuses — a format met
+     * with a floor gives the shortest string the format accepts, which is the one the floor was
+     * written to exclude.
+     *
+     * <p>Every name the position wears, because a value wearing two names is held to the rules
+     * written on either. Met rather than listed: what is wanted is a string the rules admit
+     * together, and a string one of them admits is what {@link #whatAFormatAsksFor} already offers.
+     *
+     * <p><b>The count is read to narrow what was said about the strings, and never on its own.</b>
+     * A position nothing says the strings of has nothing here to narrow: what one more of its
+     * values is is a character on the end of the last ({@link Witnesses}), which is the count
+     * answered where counts are answered. Answered here as well, every string a length rule leaves
+     * would come from a machine built to say what stepping already says.
+     */
+    private static Language stringsTheRulesAdmit(TypeView view, RuleReadingContext reading,
+                                                 Meter meter) {
+        RuleReadingSource ruleSource = reading.source();
+        Language all = null;
+        for (DeclaredClauses.OnAName written : DeclaredClauses.of(view.wrappers(), ruleSource)) {
+            for (DeclaredClauses.Conjunct each : written.conjuncts()) {
+                if (!(StringPredicates.statedByWritten(each.expr(), ruleSource.symbols())
+                        instanceof StringPredicates.Reading.Accepting it)) {
+                    continue;
+                }
+                Language one = languageOf(it.accepts(), meter);
+                if (one == null) {
+                    return null;   // the allowance would not pay for this rule's machine
+                }
+                all = all == null ? one : all.and(one, meter);
+                if (all == null) {
+                    return null;   // nor for putting it together with the rules before it
+                }
+            }
+        }
+        return all == null ? null : withinTheCount(all, view, reading, meter);
+    }
+
+    /**
+     * {@code strings} less the ones the rules leave no room for, or null where the count leaves
+     * none at all or the machine costs more than {@code meter} allows.
+     *
+     * <p>The count as a language, because that is what meeting it with the strings takes. What the
+     * rules leave is a run of counts and what is being narrowed is a set of strings, and the two are
+     * put together the way every pair of sets here is.
+     */
+    private static Language withinTheCount(Language strings, TypeView view,
+                                           RuleReadingContext reading, Meter meter) {
+        DeclaredBounds.CountRange characters = DeclaredBounds.countsHeld(view, reading, null);
+        if (characters.empty()) {
+            return null;   // no count at all, so no string of the position holds one
+        }
+        if (characters.least() == 0 && characters.most() == Integer.MAX_VALUE) {
+            return strings;   // every count, so nothing to take away
+        }
+        Language counted = languageOf(PatternSyntax.ofAnySymbols(characters.least(),
+                characters.most() == Integer.MAX_VALUE
+                        ? PatternSyntax.Repeated.NO_CEILING : characters.most()), meter);
+        return counted == null ? null : strings.and(counted, meter);
     }
 
     /** A count the position holds, or null where it holds none. The ends decide it, so nothing here

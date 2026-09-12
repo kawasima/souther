@@ -89,7 +89,7 @@ class ACaseComposedForOneReaderIsComposedForEveryReaderTest {
     @Test
     void aCollectionRequiredToHoldOneOfASumOfRecordsIsBuilt() {
         List<FixtureTemplate> held =
-                Witnesses.holding(TypeView.of(new Type.ListOf(sum()), rules.symbols()).shape(),
+                Witnesses.holding(TypeView.of(new Type.ListOf(sum()), rules.symbols()),
                         1, reading, Set.of());
 
         assertFalse(held.isEmpty(), "a list of one is built from a case of the sum");
@@ -100,7 +100,7 @@ class ACaseComposedForOneReaderIsComposedForEveryReaderTest {
     @Test
     void aSetOfTwoIsBuiltFromTwoCasesOfASumOfRecords() {
         List<FixtureTemplate> held =
-                Witnesses.holding(TypeView.of(new Type.SetOf(sum()), rules.symbols()).shape(),
+                Witnesses.holding(TypeView.of(new Type.SetOf(sum()), rules.symbols()),
                         2, reading, Set.of());
 
         assertFalse(held.isEmpty(), "the two cases are two distinct values");

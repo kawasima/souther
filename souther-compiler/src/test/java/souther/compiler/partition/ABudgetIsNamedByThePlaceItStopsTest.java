@@ -7,7 +7,6 @@ import souther.compiler.check.ReadingPolicy;
 import souther.compiler.check.RuleReadingContext;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.RuleReadings;
-import souther.compiler.check.Shape;
 import souther.compiler.check.Symbols;
 import souther.compiler.check.TypeView;
 import souther.compiler.inputs.NumericTerm;
@@ -55,9 +54,10 @@ class ABudgetIsNamedByThePlaceItStopsTest {
     private static final RuleReadingContext READING =
             RuleReadingContext.unshared(RULES, POLICY);
 
-    /** What a position of this type is, which is what the builder is asked about. */
-    private static Shape shape(Type type) {
-        return TypeView.of(type, SYMBOLS).shape();
+    /** The position of this type as the builder is asked about it: what it is, and what the rules
+     *  every name it wears carries say of it. */
+    private static TypeView position(Type type) {
+        return TypeView.of(type, SYMBOLS);
     }
 
     /**
@@ -71,10 +71,10 @@ class ABudgetIsNamedByThePlaceItStopsTest {
         int most = CompositionBudget.ELEMENTS_A_PROPOSAL_HOLDS.maximum();
 
         assertEquals(Set.of(),
-                Witnesses.heldBackFor(shape(Type.list(Type.INT)), most, READING),
+                Witnesses.heldBackFor(position(Type.list(Type.INT)), most, READING),
                 "a collection of exactly as many as a row carries is one this builds");
         assertEquals(Set.of(CompositionBudget.ELEMENTS_A_PROPOSAL_HOLDS),
-                Witnesses.heldBackFor(shape(Type.list(Type.INT)), most + 1, READING),
+                Witnesses.heldBackFor(position(Type.list(Type.INT)), most + 1, READING),
                 "and one past it is this compiler declining, said as the figure it declined at");
     }
 
@@ -83,10 +83,10 @@ class ABudgetIsNamedByThePlaceItStopsTest {
     void aProposalHoldsAsManyCharactersAsItsOwnFigure() {
         int most = CompositionBudget.CHARACTERS_A_PROPOSAL_HOLDS.maximum();
 
-        assertEquals(Set.of(), Witnesses.heldBackFor(shape(Type.STRING), most, READING),
+        assertEquals(Set.of(), Witnesses.heldBackFor(position(Type.STRING), most, READING),
                 "a string of exactly as many characters as one is worth building");
         assertEquals(Set.of(CompositionBudget.CHARACTERS_A_PROPOSAL_HOLDS),
-                Witnesses.heldBackFor(shape(Type.STRING), most + 1, READING),
+                Witnesses.heldBackFor(position(Type.STRING), most + 1, READING),
                 "and one past it names the string's figure and not the collection's");
     }
 

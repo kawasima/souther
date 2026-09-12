@@ -302,7 +302,7 @@ final class Intervals {
         }
         List<FixtureTemplate> out = new ArrayList<>();
         for (FixtureTemplate each
-                : Witnesses.ofSize(view.shape(), size, reading, Set.of()).values()) {
+                : Witnesses.ofSize(view, size, reading, Set.of()).values()) {
             out.add(RepresentativeSource.under(worn.names(), each));
         }
         return List.copyOf(out);

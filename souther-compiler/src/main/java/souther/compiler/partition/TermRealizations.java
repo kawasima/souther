@@ -319,7 +319,7 @@ final class TermRealizations {
             return new Realization.None(
                     Generator.UnresolvedCombination.Reason.NOTHING_COMPOSES_ONE);
         }
-        Witnesses.Sized built = Witnesses.ofSize(holder.shape(), many, reading, Set.of());
+        Witnesses.Sized built = Witnesses.ofSize(holder, many, reading, Set.of());
         if (built.values().isEmpty()) {
             // Read off the build that was already done. `Witnesses` keeps what it made and why it
             // stopped as two halves of one answer for exactly this, and asking it again would be

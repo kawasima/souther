@@ -10,6 +10,7 @@ import souther.compiler.types.Type;
 import souther.compiler.types.TypeSymbol;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -80,7 +81,8 @@ final class Witnesses {
     }
 
     /**
-     * Values of {@code carrier} whose count is exactly {@code size}, or none where this can build none.
+     * Values of {@code position} whose count is exactly {@code size}, or none where this can build
+     * none.
      *
      * <p>The narrower of the two promises about a count. A caller holding a line drawn on one needs
      * the count itself and not a value that merely clears it: a row at {@code String.length = 5} is a
@@ -97,8 +99,9 @@ final class Witnesses {
      * proposal for a floor and are not the count asked for here, and offering them would put a row of
      * two under a line drawn at three.
      */
-    static Sized ofSize(Shape carrier, int size, RuleReadingContext reading,
+    static Sized ofSize(TypeView position, int size, RuleReadingContext reading,
                         Set<TypeSymbol> expanding) {
+        Shape carrier = position.shape();
         if (size == 0) {
             // The same shapes {@link #sized} builds for, and for the same reason they are written
             // out: what a value of none looks like is a question about each shape.
@@ -113,12 +116,13 @@ final class Witnesses {
                      Shape.Undecided _ -> List.<FixtureTemplate>of();
             });
         }
-        Built built = sized(carrier, size, reading, expanding);
+        Built built = sized(position, size, reading, expanding);
         return new Sized(built.exactly(size), built.heldBack());
     }
 
     /**
-     * Why no value of {@code carrier} counting exactly {@code size} was built, or null where one was.
+     * Why no value of {@code position} counting exactly {@code size} was built, or null where one
+     * was.
      *
      * <p>The same decision {@link #ofSize} reads, asked for its other half, so that what could not be
      * built and why are one answer given twice rather than two answers that may disagree. Whenever
@@ -129,9 +133,9 @@ final class Witnesses {
      * ({@link Sized#heldBack()}) and travels as itself; what is here is the word a search comes back
      * with, for readers that have only ever wanted that.
      */
-    static Generator.UnresolvedCombination.Reason reasonForSize(Shape carrier, int size,
+    static Generator.UnresolvedCombination.Reason reasonForSize(TypeView position, int size,
                                                                 RuleReadingContext reading) {
-        Sized made = ofSize(carrier, size, reading, Set.of());
+        Sized made = ofSize(position, size, reading, Set.of());
         if (!made.values().isEmpty()) {
             return null;
         }
@@ -160,13 +164,13 @@ final class Witnesses {
      * too few values for comes back as nothing at all. The two read one build and neither is written
      * in terms of the other, so a cheaper value for a floor cannot move a line.
      */
-    static List<FixtureTemplate> holding(Shape carrier, int least, RuleReadingContext reading,
+    static List<FixtureTemplate> holding(TypeView position, int least, RuleReadingContext reading,
                                          Set<TypeSymbol> expanding) {
-        return least <= 0 ? List.of() : sized(carrier, least, reading, expanding).all();
+        return least <= 0 ? List.of() : sized(position, least, reading, expanding).all();
     }
 
     /**
-     * Which budgets of this compiler's stopped a value of {@code carrier} holding {@code least} from
+     * Which budgets of this compiler's stopped a value of {@code position} holding {@code least} from
      * being built in full, and empty where none did.
      *
      * <p>The same decision {@link #holding} reads, asked for its other half. Written once because the
@@ -177,10 +181,10 @@ final class Witnesses {
      * floor nothing was built for is a position offering what it ordinarily offers, and naming a
      * reason there would put "nothing composes one" under every position that has no floor at all.
      */
-    static Set<CompositionBudget> heldBackFor(Shape carrier, int least,
+    static Set<CompositionBudget> heldBackFor(TypeView position, int least,
                                               RuleReadingContext reading) {
         return least <= 0 ? Set.of()
-                : sized(carrier, least, reading, Set.of()).heldBack();
+                : sized(position, least, reading, Set.of()).heldBack();
     }
 
     /**
@@ -193,7 +197,7 @@ final class Witnesses {
      */
     private record Made(FixtureTemplate value, int count) {}
 
-    /** What a value of {@code carrier} counting {@code size} comes to: what was built, and which
+    /** What a value of the position counting {@code size} comes to: what was built, and which
      * budgets of this compiler's stopped the rest of it being built. */
     private record Built(List<Made> proposals, Set<CompositionBudget> heldBack) {
 
@@ -220,7 +224,7 @@ final class Witnesses {
         }
     }
 
-    private static Built sized(Shape carrier, int least, RuleReadingContext reading,
+    private static Built sized(TypeView position, int least, RuleReadingContext reading,
                                Set<TypeSymbol> expanding) {
         if (least <= 0) {
             return Built.NONE;
@@ -228,15 +232,15 @@ final class Witnesses {
         // Exhaustive over what a position can be, with no `default`. Whether a value of a shape
         // counts anything is a question about each of them, and a chain of tests answers "no" for a
         // shape added later without being asked.
-        return switch (carrier) {
-            // A string is counted by its characters, and one character is as good as another where
-            // the rule is about how many there are. What a format asks for instead is a proposal of
-            // its own, put beside this one by the caller.
+        return switch (position.shape()) {
+            // A string is counted by its characters. Which characters is a question the count does
+            // not answer, so what the position's own rules admit of that many comes first and a
+            // string of any characters at all after it — both are proposals, and the one every rule
+            // admits is the one a caller with a single chance needs.
             case Shape.Scalar scalar when scalar.prim() == Type.Prim.STRING ->
                     least > MOST_CHARACTERS
                             ? Built.stoppedBy(CompositionBudget.CHARACTERS_A_PROPOSAL_HOLDS)
-                            : Built.of(List.of(
-                                    new Made(FixtureTemplate.string("x".repeat(least)), least)));
+                            : Built.of(ofThatManyCharacters(position, least, reading));
             case Shape.Sequence sequence -> least > MOST_ELEMENTS
                     ? Built.stoppedBy(CompositionBudget.ELEMENTS_A_PROPOSAL_HOLDS)
                     : ofSequence(sequence, least, reading, expanding);
@@ -251,6 +255,27 @@ final class Witnesses {
                  Shape.Uninhabited _, Shape.Bottom _, Shape.Erroneous _,
                  Shape.Undecided _ -> Built.NONE;
         };
+    }
+
+    /**
+     * Strings of exactly {@code least} characters: the one the position's rules admit, and the one
+     * any string of that many is.
+     *
+     * <p>Both, and in that order. What a string of that length looks like is a question about
+     * strings and is the same answer for every position — which is why the second is always here,
+     * and why what this reports when nothing builds stays a claim about strings rather than an
+     * opinion about one type. The first is that answer narrowed by what the position's own rules
+     * say its strings are, which is a value the decoder can accept where the second is one a format
+     * refuses.
+     */
+    private static List<Made> ofThatManyCharacters(TypeView position, int least,
+                                                   RuleReadingContext reading) {
+        List<Made> out = new ArrayList<>();
+        for (FixtureTemplate each : Partitions.admittedStringOfSize(position, reading, least)) {
+            out.add(new Made(each, least));
+        }
+        out.add(new Made(FixtureTemplate.string("x".repeat(least)), least));
+        return out;
     }
 
     /**
@@ -298,6 +323,12 @@ final class Witnesses {
         // they are the same two numbers whether or not it was this that stopped it — so a reader
         // asking which budget ran out would be reading it off a subtraction that does not know.
         boolean stopped = false;
+        // What a key proposal's other keys are, worked out once however many values it is put
+        // beside. The question is the key's and the count's — what stands under them is not in it —
+        // so a reading per pair is one walk over the element's values run again for every value the
+        // other side proposed.
+        List<List<FixtureTemplate>> keysFrom =
+                new ArrayList<>(Collections.nCopies(keys.size(), null));
         pairing:
         for (int apart = 0; apart <= keys.size() + values.size() - 2; apart++) {
             for (int i = Math.max(0, apart - values.size() + 1);
@@ -306,10 +337,13 @@ final class Witnesses {
                     stopped = true;
                     break pairing;
                 }
+                if (keysFrom.get(i) == null) {
+                    keysFrom.set(i,
+                            distinctFrom(keys.get(i), map.key(), least, reading, expanding));
+                }
                 FixtureTemplate value = values.get(apart - i);
                 List<FixtureTemplate> entries = new ArrayList<>();
-                for (FixtureTemplate key
-                        : distinctFrom(keys.get(i), map.key(), least, reading, expanding)) {
+                for (FixtureTemplate key : keysFrom.get(i)) {
                     entries.add(FixtureTemplate.entry(key, value));
                 }
                 out.add(new Made(FixtureTemplate.collection(entries), entries.size()));
@@ -403,11 +437,19 @@ final class Witnesses {
      *
      * <p>What the type divides into comes first. A {@code Bool} is two values and a sum is its cases,
      * and each of those is a value of the type rather than a proposal about it — a set of two booleans
-     * is built from both of them or from nothing. Then values made by stepping the carrier, which stay
-     * inside the rules the type carries. The type's own proposals come last: each is what one rule
-     * asked for and any of them may be one the whole of the rules refuses, so a collection filled from
-     * them is refused for its elements — which is still better than a collection short of its size,
-     * and is all there is where the carrier neither divides nor steps.
+     * is built from both of them or from nothing. Then the values the rules about the strings admit,
+     * which are values of the type in the same way and are as many as the rules leave. Then values
+     * made by stepping the carrier, which stay inside the rules the type carries. The type's own
+     * proposals come last: each is what one rule asked for and any of them may be one the whole of
+     * the rules refuses, so a collection filled from them is refused for its elements — which is
+     * still better than a collection short of its size, and is all there is where the carrier
+     * neither divides nor steps.
+     *
+     * <p><b>Which is why the rules about the strings are asked before the carrier is stepped.</b> A
+     * string stepped by a character is a value of the carrier and not of the type: what the carrier
+     * answers is how many characters, and a type whose rule says which of them gets a string it
+     * refuses at every element after the first. The rules are what tell the values apart there, the
+     * same as a range does for a number ({@link Partitions#numberInside}).
      */
     private static List<FixtureTemplate> distinctValuesOf(Type type, int many,
                                                           RuleReadingContext reading,
@@ -415,6 +457,14 @@ final class Witnesses {
         Set<String> written = new LinkedHashSet<>();
         List<FixtureTemplate> out = new ArrayList<>();
         for (FixtureTemplate each : dividesInto(type, reading, expanding)) {
+            if (out.size() >= many) {
+                return List.copyOf(out);
+            }
+            if (written.add(each.text())) {
+                out.add(each);
+            }
+        }
+        for (FixtureTemplate each : Partitions.admittedStrings(type, reading, many)) {
             if (out.size() >= many) {
                 return List.copyOf(out);
             }
@@ -431,6 +481,12 @@ final class Witnesses {
                 out.add(each);
             }
         }
+        if (out.size() >= many) {
+            return List.copyOf(out);
+        }
+        // Asked last and only where there is room for what it answers. What a position is offered
+        // is a reading of every rule on it and costs what that reading costs, and a loop that asks
+        // for the list and then leaves it alone pays for it at every count already filled.
         for (FixtureTemplate each : Partitions.representativesOf(type, reading, null, expanding)) {
             if (out.size() >= many) {
                 break;
@@ -466,7 +522,11 @@ final class Witnesses {
      * has no order to step.
      *
      * <p>A string grows by a character from the length its rules ask for, and a whole number steps
-     * through the range they leave. A date or a record has no such step that keeps every rule the
+     * through the range they leave. Which characters is a question the carrier has no answer to, so
+     * a type whose rules say which of them is answered before this is reached
+     * ({@link Partitions#admittedStrings}) and what is left here is the length.
+     *
+     * <p>A date or a record has no such step that keeps every rule the
      * position carries, and inventing one would put a value in a row the type's own chooser had reason
      * not to offer — which is what the values a type divides into are for, above.
      */
