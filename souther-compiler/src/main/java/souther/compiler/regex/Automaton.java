@@ -592,6 +592,8 @@ final class Automaton {
         }
         int[] shown = new int[width];
         int[] next = new int[states];
+        // A power of two, so a hash is brought into range by masking, and twice the rows a round
+        // can have, so the slots a probe walks past stay few.
         int slots = 4;
         while (slots < states * 2) {
             slots <<= 1;
@@ -617,6 +619,8 @@ final class Automaton {
                 }
                 int probe = (hash ^ (hash >>> 16)) & (slots - 1);
                 while (true) {
+                    // A slot holds the block whose first row is there, counted from one so that
+                    // nought is a slot nothing has been put in.
                     int held = seen[probe];
                     if (held == 0) {
                         seen[probe] = found + 1;
