@@ -1,5 +1,8 @@
 package souther.compiler.check;
 
+import souther.compiler.types.TypeKey;
+import souther.compiler.values.StringMachineAnswers;
+
 /**
  * The one world a reading of a declaration's rules is made in: where the rules are read from, what
  * the reading may spend, and where it borrows what somebody has already made of the same
@@ -22,6 +25,11 @@ package souther.compiler.check;
  * <p>Three accessors and nothing else. A context that answered questions of its own — what a name
  * resolves to, what a declaration's fields leave — would be where a reader goes instead of where a
  * reader gets what it was given, and every such answer is one somebody already owns.
+ *
+ * <p>And one world derived from another ({@link #whileTheAnswerIsMade}), which is not an answer of
+ * that kind: what comes back is the same three under a bound on one of them. It is here because a
+ * bound put on the lender alone holds only while the world around it is put back together by hand,
+ * and a walk handed the lender can reach past a bound nobody rebuilt.
  *
  * <p>No identity of its own, which is why this is not a record. Two of the three are capabilities,
  * so two contexts built from one compilation for one reading answer alike and compare unlike, and
@@ -75,8 +83,31 @@ public final class RuleReadingContext {
         return policy;
     }
 
-    /** Where it borrows what has already been made of a declaration. */
-    public DeclarationReadings readings() {
+    /**
+     * Where it borrows what has already been made of a declaration.
+     *
+     * <p>For whoever still takes the three apart, and for nobody under a walk. A reader below is
+     * handed this and reads in it; reaching past it for the lender is how a reader comes to hand
+     * some other lender down, and {@link #whileTheAnswerIsMade} is what a reader that has to bound
+     * one uses instead.
+     */
+    DeclarationReadings readings() {
         return readings;
+    }
+
+    /**
+     * The same world, for the length of the answer about {@code named}'s machines that is being
+     * made: the same rules, the same budget, and a lender bounded as
+     * {@link DeclarationReadings#whileTheAnswerIsMade} bounds one.
+     *
+     * <p>Here rather than at the lender because what travels down a walk is this. A reader that
+     * took the lender out, bounded it and put a world back together would be building a world of
+     * its own, and the boundary would hold only for as long as every such reader remembered to
+     * rebuild it — which is what a walk reaching the lender from underneath walks around. Derived
+     * here, a reader below is handed a bounded world and has no other to hand on.
+     */
+    public RuleReadingContext whileTheAnswerIsMade(TypeKey named, StringMachineAnswers recorder) {
+        return new RuleReadingContext(source, policy,
+                readings.whileTheAnswerIsMade(named, recorder));
     }
 }

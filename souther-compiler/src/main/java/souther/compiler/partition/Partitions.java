@@ -1826,8 +1826,7 @@ public final class Partitions {
         // The record's rules, read once. Each field is then chosen against this with the fields
         // before it settled into it, which is what a settling states — a reading per settled field
         // would be paying for every clause again to arrive where the first one already is.
-        FieldDomains rules = FieldDomains.of(record, ruleSource, reading.policy(),
-                reading.readings());
+        FieldDomains rules = FieldDomains.of(record, reading);
         FieldDomains.Composing left = rules.composing(Map.of());
         Map<String, FixtureTemplate> chosen = new LinkedHashMap<>();
         if (!fields.keySet().containsAll(given.keySet())) {

@@ -2,6 +2,7 @@ package souther.compiler.query;
 
 import souther.compiler.check.FieldDomains;
 import souther.compiler.check.ReadingPolicy;
+import souther.compiler.check.RuleReadingContext;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.values.StringMachineAnswers;
 import souther.compiler.types.TypeKey;
@@ -64,9 +65,10 @@ public final class Machines {
             }
             StringMachineAnswers recorder =
                     StringMachineAnswers.unborrowed(db.readings().extents());
-            FieldDomains domains = FieldDomains.of(TypeSymbols.declared(named), source.value(),
-                    policy.value(),
-                    db.readings().whileTheAnswerIsMade(named, recorder));
+            RuleReadingContext reading =
+                    RuleReadingContext.of(source.value(), policy.value(), db.readings());
+            FieldDomains domains = FieldDomains.of(TypeSymbols.declared(named),
+                    reading.whileTheAnswerIsMade(named, recorder));
             // And whether the rules leave a value at all, which is the question every reading of
             // an input puts to the declaration and the one that meets each language with the
             // whole of the order. Asked here so that the machines it takes are the declaration's
