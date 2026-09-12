@@ -48,13 +48,17 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * such a reading is reached by a call, and a table of readers says nothing about who is calling
  * them: a way in named here as allowed would let a new caller of it arrive with nothing to fail.
  * So each row is one production instruction reaching one place, both ends said in full, and the
- * whole set is compared — a row that has gone is as much a finding as one that has appeared,
- * because a reader that stops reading for itself is what settles this and the row has to go with
- * it.
+ * whole set is compared — a row that has gone is as much a finding as one that has appeared.
  *
- * <p>The shorter entry points stay, because a test standing one declaration up to look at it is a
- * reader with no store and saying so is not a defect. What may not happen is this compiler reaching
- * for one without a row here.
+ * <p><b>Two claims and not one.</b> That this compiler can express an evaluation with no store
+ * behind it, which is one way in and is named; and that nothing here spends one, which is no
+ * readers at all. Read as a single population the second would be satisfied by the first going
+ * missing, and a walk that had stopped reading call sites would report a compiler that starts no
+ * such reading. So the way in is asserted to be there, and the readers to be none.
+ *
+ * <p>The shorter entry points stay for the same reason the way in does: a test standing one
+ * declaration up to look at it is a reader with no store, and saying so is not a defect. What may
+ * not happen is this compiler reaching for one.
  *
  * <p>Read off the compiled classes, because what is being asked is which method a call site
  * resolved to. The overloads differ by one argument and the shorter is reached by leaving it out,
@@ -77,64 +81,42 @@ class NothingHereStartsAReadingSomebodyElseHasAlreadyMadeTest {
      *  that does. */
     private static final String NOTHING_TO_BORROW_FROM = LENDING + "#NONE";
 
-    /**
-     * Every edge this compiler has into a reading nobody else made, and why each of them is one.
-     *
-     * <p>Two kinds, and both are the same fact said at a different distance. A reader that names
-     * {@link #NOTHING_TO_BORROW_FROM} is starting such a reading itself; one that calls a way in is
-     * starting it a call away. Written together because what is being counted is the places, and
-     * which of the two shapes a place happens to have is not what anybody has to settle.
-     *
-     * <p>Each of them sits under a walk over what an author wrote, which is handed what it is
-     * reading and nothing that says where a reading comes from. Some are the readers under such a
-     * walk and some build the walk itself; borrowing in any of them would take a capability carried
-     * through it, and whether it belongs there — and what a borrower asking for a reading that is
-     * already being made should be handed — is not settled.
-     *
-     * <p>Settling it takes these rows away, and taking one away without settling it is what the
-     * comparison below refuses in the other direction.
-     */
     private static final String CHECK = "souther/compiler/check/";
 
     private static final String SOURCE_AND_POLICY =
             "L" + CHECK + "RuleReadingSource;L" + CHECK + "ReadingPolicy;";
 
-    private static final Set<String> EDGES_INTO_A_READING_OF_ONES_OWN = Set.of(
-            // The two ways in themselves, which is where a reading with nothing to borrow from is
-            // started for whoever asked.
-            CHECK + "FieldDomains#unshared(Lsouther/compiler/types/TypeSymbol$AtModule;"
-                    + SOURCE_AND_POLICY + "Ljava/util/Map;)L" + CHECK + "FieldDomains; -> "
-                    + NOTHING_TO_BORROW_FROM,
-            CHECK + "InvariantChecker#seedFieldsUnshared("
-                    + "Lsouther/compiler/types/TypeSymbol$AtModule;" + SOURCE_AND_POLICY + ")L"
-                    + CHECK + "InvariantChecker$Seeded; -> " + NOTHING_TO_BORROW_FROM,
-            // The world a walk over a declaration's rules reads in, made for a caller that has
-            // nowhere to borrow from. Asked for by name and never supplied by leaving the lender
-            // out, so that a walk reading each declaration again is a caller that said so.
+    /**
+     * The one way in that says outright it reads for itself, and the whole of what may say it.
+     *
+     * <p>An evaluation with no store behind it is a thing this compiler can express, and this is
+     * how: a world made of rules and a budget and nothing lent, asked for by that name. A test
+     * standing one declaration up to look at it is such an evaluation, and saying so is not a
+     * defect — said by naming this rather than by assembling a world around
+     * {@link #NOTHING_TO_BORROW_FROM}, so that why the lender is missing survives being read back.
+     *
+     * <p>Which is why the row is here rather than gone. What was settled is that no walk over what
+     * an author wrote reads for itself, not that a reading with nowhere to borrow from stopped
+     * being a thing anybody may build. A second way in is a finding; so is this one's
+     * disappearance, and that is what makes it the control below.
+     */
+    private static final String THE_WAY_IN_THAT_READS_FOR_ITSELF =
             CHECK + "RuleReadingContext#unshared(" + SOURCE_AND_POLICY + ")L" + CHECK
-                    + "RuleReadingContext; -> " + NOTHING_TO_BORROW_FROM,
-            // What a value's rules guarantee, asked from under a reading that is under way.
-            CHECK + "ValueGuarantees#seededOf(Lsouther/compiler/types/TypeSymbol$AtModule;"
-                    + SOURCE_AND_POLICY + ")L" + CHECK + "InvariantChecker$Seeded; -> "
-                    + CHECK + "InvariantChecker#seedFieldsUnshared",
-            // What a clause of a contract may take, read in the terms of the walk it stands in.
-            // Both shapes, and the store question that asks for one: what a capability is read
-            // against is the reading in hand, and there is nothing there that says where another
-            // declaration's reading comes from.
-            CHECK + "InvariantChecker#capabilityOf(L" + CHECK
-                    + "ClausesForDischarge$ClauseReading;Lsouther/compiler/types/"
-                    + "TypeSymbol$AtModule;" + SOURCE_AND_POLICY + ")L" + CHECK
-                    + "ClauseDischarge; -> " + NOTHING_TO_BORROW_FROM,
-            CHECK + "InvariantChecker#capabilityOf(L" + CHECK + "StatedContract$Conjunct;L"
-                    + CHECK + "Denotations;" + SOURCE_AND_POLICY + "Ljava/lang/String;)L"
-                    + CHECK + "ClauseDischarge; -> " + NOTHING_TO_BORROW_FROM,
-            "souther/compiler/query/Shapes$InvariantCapabilities#compute("
-                    + "Lsouther/compiler/query/Db;)Lsouther/compiler/query/Answer; -> "
-                    + CHECK + "InvariantChecker#capabilityOf",
-            // What each conjunct of a contract's rule may take, asked where the rule is read.
-            CHECK + "ContractDischarge#of(L" + CHECK + "StatedContract;L" + CHECK
-                    + "StatedContract$StatedRule;" + SOURCE_AND_POLICY + ")Ljava/util/List; -> "
-                    + CHECK + "InvariantChecker#capabilityOf");
+                    + "RuleReadingContext; -> " + NOTHING_TO_BORROW_FROM;
+
+    /**
+     * Every reader of this compiler that reaches one, which is none of them.
+     *
+     * <p>Apart from the way in above because they are two claims. That one is about what this
+     * compiler can express; this one is about who spends it — and a walk over what an author wrote
+     * spends it nowhere, because the world it is handed says where to borrow from and is handed on
+     * as it arrived ({@code RuleReadingContext}).
+     *
+     * <p>Empty, and an entry is a finding. A reader here is one that was given a world and read
+     * past it: what it makes is filed under a source nothing lends against, and the reading
+     * somebody already made of that declaration is paid for a second time.
+     */
+    private static final Set<String> EDGES_INTO_A_READING_OF_ONES_OWN = Set.of();
 
     /**
      * Every pair: a static method taking the lending, and one of the same name on the same class
@@ -220,14 +202,45 @@ class NothingHereStartsAReadingSomebodyElseHasAlreadyMadeTest {
     }
 
     /**
-     * Every edge into a reading nobody else made is one that is written down.
+     * The way in that reads for itself is the one written down, and it is there.
+     *
+     * <p>The control for everything below, and it is one because it is a row the extraction has to
+     * find rather than a count of what it looked at. A walk that stopped reading call sites, or
+     * stopped resolving them to a method, comes back with nothing — and nothing is exactly what a
+     * compiler with no such edge looks like, so a check whose only claim was emptiness would pass
+     * at its most broken. This one fails there instead.
+     *
+     * <p>And it is the other half of the population: a second way in is a reading with nowhere to
+     * borrow from that nobody wrote down as one.
+     */
+    @Test
+    void theWayInThatReadsForItselfIsFound() {
+        assertEquals(Set.of(THE_WAY_IN_THAT_READS_FOR_ITSELF), waysInReachingNothingToBorrowFrom(),
+                "the ways in that read for themselves are not the one written down");
+    }
+
+    /**
+     * No reader of this compiler reaches a reading nobody else made.
      *
      * <p>Compared whole and in both directions. An edge nobody wrote down is a reader that lost its
      * lending with nothing to say so; a row nothing reaches any more is a licence outliving what it
-     * was for, and the day somebody settles where a lending may go the rows have to go with it.
+     * was for.
      */
     @Test
-    void everyEdgeIntoAReadingOfOnesOwnIsWrittenDown() {
+    void nothingHereReachesAReadingOfItsOwn() {
+        Set<String> reaching = readersReachingAReadingOfTheirOwn();
+        assertEquals(EDGES_INTO_A_READING_OF_ONES_OWN, reaching,
+                () -> "the edges into a reading nobody else made are not the ones written down.\n"
+                        + "  found and not written down:\n    "
+                        + String.join("\n    ", minus(reaching, EDGES_INTO_A_READING_OF_ONES_OWN))
+                        + "\n  written down and not found:\n    "
+                        + String.join("\n    ", minus(EDGES_INTO_A_READING_OF_ONES_OWN, reaching))
+                        + "\nHand this reader the world its caller read in, rather than a world"
+                        + " with nothing lent to it.");
+    }
+
+    /** Every edge into a reading nobody else made, said in full at both ends. */
+    private static Set<String> everyEdgeIntoAReadingOfOnesOwn() {
         Map<String, Set<MethodTypeDesc>> pairs = theShorterOfEachPair();
         Set<Named> waysIn = theWaysInThatSayTheyReadForThemselves(pairs);
         Set<String> reaching = new TreeSet<>();
@@ -250,16 +263,30 @@ class NothingHereStartsAReadingSomebodyElseHasAlreadyMadeTest {
                 }
             }
         }
+        return reaching;
+    }
 
-        assertFalse(reaching.isEmpty(), "this check is reading no edges at all");
-        assertEquals(EDGES_INTO_A_READING_OF_ONES_OWN, reaching,
-                () -> "the edges into a reading nobody else made are not the ones written down.\n"
-                        + "  found and not written down:\n    "
-                        + String.join("\n    ", minus(reaching, EDGES_INTO_A_READING_OF_ONES_OWN))
-                        + "\n  written down and not found:\n    "
-                        + String.join("\n    ", minus(EDGES_INTO_A_READING_OF_ONES_OWN, reaching))
-                        + "\nTake the entry point that is handed somewhere to borrow from, or say"
-                        + " here what this reader has nowhere to borrow from.");
+    /** Those of them whose reader is a way in saying it reads for itself, which is how one of those
+     *  is written rather than a place this compiler spends one. */
+    private static Set<String> waysInReachingNothingToBorrowFrom() {
+        Set<String> found = new TreeSet<>();
+        for (String edge : everyEdgeIntoAReadingOfOnesOwn()) {
+            if (edge.endsWith(" -> " + NOTHING_TO_BORROW_FROM)) {
+                found.add(edge);
+            }
+        }
+        return found;
+    }
+
+    /** And those whose reader is anything else, which is this compiler spending one. */
+    private static Set<String> readersReachingAReadingOfTheirOwn() {
+        Set<String> found = new TreeSet<>();
+        for (String edge : everyEdgeIntoAReadingOfOnesOwn()) {
+            if (!edge.endsWith(" -> " + NOTHING_TO_BORROW_FROM)) {
+                found.add(edge);
+            }
+        }
+        return found;
     }
 
     private static List<String> minus(Set<String> these, Set<String> those) {
