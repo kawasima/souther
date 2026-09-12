@@ -353,7 +353,7 @@ class AnEquivalencePartitionIsWhatTheModelDistinguishesTest {
             String rows = souther.compiler.report.GeneratedRows.of(compilation, "example.bounded",
                     "f", souther.compiler.diag.SourceRendering.namedByIdentity(compilation.texts())).text();
 
-            assertFalse(rows.contains("no value this position can hold lies inside this range"),
+            assertFalse(rows.contains("nothing here writes a value whose value is in this range"),
                     "a decimal lies between the bound and the third, so the class between them is"
                             + " not one nothing can be written in (" + facing + "):\n" + rows);
         }
