@@ -333,7 +333,7 @@ public final class UnreadComparison {
             // over the test made none of the values the rule is about.
             case ValueOrigin.OneOf<K> choice -> everyOneMadeByAnOperation(choice.alternatives());
             case ValueOrigin.IsAPosition<K> _, ValueOrigin.Written<K> _,
-                 ValueOrigin.Unnameable<K> _ -> false;
+                 ValueOrigin.Unnameable<K> _, ValueOrigin.NoValue<K> _ -> false;
         };
     }
 

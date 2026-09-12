@@ -24,7 +24,7 @@ class AChoiceDependsOnWhatDecidedItAndIsMadeOfWhatItChoosesBetweenTest {
 
     private static ValueOrigin<String> choiceOn(ValueOrigin<String> decidedBy,
                                                 List<ValueOrigin<String>> alternatives) {
-        return new ValueOrigin.OneOf<>(decidedBy, alternatives);
+        return new ValueOrigin.OneOf<>(List.of(decidedBy), alternatives);
     }
 
     /** What it turned on is a position the expression names. */
@@ -75,5 +75,28 @@ class AChoiceDependsOnWhatDecidedItAndIsMadeOfWhatItChoosesBetweenTest {
     void aChoiceStatesWhatItIsBetween() {
         assertThrows(IllegalArgumentException.class,
                 () -> choiceOn(new ValueOrigin.IsAPosition<>("flag"), List.of()));
+    }
+
+    /**
+     * And a path that comes to no value is not one of the values it may be.
+     *
+     * <p>Refused here rather than dropped, so that a walk which gathers the arms of a fork has to
+     * say what it does with one that departs. Held as an alternative, it would answer for the value
+     * beside the arms that have one: what the whole was made from and whether every value it may be
+     * was made by an operation are both questions about the values, and a departure is the absence
+     * of one.
+     */
+    @Test
+    void aPathThatComesToNoValueIsNotOneOfTheValues() {
+        assertThrows(IllegalArgumentException.class,
+                () -> choiceOn(new ValueOrigin.IsAPosition<>("flag"),
+                        List.of(new ValueOrigin.IsAPosition<>("a"), new ValueOrigin.NoValue<>())));
+    }
+
+    /** A path with no value on it names no position and came from none. */
+    @Test
+    void aPathWithNoValueNamesNothing() {
+        assertEquals(List.of(), List.copyOf(new ValueOrigin.NoValue<String>().positions()));
+        assertNull(new ValueOrigin.NoValue<String>().madeFrom());
     }
 }

@@ -101,6 +101,33 @@ class ARuleAboutTheStringsOfAMadeValueIsNamedWhereItCameFromTest {
                         | Second -> b) then Yes else No
             """;
 
+    private static final String AN_ARM_BINDS_WHAT_IT_MATCHED = """
+            module example.codes
+
+            data Answer = Yes | No
+            data Plain = { code: String }
+            data Special = { code: String }
+            data Item = Plain | Special
+
+            behavior f : (item: Item) -> Answer
+            let f (item) =
+                if String.startsWith("JP", match item with
+                        | Plain as p -> p.code
+                        | Special as s -> s.code) then Yes else No
+            """;
+
+    private static final String ONE_ARM_COMES_TO_NO_VALUE = """
+            module example.codes
+
+            data Answer = Yes | No
+
+            behavior f : (flag: Bool, a: String) -> Answer
+            let f (flag, a) =
+                if (if flag then String.length(String.uppercase(a))
+                    else unreachable "the flag is set wherever this is read") > 10
+                    then Yes else No
+            """;
+
     private static final String AN_ELEMENT_IT_CAME_FROM = """
             module example.codes
 
@@ -189,6 +216,42 @@ class ARuleAboutTheStringsOfAMadeValueIsNamedWhereItCameFromTest {
     void aValueChosenByAMatchIsNamedAtEveryArm() {
         assertEquals(List.of("a", "b"), derived(measured(A_VALUE_CHOSEN_BY_A_MATCH)),
                 () -> "said at each arm: " + measured(A_VALUE_CHOSEN_BY_A_MATCH).notRead());
+    }
+
+    /**
+     * And an arm is read where the arm stands, so what it binds is a name with a position.
+     *
+     * <p>What a {@code match} arm binds is the value that was matched read as the case the arm
+     * selects, and that name exists inside the arm and nowhere else. Read where the fork stands,
+     * the arm's own answer is a name standing for nothing and the rule is shown nowhere — which is
+     * the same silence a model with no rule in it gives.
+     */
+    @Test
+    void whatAnArmBindsIsNamedWhereTheArmNarrowedIt() {
+        assertEquals(List.of("item@Plain.code", "item@Special.code"),
+                derived(measured(AN_ARM_BINDS_WHAT_IT_MATCHED)),
+                () -> "said under each case the arms select: "
+                        + measured(AN_ARM_BINDS_WHAT_IT_MATCHED).notRead());
+    }
+
+
+    /**
+     * And an arm that comes to no value is not one of the values the rule is about.
+     *
+     * <p>A departure is not another value the subject may be. Counted among them, the arm with
+     * nothing on it answers for the subject beside the arm that has a value, and the one value this
+     * subject may be — a length an operation took of the strings at a position — comes back as a
+     * form nothing read, which sends an author after a syntax that is not the difficulty.
+     *
+     * <p>A comparison, so both places it names carry the word: which positions it depends on
+     * includes what the choice turned on, and one comparison has one arithmetic. Which of them the
+     * value came from is the other question, and it is the one the tests above ask.
+     */
+    @Test
+    void anArmThatComesToNoValueIsNotOneOfTheValuesTheRuleIsAbout() {
+        assertEquals(List.of("flag", "a"), derived(measured(ONE_ARM_COMES_TO_NO_VALUE)),
+                () -> "the one value the subject may be was made from the strings here: "
+                        + measured(ONE_ARM_COMES_TO_NO_VALUE).notRead());
     }
 
     /**

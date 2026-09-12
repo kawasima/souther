@@ -2,6 +2,7 @@ package souther.compiler.partition;
 
 import souther.compiler.check.AnalysisBody;
 import souther.compiler.check.Carrier;
+import souther.compiler.check.Choice;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.StatedComparison;
 import souther.compiler.check.ComparisonClaim;
@@ -414,6 +415,13 @@ public final class GuardThresholds {
             @Override
             public InputReads inside(Core.LetIn li, InputReads at) {
                 return at.and(li.binder(), li.value());
+            }
+
+            /** The reading the arm opens, which is the reading's own answer: what a name an arm
+             *  binds stands for is settled once, where every walk that goes inside one asks. */
+            @Override
+            public InputReads choosing(Choice.Decides decidedBy, InputReads at) {
+                return at.choosing(decidedBy, symbols);
             }
         }), met);
     }

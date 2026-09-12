@@ -430,9 +430,10 @@ public final class BehaviorSetStatements {
             // nowhere else: what decided which of them it is holds none of the values the rule is
             // about, and an author sent there is sent to a position the rule says nothing of.
             case ValueOrigin.OneOf<TermPath> it -> across(it.alternatives());
-            // A value written where it stands came from no position, and one nothing here can name
-            // came from none this can name.
-            case ValueOrigin.Written<TermPath> _, ValueOrigin.Unnameable<TermPath> _ -> Set.of();
+            // A value written where it stands came from no position, one nothing here can name came
+            // from none this can name, and a path that comes to no value came from nowhere at all.
+            case ValueOrigin.Written<TermPath> _, ValueOrigin.Unnameable<TermPath> _,
+                 ValueOrigin.NoValue<TermPath> _ -> Set.of();
             case ValueOrigin.Composed<TermPath> _ -> Set.of();
         };
     }

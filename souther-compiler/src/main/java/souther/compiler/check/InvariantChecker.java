@@ -2827,6 +2827,28 @@ public final class InvariantChecker {
             public Denotations inside(Core.LetIn li, Denotations where) {
                 return terms.inside(li, where);
             }
+
+            /**
+             * And an arm is read where the fork stands, which is this reader declining a reading
+             * it has and not one it lacks ({@link Terms#choosing} would give it).
+             *
+             * <p>What a clause is about is one of a pair. The reading of values reads the same
+             * conjunct and says which coordinates it constrained, and a coordinate this names that
+             * the other never reached is a question standing with nothing to account for it
+             * ({@link FieldDomains.AStandingQuestionWithNoAccount}) — which is the two coming
+             * apart, not a fact about the model. That reading does not go inside an arm, so neither
+             * does this one, and a clause whose arm reads what the arm bound names one position
+             * fewer than it is about.
+             *
+             * <p>Declined and not answered wrongly. What comes back for such an arm is a value this
+             * reader can say nothing about, which is what it is here: the name is out of its reach.
+             * A body's reading is not in this position — what the reading of an input holds for an
+             * arm's name is settled for every walk that goes inside one — and it enters.
+             */
+            @Override
+            public Denotations choosing(Choice.Decides decidedBy, Denotations where) {
+                return where;
+            }
         });
         return new Places(origin, met);
     }
