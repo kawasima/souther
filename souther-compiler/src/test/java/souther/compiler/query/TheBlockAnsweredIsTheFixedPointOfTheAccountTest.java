@@ -108,30 +108,59 @@ class TheBlockAnsweredIsTheFixedPointOfTheAccountTest {
     }
 
     /**
-     * An answer the body does not give is a failing row, and the account still counts where the row
-     * went.
+     * What the answers did not discharge stays owed, and is said again.
      *
-     * <p>The control the law above needs. Coverage is about what the rows reached and correctness is
-     * about what they answered, and a walk that folded them would let a model be called uncovered
-     * for disagreeing — or, the other way about, let a disagreement be absorbed and never said.
-     * Here the same rows are written with one answer the body refuses: the account comes out exactly
-     * as it does above, and the build is refused over the row.
+     * <p>The law that makes the one above a law rather than a hope. A completion closes what it
+     * closes; what it leaves is not absorbed by everything beside it having been closed, and the
+     * next run says so. Without it the fixed point is reachable by an account that forgets, which
+     * is the same page as a block that stops offering.
+     *
+     * <p>The completion here is the block's own rows with an answer of the author's: every one of
+     * them written {@code Yes}, which is what somebody writes who has the policy wrong. The inputs
+     * are the block's, so where the rows go is what the block composed them to reach — every class,
+     * both arms, both ways through the body and every point — and all of that is discharged. What
+     * is left is the case of the output no row now expects, and the account keeps naming it.
+     *
+     * <p><b>And it is not discharged by the body having answered with it.</b> Three of these rows
+     * make the body answer {@code No}, and the measure says so in its own column — observed two of
+     * two, specified one of two. What an output case is owed is a row that expects it, so a walk
+     * reading the observation into the obligation would close it on the strength of the rows being
+     * wrong.
+     *
+     * <p><b>Said rather than offered, and the block writes down which.</b> Nothing composes a row by
+     * the case it would answer with, so this obligation is one the generator carries a shortfall for
+     * rather than a proposal — which is what "no silent loss" asks of it, and is why the law's own
+     * example, a proposal targeting an output case beside an arm, has nothing to stand for it here.
+     * A proposal is composed for a class, an arm or a rule, and the author's answer settles none of
+     * those.
      */
     @Test
-    void anAnswerTheBodyRefusesIsAFailingRowRatherThanAHoleInTheAccount() {
+    void whatTheAnswersMissedStaysOwedAndIsSaidAgain() {
         List<String> offered = rowsOffered(MODEL);
-        String agreeing = withRows(MODEL, offered);
-        String disagreeing = withRows(MODEL, offered, "Yes");
+        String missed = answeredThroughoutWith(MODEL, offered, "Yes");
 
-        assertEquals(List.of("E1905"), errorsIn(disagreeing),
-                () -> "the row whose answer the body refuses is reported:\n" + disagreeing);
-        assertEquals(report(agreeing), report(disagreeing),
-                "and the account says the same of both: where a row went is not what it answered");
+        // Everything the rows were composed to reach is discharged, and one thing is not.
+        assertEquals(List.of("! no row expects `No`"), marked(report(missed)),
+                () -> "what the answers missed, and nothing else:\n" + report(missed));
+        assertTrue(report(missed).contains("adequacy: not satisfied"), () -> report(missed));
+
+        // Not closed by the body having answered with it: the rows are what state a case.
+        assertTrue(report(missed).contains("out specified 1/2  observed 2/2"),
+                () -> "what was answered and what was expected are two columns:\n" + report(missed));
+
+        // And the next run says it again, in the words of the thing that could compose no row.
+        assertTrue(block(missed).contains("nothing offers a row for `No` in `judge`"),
+                () -> "the block names what is still owed:\n" + block(missed));
+
+        // Beside it, the other half of writing answers by hand: the rows that are wrong are wrong,
+        // and that is a refusal about the model rather than a hole in the account.
+        assertTrue(errorsIn(missed).contains("E1905"),
+                () -> "the rows whose answers the body refuses are reported: " + errorsIn(missed));
     }
 
     /** The lines the report marks as work left, which a settled account has none of. */
     private static List<String> marked(String human) {
-        return human.lines().filter(line -> line.stripLeading().startsWith("! ")).toList();
+        return human.lines().map(String::strip).filter(line -> line.startsWith("! ")).toList();
     }
 
     /** What this compiler refuses a model over. A law read off a model it refuses is a law about
@@ -165,27 +194,27 @@ class TheBlockAnsweredIsTheFixedPointOfTheAccountTest {
 
     /** The model with those rows written into its block, each answered the way the model owes. */
     private static String withRows(String model, List<String> rows) {
-        return withRows(model, rows, null);
+        return written(model, rows, TheBlockAnsweredIsTheFixedPointOfTheAccountTest::answerFor);
     }
 
     /**
-     * The same, with {@code insteadOf} written at the first row it is not the answer to.
+     * The same, with {@code answer} written at every one of them.
      *
-     * <p>Which is what an author does who writes what they believe the model owes and is wrong
-     * about it, and is the one way a completion can miss what it was offered for: the inputs are
-     * the block's and only the answer is theirs.
+     * <p>What an author does who has the policy wrong. The inputs are the block's and only the
+     * answer is theirs, so this is a completion of the proposals rather than a different row set:
+     * where the rows go is what the block composed them to reach, and what they state is not.
      */
-    private static String withRows(String model, List<String> rows, String insteadOf) {
+    private static String answeredThroughoutWith(String model, List<String> rows, String answer) {
+        return written(model, rows, _ -> answer);
+    }
+
+    private static String written(String model, List<String> rows,
+                                  java.util.function.Function<String, String> answer) {
         StringBuilder out = new StringBuilder(model);
-        boolean written = false;
         for (String row : rows) {
-            String owed = answerFor(row);
-            String answer = !written && insteadOf != null && !insteadOf.equals(owed)
-                    ? insteadOf : owed;
-            written |= !answer.equals(owed);
             out.append("    ")
                     .append(row, 0, row.length() - "<?>".length())
-                    .append(answer)
+                    .append(answer.apply(row))
                     .append(System.lineSeparator());
         }
         return out.toString();
