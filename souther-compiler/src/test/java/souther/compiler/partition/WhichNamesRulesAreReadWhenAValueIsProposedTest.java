@@ -93,10 +93,18 @@ class WhichNamesRulesAreReadWhenAValueIsProposedTest {
                 "the rule on the outer name proposed what it asks for: " + proposed);
     }
 
-    /** Both names carrying a rule: each proposes what it asks for, innermost first. */
+    /**
+     * Both names carrying a rule: each proposes what it asks for, innermost first.
+     *
+     * <p>And a value both of them admit before either, which is what a position carrying two rules
+     * has to offer: each rule's own proposal is one the other refuses, so a position offering only
+     * those has no value at all. What each rule asks for stays behind it and in its own order — a
+     * rule is a reason to offer another value, and the value every rule admits withdraws none.
+     */
     @Test
     void whereBothNamesCarryARuleEachProposesInnermostFirst() {
-        assertEquals(List.of("A(B(\"X\"))", "A(B(\"Z\"))", "A(B(\"x\"))"), proposedFor("""
+        assertEquals(List.of("A(B(\"XZ\"))", "A(B(\"X\"))", "A(B(\"Z\"))", "A(B(\"x\"))"),
+                proposedFor("""
                 data B = String
                     invariant tagged = startsWith("X", value)
 

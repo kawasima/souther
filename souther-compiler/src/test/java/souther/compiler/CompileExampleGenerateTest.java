@@ -591,10 +591,12 @@ class CompileExampleGenerateTest {
      * the ones not reached were not refused — nothing was written and nothing built — and calling them
      * refused tells an author their model rules out a combination it does not.
      *
-     * <p>What refuses every value here is a pattern the record states about one field, which nothing
-     * derives a value from: the field's own type says its values are x's, and the record wants y's.
-     * A rule counting the field would not do — a floor is read now, and the value built for it is
-     * one this model would accept.
+     * <p>What refuses every value here is a rule this compiler cannot take apart, which nothing
+     * derives a value from. Strings clearing both rules of a field exist — a run of y's of even
+     * length is one — so what stops a row is the search rather than the model. A second format
+     * would not do: the formats a reading can take in are met with each other, and a value clearing
+     * all of them is proposed. Nor would a rule counting the field — a floor is read too, and the
+     * value built for it is one this model would accept.
      */
     @Test
     void whatTheSearchDidNotReachIsNotReportedAsRefused() {
@@ -604,7 +606,7 @@ class CompileExampleGenerateTest {
             declarations.append("""
                     data V%1$s = String
                         invariant String.matches("[a-z]+", value)
-                        invariant String.matches("x+", value)
+                        invariant String.matches("(y+)\\\\1", value)
 
                     """.formatted(Character.toUpperCase(c)));
             fields.append(c).append(": V").append(Character.toUpperCase(c)).append(", ");
