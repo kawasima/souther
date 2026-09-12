@@ -4,9 +4,14 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import souther.compiler.check.RuleCitation;
 import souther.compiler.check.RuleCitations;
+import souther.compiler.WhatWasCompiled;
 import souther.compiler.conformance.RepositoryModels;
 import souther.compiler.report.AdequacyReport;
 
+import java.lang.classfile.ClassModel;
+import java.lang.classfile.MethodModel;
+import java.lang.classfile.instruction.FieldInstruction;
+import java.lang.constant.ClassDesc;
 import java.lang.reflect.RecordComponent;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -17,6 +22,7 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * What a behavior's evidence holds handles for is what its parts hold handles for.
@@ -39,16 +45,11 @@ class EveryPartOfABehaviorsEvidenceIsAskedForItsHandlesTest {
     @Test
     void theWholeHoldsWhatEveryPartHolds() {
         int walked = 0;
-        Set<String> holding = new LinkedHashSet<>();
         for (Compilation compilation : RepositoryModels.all()) {
             for (BehaviorEvidence evidence : behaviorsOf(compilation)) {
                 Set<RuleCitation> held = new LinkedHashSet<>();
                 for (RecordComponent part : BehaviorEvidence.class.getRecordComponents()) {
-                    Set<RuleCitation> mine = handlesIn(valueOf(evidence, part));
-                    if (!mine.isEmpty()) {
-                        holding.add(part.getName());
-                    }
-                    held.addAll(mine);
+                    held.addAll(handlesIn(valueOf(evidence, part)));
                 }
                 assertEquals(held, evidence.ruleCitations(),
                         "a behavior's evidence holds the handles its parts hold");
@@ -59,11 +60,10 @@ class EveryPartOfABehaviorsEvidenceIsAskedForItsHandlesTest {
         // value at all, which is what a check written from the field types would have been.
         assertTrue(walked > 0, "the models walked hold behaviors whose measures read rules");
 
-        // And which parts those are, because the assertion above is only as wide as the parts that
-        // hold a handle. A measure added to this record that reads rules is a part nothing asks
-        // unless somebody writes it into the union, which is the failure this is here to raise —
-        // and the union coming out equal says nothing about a part that holds nothing.
-        assertEquals(Set.of("partition", "boundaryReadings", "account"), holding,
+        // And which parts those are, written down because the equality above is only as wide as
+        // the parts that hold a handle: a part that holds none says nothing about the union either
+        // way, and a part that starts holding one is what this names.
+        assertEquals(Set.of("partition", "boundaryReadings", "account"), partsHoldingAHandle(),
                 "the parts of a behavior's evidence that hold a handle for a rule they read");
     }
 
@@ -106,10 +106,11 @@ class EveryPartOfABehaviorsEvidenceIsAskedForItsHandlesTest {
     /**
      * The handles one part holds, which is the part's own answer wherever it has one.
      *
-     * <p>Two shapes and both are what a field of this record can be: the value itself, and a
-     * measurement of a list of them. Nothing deeper — a shape this cannot read is a part whose
-     * handles the assertion above will find missing from the whole, which is the answer wanted
-     * rather than a walk that goes looking.
+     * <p><b>Nothing unknown is read as empty.</b> A shape this walk does not know is a shape it
+     * cannot say holds no handle, and saying it anyway is how an oracle comes to share the omission
+     * it is checking: a part added to the record and forgotten by the union would be nought here
+     * and nought there, and the two would agree. So the kinds that hold no handle say so by being
+     * written down, and anything else stops the check.
      */
     private static Set<RuleCitation> handlesIn(Object value) {
         Set<RuleCitation> out = new LinkedHashSet<>();
@@ -118,9 +119,76 @@ class EveryPartOfABehaviorsEvidenceIsAskedForItsHandlesTest {
             case RuleCitations it -> out.addAll(it.ruleCitations());
             case Measure<?> it -> it.made().ifPresent(made -> out.addAll(handlesIn(made)));
             case List<?> it -> it.forEach(each -> out.addAll(handlesIn(each)));
-            default -> { }
+            // Read and known to carry no handle for a rule: what the rows themselves came to, what
+            // they establish about the cases, about the arms, and which rules of the body's
+            // decision they took. None of them is a reading of a rule of the model.
+            case Adequacy.RowReading _, Adequacy.SignatureEvidence _,
+                 Adequacy.BranchEvidence _, DecisionEvidence _ -> { }
+            default -> fail("a part of a behavior's evidence has not said whether it holds a handle"
+                    + " for a rule it read: " + value.getClass());
         }
         return out;
+    }
+
+    /**
+     * And the whole reads each of the parts that hold one, rather than coming out equal to them.
+     *
+     * <p>Two different things, and the set above only holds the first. The account's handles are
+     * the ones its lines already hold — a point is owed at a line, and the rule is the line's — so
+     * a union that never asked the account comes out the same, and the equality above is green. The
+     * question this asks is the other one: which parts the method actually reads, taken off what
+     * javac made of it rather than off what the answer came to.
+     *
+     * <p>Which parts it must read is not written down here either. It is the parts a run finds a
+     * handle in, so the two answers are one fact — a part that starts holding one is a part the
+     * whole has to be reading by then, and the failure names it.
+     */
+    @Test
+    void andTheWholeReadsEachPartThatHoldsOne() {
+        assertEquals(partsHoldingAHandle(), partsReadBy("ruleCitations"),
+                "the parts a behavior's evidence reads when it is asked for its handles");
+    }
+
+    /** Which parts of the record {@code method} reads, as the compiled method reads them. */
+    private static Set<String> partsReadBy(String method) {
+        ClassDesc owner = BehaviorEvidence.class.describeConstable().orElseThrow();
+        Set<String> read = new LinkedHashSet<>();
+        ClassModel model = WhatWasCompiled.compiled()
+                .find(BehaviorEvidence.class.getName()).orElseThrow();
+        Set<String> components = new LinkedHashSet<>();
+        for (RecordComponent each : BehaviorEvidence.class.getRecordComponents()) {
+            components.add(each.getName());
+        }
+        for (MethodModel each : model.methods()) {
+            if (!each.methodName().stringValue().equals(method)) {
+                continue;
+            }
+            each.code().ifPresent(code -> {
+                for (var element : code) {
+                    if (element instanceof FieldInstruction field
+                            && field.owner().asSymbol().equals(owner)
+                            && components.contains(field.name().stringValue())) {
+                        read.add(field.name().stringValue());
+                    }
+                }
+            });
+        }
+        return read;
+    }
+
+    /** Which parts a run of every model this repository carries finds a handle in. */
+    private static Set<String> partsHoldingAHandle() {
+        Set<String> holding = new LinkedHashSet<>();
+        for (Compilation compilation : RepositoryModels.all()) {
+            for (BehaviorEvidence evidence : behaviorsOf(compilation)) {
+                for (RecordComponent part : BehaviorEvidence.class.getRecordComponents()) {
+                    if (!handlesIn(valueOf(evidence, part)).isEmpty()) {
+                        holding.add(part.getName());
+                    }
+                }
+            }
+        }
+        return holding;
     }
 
     private static Object valueOf(BehaviorEvidence evidence, RecordComponent part) {
