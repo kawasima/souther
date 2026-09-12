@@ -10,6 +10,7 @@ import souther.compiler.types.Type;
 import souther.compiler.types.TypeSymbol;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -298,6 +299,12 @@ final class Witnesses {
         // they are the same two numbers whether or not it was this that stopped it — so a reader
         // asking which budget ran out would be reading it off a subtraction that does not know.
         boolean stopped = false;
+        // What a key proposal's other keys are, worked out once however many values it is put
+        // beside. The question is the key's and the count's — what stands under them is not in it —
+        // so a reading per pair is one walk over the element's values run again for every value the
+        // other side proposed.
+        List<List<FixtureTemplate>> keysFrom =
+                new ArrayList<>(Collections.nCopies(keys.size(), null));
         pairing:
         for (int apart = 0; apart <= keys.size() + values.size() - 2; apart++) {
             for (int i = Math.max(0, apart - values.size() + 1);
@@ -306,10 +313,13 @@ final class Witnesses {
                     stopped = true;
                     break pairing;
                 }
+                if (keysFrom.get(i) == null) {
+                    keysFrom.set(i,
+                            distinctFrom(keys.get(i), map.key(), least, reading, expanding));
+                }
                 FixtureTemplate value = values.get(apart - i);
                 List<FixtureTemplate> entries = new ArrayList<>();
-                for (FixtureTemplate key
-                        : distinctFrom(keys.get(i), map.key(), least, reading, expanding)) {
+                for (FixtureTemplate key : keysFrom.get(i)) {
                     entries.add(FixtureTemplate.entry(key, value));
                 }
                 out.add(new Made(FixtureTemplate.collection(entries), entries.size()));
@@ -447,6 +457,12 @@ final class Witnesses {
                 out.add(each);
             }
         }
+        if (out.size() >= many) {
+            return List.copyOf(out);
+        }
+        // Asked last and only where there is room for what it answers. What a position is offered
+        // is a reading of every rule on it and costs what that reading costs, and a loop that asks
+        // for the list and then leaves it alone pays for it at every count already filled.
         for (FixtureTemplate each : Partitions.representativesOf(type, reading, null, expanding)) {
             if (out.size() >= many) {
                 break;
