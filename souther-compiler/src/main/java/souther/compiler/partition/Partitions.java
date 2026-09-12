@@ -1512,6 +1512,13 @@ public final class Partitions {
      * and never to withdraw one already offered: which of them the whole of the rules admits is the
      * decoder's answer, so a position carrying a format and a floor gets a value from each and the
      * order they were declared in does not decide whether one builds.
+     *
+     * <p><b>And a value every rule admits, which is none of theirs.</b> A proposal per rule is a
+     * proposal each of the others may refuse, so a position carrying two rules about its strings was
+     * offered what each asked for and nothing that clears both — the decoder refused all of it and
+     * the position had no value at all. That it went unnoticed is what the rest of this offers: a
+     * rule counting the value reaches the same meet through {@link Witnesses}, so the same two rules
+     * composed a row wherever a third rule happened to count what they were about.
      */
     static List<FixtureTemplate> representativesOf(TypeView view, RuleReadingContext reading,
                                                    NumericDomain.Bounds within,
@@ -1532,12 +1539,18 @@ public final class Partitions {
         if (!(WornNames.of(view.wrappers(), ruleSource) instanceof WornNames.Spelled spelled)) {
             return List.of();
         }
+        // What the rules say about the strings and how many characters they hold, each read once
+        // for the three readers below. Asked again per reader, a position carrying a format paid
+        // for the clauses to be walked and the counts to be read as many times as it has readers.
+        List<PatternSyntax> stated = patternsStatedOn(view, ruleSource);
+        DeclaredBounds.CountRange characters = DeclaredBounds.countsHeld(view, reading, null);
         // What the rules ask for, and then what the position is where nothing was written about it.
         List<FixtureTemplate> bare = new ArrayList<>();
+        bare.addAll(whatEveryRuleAdmits(stated, characters));
         bare.addAll(whereTheRulesLeaveTheValue(view, reading, within));
-        bare.addAll(whatAFormatAsksFor(view, ruleSource));
+        bare.addAll(whatAFormatAsksFor(stated));
         // What the rules say the value holds, before the value that would hold nothing.
-        bare.addAll(Witnesses.holding(view, leastHeld(view, reading), reading, inside));
+        bare.addAll(Witnesses.holding(view, characters.least(), reading, inside));
         List<FixtureTemplate> ofTheShape =
                 whatTheShapeStandsFor(view.shape(), reading, within, inside);
         bare.addAll(ofTheShape);
@@ -1609,43 +1622,24 @@ public final class Partitions {
     }
 
     /**
-     * A value each rule about the characters of a string admits, innermost name first.
+     * A value each of {@code stated} admits, in the order they were read.
      *
-     * <p>Read in the representation the analysis reads, which is where a library predicate is still
-     * the operation it was written as. In the settled form it is the body it expands to, and the
-     * reading below has no word for that.
+     * <p>One per rule and none of them met with another: each is what one rule asked for, and which
+     * of them the whole of the rules admits is the decoder's answer. What every rule admits at once
+     * is a value of its own ({@link #whatEveryRuleAdmits}) and is offered beside these.
      *
      * <p>Innermost first, which is an order over the proposals and not over the rules: every name's
      * rules govern the value, whichever end they are read from. What the order decides is which
      * proposal a bounded search reaches before it stops, and the value a name wraps is the one its
-     * own rules were written closest to.
+     * own rules were written closest to. It is {@link #patternsStatedOn}'s order, read once for
+     * every reader of it here.
      */
-    private static List<FixtureTemplate> whatAFormatAsksFor(TypeView view,
-                                                            RuleReadingSource ruleSource) {
-        if (!(view.shape() instanceof Shape.Scalar scalar) || scalar.prim() != Type.Prim.STRING) {
-            return List.of();
-        }
-        List<DeclaredClauses.OnAName> written = DeclaredClauses.of(view.wrappers(), ruleSource);
+    private static List<FixtureTemplate> whatAFormatAsksFor(List<PatternSyntax> stated) {
         List<FixtureTemplate> out = new ArrayList<>();
-        for (int name = written.size() - 1; name >= 0; name--) {
-            for (DeclaredClauses.Conjunct each : written.get(name).conjuncts()) {
-                // Asked of what the predicate means and not of what the decoder is told. The two are
-                // different questions: a constraint is what a generated class declares to the
-                // runtime, which is a format and nothing else, and this is which strings the rule
-                // admits — asked through the constraint, every predicate the decoder has no word for
-                // proposed no value, and a position an author had written a rule for was offered
-                // `"x"` and refused.
-                //
-                // Told which strings only where the reading came to them. Why it did not is the
-                // reading's to keep and nothing here has a use for it: a rule this could not read
-                // proposes no value, the same as one whose strings nobody can paste.
-                StringPredicates.Reading admits =
-                        StringPredicates.statedByWritten(each.expr(), ruleSource.symbols());
-                String text = admits instanceof StringPredicates.Reading.Accepting it
-                        ? writtenFor(it.accepts()) : null;
-                if (text != null) {
-                    out.add(FixtureTemplate.string(text));
-                }
+        for (PatternSyntax each : stated) {
+            String text = writtenFor(each);
+            if (text != null) {
+                out.add(FixtureTemplate.string(text));
             }
         }
         return out;
@@ -2188,6 +2182,33 @@ public final class Partitions {
     }
 
     /**
+     * A value the whole of the rules on {@code view} admits, or nothing where fewer than two of them
+     * say anything about its strings.
+     *
+     * <p>Written bare, because {@link #representativesOf} is what puts the names on. One and not
+     * more: what a position offers is what a search walks, and a second value of the same set tells
+     * a reader nothing the first did not — telling them apart is what a collection needs, and it
+     * asks for as many as it holds ({@link #admittedStrings}).
+     *
+     * <p><b>Two, because one reading has nothing to be met with.</b> Where a single rule speaks of
+     * the strings, what every rule admits is what that rule asked for, and that value is already
+     * offered by whichever reading made it. Composed here as well it would be the same string
+     * arrived at through a machine, and every position carrying a format would pay for one.
+     */
+    private static List<FixtureTemplate> whatEveryRuleAdmits(List<PatternSyntax> stated,
+                                                             DeclaredBounds.CountRange characters) {
+        // A rule counting the characters says which strings as much as a format does: it leaves out
+        // every string of another length.
+        if (stated.size() + (countsTheCharacters(characters) ? 1 : 0) < 2) {
+            return List.of();
+        }
+        Meter meter = PatternPlan.Budget.OF_A_WITNESS.meter();
+        Language admits = admittedBy(stated, characters, meter);
+        String some = admits == null ? null : admits.someWritten();
+        return some == null ? List.of() : List.of(FixtureTemplate.string(some));
+    }
+
+    /**
      * Up to {@code many} of the strings the rules on {@code view} admit, no two of them the same.
      *
      * <p>One allowance for the whole of the question, which is what looking for these values may
@@ -2237,25 +2258,74 @@ public final class Partitions {
      */
     private static Language stringsTheRulesAdmit(TypeView view, RuleReadingContext reading,
                                                  Meter meter) {
-        RuleReadingSource ruleSource = reading.source();
-        Language all = null;
-        for (DeclaredClauses.OnAName written : DeclaredClauses.of(view.wrappers(), ruleSource)) {
-            for (DeclaredClauses.Conjunct each : written.conjuncts()) {
-                if (!(StringPredicates.statedByWritten(each.expr(), ruleSource.symbols())
-                        instanceof StringPredicates.Reading.Accepting it)) {
-                    continue;
-                }
-                Language one = languageOf(it.accepts(), meter);
-                if (one == null) {
-                    return null;   // the allowance would not pay for this rule's machine
-                }
-                all = all == null ? one : all.and(one, meter);
-                if (all == null) {
-                    return null;   // nor for putting it together with the rules before it
+        return admittedBy(patternsStatedOn(view, reading.source()),
+                DeclaredBounds.countsHeld(view, reading, null), meter);
+    }
+
+    /**
+     * The patterns the rules on {@code view} state about its strings, innermost name first.
+     *
+     * <p>Read without building anything. Which rules speak of the strings is what the clauses say;
+     * what each of them admits is a machine, and a reader that wants one value from each, another
+     * that wants the meet, and a third that only asks how many there are would each be paying for
+     * every machine to find out.
+     *
+     * <p>Read in the representation the analysis reads, which is where a library predicate is still
+     * the operation it was written as. In the settled form it is the body it expands to, and this
+     * reading has no word for that.
+     *
+     * <p>Asked of what the predicate means and not of what the decoder is told. The two are
+     * different questions: a constraint is what a generated class declares to the runtime, which is
+     * a format and nothing else, and this is which strings the rule admits — asked through the
+     * constraint, every predicate the decoder has no word for stated nothing, and a position an
+     * author had written a rule for was offered {@code "x"} and refused.
+     *
+     * <p>Only where the reading came to them. Why it did not is the reading's to keep and nothing
+     * here has a use for it: a rule this could not read states no pattern, the same as one whose
+     * strings nobody can paste.
+     */
+    private static List<PatternSyntax> patternsStatedOn(TypeView view,
+                                                        RuleReadingSource ruleSource) {
+        if (!(view.shape() instanceof Shape.Scalar scalar) || scalar.prim() != Type.Prim.STRING) {
+            return List.of();
+        }
+        List<DeclaredClauses.OnAName> written = DeclaredClauses.of(view.wrappers(), ruleSource);
+        List<PatternSyntax> out = new ArrayList<>();
+        for (int name = written.size() - 1; name >= 0; name--) {
+            for (DeclaredClauses.Conjunct each : written.get(name).conjuncts()) {
+                if (StringPredicates.statedByWritten(each.expr(), ruleSource.symbols())
+                        instanceof StringPredicates.Reading.Accepting it) {
+                    out.add(it.accepts());
                 }
             }
         }
-        return all == null ? null : withinTheCount(all, view, reading, meter);
+        return List.copyOf(out);
+    }
+
+    /** Whether a rule counts the characters, which leaves out every string of another length and
+     *  is a thing to be met with the patterns like any other. */
+    private static boolean countsTheCharacters(DeclaredBounds.CountRange characters) {
+        return !(characters.least() == 0 && characters.most() == Integer.MAX_VALUE);
+    }
+
+    /**
+     * The strings {@code stated} and {@code characters} admit between them, or null where nothing
+     * was stated or the machine costs more than {@code meter} allows.
+     */
+    private static Language admittedBy(List<PatternSyntax> stated,
+                                       DeclaredBounds.CountRange characters, Meter meter) {
+        Language all = null;
+        for (PatternSyntax each : stated) {
+            Language one = languageOf(each, meter);
+            if (one == null) {
+                return null;   // the allowance would not pay for this rule's machine
+            }
+            all = all == null ? one : all.and(one, meter);
+            if (all == null) {
+                return null;   // nor for putting it together with the rules before it
+            }
+        }
+        return all == null ? null : withinTheCount(all, characters, meter);
     }
 
     /**
@@ -2266,13 +2336,12 @@ public final class Partitions {
      * rules leave is a run of counts and what is being narrowed is a set of strings, and the two are
      * put together the way every pair of sets here is.
      */
-    private static Language withinTheCount(Language strings, TypeView view,
-                                           RuleReadingContext reading, Meter meter) {
-        DeclaredBounds.CountRange characters = DeclaredBounds.countsHeld(view, reading, null);
+    private static Language withinTheCount(Language strings,
+                                           DeclaredBounds.CountRange characters, Meter meter) {
         if (characters.empty()) {
             return null;   // no count at all, so no string of the position holds one
         }
-        if (characters.least() == 0 && characters.most() == Integer.MAX_VALUE) {
+        if (!countsTheCharacters(characters)) {
             return strings;   // every count, so nothing to take away
         }
         Language counted = languageOf(PatternSyntax.ofAnySymbols(characters.least(),
