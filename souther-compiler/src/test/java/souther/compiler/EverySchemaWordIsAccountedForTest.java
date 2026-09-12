@@ -249,6 +249,39 @@ class EverySchemaWordIsAccountedForTest {
         return words;
     }
 
+    /**
+     * What a document may say a search came to about one rule, beside whether a row is owed.
+     *
+     * <p>Two vocabularies under one field. The answers a search has are shapes and are spelled
+     * here, held against the arms so that one added has to be given a word; what a composing that
+     * came to nothing gives is an enum of this compiler's and its own names are the words, so a
+     * reason added there is carried without anybody editing this.
+     */
+    private static Set<String> requirementBecauseWords() {
+        Map<String, String> spelling = new LinkedHashMap<>();
+        spelling.put("OnePositionCannotBeBoth", "the_way_needs_one_position_to_be_two");
+        spelling.put("AnArmNothingReaches", "an_arm_nothing_reaches");
+        spelling.put("AComposedRowWentElsewhere", "a_composed_row_went_elsewhere");
+        spelling.put("CouldNotTellWhereTheRowWent", "the_rule_the_row_took_could_not_be_told");
+        spelling.put("NothingWatchedTheRow", "nothing_watched_the_row");
+        // The one arm with no word of its own. What it carries is the composing's answer, and the
+        // document writes that rather than a word saying a composing answered.
+        spelling.put("NothingComposedARow", null);
+        // And a rule owed a row, whose answer is the row that was seen standing in.
+        spelling.put("Required", null);
+        Set<String> words = new LinkedHashSet<>();
+        for (Class<?> answer : armsOf(souther.compiler.query.RuleRequirement.class)) {
+            assertTrue(spelling.containsKey(answer.getSimpleName()),
+                    answer.getSimpleName() + " is something a search settles about a rule and this"
+                            + " document has no word for it");
+            if (spelling.get(answer.getSimpleName()) != null) {
+                words.add(spelling.get(answer.getSimpleName()));
+            }
+        }
+        words.addAll(wordsOf(souther.compiler.partition.Generator.UnresolvedCombination.Reason.class));
+        return words;
+    }
+
     /** The names a branch measure can give an arm, spelled by the writer's own encoder. */
     private static Set<String> armWords() {
         return Arrays.stream(souther.compiler.coverage.OutcomeName.values())
@@ -362,6 +395,13 @@ class EverySchemaWordIsAccountedForTest {
                     List.of("$defs", "decision", "properties", "obligations", "items",
                             "properties", "requirement"),
                     requirementWords()),
+            // And which answer it was. Its own field beside that one because the two are different
+            // questions: whether a row is owed is what a bar and a count act on, and what the
+            // search came to is what a page groups the rules it is not asking for by.
+            new Vocabulary("decision.obligations[].because",
+                    List.of("$defs", "decision", "properties", "obligations", "items",
+                            "properties", "because"),
+                    requirementBecauseWords()),
             new Vocabulary("findings[].kind",
                     List.of("$defs", "findings", "items", "properties", "kind"),
                     Adequacy.Kind.class),

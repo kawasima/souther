@@ -73,28 +73,43 @@ class ARuleNothingCouldComposeARowForIsSaidAndNotDroppedTest {
         List<String> decision = decisionSection(human(TWO_CALLS));
 
         assertTrue(decision.stream().anyMatch(line -> line.contains(
-                        "nothing could show a row can be written at a decision rule")
-                        && line.contains("answer by what it was applied to")),
-                () -> "the way needing two answers is said in the words the search came back"
-                        + " with: " + decision);
+                        "nothing could show a row can be written at 1 decision rule")),
+                () -> "the way needing two answers is counted as one nothing settled: "
+                        + decision);
+        assertTrue(decision.stream().anyMatch(line ->
+                        line.contains("answer by what it was applied to")),
+                () -> "under the words the search came back with: " + decision);
     }
 
     @Test
-    void everyRuleTheCountHoldsHasALineUnderIt() {
-        // Over the shapes a rule can be in and not over one model. What the headline says is how
-        // many ways the body has and how many some row took; each of the rest is in one of three
-        // states, and a state with no line is a way a reader is told about only by the arithmetic.
+    void theCountCloses() {
+        // Over the shapes a rule can be in and not over one model. The page enumerates what an
+        // author can act on and counts the rest under the reason each came to, so what is held is
+        // that the numbers add up to the ways the body has — not that there is a line apiece.
         for (String model : List.of(TWO_CALLS, REFUSED, bothWays("On"), bothWays("Off"))) {
             List<String> decision = decisionSection(human(model));
             String headline = decision.get(0);
             int rules = Integer.parseInt(headline.replaceAll(".*rules +(\\d+).*", "$1"));
             int taken = Integer.parseInt(headline.replaceAll(".*taken +(\\d+).*", "$1"));
+            int findings = (int) decision.stream()
+                    .filter(line -> line.contains("no row takes a decision rule")).count();
+            int gathered = gatheredIn(decision);
 
-            assertEquals(rules - taken, decision.stream()
-                            .filter(line -> line.contains("decision rule")).count(),
-                    () -> "every way the count holds that no row took is named under it: "
-                            + decision);
+            assertEquals(rules - taken, findings + gathered,
+                    () -> "the ways no row took are the findings and what is counted beside"
+                            + " them: " + decision);
         }
+    }
+
+    /** How many ways the block counts under an answer rather than writing out. */
+    private static int gatheredIn(List<String> decision) {
+        return decision.stream()
+                .filter(line -> line.startsWith("      ")
+                        && !line.startsWith("          ")
+                        && line.matches(".*\\b\\d+ decision rules?\\b.*"))
+                .mapToInt(line -> Integer.parseInt(
+                        line.replaceAll(".*?(\\d+) decision rules?\\b.*", "$1")))
+                .sum();
     }
 
     @Test

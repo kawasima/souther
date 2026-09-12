@@ -2129,6 +2129,34 @@
                   "excluded",
                   "unsettled"
                 ]
+              },
+              "because": {
+                "description": "Which answer the search came to, beside whether a row is owed. Present with `requirement` except where that is `required`, whose answer is the row that was seen standing in and has nothing beside it. Two are the model's: `the_way_needs_one_position_to_be_two` is a way asking a position to be two things at once, and `an_arm_nothing_reaches` a way through an arm no value arrives at. Three are what this compiler did with a row it composed — it took another rule, this reading could not place it, or nothing watched it. The rest are the words a composing that came to nothing gives, which is the vocabulary every search of this compiler answers in rather than one written for rules. A human report counts the rules under each of these rather than writing one line apiece, so this is what such a count is taken over.",
+                "enum": [
+                  "the_way_needs_one_position_to_be_two",
+                  "an_arm_nothing_reaches",
+                  "a_composed_row_went_elsewhere",
+                  "the_rule_the_row_took_could_not_be_told",
+                  "nothing_watched_the_row",
+                  "nothing_composes_one",
+                  "all_candidates_rejected",
+                  "nothing_stands_in_for_a_dependency",
+                  "a_table_is_what_this_needs",
+                  "the_search_left_something_untried",
+                  "the_rules_leave_nothing_there",
+                  "one_position_cannot_be_both",
+                  "nothing_to_build_against",
+                  "the_way_in_places_at_no_class",
+                  "no_values_were_asked_for",
+                  "the_position_was_withheld",
+                  "the_group_was_not_offered",
+                  "the_rows_were_not_read",
+                  "the_block_is_as_long_as_it_may_be",
+                  "linkage_failed",
+                  "no_certified_witness",
+                  "no_candidate_was_offered",
+                  "no_reading_of_the_line_could_be_searched"
+                ]
               }
             }
           }
