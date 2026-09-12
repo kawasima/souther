@@ -372,7 +372,7 @@ class GeneratorTest {
         RuleReadingSource rules = modelOf(TRIP, "submit").rules();
         MeasuredInput subject = twoNumbers(rules,
                 List.of(PartitionClass.ungeneratable("empty", "empty", new Recognition.Nothing(),
-                        "no value this position can hold lies inside this range")),
+                        "nothing here writes a value whose value is in this range")),
                 List.of(number("high", 10)));
 
         FillResult filled =
@@ -382,7 +382,7 @@ class GeneratorTest {
         Generator.UnresolvedCombination only = filled.unresolved().getFirst();
         assertEquals(Generator.UnresolvedCombination.Reason.NOTHING_COMPOSES_ONE, only.reason(),
                 "a value this could not compose, not one that cannot exist");
-        assertEquals(Optional.of("no value this position can hold lies inside this range"),
+        assertEquals(Optional.of("nothing here writes a value whose value is in this range"),
                 only.said(), "the sentence the class recorded, and not one made up here");
     }
 

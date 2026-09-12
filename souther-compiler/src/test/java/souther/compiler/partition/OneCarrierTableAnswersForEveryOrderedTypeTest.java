@@ -454,7 +454,7 @@ class OneCarrierTableAnswersForEveryOrderedTypeTest {
                 compilation, "example.matrix", "openOnBothSidesDense",
                 SourceRendering.namedByIdentity(compilation.texts())).text();
         assertTrue(dense.contains("1 < x < 2"), dense);
-        assertFalse(dense.contains("no value this position can hold"),
+        assertFalse(dense.contains("nothing here writes a value whose value is in this range"),
                 "a decimal lies between two decimals a whole apart: " + dense);
 
         String moment = souther.compiler.report.GeneratedRows.of(
