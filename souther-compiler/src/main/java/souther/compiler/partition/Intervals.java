@@ -249,10 +249,9 @@ final class Intervals {
      * {@link LevelSpace#inspect}'s answer; this asks the other question, and a caller that read the
      * two as one would put the order's own restraint into a sentence about the model.
      *
-     * <p>Nothing asks the first question of a run that reaches here. What a run is held to before
-     * this is {@code Interval.inhabited}, which reads the ends as places and never asks the carrier
-     * — so an empty answer here is a run the order would not choose in and a run it has nothing in
-     * at all, and the caller is owed a sentence that is true of both.
+     * <p>Nothing on this path asks the first question of a run that gets here. So an empty answer
+     * is a run the order would not choose in, and a run it has nothing in at all, and the caller is
+     * owed a sentence true of both.
      *
      * <p>How the values step is the carrier's to say and is asked of it. Carried as "is it a decimal"
      * it was a second spelling of the same fact, and a carrier that is dense without being the
