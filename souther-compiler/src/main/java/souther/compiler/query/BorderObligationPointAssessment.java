@@ -5,6 +5,7 @@ import souther.compiler.partition.BorderQuantity;
 import souther.compiler.partition.Demand;
 import souther.compiler.partition.DomainPoint;
 import souther.compiler.partition.PointRole;
+import souther.compiler.check.RuleCitations;
 import souther.compiler.check.RuleReportAnchor;
 import souther.compiler.publish.PublicationOrders;
 import souther.compiler.publish.PublishedRuleHandle;
@@ -66,7 +67,7 @@ public record BorderObligationPointAssessment(BorderObligationPoint point,
                                               java.util.Set<RuleReportAnchor> reachedBy,
                                               Demand demand, ObligationAssessment item,
                                               java.util.SequencedMap<Reading, BorderAssessment>
-                                                      met) {
+                                                      met) implements RuleCitations {
 
     /**
      * Every handle a reader was offered for the rule that drew this line.
@@ -82,7 +83,8 @@ public record BorderObligationPointAssessment(BorderObligationPoint point,
      * handle, the debt would name whichever way in the walk met first, which is what the
      * publication order exists to decide instead.
      */
-    public java.util.Set<souther.compiler.check.RuleCitation> citations() {
+    @Override
+    public java.util.Set<souther.compiler.check.RuleCitation> ruleCitations() {
         return souther.compiler.check.RuleCitation.handlesFor(point.line().provenance(), reachedBy);
     }
 
@@ -307,7 +309,7 @@ public record BorderObligationPointAssessment(BorderObligationPoint point,
      */
     public PublishedRuleHandle handle(PublishedRuleHandle.WhereARuleIs places) {
         return PublishedRuleHandle.of(
-                PublicationOrders.handleFor(citations(), places)
+                PublicationOrders.handleFor(ruleCitations(), places)
                         .orElseThrow(() -> new IllegalStateException("a line a reader is sent to is"
                                 + " one some reading said how to find: " + point)),
                 places);

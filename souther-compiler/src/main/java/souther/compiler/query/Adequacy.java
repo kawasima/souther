@@ -6158,7 +6158,7 @@ public final class Adequacy {
                     // One marker, from the one handle a document would write of the several a rule
                     // reached at several calls offers — chosen where that choice is made rather
                     // than by whichever reading this happened to walk first.
-                    if (PublicationOrders.handleFor(point.citations(),
+                    if (PublicationOrders.handleFor(point.ruleCitations(),
                                     cited -> Sites.placeOf(db, cited)).orElse(null)
                             instanceof RuleCitation.Written written) {
                         switch (Sites.placeOf(db, written)) {

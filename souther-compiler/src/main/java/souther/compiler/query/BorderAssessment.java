@@ -1,5 +1,7 @@
 package souther.compiler.query;
 
+import souther.compiler.check.RuleCitation;
+import souther.compiler.check.RuleCitations;
 import souther.compiler.partition.Border;
 import souther.compiler.partition.Demand;
 import souther.compiler.partition.BoundaryTarget;
@@ -10,6 +12,7 @@ import souther.compiler.publish.PublishedRuleHandle;
 import souther.compiler.publish.PublishedSentence;
 
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Everything known about one reading of one border: the line as this position met it, and what
@@ -29,7 +32,20 @@ import java.util.Map;
  * two points of one border can be the same one, so a measure keyed on the role would hold one entry
  * where there are two.
  */
-public record BorderAssessment(Border border, Map<DomainPoint, ItemAssessment> items) {
+public record BorderAssessment(Border border, Map<DomainPoint, ItemAssessment> items)
+        implements RuleCitations {
+
+    /**
+     * The one handle this reading holds, which is the one the rule that drew the line was cited by.
+     *
+     * <p>One, because a reading is of one line and a line is drawn by one rule. The several a debt
+     * holds are the several readings of it gathered ({@link BorderObligationPointAssessment}), and
+     * are that value's answer rather than this one's.
+     */
+    @Override
+    public Set<RuleCitation> ruleCitations() {
+        return Set.of(origin().cited());
+    }
 
     public BorderAssessment {
         if (items == null || !items.keySet().equals(border.answers().keySet())) {
