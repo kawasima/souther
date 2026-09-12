@@ -409,6 +409,7 @@ final class BodyGen {
                         store(code, slot, vt);
                         bind(li.binder(), slot, vt);
                     }
+                    emitLine(li);   // re-pin: a bound value may have moved the line off the call
                     emitTail(li.body(), cdB, requiredNames, requiredSuccess, expected);
                 }
                 case Core.If iff -> {
@@ -642,10 +643,12 @@ final class BodyGen {
          * which is a line of this class's own file because that is the only kind of line written
          * here.
          *
-         * <p>What stands there is the call. A helper takes at least one parameter — the language
-         * refuses a {@code let} with an empty parameter list, and a helper that takes nothing is a
-         * value, whose construction is settled where it is written — so the copy is always wrapped
-         * in the bindings the expansion made, and those carry the call's own position.
+         * <p>Which entry stands there is the {@code let} the copy is the body of. The bindings an
+         * expansion makes carry the call's own position, and between them and the copy the bound
+         * value is emitted — an argument written on its own line binds that line, and the copy binds
+         * nothing to move it back. So the call is bound again before the body, which is the same
+         * re-pin a construction does once its fields are on the stack. Binding it where the body
+         * binds a line of its own costs nothing: two lines at one offset are one entry, the last.
          */
         private void emitLine(Core e) {
             souther.compiler.diag.PhysicalPos sits = ctx.sits(e.pos());
@@ -792,6 +795,7 @@ final class BodyGen {
                     int s = slot(vt);
                     store(code, s, vt);
                     bind(li.binder(), s, vt);
+                    emitLine(li);   // re-pin: a bound value may have moved the line off the call
                     genExpr(li.body(), expected);
                 }
                 // a block has no value of its own; it is inlined by the call it is passed to

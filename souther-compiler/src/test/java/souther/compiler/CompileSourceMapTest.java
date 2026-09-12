@@ -116,6 +116,95 @@ class CompileSourceMapTest {
     }
 
     @Test
+    void aSplicedHelpersAbortPointsAtTheCallAndNotAtTheArgumentBelowIt() throws Exception {
+        // The call opens on line 6 and its argument sits on line 7. Between the call's own line and
+        // the body it stands for, the argument is emitted and writes a line of its own, so the last
+        // line written before the copy is not the call unless the call is written again after it.
+        String uses = """
+                module app.spread
+                import lib.rule ( 金額, shrink )
+
+                behavior make : (x: Int) -> 金額
+                    constructs 金額
+                let make (x) = shrink(
+                    x + 1
+                )
+                """;
+        BytesClassLoader loader = new BytesClassLoader(
+                Compiler.compileModules(List.of(RULE, uses)), getClass().getClassLoader());
+        Object impl = Emitted.behavior(loader, "app.spread", "make").getConstructor().newInstance();
+
+        ConstraintViolation v = assertThrows(ConstraintViolation.class, () -> Codecs.apply(impl, 50L));
+
+        StackTraceElement frame = Arrays.stream(v.getStackTrace())
+                .filter(f -> f.getClassName().startsWith("app.spread."))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("no generated frame: " + Arrays.toString(v.getStackTrace())));
+        assertEquals("spread.sou", frame.getFileName(), "the frame names the class's own source file");
+        assertEquals(6, frame.getLineNumber(), "the frame points at the call, not at the argument below it");
+    }
+
+    @Test
+    void theSameHoldsForACallTheBodyDoesNotAnswerWith() throws Exception {
+        // The same copy, reached where a value is wanted rather than in tail position: bound to a
+        // name the block goes on to answer with. It is emitted by the other of the two emitters,
+        // which binds the call and its argument in the same order.
+        String uses = """
+                module app.inner
+                import lib.rule ( 金額, shrink )
+
+                behavior make : (x: Int) -> 金額
+                    constructs 金額
+                let make (x) = {
+                    let z = shrink(
+                        x + 1
+                    )
+                    z
+                }
+                """;
+        BytesClassLoader loader = new BytesClassLoader(
+                Compiler.compileModules(List.of(RULE, uses)), getClass().getClassLoader());
+        Object impl = Emitted.behavior(loader, "app.inner", "make").getConstructor().newInstance();
+
+        ConstraintViolation v = assertThrows(ConstraintViolation.class, () -> Codecs.apply(impl, 50L));
+
+        StackTraceElement frame = Arrays.stream(v.getStackTrace())
+                .filter(f -> f.getClassName().startsWith("app.inner."))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("no generated frame: " + Arrays.toString(v.getStackTrace())));
+        assertEquals("inner.sou", frame.getFileName(), "the frame names the class's own source file");
+        assertEquals(7, frame.getLineNumber(), "the frame points at the call, not at the argument below it");
+    }
+
+    @Test
+    void aLetTheAuthorWroteLeavesItsBodysOwnLineInFront() throws Exception {
+        // The other side of the re-pin. This `let` binds a value written below it too, so the call
+        // is bound again before its body — and the body is written in the file the class names, so
+        // it binds a line of its own at that offset and that is the one the offset keeps.
+        String src = """
+                module demo
+                data 金額 = Int
+                    invariant value >= 0
+                behavior make : (x: Int) -> 金額 constructs 金額
+                let make (x) = {
+                    let y =
+                        x + 1
+                    金額(y - 100)
+                }
+                """;
+        BytesClassLoader loader = new BytesClassLoader(Compiler.compile(src), getClass().getClassLoader());
+        Object impl = Emitted.behavior(loader, "demo", "make").getConstructor().newInstance();
+
+        ConstraintViolation v = assertThrows(ConstraintViolation.class, () -> Codecs.apply(impl, 50L));
+
+        StackTraceElement frame = Arrays.stream(v.getStackTrace())
+                .filter(f -> f.getClassName().startsWith("demo."))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("no generated frame: " + Arrays.toString(v.getStackTrace())));
+        assertEquals(8, frame.getLineNumber(), "the abort points at the construction, not at the `let` above it");
+    }
+
+    @Test
     void aHelperSplicedWithinOneFileKeepsItsOwnLine() throws Exception {
         // The same splice with nothing crossed: the helper's body is written in the file the class
         // names, so its own line is a line that file has, and it is the more useful of the two.
