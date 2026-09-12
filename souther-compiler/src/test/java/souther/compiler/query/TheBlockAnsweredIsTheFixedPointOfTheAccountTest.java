@@ -12,6 +12,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -110,10 +111,16 @@ class TheBlockAnsweredIsTheFixedPointOfTheAccountTest {
     /**
      * What the answers did not discharge stays owed, and is said again.
      *
-     * <p>The law that makes the one above a law rather than a hope. A completion closes what it
-     * closes; what it leaves is not absorbed by everything beside it having been closed, and the
-     * next run says so. Without it the fixed point is reachable by an account that forgets, which
-     * is the same page as a block that stops offering.
+     * <p>An obligation is not absorbed by everything beside it having been closed, and the next run
+     * says so. Without it the fixed point above is reachable by an account that forgets, which is
+     * the same page as a block that stops offering.
+     *
+     * <p><b>Not the law {@code P(g) − D(complete(g))} states.</b> What is left owed here is not a
+     * target of the proposals that were completed — nothing composes a row by the case it would
+     * answer with — so this is an obligation of the account surviving a completion rather than a
+     * target surviving its own proposal. Whether a target can survive at all is
+     * {@link #everyTargetOfAProposalIsDischargedByWhateverIsAnsweredToIt}, which is where that law
+     * stands or falls.
      *
      * <p>The completion here is the block's own rows with an answer of the author's: every one of
      * them written {@code Yes}, which is what somebody writes who has the policy wrong. The inputs
@@ -127,12 +134,9 @@ class TheBlockAnsweredIsTheFixedPointOfTheAccountTest {
      * reading the observation into the obligation would close it on the strength of the rows being
      * wrong.
      *
-     * <p><b>Said rather than offered, and the block writes down which.</b> Nothing composes a row by
-     * the case it would answer with, so this obligation is one the generator carries a shortfall for
-     * rather than a proposal — which is what "no silent loss" asks of it, and is why the law's own
-     * example, a proposal targeting an output case beside an arm, has nothing to stand for it here.
-     * A proposal is composed for a class, an arm or a rule, and the author's answer settles none of
-     * those.
+     * <p><b>Said rather than offered, and the block writes down which.</b> This obligation is one
+     * the generator carries a shortfall for rather than a proposal, which is what "no silent loss"
+     * asks of it.
      */
     @Test
     void whatTheAnswersMissedStaysOwedAndIsSaidAgain() {
@@ -156,6 +160,73 @@ class TheBlockAnsweredIsTheFixedPointOfTheAccountTest {
         // and that is a refusal about the model rather than a hole in the account.
         assertTrue(errorsIn(missed).contains("E1905"),
                 () -> "the rows whose answers the body refuses are reported: " + errorsIn(missed));
+    }
+
+    /**
+     * Every target of a proposal is discharged by whatever is answered to it — so a proposal's
+     * targets cannot survive their own completion, and there is nothing for the law about that to
+     * preserve.
+     *
+     * <p><b>The status of {@code P(g) − D(complete(g))} under this generator, held as a check.</b>
+     * A proposal is composed for a class, an arm or a rule ({@code OfferedRow} refuses to carry
+     * anything else), and each of those is discharged by where the row goes. What an author writes
+     * into a completion is the answer, and the answer moves none of them: the inputs are the
+     * block's. So the set the law is about is empty, and the law holds by having nothing in it
+     * rather than by anything this compiler does to keep it.
+     *
+     * <p><b>Which is a fact worth a check rather than a sentence.</b> The issue states the law from
+     * a proposal targeting an output case beside an arm, completed into a row that goes through the
+     * arm and expects another case; that proposal cannot be composed here, and a reader who takes
+     * the law at its word will look for the machinery that keeps it and find none. Written down as
+     * prose, the day a proposal comes to target something an answer settles — the output case the
+     * block says it can compose no row for is the obvious candidate — the prose is what goes stale.
+     * Written as this, that day is the day this goes red, and whoever made proposals cleverer is
+     * told that the law now has something to preserve and needs a check that preserves it.
+     *
+     * <p>Read off the measures rather than off the composer, so that what is compared is what an
+     * author is told. Two completions of one block, differing in every answer and in nothing else:
+     * where the rows went is the same in both, measure for measure, and the signature is the one
+     * place they differ because it is the one measure the answer is evidence for.
+     *
+     * <p>What keeps the vocabulary closed is {@code OfferedRow}, which refuses to carry a purpose
+     * that is not one of the three. So this is where to come when that refusal is relaxed: a target
+     * an answer can settle is what gives the law something to preserve, and the check for it has to
+     * be written then.
+     *
+     * <p>With a control, because two readings of one unchanged thing are equal for free. The same
+     * reading over the model before its block was written is different, so the comparison has the
+     * resolution the claim needs.
+     */
+    @Test
+    void everyTargetOfAProposalIsDischargedByWhateverIsAnsweredToIt() {
+        List<String> offered = rowsOffered(MODEL);
+        List<String> owed = whereTheRowsWent(report(withRows(MODEL, offered)));
+        List<String> believed =
+                whereTheRowsWent(report(answeredThroughoutWith(MODEL, offered, "Yes")));
+
+        assertFalse(offered.isEmpty(), "there are proposals whose targets this is about");
+        assertFalse(owed.isEmpty(), "and measures of where their rows went");
+        assertEquals(owed, believed,
+                "a proposal's targets are discharged by any answer written into it");
+        assertNotEquals(owed, whereTheRowsWent(report(MODEL)),
+                "and the reading tells two row sets apart, so the equality above is a measurement");
+        // And the one measure an answer is evidence for says the two apart, so this is not two
+        // readings of one unchanged report.
+        assertTrue(report(withRows(MODEL, offered)).contains("out specified 2/2"),
+                "the completion that answers what the model owes states both cases");
+        assertTrue(report(answeredThroughoutWith(MODEL, offered, "Yes"))
+                        .contains("out specified 1/2"),
+                "and the one that does not, states one");
+    }
+
+    /** The measures of where a behavior's rows went, which is what a proposal's targets are made
+     *  of: the classes, the arms, the ways through the body and the lines. */
+    private static List<String> whereTheRowsWent(String human) {
+        return human.lines().map(String::strip)
+                .filter(line -> line.startsWith("partition ") || line.startsWith("branch ")
+                        || line.startsWith("decision ") || line.startsWith("border ")
+                        || line.startsWith("declarations "))
+                .toList();
     }
 
     /** The lines the report marks as work left, which a settled account has none of. */
