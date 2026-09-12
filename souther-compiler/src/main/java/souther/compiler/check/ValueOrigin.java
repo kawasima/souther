@@ -400,7 +400,7 @@ public sealed interface ValueOrigin<K> {
         // children it would come back as a form nothing takes apart, and the provenance of a value
         // read back out of it would be a thing this could not state — while what it was built with
         // stands in the node.
-        if (e instanceof Core.Construct construct && !construct.values().isEmpty()) {
+        if (e instanceof Core.Construct construct) {
             Map<String, ValueOrigin<K>> fields = new LinkedHashMap<>();
             for (Core.FieldValue each : construct.values()) {
                 fields.put(each.field(), of(each.value(), at, reading, following));
@@ -413,11 +413,20 @@ public sealed interface ValueOrigin<K> {
         // of the construction hold none of the values the rule is over.
         if (e instanceof Core.FieldAccess access) {
             ValueOrigin<K> target = of(access.target(), at, reading, following);
-            ValueOrigin<K> given = target instanceof Constructed<K> built
-                    ? built.fields().get(access.field()) : null;
+            if (target instanceof Constructed<K> built) {
+                ValueOrigin<K> given = built.fields().get(access.field());
+                if (given == null) {
+                    // A construction holds every declared field and a field access names a field of
+                    // the type it reads, so a field missing here is this compiler disagreeing with
+                    // itself rather than a provenance nothing can state. Said as the one it is.
+                    throw new IllegalStateException("a construction of " + built.fields().keySet()
+                            + " was read for a field it has none of: " + access.field());
+                }
+                return given;
+            }
             // A field of anything else is the one child this node has, read once here rather than
             // walked again below.
-            return given != null ? given : new Composed<>(List.of(target));
+            return new Composed<>(List.of(target));
         }
         // What a {@code let} is made of is its body, read in the binding. The initializer is not a
         // part of the value: {@code let $x = a in 0} is zero, and reading both made a helper that
