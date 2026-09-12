@@ -153,7 +153,7 @@ class ARuleOfferedARowIsCoveredOnceTheRowIsWrittenTest {
 
     private static String block(String model) {
         Compilation measured = measured(model);
-        return GeneratedRows.of(measured, "example.decide", null, true,
+        return GeneratedRows.of(measured, "example.decide", null,
                 SourceRendering.namedByIdentity(measured.texts())).text();
     }
 
@@ -165,7 +165,7 @@ class ARuleOfferedARowIsCoveredOnceTheRowIsWrittenTest {
 
     private static Compilation measured(String model) {
         Compilation compilation = Compilation.ofSource(model, "Main");
-        compilation.measure(Adequacy.Asked.fullReport(Adequacy.AdequacyBar.CLASSES));
+        compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
         return compilation;
     }

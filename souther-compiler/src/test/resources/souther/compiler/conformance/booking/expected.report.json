@@ -2179,7 +2179,7 @@
       },
       "findings" : [ {
         "kind" : "decision_rule_uncovered",
-        "disposition" : "reported",
+        "disposition" : "refused",
         "subject" : "redeem",
         "obligationId" : {
           "behavior" : "redeem",

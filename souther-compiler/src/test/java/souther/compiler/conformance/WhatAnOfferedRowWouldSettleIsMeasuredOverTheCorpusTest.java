@@ -65,7 +65,7 @@ class WhatAnOfferedRowWouldSettleIsMeasuredOverTheCorpusTest {
                 // off what a person is finally handed, a row another row answers for is not there
                 // to be asked about.
                 Composition offering = Composition.composed(
-                        OfferingRequest.overTheModule(module, true), filled,
+                        OfferingRequest.overTheModule(module), filled,
                         Adequacy.accountFor(analysed.compilation().db(), module,
                                 new souther.compiler.query.GenerationScope.Module()));
                 Settlements settlements =

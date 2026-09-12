@@ -32,12 +32,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * source one whenever the source does not exercise it. What is asked here is whether the invocation
  * has anywhere to read the option, which is a question about the line and is settled from the line.
  *
- * <p>{@code --boundaries} on its own was accepted and answered with the report it would have printed
- * anyway. The flag is read at one place, inside the branch {@code --generate} opens, so a line that
- * wrote it without {@code --generate} set a variable nothing looked at — and a reader who had just
- * been told {@code boundary 0/2} read the unchanged report as an answer about their model rather
- * than as an option that never applied. Silence is the one thing the command line cannot say here,
- * and the same command already holds the opposite standard for {@code --module} and
+ * <p>{@code --limit} on its own is that shape: it is read at one place, inside the branch
+ * {@code --search} opens, so a line that writes it without {@code --search} sets a variable nothing
+ * looks at — and a reader is handed the listing they would have got anyway as though the number
+ * they wrote had been honoured. Silence is the one thing the command line cannot say here, and
+ * {@code examples} already holds the opposite standard for {@code --module} and
  * {@code --behavior}: a name that resolves to no subject is a usage error, not a report of nothing.
  *
  * <p>Every command, and not only the ones whose parser thought to ask. {@code doc} and {@code api}
@@ -103,38 +102,12 @@ class AnOptionTheRunDoesNotReadIsNotPassedOverInSilenceTest {
 
     // --- the option that is read behind another one -----------------------------------------------
 
+    /** The refusal comes before the listing, so the reader is not shown an answer to misread. */
     @Test
-    void boundariesWithoutGenerateIsRefused() throws Exception {
-        Said said = run("examples", model().toString(), "--boundaries");
-
-        assertEquals(2, said.code(), said.err());
-        assertTrue(said.err().contains("`--boundaries`"), said.err());
-        assertTrue(said.err().contains("`--generate`"), said.err());
-    }
-
-    /** The refusal comes before the report, so the reader is not shown a measurement to misread. */
-    @Test
-    void boundariesWithoutGenerateReportsNothing() throws Exception {
-        Said said = run("examples", model().toString(), "--boundaries");
+    void limitWithoutSearchReportsNothing() {
+        Said said = run("doc", "--limit", "5");
 
         assertEquals("", said.out(), said.out());
-    }
-
-    @Test
-    void boundariesWithGenerateIsTheLineThatWasMeant() throws Exception {
-        Said said = run("examples", model().toString(), "--generate", "--boundaries");
-
-        assertEquals(0, said.code(), said.err());
-        assertTrue(said.out().contains("MinuteOfDay(1440)"), said.out());
-    }
-
-    /** The order they are written in is not one of the conditions. */
-    @Test
-    void boundariesBeforeGenerateIsTheSameLine() throws Exception {
-        Said said = run("examples", model().toString(), "--boundaries", "--generate");
-
-        assertEquals(0, said.code(), said.err());
-        assertTrue(said.out().contains("MinuteOfDay(1440)"), said.out());
     }
 
     /** {@code doc}'s own conditional option: the limit is read out of the search and nowhere else. */
@@ -214,9 +187,6 @@ class AnOptionTheRunDoesNotReadIsNotPassedOverInSilenceTest {
             if (owner.equals("compile")) {
                 line.addAll(List.of("-d", out.toString()));
             }
-            if (option.equals("--boundaries")) {
-                line.add("--generate");   // which it is only read with
-            }
             line.add(option);
             if (value != null) {
                 line.add(value);
@@ -268,10 +238,10 @@ class AnOptionTheRunDoesNotReadIsNotPassedOverInSilenceTest {
      * Every option the table says needs another, asked of a command that takes it — so a pair added
      * tomorrow is under this without anything here being written again.
      *
-     * <p>Beside the two written out above rather than instead of them. This reads the same table the
-     * check reads, so a pair the table is missing is a pair it does not ask about: dropping
-     * {@code --boundaries} from the relation leaves this passing over one fewer option and saying
-     * nothing. The named cases are what holds each of those two rows down.
+     * <p>Beside the ones written out above rather than instead of them. This reads the same table
+     * the check reads, so a pair the table is missing is a pair it does not ask about: dropping a
+     * row from the relation leaves this passing over one fewer option and saying nothing. The named
+     * cases are what holds each row down.
      */
     @Test
     void everyOptionThatNeedsAnotherIsRefusedWithoutIt() {
@@ -297,7 +267,7 @@ class AnOptionTheRunDoesNotReadIsNotPassedOverInSilenceTest {
     /**
      * {@code --color} is read where the human renderer is built, so a line that writes it under
      * {@code --format json} has asked for a colour policy nothing in the run is a reader of. That is
-     * the same silence as {@code --boundaries} without {@code --generate}, and it is not a fact about
+     * the same silence as {@code --limit} without {@code --search}, and it is not a fact about
      * the two options being written together: what makes the reader unreachable is the value
      * {@code --format} was given.
      */
@@ -632,11 +602,12 @@ class AnOptionTheRunDoesNotReadIsNotPassedOverInSilenceTest {
      */
     @Test
     void aValueSpeltLikeAnOptionIsAValue() throws Exception {
-        Said said = run("examples", model().toString(), "--module", "--generate", "--boundaries");
+        Said said = run("examples", model().toString(), "--module", "--generate");
 
         assertEquals(2, said.code(), said.err());
-        assertTrue(said.err().contains("`--boundaries`"), said.err());
-        assertTrue(said.err().contains("`--generate`"), said.err());
+        assertTrue(said.err().contains("--generate"),
+                "the token after `--module` is the name it was given: " + said.err());
+        assertFalse(said.err().contains("unknown option"), said.err());
     }
 
     /** A short option a command does not know still reads as a path, which is the older rule. */
@@ -689,10 +660,10 @@ class AnOptionTheRunDoesNotReadIsNotPassedOverInSilenceTest {
      */
     @Test
     void aRefusalIsWrittenInTheLanguageTheLineAsksFor() throws Exception {
-        Said said = run("examples", model().toString(), "--boundaries", "--lang", "ja");
+        Said said = run("examples", model().toString(), "--nope", "--lang", "ja");
 
         assertEquals(2, said.code(), said.err());
-        assertTrue(said.err().contains("`--boundaries`"), said.err());
-        assertFalse(said.err().contains("is only read with"), said.err());
+        assertTrue(said.err().contains("`--nope`"), said.err());
+        assertFalse(said.err().contains("unknown option"), said.err());
     }
 }

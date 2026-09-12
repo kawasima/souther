@@ -74,9 +74,9 @@ class AGapIsRefusedOverByWhatSettledItTest {
         assertEquals(1, found.size(), () -> "one arm, and the fork beside it is not counted: "
                 + found);
         assertEquals(Adequacy.Finding.Disposition.REFUSED,
-                found.getFirst().disposition(Adequacy.AdequacyBar.RELIABLE_DOMAIN),
+                found.getFirst().disposition(),
                 "the rows were read against this arm and none goes through it");
-        assertTrue(found.getFirst().isAdequacyGap(Adequacy.AdequacyBar.RELIABLE_DOMAIN),
+        assertTrue(found.getFirst().isAdequacyGap(),
                 "which is the same answer, asked the way a verdict asks it");
     }
 

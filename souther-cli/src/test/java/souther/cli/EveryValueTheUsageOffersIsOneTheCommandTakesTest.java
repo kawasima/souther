@@ -51,7 +51,12 @@ class EveryValueTheUsageOffersIsOneTheCommandTakesTest {
 
         List<String> refused = new ArrayList<>();
         for (CliCommand command : List.of(CliCommand.EXAMPLES, CliCommand.COMPILE)) {
+            // The options that command takes, and not a pair written out here: an option moved off
+            // a command would otherwise be run against it and refused for not being its.
             for (CliOption option : List.of(CliOption.ADEQUACY)) {
+                if (!Main.optionOwners(option.spelling()).contains(command.spelling())) {
+                    continue;
+                }
                 for (String value : command.valueSpelling(option).split("\\|")) {
                     List<String> line = new ArrayList<>(
                             List.of(command.spelling(), file.toString(), option.spelling(), value));

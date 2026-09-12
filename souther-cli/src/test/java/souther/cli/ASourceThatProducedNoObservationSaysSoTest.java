@@ -148,7 +148,7 @@ class ASourceThatProducedNoObservationSaysSoTest {
      */
     @Test
     void generateSaysWhyItWroteNothing() throws Exception {
-        Streams ran = run(List.of(ONE_BEHAVIOR_DOES_NOT_CHECK), "--generate", "--boundaries");
+        Streams ran = run(List.of(ONE_BEHAVIOR_DOES_NOT_CHECK), "--generate");
 
         assertTrue(ran.out().contains("generation stopped"),
                 "the reason is what there is to say: " + ran.out());
@@ -158,7 +158,7 @@ class ASourceThatProducedNoObservationSaysSoTest {
      * about to write in, which is no place for an enum's name either. */
     @Test
     void theGeneratedNoteReadsTheSameWayTheReportDoes() throws Exception {
-        Streams ran = run(List.of(ONE_BEHAVIOR_DOES_NOT_CHECK), "--generate", "--boundaries");
+        Streams ran = run(List.of(ONE_BEHAVIOR_DOES_NOT_CHECK), "--generate");
 
         assertFalse(ran.out().contains("observation_absent"),
                 "one wording, written once: " + ran.out());

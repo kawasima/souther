@@ -137,7 +137,7 @@ class ARuleTheBlockHadNoRoomForIsStillWeighedTest {
 
     private static String blockUnder(int rowLimit) {
         Compilation compiled = compiled(rowLimit);
-        return GeneratedRows.of(compiled, "example.narrow", null, true,
+        return GeneratedRows.of(compiled, "example.narrow", null,
                 SourceRendering.namedByIdentity(compiled.texts())).text();
     }
 
@@ -146,7 +146,7 @@ class ARuleTheBlockHadNoRoomForIsStillWeighedTest {
                 .withAdequacyPolicy(new AdequacyPolicy(Budgets.measures(),
                         new AdequacyPolicy.OfTheGeneration(rowLimit,
                                 Budgets.generation().cellsPerGroup())));
-        compilation.measure(Adequacy.Asked.fullReport(Adequacy.AdequacyBar.CLASSES));
+        compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
         assertFalse(compilation.modules().isEmpty(), "the model compiled");
         return compilation;

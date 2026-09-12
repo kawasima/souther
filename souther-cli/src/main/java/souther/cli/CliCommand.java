@@ -41,10 +41,7 @@ enum CliCommand {
     FMT("fmt", "<file.sou>...", "format source, to stdout or in place"),
     EXAMPLES("examples", "<file.sou>...", "how well the `example`s cover the model",
             Map.of(CliOption.FORMAT, Reads.saying("how to render the report, and any compile "
-                            + "error (default human)"),
-                    CliOption.ADEQUACY, Reads.taking("reliable-domain|classes",
-                            "which bar the report is read against (default reliable-domain); "
-                                    + "this command measures everything either way"))),
+                    + "error (default human)"))),
     DOC("doc", "[<anchor> | <error-code> | <set>/<topic>[/<section>]]",
             "read the language specification"),
     API("api", "[<Module>[.<name>]]", "the stdlib surface and its signatures",
@@ -128,10 +125,8 @@ enum CliCommand {
      * Which values the option takes under this command.
      *
      * <p>Beside {@link #describe} because a command reading an option its own way can take fewer
-     * values with it, and the two go together: {@code --adequacy} names a bar and, on a compile,
-     * how much to measure, while {@code examples} measures everything and so has nothing for the
-     * measurement words to choose. Written once in the table, the usage offered a value this
-     * command refuses — and the table exists so that what is printed and what is parsed cannot
+     * values with it, and the two go together. Written once in the table, the usage offered a value
+     * the command refuses — and the table exists so that what is printed and what is parsed cannot
      * come apart.
      */
     String valueSpelling(CliOption option) {

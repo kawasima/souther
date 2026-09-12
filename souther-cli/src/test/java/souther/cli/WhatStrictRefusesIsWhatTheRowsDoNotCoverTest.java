@@ -158,14 +158,14 @@ class WhatStrictRefusesIsWhatTheRowsDoNotCoverTest {
     /**
      * The round trip the report used to lose.
      *
-     * <p>{@code --generate --boundaries} proposes a row for the boundary nothing sits on. Answering it
-     * and pasting it back is what the generated block says to do, and it raises the number of rows
-     * waiting for a {@code let} by one — which is the number the flag used to fail on. What it does to
-     * the question the flag is named for is the opposite: the gap is gone.
+     * <p>{@code --generate} proposes a row for the boundary nothing sits on. Answering it and
+     * pasting it back is what the generated block says to do, and it raises the number of rows
+     * waiting for a {@code let} by one — which is the number this used to fail on. What it does to
+     * the question being asked is the opposite: the gap is gone.
      */
     @Test
     void generatedBoundaryRowCanImproveStrictAdequacyEvenWhilePendingRowsIncrease() throws Exception {
-        Run before = examples(WAITING_AND_UNCOVERED, "--generate", "--boundaries", "--strict");
+        Run before = examples(WAITING_AND_UNCOVERED, "--generate", "--strict");
 
         assertEquals(1, before.code(), before.out() + before.err());
         assertTrue(before.out().contains("no row is at the ON point value = 0"), before.out());
@@ -187,10 +187,9 @@ class WhatStrictRefusesIsWhatTheRowsDoNotCoverTest {
      * refuses a build that warns at all. Where they disagree, one of them is reading the evidence a
      * second time.
      *
-     * <p>Against the build held to the same bar. {@code souther examples} measures everything and is
-     * held to reliable domain coverage, so the compile this is put beside is the one that asks for
-     * that criterion; put beside {@code --adequacy all} the two answer to different bars, and
-     * agreeing would be the accident of a model with no point away from a line left uncovered.
+     * <p>Against the build that measured as much. {@code souther examples} measures everything, so
+     * the compile this is put beside is {@code --adequacy all}; what each is held to is the same
+     * account, so the two agree by being two readings of one answer rather than by accident.
      */
     @Test
     void strictAndAWarningsErrorBuildAgreeWhereNothingElseWarns() throws Exception {
@@ -201,7 +200,7 @@ class WhatStrictRefusesIsWhatTheRowsDoNotCoverTest {
 
             Run examples = cli("examples", file.toString(), "--strict");
             Run compile = cli("compile", file.toString(), "-d", out.toString(),
-                    "--adequacy", "reliable-domain", "--warnings", "error");
+                    "--adequacy", "all", "--warnings", "error");
 
             assertEquals(examples.code() != 0, compile.code() != 0,
                     model + "\n--- examples ---\n" + examples.err()
@@ -212,9 +211,8 @@ class WhatStrictRefusesIsWhatTheRowsDoNotCoverTest {
     /**
      * A model covered against the lines and at neither point away from them.
      *
-     * <p>The two criteria differ here and nowhere else in this class, which is what makes the
-     * agreement above something rather than an accident: simplified domain coverage asks for the row
-     * on the line and the row one step over, and this has both.
+     * <p>The model the two surfaces used to disagree about: the rows on the line and one step over
+     * are there, and the two points away from it have none.
      */
     private static final String ON_THE_LINE_ONLY = """
             module example.limit
@@ -239,34 +237,25 @@ class WhatStrictRefusesIsWhatTheRowsDoNotCoverTest {
      *
      * <p>What this was. {@code souther examples} was measuring every point of every border and
      * being held to a build's default criterion, so it printed the two points away from the line and
-     * then called the model satisfied — while {@code souther compile --adequacy reliable-domain
-     * --warnings error} refused the same model over the same two points. A CI running both was told
-     * the model was covered and that the build was refused.
-     *
-     * <p>The build held to the other criterion is here too, and it succeeds. Without it this passes
-     * on a model where the two bars ask for the same thing, and every word about criteria in it would
-     * be describing something the test never exercises.
+     * then called the model satisfied — while a compile that named the other bar refused the same
+     * model over the same two points. A CI running both was told the model was covered and that the
+     * build was refused.
      */
     @Test
-    void strictRefusesThePointsAwayFromALineTheWayAReliableDomainBuildDoes() throws Exception {
+    void strictRefusesThePointsAwayFromALineTheWayABuildDoes() throws Exception {
         Path file = sourceOf(ON_THE_LINE_ONLY);
 
         Run examples = cli("examples", file.toString(), "--strict");
-        Run reliable = cli("compile", file.toString(),
-                "-d", Files.createTempDirectory("souther-reliable").toString(),
-                "--adequacy", "reliable-domain", "--warnings", "error");
-        Run simplified = cli("compile", file.toString(),
-                "-d", Files.createTempDirectory("souther-simplified").toString(),
+        Run compiled = cli("compile", file.toString(),
+                "-d", Files.createTempDirectory("souther-strict-points").toString(),
                 "--adequacy", "all", "--warnings", "error");
 
         assertEquals(1, examples.code(), examples.out() + examples.err());
         assertTrue(examples.out().contains("adequacy: not satisfied"), examples.out());
         assertTrue(examples.out().contains("! no row is at an IN point"), examples.out());
         assertTrue(examples.out().contains("! no row is at an OUT point"), examples.out());
-        assertEquals(1, reliable.code(), reliable.out() + reliable.err());
-        assertTrue(reliable.err().contains("E1917"), reliable.err());
-        assertEquals(0, simplified.code(),
-                "the two criteria differ on this model: " + simplified.out() + simplified.err());
+        assertEquals(1, compiled.code(), compiled.out() + compiled.err());
+        assertTrue(compiled.err().contains("E1917"), compiled.err());
     }
 
     /**
@@ -290,23 +279,17 @@ class WhatStrictRefusesIsWhatTheRowsDoNotCoverTest {
     }
 
     /**
-     * Every kind some bar refuses over has something to refuse it under.
+     * Every kind about an obligation has something to be told under.
      *
-     * <p>What a bar asks for and what a kind carries are written out separately so that neither is
-     * read off the other. A kind some build can be held to and nobody gave a code to would be a gap
-     * a report prints and a build is never told about.
-     *
-     * <p>Over the bars and not over the criteria. Which kinds a build refuses over is the policy's
-     * answer and a criterion is only part of one, so a policy that refuses over a kind beside its
-     * criterion's would have taken that kind out of this check by being asked the wrong question.
+     * <p>What the account owes and what a kind carries are written out separately so that neither
+     * is read off the other. A kind a build can be refused over and nobody gave a code to would be
+     * a gap a report prints and a build is never told about.
      */
     @Test
-    void everyKindABarRefusesOverHasADiagnosticCode() {
-        for (Adequacy.AdequacyBar held : Adequacy.AdequacyBar.values()) {
-            for (Adequacy.Kind kind : Adequacy.Kind.values()) {
-                if (held.refuses(kind)) {
-                    assertTrue(kind.code().isPresent(), held + " refuses over " + kind);
-                }
+    void everyKindAboutAnObligationHasADiagnosticCode() {
+        for (Adequacy.Kind kind : Adequacy.Kind.values()) {
+            if (kind.isAboutAnObligation()) {
+                assertTrue(kind.code().isPresent(), kind + " is about an obligation");
             }
         }
     }
@@ -321,108 +304,67 @@ class WhatStrictRefusesIsWhatTheRowsDoNotCoverTest {
      * the command.
      */
     @Test
-    void everyKindABarRefusesOverIsToldAsAWarning() {
-        for (Adequacy.AdequacyBar held : Adequacy.AdequacyBar.values()) {
-            for (Adequacy.Kind kind : Adequacy.Kind.values()) {
-                if (!held.refuses(kind)) {
-                    continue;
-                }
-                assertEquals(souther.compiler.diag.Severity.WARNING,
-                        kind.code().orElseThrow().severity(),
-                        held + " refuses over " + kind + ", so its code is one a build is"
-                                + " warned about rather than one a compile fails on");
-            }
-        }
-    }
-
-    /**
-     * The two criteria differ over the points away from a line and over nothing else.
-     *
-     * <p>Read off the criteria rather than listed, so a kind added and given to one of them and not
-     * the other is this failing rather than a silent second difference between the bars.
-     */
-    @Test
-    void theTwoCriteriaDifferOverThePointsAwayFromALine() {
-        List<Adequacy.Kind> differing = new java.util.ArrayList<>();
+    void everyKindAboutAnObligationIsToldAsAWarning() {
         for (Adequacy.Kind kind : Adequacy.Kind.values()) {
-            if (Adequacy.Criterion.SIMPLIFIED_DOMAIN.refuses(kind)
-                    != Adequacy.Criterion.RELIABLE_DOMAIN.refuses(kind)) {
-                differing.add(kind);
+            if (!kind.isAboutAnObligation()) {
+                continue;
             }
+            assertEquals(souther.compiler.diag.Severity.WARNING,
+                    kind.code().orElseThrow().severity(),
+                    kind + " is about an obligation, so its code is one a build is"
+                            + " warned about rather than one a compile fails on");
         }
-        assertEquals(List.of(Adequacy.Kind.DOMAIN_POINT_UNCOVERED), differing);
     }
 
     /**
-     * A measure a bar asks nothing of decides nothing about the verdict, either way.
+     * A build that measured nothing reaches no verdict about what the account asks for.
      *
-     * <p>The same model, the same measurement, two bars. `ONE_CLASS_OF_TWO` has one measure that can
-     * find anything — what the rows reach of its one position — and only the `classes` bar refuses
-     * over what that finds. So under the default bar the verdict is the same whether that measure
-     * came to an answer or not, and under `classes` it is the answer.
-     *
-     * <p>Held because the two questions are easy to run together. Read as "everything that was
-     * measured", a build held to a bar that asks nothing of the classes was undetermined for a
-     * position nobody had classified — a doubt no row it is asked for would settle — and the same
-     * list made a model satisfied on the strength of a measure the build is not held to.
-     */
-    @Test
-    void aMeasureTheBarAsksNothingOfDecidesNothing() {
-        AdequacyReport byDefault = reportOf(ONE_CLASS_OF_TWO, Adequacy.Level.ALL);
-        AdequacyReport unmeasured = reportOf(ONE_CLASS_OF_TWO, Adequacy.Level.OFF);
-
-        assertEquals(AdequacyReport.AdequacyStatus.SATISFIED, byDefault.adequacy(),
-                byDefault.human(SourceRendering.namedByIdentity(SourceLayouts.NONE)));
-        assertEquals(byDefault.adequacy(), unmeasured.adequacy(),
-                "the default bar refuses nothing this model can be measured for, so measuring it"
-                        + " changes no verdict: " + unmeasured.human(SourceRendering.namedByIdentity(SourceLayouts.NONE)));
-    }
-
-    /**
-     * And a bar that does ask is not satisfied by a build that measured nothing.
-     *
-     * <p>The other side of the one above, and what says the first is not a hole. A build that reads
-     * no rows is not held open on account of the rows themselves — nobody asked for them, and
-     * holding it open there would make every such build undetermined about every model, which is
-     * the answer #955 took out. So what holds it open has to be the measures the bar asks for, each
-     * of which says on its own account that it was not made.
+     * <p>A build that reads no rows is not held open on account of the rows themselves — nobody
+     * asked for them, and holding it open there would make every such build undetermined about
+     * every model, which is the answer #955 took out. So what holds it open has to be the measures
+     * the account asks for, each of which says on its own account that it was not made.
      *
      * <p>Written because the exclusion is easy to state and easy to get wrong. Without this, "the
      * reading does not hold the verdict open where nobody asked for it" rests on the measures over
      * those rows all saying so — which is true and which nothing checked (issue #996).
      */
     @Test
-    void aBarThatAsksIsNotSatisfiedByABuildThatMeasuredNothing() {
+    void aBuildThatMeasuredNothingIsNotSatisfied() {
         Compilation compilation = Compilation.ofSource(ONE_CLASS_OF_TWO, "Main");
-        compilation.measure(new Adequacy.Asked(Adequacy.Level.OFF, false,
-                Adequacy.AdequacyBar.CLASSES));
+        compilation.measure(new Adequacy.Asked(Adequacy.Level.OFF, false));
         compilation.answerEverything();
         AdequacyReport report = AdequacyReport.of(compilation);
 
         assertEquals(AdequacyReport.AdequacyStatus.UNDETERMINED, report.adequacy(),
-                () -> "the classes bar asks what the rows reach of this position and nothing read"
+                () -> "the account asks what the rows reach of this position and nothing read"
                         + " them: " + report.human(SourceRendering.namedByIdentity(compilation.texts())));
     }
 
     /**
-     * A body that forks nowhere is adequate at both levels, and the verdict says so.
+     * A body that forks nowhere owes no arm, and the arm measure does not hold its verdict open.
      *
      * <p>The measure is inapplicable rather than unmeasured, and the difference is the whole of what
      * a verdict does with it: counted as unmeasured, every implemented behavior without a fork in it
-     * would hold its model open at {@code witness} for a measurement that would find nothing however
-     * it was made. Asked of the verdict and not of the evidence, because the evidence is what
-     * {@code AMeasureWithNoNumberSaysWhyTest} holds and this is what a build reads.
+     * would hold its model open for a measurement that would find nothing however it was made.
+     *
+     * <p>Settled at {@code all} and open at {@code witness}, and what holds it open there is the
+     * decision rather than the arms: which rules the rows took is an instrumented run's answer, so
+     * a level that does not ask for one has not asked where the rows went.
      */
     @Test
-    void aBodyThatForksNowhereIsAdequateAtBothLevels() {
-        for (Adequacy.Level level : List.of(Adequacy.Level.WITNESS, Adequacy.Level.ALL)) {
-            AdequacyReport report = reportOf(A_BODY_THAT_FORKS_NOWHERE, level);
+    void aBodyThatForksNowhereOwesNoArmAndIsSettledWhereItsRulesWereRead() {
+        AdequacyReport measured = reportOf(A_BODY_THAT_FORKS_NOWHERE, Adequacy.Level.ALL);
+        AdequacyReport witness = reportOf(A_BODY_THAT_FORKS_NOWHERE, Adequacy.Level.WITNESS);
 
-            String human = report.human(SourceRendering.namedByIdentity(SourceLayouts.NONE));
-            assertEquals(AdequacyReport.AdequacyStatus.SATISFIED, report.adequacy(),
-                    "at " + level + ": " + human);
-            assertTrue(human.contains("branch      not applicable (this body owes no arm)"), human);
-        }
+        String human = measured.human(SourceRendering.namedByIdentity(SourceLayouts.NONE));
+        assertEquals(AdequacyReport.AdequacyStatus.SATISFIED, measured.adequacy(), human);
+        assertTrue(human.contains("branch      not applicable (this body owes no arm)"), human);
+        assertEquals(AdequacyReport.AdequacyStatus.UNDETERMINED, witness.adequacy(),
+                witness.human(SourceRendering.namedByIdentity(SourceLayouts.NONE)));
+        assertTrue(witness.whatKeepsTheVerdictOpen().stream()
+                        .allMatch(each -> each.toString().contains("measure=DECISION")),
+                () -> "and the arms are not what holds it open: "
+                        + witness.whatKeepsTheVerdictOpen());
     }
 
     /**
@@ -509,14 +451,22 @@ class WhatStrictRefusesIsWhatTheRowsDoNotCoverTest {
     @Test
     void aCompositionHasNoArmsOfItsOwnAndDoesNotHoldTheVerdictOpen() {
         // At both levels, because what it owes is what it owes: read off the level, the answer at
-        // `witness` would be that nobody measured arms it does not have.
+        // `witness` would be that nobody measured arms it does not have. What the levels do differ
+        // over is where the rows went, which the stages' own rules are measured by.
         for (Adequacy.Level level : List.of(Adequacy.Level.WITNESS, Adequacy.Level.ALL)) {
             AdequacyReport report = reportOf(COMPOSED, level);
 
             String human = report.human(SourceRendering.namedByIdentity(SourceLayouts.NONE));
-            assertEquals(AdequacyReport.AdequacyStatus.SATISFIED, report.adequacy(), human);
             assertFalse(human.contains("the arms were not measured"), human);
+            assertTrue(report.whatKeepsTheVerdictOpen().stream()
+                            .allMatch(each -> each.toString().contains("measure=DECISION")),
+                    () -> "at " + level + ", nothing of the composition's own holds it open: "
+                            + report.whatKeepsTheVerdictOpen());
         }
+        assertEquals(AdequacyReport.AdequacyStatus.SATISFIED,
+                reportOf(COMPOSED, Adequacy.Level.ALL).adequacy(),
+                reportOf(COMPOSED, Adequacy.Level.ALL)
+                        .human(SourceRendering.namedByIdentity(SourceLayouts.NONE)));
     }
 
     /**
@@ -545,36 +495,33 @@ class WhatStrictRefusesIsWhatTheRowsDoNotCoverTest {
     }
 
     /**
-     * A reading that did not run out leaves the classes it never found, and the bar that asks for
-     * them says so.
+     * A reading that did not run out leaves the classes it never found, and the verdict says so.
      *
      * <p>Two answers make a class gap: which positions there are to cover, and what the rows reached
      * of each. Read off the positions alone, a reading that produced none looks exactly like a
-     * behavior with nothing to cover — so a build held to the bar that refuses over a class no row
-     * is in was satisfied by the classes nobody had derived yet. The border measure beside it was
-     * made in full and says nothing about this one (issue #968).
-     *
-     * <p>And the bars that ask nothing of the classes are not held open by it, which is the other
-     * half of the same rule.
+     * behavior with nothing to cover — so a build was satisfied by the classes nobody had derived
+     * yet. The border measure beside it was made in full and says nothing about this one
+     * (issue #968).
      */
     @Test
-    void aPartitionReadingThatDidNotRunOutHoldsTheClassesBarOpen() {
+    void aPartitionReadingThatDidNotRunOutHoldsTheVerdictOpen() {
         BorderAssessment met = AReportOfOneBorder.assessed(
                 AReportOfOneBorder.aBorderAtTheEdgeOfItsDomain(), AReportOfOneBorder::hit);
         souther.compiler.query.Measurement<List<BorderAssessment>> lines =
                 AReportOfOneBorder.measured(met);
 
         assertEquals(AdequacyReport.AdequacyStatus.UNDETERMINED,
-                AReportOfOneBorder.verdictOf(lines, Adequacy.AdequacyBar.CLASSES),
+                AReportOfOneBorder.verdictOf(lines,
+                        AReportOfOneBorder.partitionThatDidNotRunOut()),
                 "the classes this could not derive are classes nobody has covered");
         assertEquals(AdequacyReport.AdequacyStatus.SATISFIED,
-                AReportOfOneBorder.verdictOf(lines, Adequacy.AdequacyBar.RELIABLE_DOMAIN),
-                "and a bar that asks nothing of the classes reads only the lines");
+                AReportOfOneBorder.verdictOf(lines),
+                "and a reading that did derive them settles it");
     }
 
     private static AdequacyReport.AdequacyStatus verdictOf(
             souther.compiler.query.Measurement<List<BorderAssessment>> lines) {
-        return AReportOfOneBorder.verdictOf(lines, Adequacy.AdequacyBar.SIMPLIFIED_DOMAIN);
+        return AReportOfOneBorder.verdictOf(lines);
     }
 
     /** Two covered stages and the composition of them, which carries rows of its own. */
@@ -658,7 +605,6 @@ class WhatStrictRefusesIsWhatTheRowsDoNotCoverTest {
                 covered.human(SourceRendering.namedByIdentity(SourceLayouts.NONE)));
         assertEquals(AdequacyReport.AdequacyStatus.NOT_SATISFIED, uncovered.adequacy(),
                 uncovered.human(SourceRendering.namedByIdentity(SourceLayouts.NONE)));
-        assertEquals(whole.held(), covered.held(), "filtering leaves the bar alone");
     }
 
     /** One module holding both of the models above, so that filtering has something to filter. */
@@ -750,95 +696,50 @@ class WhatStrictRefusesIsWhatTheRowsDoNotCoverTest {
     private record Run(int code, String out, String err) {}
 
     /**
-     * A class no row is in is reported under every bar and refused under the one that asks for it.
+     * A class no row is in is a row the model asks for, so the report marks it and the verdict is
+     * not satisfied.
      *
-     * <p>Which is the whole of what a bar is for. The measurement does not move — the same class is
-     * named in both reports, at the same position, in the same words — and what changes is whether
-     * the model is held to it. A build refusing over this by default would refuse every model whose
-     * rows are not finished, which is every model being written.
+     * <p>Which used to be the word a caller wrote. The measurement does not move either way — the
+     * same class is named at the same position in the same words — and what the caller decided was
+     * whether the model was held to it, so one model was covered and uncovered at once depending on
+     * which run a reader looked at.
      */
     @Test
-    void aClassNoRowIsInIsReportedByDefaultAndRefusedUnderTheClassesBar() throws Exception {
-        Run byDefault = examples(ONE_CLASS_OF_TWO);
-        Run classes = examples(ONE_CLASS_OF_TWO, "--adequacy", "classes");
+    void aClassNoRowIsInIsMarkedAndLeavesTheVerdictNotSatisfied() throws Exception {
+        Run reported = examples(ONE_CLASS_OF_TWO);
 
-        assertTrue(byDefault.out().contains("· no row is in `false` at flag"), byDefault.out());
-        assertTrue(byDefault.out().contains("adequacy: satisfied"), byDefault.out());
-        assertEquals(0, byDefault.code(), byDefault.err());
-
-        assertTrue(classes.out().contains("! no row is in `false` at flag"), classes.out());
-        assertTrue(classes.out().contains("adequacy: not satisfied"), classes.out());
-        assertEquals(0, classes.code(), "a bar decides the verdict and `--strict` decides the exit");
+        assertTrue(reported.out().contains("! no row is in `false` at flag"), reported.out());
+        assertTrue(reported.out().contains("adequacy: not satisfied"), reported.out());
+        assertEquals(0, reported.code(),
+                "the account decides the verdict and `--strict` decides the exit");
     }
 
-    /**
-     * {@code --strict} decides an exit status under whichever bar was asked for, and no more.
-     *
-     * <p>The pair beside {@link #theReportIsWhatItIsWhetherOrNotTheRunWasAskedToBeStrict}, and the
-     * reason the bar is named on {@code --adequacy} rather than on this flag. A {@code --strict}
-     * that carried a bar would change which findings the report marks, and two runs differing only
-     * in the word would be reports of two different questions rather than one report and a verdict
-     * on it.
-     */
+    /** The same finding on the other surface, refused under its own code. */
     @Test
-    void theReportIsWhatItIsUnderTheClassesBarToo() throws Exception {
-        Run lenient = examples(ONE_CLASS_OF_TWO, "--adequacy", "classes");
-        Run strict = examples(ONE_CLASS_OF_TWO, "--adequacy", "classes", "--strict");
-
-        assertEquals(lenient.out(), strict.out());
-        assertEquals(0, lenient.code(), lenient.err());
-        assertEquals(1, strict.code(), strict.err());
-    }
-
-    /** The same bar on the other surface, refusing the same finding under its own code. */
-    @Test
-    void aCompileHeldToTheClassesBarRefusesTheSameFinding() throws Exception {
+    void aCompileRefusesTheSameFinding() throws Exception {
         Path file = sourceOf(ONE_CLASS_OF_TWO);
 
-        Run classes = cli("compile", file.toString(),
+        Run compiled = cli("compile", file.toString(),
                 "-d", Files.createTempDirectory("souther-classes").toString(),
-                "--adequacy", "classes", "--warnings", "error");
-        Run reliable = cli("compile", file.toString(),
-                "-d", Files.createTempDirectory("souther-reliable-classes").toString(),
-                "--adequacy", "reliable-domain", "--warnings", "error");
+                "--adequacy", "all", "--warnings", "error");
 
-        assertEquals(1, classes.code(), classes.out() + classes.err());
-        assertTrue(classes.err().contains("E1931"), classes.err());
-        assertEquals(0, reliable.code(),
-                "the bars differ on this model: " + reliable.out() + reliable.err());
+        assertEquals(1, compiled.code(), compiled.out() + compiled.err());
+        assertTrue(compiled.err().contains("E1931"), compiled.err());
     }
 
     /**
-     * A word that says how much to measure names no bar, and the report command takes only bars.
+     * The report command takes no {@code --adequacy}, because it has neither half of it to choose.
      *
-     * <p>Its output is the report, so everything is measured either way and there is nothing for
-     * {@code off} or {@code witness} to choose. Refused rather than ignored: a run told to measure
-     * nothing and handed a full report has been answered a question it did not ask.
+     * <p>Its output is the report, so everything is measured; and what it marks is the account's.
+     * Refused rather than ignored: a run told to measure nothing and handed a full report has been
+     * answered a question it did not ask.
      */
     @Test
-    void aLevelIsNotABarAndTheReportCommandRefusesOne() throws Exception {
+    void theReportCommandTakesNoAdequacyWord() throws Exception {
         Run measured = examples(ONE_CLASS_OF_TWO, "--adequacy", "off");
 
         assertEquals(2, measured.code(), measured.out() + measured.err());
-        assertTrue(measured.err().contains("reliable-domain or classes"), measured.err());
-    }
-
-    /**
-     * A bar adds kinds beside its criterion's and never one of them.
-     *
-     * <p>Both halves of {@code refuses} would answer for such a kind, which is one answer written
-     * in two places and free to disagree the moment either moves — a criterion that stopped
-     * refusing over a kind would leave the bar refusing over it for a reason nobody stated.
-     */
-    @Test
-    void aBarAddsOnlyWhatItsCriterionDoesNotAlreadyRefuse() {
-        for (Adequacy.AdequacyBar bar : Adequacy.AdequacyBar.values()) {
-            for (Adequacy.Kind added : bar.alsoRefuses()) {
-                assertFalse(bar.domain().refuses(added),
-                        bar + " adds " + added + ", which " + bar.domain()
-                                + " already refuses over");
-            }
-        }
+        assertTrue(measured.err().contains("--adequacy"), measured.err());
     }
 
     private static Path sourceOf(String model) throws Exception {

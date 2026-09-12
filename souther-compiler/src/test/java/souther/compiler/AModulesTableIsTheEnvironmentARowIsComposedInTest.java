@@ -155,7 +155,7 @@ class AModulesTableIsTheEnvironmentARowIsComposedInTest {
     /** The rows a block offers, one to an entry. */
     private static List<String> rowsOf(String model) {
         Compilation compilation = measured(model);
-        String block = GeneratedRows.of(compilation, compilation.modules().get(0), "decides", true,
+        String block = GeneratedRows.of(compilation, compilation.modules().get(0), "decides",
                 SourceRendering.namedByIdentity(compilation.texts())).text();
         return block.lines().map(String::trim).filter(line -> line.startsWith("| ")).toList();
     }

@@ -207,7 +207,7 @@ class AMeasureWithNoNumberSaysWhyTest {
                     border      not applicable (the rules of this behavior draw no line)
                     branch      not applicable (this body owes no arm)
                     decision    rules 1   taken 0
-                      · no row takes a decision rule
+                      ! no row takes a decision rule
                   narrow                   implemented   rows 0    pending 0
                     signature   not applicable (this behavior's output is not a sum)
                     partition   not applicable (the rules of this behavior divide no position)
@@ -215,7 +215,7 @@ class AMeasureWithNoNumberSaysWhyTest {
                     border      not applicable (the rules of this behavior draw no line)
                     branch      not applicable (this body owes no arm)
                     decision    rules 1   taken 0
-                      · no row takes a decision rule
+                      ! no row takes a decision rule
                   both                     implemented   rows 1    pending 0
                     signature   not applicable (this behavior's output is not a sum)
                     partition   not applicable (this behavior is measured at its stages)
@@ -240,11 +240,11 @@ class AMeasureWithNoNumberSaysWhyTest {
                       · no OUT point is owed at r.cost = 1000 (invariant Amount #1): excluded — the rules leave no value there
                     branch      not applicable (this body owes no arm)
                     decision    rules 1   taken 0
-                      · no row takes a decision rule
+                      ! no row takes a decision rule
                   classify                 implemented   rows 1    pending 0
                     signature   not applicable (this behavior's output is not a sum)
                     partition   axes 1   equivalence partitions 1/2
-                      · no row is in `No` at q.flag
+                      ! no row is in `No` at q.flag
                     border      not applicable (the rules of this behavior draw no line)
                     branch      not applicable (this body owes no arm)
                     decision    rules 1   taken 1
@@ -254,9 +254,9 @@ class AMeasureWithNoNumberSaysWhyTest {
                     border      not applicable (the rules of this behavior draw no line)
                     branch      not measured (no row names this behavior)
                     decision    rules 2   taken 0
-                      · no row takes a decision rule
+                      ! no row takes a decision rule
                           · it goes through `case Yes` (46:16)
-                      · no row takes a decision rule
+                      ! no row takes a decision rule
                           · it goes through `case No` (46:16)
                   declarations   obligations 0/4
                       ? undecided whether a row is at the ON point value = 0 (invariant Amount #1) — no row names this behavior
@@ -273,15 +273,8 @@ class AMeasureWithNoNumberSaysWhyTest {
                           · read as rated/r.cost: in 0 <= r.cost < 1000
 
                 7 behaviors: 6 implemented, 0 unimplemented, 1 injected; 0 rows waiting for a `let`.
-                adequacy: undetermined
-                  what keeps it open
-                    may change in a wider run     0
-                    unaffected by a wider run     5
-                      branch of sift — no row names this behavior
-                      invariant Amount #1 = 0 (at the line) — no row names this behavior
-                      invariant Amount #1 = 0 (in the region, above) — no row names this behavior
-                      invariant Amount #1 = 1000 (at the line) — no row names this behavior
-                      invariant Amount #1 = 1000 (in the region, below) — no row names this behavior
+                adequacy: not satisfied
+                6 gaps marked `!`: what a strict build refuses over.
                 """, human());
     }
 
@@ -618,19 +611,17 @@ class AMeasureWithNoNumberSaysWhyTest {
     }
 
     /**
-     * What the verdict does with each kind.
+     * A measure nobody made and a measure nothing was ever going to be made at are told apart.
      *
-     * <p>The two are the whole reason for telling them apart. A measure nothing was ever going to be
+     * <p>The two are the whole reason for the distinction. A measure nothing was ever going to be
      * measured at is not a doubt anybody can act on; a measure that could have found a gap and was
      * not made is exactly one. Asked of one model holding both, so that neither answer is the
-     * accident of a fixture with only one kind in it.
+     * accident of a fixture with only one kind in it. What a verdict does with each is held where
+     * a model with nothing established is ({@code WhatKeepsAnUndeterminedVerdictOpenIsSaidTest});
+     * here the gaps this model has settle it.
      */
     @Test
-    void aMeasureThatWasNotMadeHoldsTheVerdictOpenAndAnInapplicableOneDoesNot() {
-        AdequacyReport report = AdequacyReport.of(compiled());
-        assertEquals(AdequacyReport.AdequacyStatus.UNDETERMINED, report.adequacy(),
-                report.human(SourceRendering.namedByIdentity(compiled().texts())));
-
+    void aMeasureThatWasNotMadeAndAnInapplicableOneAreToldApart() {
         List<Object[]> measures = allMeasures();
         assertTrue(measures.stream().anyMatch(m -> m[1] instanceof Measure.NotApplicable<?>),
                 "the model holds an inapplicable measure");

@@ -201,7 +201,7 @@ class ABoundaryIsAValueTheRecordCanHoldTest {
      */
     @Test
     void aRowIsOfferedAtEachOfThem() throws Exception {
-        String report = reportOn(TIMESHEET, "--generate", "--boundaries");
+        String report = reportOn(TIMESHEET, "--generate");
 
         assertTrue(report.contains(
                         "startsAt = MinuteOfDay(1439), endsAt = MinuteOfDay(1440)"),
@@ -267,7 +267,7 @@ class ABoundaryIsAValueTheRecordCanHoldTest {
                     if pair.b.value >= 50
                         then Big
                         else Small
-                """, "--generate", "--boundaries");
+                """, "--generate");
 
         // Read off the values the rows are written with: a row composed only for a line carries no
         // name, so what is asked for is a row holding the value rather than a line named in the text.
@@ -329,7 +329,7 @@ class ABoundaryIsAValueTheRecordCanHoldTest {
         String report = reportOn(TIMESHEET.replace(
                         "interval.endsAt.value - interval.startsAt.value >= 480",
                         "interval.startsAt.value >= 720"),
-                "--generate", "--boundaries");
+                "--generate");
 
         assertFalse(report.contains("every value tried was refused"),
                 () -> "the class of the afternoon is as writable as its edge:\n" + report);
@@ -380,7 +380,7 @@ class ABoundaryIsAValueTheRecordCanHoldTest {
                 () -> "cap stops at 1440, so a start of 1440 has nothing to be under: " + asked);
         assertFalse(asked.stream().anyMatch(l -> l.contains("input.interval.startsAt = 1440")),
                 () -> "asked for " + asked);
-        assertFalse(reportOn(nested, "--generate", "--boundaries")
+        assertFalse(reportOn(nested, "--generate")
                         .contains("every value tried was refused"),
                 "and each of them is a row that builds");
     }

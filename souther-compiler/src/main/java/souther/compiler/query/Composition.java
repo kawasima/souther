@@ -89,7 +89,7 @@ public record Composition(OfferingRequest request,
             // deciding what a row needs to be run.
             take(byBehavior, behavior,
                     filling == null ? List.of() : filling.composed().rows(),
-                    request.boundaries() ? atTheLines(owed.get(behavior)) : List.of(),
+                    atTheLines(owed.get(behavior)),
                     filling == null ? List.of() : filling.rules().byRule().values());
         }
         SequencedMap<String, List<OfferedRow>> out = new LinkedHashMap<>();

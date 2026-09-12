@@ -13,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * A comparison written in an {@code ensures} draws a line, and {@code --boundaries} offers a row at
+ * A comparison written in an {@code ensures} draws a line, and {@code --generate} offers a row at
  * it.
  *
  * <p>The model's own lines come from more than a {@code data}'s invariant and a comparison in a
@@ -172,7 +172,7 @@ class AComparisonInAnEnsuresIsOfferedARowTest {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         System.setOut(new PrintStream(out, true, StandardCharsets.UTF_8));
         try {
-            Main.main(new String[] {"examples", file.toString(), "--generate", "--boundaries"});
+            Main.main(new String[] {"examples", file.toString(), "--generate"});
         } finally {
             System.setOut(was);
         }

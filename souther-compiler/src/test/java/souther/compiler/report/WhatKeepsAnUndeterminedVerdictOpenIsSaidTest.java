@@ -102,12 +102,18 @@ class WhatKeepsAnUndeterminedVerdictOpenIsSaidTest {
                 () -> "and no gap: there is nothing left to write " + report.adequacyGaps());
     }
 
-    /** And what holds it open is one thing, which no allowance of this compiler's reaches. */
+    /**
+     * And what holds it open is what no allowance of this compiler's reaches.
+     *
+     * <p>Two things, of one cause: the rule nothing could classify, and the decision measure that
+     * could not be made because no run through any of its rules can be recognised. Allowing more
+     * makes neither of them.
+     */
     @Test
-    void whatKeepsItOpenIsOneThingAWiderRunDoesNotReach() {
+    void whatKeepsItOpenIsWhatAWiderRunDoesNotReach() {
         AdequacyReport report = measured();
 
-        assertEquals(new AdequacyReport.UnderAWiderRun(0, 1), report.underAWiderRun(),
+        assertEquals(new AdequacyReport.UnderAWiderRun(0, 2), report.underAWiderRun(),
                 () -> "what keeps it open: " + report.whatKeepsTheVerdictOpen());
     }
 
@@ -120,16 +126,18 @@ class WhatKeepsAnUndeterminedVerdictOpenIsSaidTest {
      */
     @Test
     void andItIsTheRuleAboutTheValueTheListWasMadeFrom() {
-        AdequacyOpening open = measured().whatKeepsTheVerdictOpen().get(0);
-        Weakening only = ((AdequacyOpening.ByWeakening) open).cause();
+        List<AdequacyOpening> open = measured().whatKeepsTheVerdictOpen();
 
-        assertTrue(only instanceof Weakening.ModelReadingIncomplete it
-                        && it.cause() instanceof ClosureGap.QuestionUnanswered asked
-                        && asked.question() instanceof StandingQuestion
-                                .NothingClassifiesIt rule
-                        && rule.why() instanceof BlockReason.RuleAboutADerivedValue,
+        assertTrue(open.stream()
+                        .filter(AdequacyOpening.ByWeakening.class::isInstance)
+                        .map(each -> ((AdequacyOpening.ByWeakening) each).cause())
+                        .anyMatch(cause -> cause instanceof Weakening.ModelReadingIncomplete it
+                                && it.cause() instanceof ClosureGap.QuestionUnanswered asked
+                                && asked.question() instanceof StandingQuestion
+                                        .NothingClassifiesIt rule
+                                && rule.why() instanceof BlockReason.RuleAboutADerivedValue),
                 () -> "the comparison in `List.isEmpty` is about a value made from the position: "
-                        + only);
+                        + open);
     }
 
     /** And a person reading the report is told so, under the verdict. */
@@ -141,7 +149,7 @@ class WhatKeepsAnUndeterminedVerdictOpenIsSaidTest {
                 adequacy: undetermined
                   what keeps it open
                     may change in a wider run     0
-                    unaffected by a wider run     1
+                    unaffected by a wider run     2
                 """), human);
     }
 
@@ -151,10 +159,11 @@ class WhatKeepsAnUndeterminedVerdictOpenIsSaidTest {
         JsonNode root = JSON.readTree(measured().json(SourceRendering.namedByIdentity(SourceLayouts.NONE)));
 
         assertEquals("undetermined", root.get("adequacy").asString());
-        assertEquals(1, root.get("keptOpenBy").size(), root.get("keptOpenBy").toString());
+        assertEquals(2, root.get("keptOpenBy").size(), root.get("keptOpenBy").toString());
         assertEquals("rule_unread", root.get("keptOpenBy").get(0).get("kind").asString());
-        assertEquals("unaffected",
-                root.get("keptOpenBy").get(0).get("runSensitivity").asString());
+        for (JsonNode each : root.get("keptOpenBy")) {
+            assertEquals("unaffected", each.get("runSensitivity").asString(), each.toString());
+        }
     }
 
     /**
@@ -295,10 +304,6 @@ class WhatKeepsAnUndeterminedVerdictOpenIsSaidTest {
                 data NotEntitled
 
                 behavior go : (worked: Int) -> Grant | NotEntitled
-                    constructs Grant, Days
-
-                let go (worked) =
-                    if worked >= 5 then Grant { days = Days(10) } else NotEntitled
                 """);
     }
 

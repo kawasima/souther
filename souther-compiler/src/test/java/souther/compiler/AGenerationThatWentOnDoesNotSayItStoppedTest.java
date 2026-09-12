@@ -91,7 +91,7 @@ class AGenerationThatWentOnDoesNotSayItStoppedTest {
         // for, so there is no store to ask what its rows would settle.
         return GeneratedRows.of(souther.compiler.query.EveryRowOfIt.offered(
                         souther.compiler.query.Composition.composed(
-                        souther.compiler.query.OfferingRequest.overTheModule("example.trip", false),
+                        souther.compiler.query.OfferingRequest.overTheModule("example.trip"),
                         Map.of("submit", new Adequacy.Filling(result,
                                 Generator.GenerationResult.NONE,
                                 Adequacy.Generated.RowsForRules.NOTHING,

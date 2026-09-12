@@ -70,7 +70,7 @@ class ARowIsOfferedForEveryCombinationOfTheDecisionsOneValueIsMadeOfTest {
         assertNotNull(filling, "the model under test compiles");
         return GeneratedRows.of(Adequacy.offeredFor(compilation.db(),
                         souther.compiler.query.OfferingRequest.overTheModule(
-                                compilation.modules().get(0), false)),
+                                compilation.modules().get(0))),
                 Map.of(), SourceRendering.namedByIdentity(compilation.texts()), compilation.db()).text();
     }
 

@@ -213,7 +213,7 @@ class APairIsChosenOnePositionAtATimeTest {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         System.setOut(new PrintStream(out, true, StandardCharsets.UTF_8));
         try {
-            Main.main(new String[] {"examples", "--generate", "--boundaries", file.toString()});
+            Main.main(new String[] {"examples", "--generate", file.toString()});
         } finally {
             System.setOut(was);
         }

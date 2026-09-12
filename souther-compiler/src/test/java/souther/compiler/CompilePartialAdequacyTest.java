@@ -344,7 +344,7 @@ class CompilePartialAdequacyTest {
                 "and the position that could not be read is named");
         String written = GeneratedRows.of(Adequacy.offeredFor(compilation.db(),
                         souther.compiler.query.OfferingRequest.overTheModule(
-                                "example.budget", true)),
+                                "example.budget")),
                 Map.of(), SourceRendering.namedByIdentity(compilation.texts()), compilation.db()).text();
         assertFalse(written.contains("example take"), "no row is offered: " + written);
         assertTrue(written.contains("no rows offered at"),
@@ -390,14 +390,13 @@ class CompilePartialAdequacyTest {
                 .findings();
 
         List<Adequacy.Finding> undecided = findings.stream()
-                .filter(f -> Adequacy.AdequacyBar.SIMPLIFIED_DOMAIN.refuses(f.kind())).toList();
+                .filter(f -> f.kind().isAboutAnObligation()).toList();
 
         assertFalse(undecided.isEmpty(), () -> "the model has a kind a build gates on: " + findings);
         for (Adequacy.Finding f : undecided) {
             assertFalse(f.weakenedBy().isEmpty(), f::toString);
-            assertEquals(Adequacy.Finding.Disposition.UNDECIDED,
-                    f.disposition(Adequacy.AdequacyBar.SIMPLIFIED_DOMAIN), f::toString);
-            assertFalse(f.isAdequacyGap(Adequacy.AdequacyBar.SIMPLIFIED_DOMAIN), f::toString);
+            assertEquals(Adequacy.Finding.Disposition.UNDECIDED, f.disposition(), f::toString);
+            assertFalse(f.isAdequacyGap(), f::toString);
         }
     }
 
@@ -542,7 +541,7 @@ class CompilePartialAdequacyTest {
         assertEquals(List.of(), generated.get("take").boundaries().rows());
         String written = GeneratedRows.of(Adequacy.offeredFor(compilation.db(),
                         souther.compiler.query.OfferingRequest.overTheModule(
-                                "example.split", true)),
+                                "example.split")),
                 Map.of(), SourceRendering.namedByIdentity(compilation.texts()), compilation.db()).text();
         assertFalse(written.contains("example take"),
                 "the row may be sitting in the file that could not be read: " + written);

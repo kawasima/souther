@@ -136,7 +136,7 @@ class APointNothingIsAskedForARowAtIsNotOfferedOneTest {
         var declared = Adequacy.accountFor(compilation.db(),
                 "example.declaredwritten", new GenerationScope.Module());
         Composition composed = Composition.composed(
-                OfferingRequest.overTheModule("example.declaredwritten", true), generated,
+                OfferingRequest.overTheModule("example.declaredwritten"), generated,
                 declared);
         Settlements table = Settlements.of(compilation.db(), composed);
 
@@ -171,7 +171,7 @@ class APointNothingIsAskedForARowAtIsNotOfferedOneTest {
         Map<String, Adequacy.Filling> generated =
                 Adequacy.generatedOf(compilation.db(), "example.written");
         assertNotNull(generated, "the model under test compiles: " + compilation.errors());
-        return Composition.composed(OfferingRequest.overTheModule("example.written", true), generated,
+        return Composition.composed(OfferingRequest.overTheModule("example.written"), generated,
                 Adequacy.accountFor(compilation.db(), "example.written",
                         new GenerationScope.Module()));
     }

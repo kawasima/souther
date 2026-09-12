@@ -2,7 +2,6 @@ package souther.cli;
 
 import org.junit.jupiter.api.Test;
 
-import souther.compiler.query.Adequacy;
 import souther.compiler.query.ItemAssessment;
 import souther.compiler.report.AdequacyReport;
 
@@ -18,22 +17,23 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * What a build is held to is what it asked for, and it is not how much it measured.
+ * A build is held to every obligation the account derives, and what it asks for is how much to
+ * measure.
  *
  * <p>The levels say what to measure: what separates {@code witness} from {@code all} is a second set
- * of classes and a second run of every row. The points a row is owed away from a line cost nothing
- * extra — they come off the same assessment of the same border as the points against it — so
- * refusing over them is a bar and not a measurement, and there was no way to ask for it. A compile
- * at the highest level exited {@code 0} over a model whose {@code IN} and {@code OUT} points no row
- * was at, which is a question only {@code souther examples} answered (issue #937).
+ * of classes and a second run of every row. Which of what was measured a build then refuses over
+ * was a second word beside them — a bar — and a criterion a caller selects is a budget: one model
+ * came back satisfied under one word and refused under another, with the gaps printed in the report
+ * either way. So there is one answer now, and a compile that measured everything is told about
+ * everything the model owes a row at.
  */
-class ABuildCanBeHeldToReliableDomainCoverageTest {
+class ABuildIsHeldToEveryObligationTheAccountDerivesTest {
 
     /**
      * A model whose rows sit on the line and one step over it, and nowhere else.
      *
-     * <p>Simplified domain coverage is met and reliable domain coverage is not, which is the whole
-     * difference between the two bars.
+     * <p>So the {@code IN} and {@code OUT} points of the line its guard draws have no row, which
+     * the build is held to like everything else.
      */
     private static final String ON_THE_LINE_ONLY = """
             module example.limit
@@ -53,52 +53,51 @@ class ABuildCanBeHeldToReliableDomainCoverageTest {
                 | "a step over" : (101) -> TooHigh
             """;
 
+    /** A row away from the line is owed like a row on it, so the build that measured everything is
+     *  told about the two that have none. */
     @Test
-    void theHighestLevelIsNotHeldToThePointsAwayFromTheLine() throws Exception {
+    void aBuildThatMeasuredEverythingIsHeldToThePointsAwayFromTheLine() throws Exception {
         Run compiled = compile(ON_THE_LINE_ONLY, "all");
-
-        assertEquals(0, compiled.code(), compiled.out() + compiled.err());
-    }
-
-    @Test
-    void askingForReliableDomainCoverageRefusesOverThem() throws Exception {
-        Run compiled = compile(ON_THE_LINE_ONLY, "reliable-domain");
 
         assertEquals(1, compiled.code(), compiled.out() + compiled.err());
         assertTrue(compiled.err().contains("E1917"), compiled.err());
         assertTrue(compiled.err().contains("IN") || compiled.err().contains("OUT"), compiled.err());
     }
 
-    /** The same measurement either way: what changes is which of its findings a build refuses. */
+    /** And a build that measured nothing is told nothing, which is the dial that is left. */
     @Test
-    void theSameFindingIsReportedUnderTheOneBarAndRefusedUnderTheOther() throws Exception {
-        assertFalse(compile(ON_THE_LINE_ONLY, "all").err().contains("E1917"),
-                "the point is measured at `all` and not refused over");
+    void aBuildThatMeasuredNothingIsToldNothing() throws Exception {
+        Run compiled = compile(ON_THE_LINE_ONLY, "off");
+
+        assertEquals(0, compiled.code(), compiled.out() + compiled.err());
+        assertFalse(compiled.err().contains("E1917"), compiled.err());
     }
 
     @Test
-    void aWordThatNamesNoBarIsRefusedWhereItIsWritten() throws Exception {
+    void aWordThatNamesNoLevelIsRefusedWhereItIsWritten() throws Exception {
         Run compiled = compile(ON_THE_LINE_ONLY, "thorough");
 
         assertEquals(2, compiled.code(), compiled.out() + compiled.err());
-        assertTrue(compiled.err().contains("off, witness, all, reliable-domain or classes"), compiled.err());
+        assertTrue(compiled.err().contains("off, witness or all"), compiled.err());
     }
 
     /**
-     * A criterion asks for evidence, and a verdict rests on the evidence it asks for.
+     * A verdict rests on the evidence the account asks for, which is every point of a border.
      *
-     * <p>The two halves of what a criterion means, held together. A build that refuses over a
-     * missing {@code IN} row and calls a model satisfied while the {@code IN} point could not be
-     * measured is held to one criterion where it refuses and another where it decides. The border
-     * here is the pair: the points against the line came to an answer and the two away from it did
-     * not.
+     * <p>The other half of what being held to something means. A build that refuses over a missing
+     * {@code IN} row and calls a model satisfied while the {@code IN} point could not be measured
+     * is answering two questions in one report. The border here is the pair: the points against the
+     * line came to an answer and the two away from it did not.
      *
      * <p>A line this body drew, because that is where all four points are this behavior's. A run
      * beside a clause's line is owed to the type and is answered once for the module, so a verdict
      * about one behavior would not be resting on it at all.
+     *
+     * <p>The other side of it is the compile above: the same two points, measured and refused over.
+     * Without that this would pass on a verdict held open by anything at all.
      */
     @Test
-    void aVerdictRestsOnTheEvidenceItsCriterionAsksFor() {
+    void aVerdictRestsOnEveryPointOfTheBorder() {
         souther.compiler.query.Measurement<java.util.List<
                 souther.compiler.query.BorderAssessment>> lines = AReportOfOneBorder.measured(
                         AReportOfOneBorder.assessed(AReportOfOneBorder.aBorderABodyDrew(),
@@ -106,13 +105,9 @@ class ABuildCanBeHeldToReliableDomainCoverageTest {
                                         ? AReportOfOneBorder.settled(
                                                 new ItemAssessment.Coverage.Hit())
                                         : AReportOfOneBorder.undecided()));
-
-        assertEquals(AdequacyReport.AdequacyStatus.SATISFIED,
-                AReportOfOneBorder.verdictOf(lines, Adequacy.AdequacyBar.SIMPLIFIED_DOMAIN),
-                "the points it asks for came to an answer");
         assertEquals(AdequacyReport.AdequacyStatus.UNDETERMINED,
-                AReportOfOneBorder.verdictOf(lines, Adequacy.AdequacyBar.RELIABLE_DOMAIN),
-                "two of the points it asks for did not");
+                AReportOfOneBorder.verdictOf(lines),
+                "two of the points it asks for came to no answer");
     }
 
     private record Run(int code, String out, String err) {}

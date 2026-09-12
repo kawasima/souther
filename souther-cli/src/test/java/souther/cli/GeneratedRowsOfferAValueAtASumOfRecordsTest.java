@@ -13,8 +13,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * The rows {@code souther examples --generate --boundaries} writes offer a value at a position that
- * is a sum of records, and say nothing about that position having none.
+ * The rows {@code souther examples --generate} writes offer a value at a position that is a sum of
+ * records, and say nothing about that position having none.
  *
  * <p>Whether a value can be composed for such a position is the compiler's question and is asked of
  * it ({@code ACaseComposedForOneReaderIsComposedForEveryReaderTest} in souther-compiler, issue
@@ -77,7 +77,7 @@ class GeneratedRowsOfferAValueAtASumOfRecordsTest {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         System.setOut(new PrintStream(out, true, StandardCharsets.UTF_8));
         try {
-            Main.main(new String[] {"examples", file.toString(), "--generate", "--boundaries"});
+            Main.main(new String[] {"examples", file.toString(), "--generate"});
         } finally {
             System.setOut(was);
         }

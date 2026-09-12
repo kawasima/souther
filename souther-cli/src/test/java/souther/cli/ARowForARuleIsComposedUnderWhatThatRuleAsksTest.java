@@ -79,7 +79,7 @@ class ARowForARuleIsComposedUnderWhatThatRuleAsksTest {
         if (compilation.modules().isEmpty()) {
             throw new IllegalStateException("the model under test compiles");
         }
-        return GeneratedRows.of(compilation, compilation.modules().get(0), "decides", true,
+        return GeneratedRows.of(compilation, compilation.modules().get(0), "decides",
                 SourceRendering.namedByIdentity(SourceLayouts.NONE)).text();
     }
 }

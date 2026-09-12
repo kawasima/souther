@@ -201,12 +201,11 @@ class AMeasureWeakerThanCompleteSaysWhatMadeItSoTest {
      */
     @Test
     void whatABuildRefusesOverIsWhatNothingWeakened() {
-        Adequacy.AdequacyBar held = report.held();
         List<Adequacy.Finding> findings = report.findings();
         assertFalse(findings.isEmpty(), "the model produces findings");
         for (Adequacy.Finding each : findings) {
-            Adequacy.Finding.Disposition said = each.disposition(held);
-            if (!held.refuses(each.kind())) {
+            Adequacy.Finding.Disposition said = each.disposition();
+            if (!each.kind().isAboutAnObligation()) {
                 assertEquals(Adequacy.Finding.Disposition.REPORTED, said, each::toString);
                 continue;
             }
