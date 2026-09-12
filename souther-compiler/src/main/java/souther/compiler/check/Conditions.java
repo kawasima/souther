@@ -362,7 +362,7 @@ final class Conditions {
                     new Core.KeptCallPlace(
                             ReferenceOrigin.composedOutOf(call.reference(), 0,
                                     ReferenceDerivationCause.SizeMeaningOfReference::new),
-                            application),
+                            application, call.place().lineage()),
                     Type.INT, call.pos());
             return new Core.Binary(BinOp.EQ, size, new Core.Int(0, Type.INT, call.pos()),
                     ConstructOccurrence.unwritten(), Type.BOOL, call.pos());

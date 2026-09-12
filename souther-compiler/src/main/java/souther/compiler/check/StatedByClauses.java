@@ -2,6 +2,7 @@ package souther.compiler.check;
 
 import souther.compiler.core.Core;
 import souther.compiler.numeric.OrderedIntervals;
+import souther.compiler.types.ConstructOccurrence;
 import souther.compiler.types.Type;
 import souther.compiler.values.AdmissibleValues;
 import souther.compiler.values.AdmittedPlan;
@@ -154,10 +155,10 @@ sealed interface StatedByClauses {
      *                     which of a position's numbers a rule is written about is settled by the
      *                     call; what the rule leaves is the other half, and a rule this could not
      *                     read has none
-     * @param ruleShortfalls what a rule is answerable for, each saying the written place the
-     *                       reading decided it at. Made where the decision was made and never read
-     *                       back out of what a position was left holding: a place holds the reasons
-     *                       of every rule that reached it and names none of them.
+     * @param ruleShortfalls what a rule is answerable for, each saying the part of this reading's
+     *                       tree it was decided under. Made where the decision was made and never
+     *                       read back out of what a position was left holding: a place holds the
+     *                       reasons of every rule that reached it and names none of them.
      *
      *                       <p>Its algebra is the branch's. A branch nobody can be in has none —
      *                       there is no clause for an author to look at. A branch beside a dead one
@@ -201,7 +202,7 @@ sealed interface StatedByClauses {
                 Set<FactSubject> stopped,
                 Map<FactSubject, StringRestriction> aboutStrings,
                 Set<AdmissibleReading.AskedAt> asked,
-                Set<RuleShortfall> ruleShortfalls,
+                Set<ReadingShortfall> ruleShortfalls,
                 EndsLeftOpen endsLeftOpen,
                 BoundaryState boundary,
                 Map<OpenEnd, EndsLeftOpen.Behind> boundsLeftOpen) {
@@ -353,8 +354,8 @@ sealed interface StatedByClauses {
          * reader for. Folded into the opening, a reader wanting the second would have to go through
          * a value about both.
          */
-        Part either(ChoiceSite choice, AlternativeOpening opening, WhatTheAlternativesLeave narrowed,
-                    Part other) {
+        Part either(ChoiceMet choice, AlternativeOpening opening,
+                    WhatTheAlternativesLeave narrowed, Part other) {
             // What a rule is answerable for is said of the choice, beside it and never out of it.
             // What happened is that this choice offered an alternative nothing could read, so an
             // author is sent to the choice — filed at a leaf under the branch that was read, they
@@ -371,7 +372,7 @@ sealed interface StatedByClauses {
             // answered by whichever branch it was asked of.
             assert Collections.disjoint(ruleShortfalls, other.ruleShortfalls())
                     : "two alternatives of one choice are answerable for one written place";
-            Set<RuleShortfall> shortfalls = new LinkedHashSet<>(ruleShortfalls);
+            Set<ReadingShortfall> shortfalls = new LinkedHashSet<>(ruleShortfalls);
             shortfalls.addAll(other.ruleShortfalls());
             leftOpenByValues(choice, opening.byValues().byTheRightGoingUnread(),
                     other.ruleShortfalls(), shortfalls);
@@ -401,7 +402,7 @@ sealed interface StatedByClauses {
 
         /** The same ends, with {@code choice} standing between them and the walk. */
         private static Map<OpenEnd, EndsLeftOpen.Behind> under(
-                ChoiceSite choice, Map<OpenEnd, EndsLeftOpen.Behind> these) {
+                ChoiceMet choice, Map<OpenEnd, EndsLeftOpen.Behind> these) {
             if (these.isEmpty()) {
                 return these;
             }
@@ -447,17 +448,19 @@ sealed interface StatedByClauses {
          * stops, in the vocabulary that can say the ends were the reading that stopped
          * ({@code RuleAccounting.Why.TheEndReadingSays}); this reason is not it.
          */
-        private static void leftOpenByValues(ChoiceSite choice,
+        private static void leftOpenByValues(ChoiceMet choice,
                                              Set<FactSubject> these,
-                                             Set<RuleShortfall> unread, Set<RuleShortfall> out) {
+                                             Set<ReadingShortfall> unread,
+                                             Set<ReadingShortfall> out) {
             these.stream()
                     .filter(each -> !accountedFor(each, unread))
-                    .forEach(each -> out.add(new RuleShortfall(each,
-                            UnreadReason.ALTERNATIVE_NOT_READ, choice)));
+                    .forEach(each -> out.add(new ReadingShortfall(choice.writtenIn(),
+                            choice.writtenAs(), RuleShortfall.Kind.CHOICE,
+                            UnreadReason.ALTERNATIVE_NOT_READ, each)));
         }
 
         /** Whether {@code unread} holds an account of {@code at}. */
-        private static boolean accountedFor(FactSubject at, Set<RuleShortfall> unread) {
+        private static boolean accountedFor(FactSubject at, Set<ReadingShortfall> unread) {
             return unread.stream().anyMatch(one -> one.position().equals(at));
         }
 
@@ -1365,13 +1368,58 @@ sealed interface StatedByClauses {
                         yield left.both(right).mapped(Part::underACollapsedChoice);
                     }
                     yield left.either(
-                            new ChoiceSite(it.at(), it.writtenAt().pos()),
+                            new ChoiceMet(writtenIn(left, right), wroteIt(it.writtenAt())),
                             opens(it.at(), fate.width(), left.took(), right.took()),
                             fate.narrowed(), right);
                 }
             };
         }
 
+    }
+
+    /**
+     * What the author wrote at {@code e}, where they wrote anything.
+     *
+     * <p>The construct and not the copy the walk is standing in. A helper expanded at two calls
+     * gives two copies carrying one origin, and what an author goes and rewrites is the one they
+     * wrote — so the copy is what this drops and the construct is what it keeps.
+     *
+     * <p>Nothing for a node no author wrote, which is what a substitution puts in the tree when it
+     * gives a field an expression of its own. Answered with a construct anyway, a reader would be
+     * sent to an operator that is not in front of them.
+     */
+    private static ConstructOccurrence wroteIt(Core e) {
+        return e instanceof Core.Binary it ? it.occurrence() : ConstructOccurrence.unwritten();
+    }
+
+    /**
+     * Which part of the clause a choice between {@code left} and {@code right} is written in.
+     *
+     * <p>Read off the parts under it, which is where the answer is. A clause is split into the
+     * rules its author wrote at the {@code &&}s alone, so a {@code ||} is written inside exactly
+     * one of them and everything under it is written there too — and a part under an alternative is
+     * a part of this reading's tree, which is what the crossing out of the reading falls back to
+     * where the choice itself is one no author wrote.
+     *
+     * <p>The outermost of them, so that one choice answers the same whichever branch happens to
+     * hold the first part met. Which of two parts of one reading is outermost is what the numbering
+     * says, and it is read only against the parts of this same choice.
+     */
+    private static ClauseOccurrence writtenIn(Taken left, Taken right) {
+        ClauseOccurrence out = null;
+        for (ClauseOccurrence each : left.parts().keySet()) {
+            out = out == null || each.ordinal() < out.ordinal() ? each : out;
+        }
+        for (ClauseOccurrence each : right.parts().keySet()) {
+            out = out == null || each.ordinal() < out.ordinal() ? each : out;
+        }
+        if (out == null) {
+            // Both alternatives of a written choice are readings of something somebody wrote, so a
+            // choice with no part under either of them is this compiler's tree gone wrong and not a
+            // fact about any model.
+            throw new IllegalStateException("a choice of a rule stands between nothing written");
+        }
+        return out;
     }
 
     /**
@@ -1504,8 +1552,8 @@ sealed interface StatedByClauses {
          * parts. Each of them is written under one alternative and is answered by what happened to
          * that alternative, which is nothing — both stand.
          */
-        Taken either(ChoiceSite choice, AlternativeOpening opening, WhatTheAlternativesLeave narrowed,
-                     Taken other) {
+        Taken either(ChoiceMet choice, AlternativeOpening opening,
+                     WhatTheAlternativesLeave narrowed, Taken other) {
             return new Taken(took.either(choice, opening, narrowed, other.took()),
                     joined(parts, other.parts()),
                     opened(opened(opened, other.opened()), opening.byValues().positions()));
@@ -1539,13 +1587,14 @@ sealed interface StatedByClauses {
      * one position asked for one machine and are two of these — two rules answerable for one
      * refusal, which is what writing the same clause twice comes to.
      */
-    private static Set<RuleShortfall> askedFor(
+    private static Set<ReadingShortfall> askedFor(
             Set<Unbuilt.RuleShortfall<FactSubject>> refused,
             Set<AdmissibleReading.AskedAt> asked) {
-        Set<RuleShortfall> out = new LinkedHashSet<>();
+        Set<ReadingShortfall> out = new LinkedHashSet<>();
         refused.forEach(each -> asked.stream()
                 .filter(one -> one.position().equals(each.at()) && one.plan().equals(each.asked()))
-                .forEach(one -> out.add(new RuleShortfall(each.at(), each.why(), one.site()))));
+                .forEach(one -> out.add(new ReadingShortfall(one.at(), one.writtenAs(),
+                        RuleShortfall.Kind.LEAF, each.why(), each.at()))));
         return held(out);
     }
 
@@ -1567,12 +1616,12 @@ sealed interface StatedByClauses {
      * of one are one and two places are two — and nothing here puts them in an order, which is the
      * source's to say and is asked where a document is written.
      */
-    private static Set<RuleShortfall> shortOf(Set<RuleShortfall> these,
-                                              Set<RuleShortfall> those) {
+    private static Set<ReadingShortfall> shortOf(Set<ReadingShortfall> these,
+                                                 Set<ReadingShortfall> those) {
         if (those.isEmpty()) {
             return these;
         }
-        Set<RuleShortfall> out = new LinkedHashSet<>(these);
+        Set<ReadingShortfall> out = new LinkedHashSet<>(these);
         out.addAll(those);
         return held(out);
     }
@@ -1587,7 +1636,7 @@ sealed interface StatedByClauses {
      * compiler over the same source publish two documents. {@code Set.copyOf} is such a copy: it
      * salts the iteration order per run.
      */
-    private static Set<RuleShortfall> held(Collection<RuleShortfall> these) {
+    private static Set<ReadingShortfall> held(Collection<ReadingShortfall> these) {
         return Collections.unmodifiableSet(new LinkedHashSet<>(these));
     }
 
@@ -1906,7 +1955,7 @@ sealed interface StatedByClauses {
     record PartAccount(Adoption<FactSubject, ReadingLanguage.Values> byValues,
                        Adoption<FactSubject, ReadingLanguage.Order> byOrder,
                        Set<FactSubject> stopped,
-                       Set<RuleShortfall> aboutARule,
+                       Set<ReadingShortfall> aboutARule,
                        Map<FactSubject, StringRestriction> aboutStrings,
                        EndsLeftOpen endsLeftOpen,
                        Map<OpenEnd, EndsLeftOpen.Behind> boundsLeftOpen) {}

@@ -2,6 +2,7 @@ package souther.compiler.check;
 
 import org.junit.jupiter.api.Test;
 
+import souther.compiler.inputs.RuleSite;
 import souther.compiler.query.Compilation;
 import souther.compiler.query.ReadAs;
 import souther.compiler.query.Scopes;
@@ -265,9 +266,9 @@ class NothingAWholeDeclarationLeftInADeadBranchReachesAQuestionThatStandsTest {
         return out;
     }
 
-    /** How many written places an author is sent to about {@code field}. */
+    /** How many things an author is sent to about {@code field}. */
     private static int placesToLookAt(String source, String field) {
-        Set<RuleShortfall.Site> out = new LinkedHashSet<>();
+        Set<RuleSite> out = new LinkedHashSet<>();
         shortfallsAt(source, field).forEach(each -> out.add(each.site()));
         return out.size();
     }

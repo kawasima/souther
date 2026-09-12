@@ -8,6 +8,7 @@ import souther.compiler.diag.SourcePos;
 import souther.compiler.types.BindingId;
 import souther.compiler.types.BindingOwner;
 import souther.compiler.types.ConstructOccurrence;
+import souther.compiler.types.ConstructOccurrence;
 import souther.compiler.types.ReachName;
 import souther.compiler.types.Type;
 import souther.compiler.types.ValueName;
@@ -115,6 +116,7 @@ class WhatANameIsAboutIsWhatItWasGivenIsAboutTest {
 
     private static Core answer() {
         return new Core.Call(new Core.Reached.OfDeclaration(
-                new ReachName.Own(FIND)), List.of(), Type.INT, POS);
+                new ReachName.Own(FIND)), List.of(),
+                ConstructOccurrence.unwritten(), Type.INT, POS);
     }
 }

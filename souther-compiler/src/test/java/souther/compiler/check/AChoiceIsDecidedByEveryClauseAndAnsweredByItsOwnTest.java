@@ -2,12 +2,12 @@ package souther.compiler.check;
 
 import org.junit.jupiter.api.Test;
 
-import souther.compiler.diag.SourcePos;
 import souther.compiler.query.Compilation;
 import souther.compiler.query.Scopes;
 import souther.compiler.types.TypeKey;
 import souther.compiler.types.TypeSymbol;
 import souther.compiler.types.TypeSymbols;
+import souther.compiler.types.ConstructOccurrence;
 import souther.compiler.values.UnreadReason;
 
 import java.util.LinkedHashMap;
@@ -177,11 +177,11 @@ class AChoiceIsDecidedByEveryClauseAndAnsweredByItsOwnTest {
      */
     @Test
     void whatLeftTheConstraintOpenIsTheChoiceItWasOffered() {
-        ChoiceSite choice = aChoice();
+        ChoiceMet choice = aChoice();
 
-        assertEquals(java.util.Set.of(new RuleShortfall(CONSTRAINED,
-                        UnreadReason.ALTERNATIVE_NOT_READ,
-                        choice)),
+        assertEquals(java.util.Set.of(new ReadingShortfall(choice.writtenIn(),
+                        choice.writtenAs(), RuleShortfall.Kind.CHOICE,
+                        UnreadReason.ALTERNATIVE_NOT_READ, CONSTRAINED)),
                 theBranchRead(java.util.Set.of())
                         .either(choice, opened(choice), NEITHER_HOLDS_A_POSITION_DOWN,
                                 theBranchNothingRead(java.util.Set.of()))
@@ -193,9 +193,10 @@ class AChoiceIsDecidedByEveryClauseAndAnsweredByItsOwnTest {
     /** And one the unread branch holds does account for it. */
     @Test
     void aShortfallOnlyTheUnreadBranchHoldsAnswersForThePosition() {
-        RuleShortfall inside = new RuleShortfall(CONSTRAINED, UnreadReason.ALTERNATIVE_NOT_READ,
-                aChoice());
-        ChoiceSite choice = aChoice();
+        ReadingShortfall inside = new ReadingShortfall(aChoice().writtenIn(),
+                aChoice().writtenAs(), RuleShortfall.Kind.CHOICE,
+                UnreadReason.ALTERNATIVE_NOT_READ, CONSTRAINED);
+        ChoiceMet choice = aChoice();
 
         assertEquals(java.util.Set.of(inside),
                 theBranchRead(java.util.Set.of())
@@ -215,9 +216,10 @@ class AChoiceIsDecidedByEveryClauseAndAnsweredByItsOwnTest {
      */
     @Test
     void andWhichOfTheTwoIsNotAskedOfWhereItWasWritten() {
-        RuleShortfall form = new RuleShortfall(CONSTRAINED, UnreadReason.FORM_NOT_READ,
-                new RuleShortfall.Site.AtALeaf(new ClauseOccurrence(0), new SourcePos(1, 1)));
-        ChoiceSite choice = aChoice();
+        ReadingShortfall form = new ReadingShortfall(new ClauseOccurrence(0),
+                ConstructOccurrence.unwritten(), RuleShortfall.Kind.LEAF,
+                UnreadReason.FORM_NOT_READ, CONSTRAINED);
+        ChoiceMet choice = aChoice();
 
         assertEquals(java.util.Set.of(form),
                 theBranchRead(java.util.Set.of())
@@ -307,9 +309,8 @@ class AChoiceIsDecidedByEveryClauseAndAnsweredByItsOwnTest {
      * is worked out over the clause as its author wrote it and handed here, so what these tests
      * hold is the other half — which of them a rule is still answerable for.
      */
-    private static StatedByClauses.AlternativeOpening opened(
-            ChoiceSite choice) {
-        return new StatedByClauses.AlternativeOpening(choice.at(),
+    private static StatedByClauses.AlternativeOpening opened(ChoiceMet choice) {
+        return new StatedByClauses.AlternativeOpening(choice.writtenIn(),
                 new Opening<>(java.util.Set.of(CONSTRAINED), java.util.Set.of(),
                         java.util.Set.of(CONSTRAINED)),
                 Opening.nothing());
@@ -390,17 +391,18 @@ class AChoiceIsDecidedByEveryClauseAndAnsweredByItsOwnTest {
             WhatTheAlternativesLeave.nothing();
 
     /** One choice somebody wrote, told from every other by where in its clause it stands. */
-    private static ChoiceSite aChoice() {
+    private static ChoiceMet aChoice() {
         return aChoiceWrittenAt(0);
     }
 
-    /** The choice written at {@code occurrence} of the clause, which is what names one. */
-    private static ChoiceSite aChoiceWrittenAt(int occurrence) {
-        return new ChoiceSite(new ClauseOccurrence(occurrence), new SourcePos(1, 1));
+    /** The choice standing in the part at {@code occurrence}, which is what names one here: these
+     *  tests are about what a choice is answerable for and not about where it was written. */
+    private static ChoiceMet aChoiceWrittenAt(int occurrence) {
+        return new ChoiceMet(new ClauseOccurrence(occurrence), ConstructOccurrence.unwritten());
     }
 
     /** A branch that was read, constraining one position and settling another. */
-    private static StatedByClauses.Part theBranchRead(java.util.Set<RuleShortfall> shortfalls) {
+    private static StatedByClauses.Part theBranchRead(java.util.Set<ReadingShortfall> shortfalls) {
         return new StatedByClauses.Part(
                 new Adoption<>(java.util.Set.of(CONSTRAINED), java.util.Set.of(SETTLED),
                         java.util.Set.of(), false, java.util.Set.of()),
@@ -411,7 +413,7 @@ class AChoiceIsDecidedByEveryClauseAndAnsweredByItsOwnTest {
 
     /** And the alternative beside it that nothing could read. */
     private static StatedByClauses.Part theBranchNothingRead(
-            java.util.Set<RuleShortfall> shortfalls) {
+            java.util.Set<ReadingShortfall> shortfalls) {
         return new StatedByClauses.Part(
                 new Adoption<>(java.util.Set.of(), java.util.Set.of(), java.util.Set.of(UNREAD),
                         true, java.util.Set.of()),
@@ -430,14 +432,16 @@ class AChoiceIsDecidedByEveryClauseAndAnsweredByItsOwnTest {
      */
     @Test
     void twoChoicesLeavingOnePositionOpenAreTwo() {
-        ChoiceSite one = aChoiceWrittenAt(0);
-        ChoiceSite other = aChoiceWrittenAt(3);
+        ChoiceMet one = aChoiceWrittenAt(0);
+        ChoiceMet other = aChoiceWrittenAt(3);
 
         assertEquals(2, java.util.Set.of(
-                        new RuleShortfall(CONSTRAINED, UnreadReason.ALTERNATIVE_NOT_READ,
-                                one),
-                        new RuleShortfall(CONSTRAINED, UnreadReason.ALTERNATIVE_NOT_READ,
-                                other)).size(),
+                        new ReadingShortfall(one.writtenIn(), one.writtenAs(),
+                                RuleShortfall.Kind.CHOICE,
+                                UnreadReason.ALTERNATIVE_NOT_READ, CONSTRAINED),
+                        new ReadingShortfall(other.writtenIn(), other.writtenAs(),
+                                RuleShortfall.Kind.CHOICE,
+                                UnreadReason.ALTERNATIVE_NOT_READ, CONSTRAINED)).size(),
                 "the position is open twice and there are two clauses to look at; held as reasons"
                         + " at the position they were one, and which of them a reader was sent to"
                         + " was whichever the walk met first");

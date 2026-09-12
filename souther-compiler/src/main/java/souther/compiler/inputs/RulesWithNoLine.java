@@ -152,7 +152,7 @@ public record RulesWithNoLine(List<RuleWithoutALine> reported,
          * choices left open agrees — one rule, one position, one reason — so without the place the
          * second was merged into the first by the fold below.
          */
-        public void add(RuleCitation cited, FilingCoordinate at, WhereInTheRule sentTo,
+        public void add(RuleCitation cited, FilingCoordinate at, RuleSite sentTo,
                         BlockReason.RuleWithoutLineReason why) {
             add(RuleWithoutALine.of(cited, at, sentTo, why));
         }

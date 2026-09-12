@@ -49,7 +49,11 @@ class WhoMaySplitAClauseIntoItsPartsIsWrittenDownTest {
     private static final List<Licence> MAY_ASK_FOR_THE_PARTS = List.of(
             new Licence("souther.compiler.check.ClausesForDischarge.conjunctsOf", 1,
                     "the reading a behavior's rules and a declaration's are prepared for together,"
-                            + " which splits the written tree and expands one part at a time"));
+                            + " which splits the written tree and expands one part at a time"),
+            new Licence("souther.compiler.check.ClauseHelpers.placeOfPart", 1,
+                    "where one part is written, for a reader holding the name of a part and no"
+                            + " tree — the same split, so that the part it answers about is the"
+                            + " part everybody else is holding"));
 
     @Test
     void onlyAnExpansionSplitsAClauseIntoTheParts() {

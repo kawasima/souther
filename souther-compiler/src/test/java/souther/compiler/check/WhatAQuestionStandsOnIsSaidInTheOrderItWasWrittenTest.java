@@ -2,21 +2,14 @@ package souther.compiler.check;
 
 import org.junit.jupiter.api.Test;
 
-import souther.compiler.inputs.BlockReason;
-import souther.compiler.inputs.RuleReasons;
-import souther.compiler.meta.ModulePath;
+import souther.compiler.diag.SourceRendering;
+import souther.compiler.query.Adequacy;
 import souther.compiler.query.Compilation;
-import souther.compiler.query.Scopes;
-import souther.compiler.types.TypeKey;
-import souther.compiler.types.TypeSymbol;
-import souther.compiler.types.TypeSymbols;
+import souther.compiler.report.AdequacyReport;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
 /**
  * What a question's rule left is said in the order the places it stands on were written.
@@ -26,11 +19,41 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
  * saying who — so a reader taking the first entry as the first thing to lift is reading a fact about
  * a walk unless the places decided it.
  *
+ * <p><b>Asked of the document and not of the reading.</b> What a reading publishes holds no place:
+ * which construct each reason is about is counted over what the author wrote, and the numbers it is
+ * counted by are a function of that syntax rather than of the order it is written in. So the order
+ * is settled where the places are resolved, which is where a document is written — and the reading's
+ * answer is the same whichever order the walk met them in.
+ *
  * <p>Measured by writing the same two clauses the other way round. Nothing else about the model
  * changes, so anything that comes out different is what the author's order settles, and anything
  * that comes out the same is settled by something else.
  */
 class WhatAQuestionStandsOnIsSaidInTheOrderItWasWrittenTest {
+
+    private static final String UNREAD_Y = souther.compiler.ARuleNoReadingTakesIn.about("y");
+
+    /** What the document says about the pattern it will not build. */
+    private static final String COSTLY = "read to the end, and the values the rules about this"
+            + " position leave between them are more than this compiler will work out";
+
+    /** And about the form nothing takes apart. */
+    private static final String UNREAD = "written in a form this compiler does not read";
+
+    private static String model(String clause) {
+        return """
+                module demo
+                data Yes
+                data No
+                data Answer = Yes | No
+
+                data N = { y: String }
+                    invariant r = %s
+
+                behavior check : (v: N) -> Answer
+                let check (v) = Yes
+                """.formatted(clause);
+    }
 
     /**
      * A pattern this compiler will not build, beside a form no reading takes apart.
@@ -38,108 +61,44 @@ class WhatAQuestionStandsOnIsSaidInTheOrderItWasWrittenTest {
      * <p>Two limits of one rule at one position, lifted by different work, so the question stands on
      * both and an author has two places to look at.
      */
-    private static final String COSTLY_THEN_UNREAD = """
-            module demo
-
-            data N = { y: String }
-                invariant r = String.matches("a{60000}", y) && UNREAD_Y
-            """.replace("UNREAD_Y", souther.compiler.ARuleNoReadingTakesIn.about("y"));
+    private static final String COSTLY_THEN_UNREAD =
+            model("String.matches(\"a{60000}\", y) && " + UNREAD_Y);
 
     /** The same two clauses, written the other way round. */
-    private static final String UNREAD_THEN_COSTLY = """
-            module demo
+    private static final String UNREAD_THEN_COSTLY =
+            model(UNREAD_Y + " && String.matches(\"a{60000}\", y)");
 
-            data N = { y: String }
-                invariant r = UNREAD_Y && String.matches("a{60000}", y)
-            """.replace("UNREAD_Y", souther.compiler.ARuleNoReadingTakesIn.about("y"));
-
-    /** Written this way round, the pattern comes first. */
+    /** The clause written first is the first thing a reader is sent to. */
     @Test
     void theReasonsComeOutInTheOrderTheirClausesWereWritten() {
-        assertEquals(List.of(new BlockReason.PatternTooCostly(),
-                        new BlockReason.UnreadValueRule()),
-                saidOf(COSTLY_THEN_UNREAD),
+        assertEquals(List.of(COSTLY, UNREAD), saidOf(COSTLY_THEN_UNREAD),
                 "the clause an author wrote first is the first thing they are sent to");
     }
 
     /** And written the other way round, the form does. */
     @Test
     void andTheOtherWayRoundTheyComeOutTheOtherWayRound() {
-        assertEquals(List.of(new BlockReason.UnreadValueRule(),
-                        new BlockReason.PatternTooCostly()),
-                saidOf(UNREAD_THEN_COSTLY),
+        assertEquals(List.of(UNREAD, COSTLY), saidOf(UNREAD_THEN_COSTLY),
                 "which is what makes the order the author's rather than the walk's");
     }
 
-    /** And each of them is an order somebody wrote, which is what the carrier says. */
-    @Test
-    void andBothAreAnOrderSomebodyWrote() {
-        assertInstanceOf(RuleReasons.AsWritten.class, standingOn(COSTLY_THEN_UNREAD));
-        assertInstanceOf(RuleReasons.AsWritten.class, standingOn(UNREAD_THEN_COSTLY));
+    /** What the document says the question stands on, in the order it says them. */
+    private static List<String> saidOf(String source) {
+        List<String> said = standingOn(source);
+        assertEquals(1, said.size(), "one rule, one position, one question that nothing answered");
+        return List.of(said.getFirst().split("; "));
     }
 
-    /** A helper of another module, whose body is a form no reading takes apart. */
-    private static final String A_HELPER_OF_ANOTHER_TEXT = """
-            module helpers exposing ( unreadable )
-
-            let unreadable (s: String) : Bool = UNREAD_S
-            """.replace("UNREAD_S", souther.compiler.ARuleNoReadingTakesIn.about("s"));
-
-    /** And a rule reaching it beside a pattern this compiler will not build. */
-    private static final String REACHING_IT = """
-            module demo
-            import helpers ( unreadable )
-
-            data N = { y: String }
-                invariant r = String.matches("a{60000}", y) && unreadable(y)
-            """;
-
-    /**
-     * And a question whose reasons were written in two texts is in no order anybody wrote.
-     *
-     * <p>A line and a column are a place within one text. The helper's body is written earlier in
-     * its own file than the pattern is in the one that reaches it, and nothing an author did makes
-     * either of those first: ordered by the numbers, a reader would be sent to another module ahead
-     * of the clause in front of them, and told that is where to start.
-     */
-    @Test
-    void reasonsWrittenInTwoTextsStandInNoOrderAnybodyWrote() {
-        assertInstanceOf(RuleReasons.NoSingleAuthoredOrder.class,
-                standingOn(List.of(A_HELPER_OF_ANOTHER_TEXT, REACHING_IT)),
-                "the two are written in two files, and no order of anybody's runs between them");
-    }
-
-    /** The words the question's rule left, in the order they are held in. */
-    private static List<BlockReason.RuleReadingStopped> saidOf(String source) {
-        return standingOn(source).reasons();
-    }
-
-    /** What every question of every rule that nothing answered stands on, of the one rule here. */
-    private static RuleReasons standingOn(String source) {
-        return standingOn(List.of(source));
-    }
-
-    /** The same, of a model written across as many texts as a build hands over. */
-    private static RuleReasons standingOn(List<String> sources) {
-        List<RuleReasons> found = new ArrayList<>();
-        read(sources).accounting().values().forEach(accounting ->
-                accounting.unansweredQuestions().forEach(each ->
-                        found.add(each.why().stopped().itsRuleLeft())));
-        assertEquals(1, found.size(), "one rule, one position, one question that nothing answered");
-        return found.getFirst();
-    }
-
-    private static FieldDomains read(List<String> sources) {
-        Compilation compilation = sources.size() == 1
-                ? Compilation.ofSource(sources.getFirst(), "Main")
-                : Compilation.ofSources(sources, ModulePath.of(Map.of()));
+    /** The sentence about every question of this model that nothing answered. */
+    private static List<String> standingOn(String source) {
+        Compilation compilation = Compilation.ofSource(source, "Main");
+        compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
-        assertEquals(List.of(), compilation.diagnostics().values().stream()
-                .flatMap(List::stream).map(each -> each.diagnostic().code()).toList(),
-                "the model this reads has to be one somebody could write");
-        Symbols symbols = Scopes.derived(compilation.db(), "demo").value();
-        TypeSymbol.AtModule name = TypeSymbols.declared(new TypeKey(symbols.module(), "N"));
-        return FieldDomains.of(name, RuleReadings.of(compilation, "demo"),
-                souther.compiler.query.ReadAs.THE_COMPILATION_DOES);
+        return AdequacyReport.of(compilation)
+                .human(SourceRendering.namedByIdentity(compilation.texts())).lines()
+                .map(String::strip)
+                .filter(each -> each.contains("not accounted for:"))
+                .map(each -> each.substring(each.lastIndexOf(": ") + 2))
+                .toList();
     }
 }

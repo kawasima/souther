@@ -106,11 +106,10 @@ class OnlyOnePlaceDeclaresAPublicationOrderTest {
      * model out of whatever it was handed — correctly for as long as one producer fills the list,
      * and wrong the day a second one does with nothing in a position to notice.
      *
-     * <p><b>Which callers, by what they have in hand rather than by name.</b> A reading of a clause
-     * has the source's order; a projection onto published words and a report that writes them have
-     * words. So the two downstream packages are named and everything else is left to whoever can
-     * say it — a producer added inside a reading is inside this without a line, and one added at a
-     * document fails.
+     * <p><b>Which callers, by what they have in hand rather than by name.</b> A projection onto
+     * published words has words and nothing else. So it is named and everything else is left to
+     * whoever can say it — a producer added where the places are read is inside this without a
+     * line, and one added at the projection fails.
      *
      * <p>{@link souther.compiler.publish.SourceOrdered} makes no claim of its own any more: it
      * carries one of these across the crossing, so there is nothing at a report for this to permit
@@ -123,7 +122,7 @@ class OnlyOnePlaceDeclaresAPublicationOrderTest {
         for (Compiled.Site site : Compiled.sites()) {
             if (site.owner().equals(AUTHORED_ORDER) && site.member().equals("asWritten")) {
                 reached = true;
-                if (site.from().startsWith(REPORT) || site.from().startsWith(PROJECTION)) {
+                if (site.from().startsWith(PROJECTION)) {
                     claimed.add(site.at());
                 }
             }
@@ -141,9 +140,11 @@ class OnlyOnePlaceDeclaresAPublicationOrderTest {
      * And the claim is made in the one place that reads the places it is a claim about.
      *
      * <p>Narrower than the rule above, and for the same reason one step further in. What settles
-     * whether a sequence of reasons is in the author's order is where each of them stands, and the
-     * carrier that holds the places is what may answer: a caller with the reasons alone is holding
-     * the half that cannot say, and a caller that had them and let them go said it too late.
+     * whether a sequence of reasons is in the author's order is where each of them stands, and what
+     * holds the places is what may answer. What a reading publishes holds none — a construct is
+     * counted over what its author wrote and says nothing about where that is — so the boundary
+     * that resolves them to places is the one that can say it, and a caller with the reasons alone
+     * is holding the half that cannot.
      *
      * <p>So a second maker is a second answer to one question, and the two would disagree the day
      * one of them learned something. Which callers there may be is a list because there is one.
@@ -158,7 +159,7 @@ class OnlyOnePlaceDeclaresAPublicationOrderTest {
             }
         }
 
-        assertEquals(List.of(REASONS), claiming,
+        assertEquals(List.of(REPORT + "AdequacyReport"), claiming,
                 "a sequence is called the order somebody wrote it in somewhere that is not the"
                         + " one place holding what they wrote");
     }

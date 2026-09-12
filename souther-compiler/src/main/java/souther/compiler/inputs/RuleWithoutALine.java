@@ -62,12 +62,12 @@ public record RuleWithoutALine(Fact fact, Set<RuleReportAnchor> reachedBy) {
     /** One reader's finding about the whole of a rule, as that reader produced it. */
     public static RuleWithoutALine of(RuleCitation cited, FilingCoordinate at,
                                       BlockReason.RuleWithoutLineReason why) {
-        return of(cited, at, WhereInTheRule.theRuleItself(), why);
+        return of(cited, at, RuleSite.theRuleItself(), why);
     }
 
     /** The same, for a reader with a place inside the rule to send anybody to. */
     public static RuleWithoutALine of(RuleCitation cited, FilingCoordinate at,
-                                      WhereInTheRule sentTo,
+                                      RuleSite sentTo,
                                       BlockReason.RuleWithoutLineReason why) {
         return new RuleWithoutALine(new Fact(cited.rule(), at, sentTo, why),
                 RuleCitation.anchorOf(cited));
@@ -81,13 +81,13 @@ public record RuleWithoutALine(Fact fact, Set<RuleReportAnchor> reachedBy) {
      * holding the handle files one rule under several wherever the two come apart — which they do
      * wherever a rule has no name of its own.
      *
-     * <p><b>{@link WhereInTheRule} is part of it, and is not that.</b> Where inside the rule a
-     * reader goes is what tells two findings about one clause apart when everything else about
-     * them agrees: a clause whose ends two choices left open is two things to lift, and both are
+     * <p><b>{@link RuleSite} is part of it, and is not that.</b> Where inside the rule a reader
+     * goes is what tells two findings about one clause apart when everything else about them
+     * agrees: a clause two parts of which choices left open is two things to lift, and both are
      * the same rule, at the same position, for the same reason. Left out, the second of them was
-     * merged into the first and the entry named neither choice.
+     * merged into the first and the entry named neither part.
      */
-    public record Fact(RuleRef rule, FilingCoordinate at, WhereInTheRule sentTo,
+    public record Fact(RuleRef rule, FilingCoordinate at, RuleSite sentTo,
                        BlockReason.RuleWithoutLineReason why) {
 
         public Fact {
@@ -114,7 +114,7 @@ public record RuleWithoutALine(Fact fact, Set<RuleReportAnchor> reachedBy) {
     }
 
     /** Where inside the rule a reader goes about it. */
-    public WhereInTheRule sentTo() {
+    public RuleSite sentTo() {
         return fact.sentTo();
     }
 

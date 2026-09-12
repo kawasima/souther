@@ -366,6 +366,23 @@ public final class ClauseHelpers {
         return new AuthoredShape.One(new AuthoredPart(numbered[0]++, e));
     }
 
+    /**
+     * Where the part numbered {@code ordinal} of {@code clause} is written, and nothing where the
+     * clause has no such part.
+     *
+     * <p>Over the same split every part is numbered by, which is what makes this an answer about
+     * the part a reader is holding rather than about whichever conjunct a second count landed on.
+     * A reader asking here has a {@link PartId} and no tree, and the tree it would have to be given
+     * is the one before anything was expanded into it — so the split is done here, where that tree
+     * is what the declaration holds.
+     *
+     * @param clause the clause as its author wrote it, before any expansion
+     */
+    public static SourcePos placeOfPart(Hir.Expr clause, int ordinal) {
+        List<AuthoredPart> parts = conjunctsOf(clause);
+        return ordinal < parts.size() ? beginsAt(parts.get(ordinal).written()) : null;
+    }
+
     /** {@code shape} with each of the parts its author wrote replaced by what {@code onPart} makes
      *  of it, written back into the nodes the author joined them with. */
     private static Hir.Expr expandedOver(AuthoredShape shape, UnaryOperator<Hir.Expr> onPart) {

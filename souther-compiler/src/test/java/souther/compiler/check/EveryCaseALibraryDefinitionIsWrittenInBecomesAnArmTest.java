@@ -11,6 +11,7 @@ import souther.compiler.types.ApplicationOrigin;
 import souther.compiler.types.BindingId;
 import souther.compiler.types.BindingOwner;
 import souther.compiler.types.FixtureReferenceOrigin;
+import souther.compiler.types.ExpansionLineage;
 import souther.compiler.types.Type;
 import souther.compiler.types.ValueName;
 
@@ -117,7 +118,7 @@ class EveryCaseALibraryDefinitionIsWrittenInBecomesAnArmTest {
         return new Core.PreservedCall(
                 KeptCalls.declared((ValueName.Stdlib.Operation) operation), args,
                 new Core.KeptCallPlace(new FixtureReferenceOrigin(0),
-                        new ApplicationOrigin.ComposedFixture()),
+                        new ApplicationOrigin.ComposedFixture(), ExpansionLineage.ORIGINAL),
                 entry.signature().result(), POS);
     }
 }

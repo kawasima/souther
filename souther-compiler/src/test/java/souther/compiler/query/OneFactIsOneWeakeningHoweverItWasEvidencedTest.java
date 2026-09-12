@@ -1,19 +1,21 @@
 package souther.compiler.query;
 
-import souther.compiler.diag.Placement;
 import org.junit.jupiter.api.Test;
 
+import souther.compiler.check.Clause;
+import souther.compiler.check.PartId;
 import souther.compiler.check.RuleCitation;
 import souther.compiler.check.RuleReportAnchor;
+import souther.compiler.types.TypeKey;
+import souther.compiler.types.TypeSymbols;
 import souther.compiler.types.WrittenOwner;
 import souther.compiler.check.RuleRef;
 import souther.compiler.diag.Citation;
 import souther.compiler.diag.SourcePos;
-import souther.compiler.source.SourceId;
 import souther.compiler.inputs.BlockReason;
 import souther.compiler.inputs.FilingCoordinate;
 import souther.compiler.inputs.RuleReasons;
-import souther.compiler.inputs.WhereInTheRule;
+import souther.compiler.inputs.RuleSite;
 import souther.compiler.inputs.InputQuestion;
 import souther.compiler.inputs.StandingQuestion;
 import souther.compiler.inputs.TermPath;
@@ -221,11 +223,10 @@ class OneFactIsOneWeakeningHoweverItWasEvidencedTest {
 
     private static WeakeningSet standingQuestion(RuleCitation cited,
                                                  BlockReason.RuleReadingStopped... stopped) {
-        List<RuleReasons.Placed> written = new ArrayList<>();
+        List<RuleReasons.Said> written = new ArrayList<>();
         for (int i = 0; i < stopped.length; i++) {
-            written.add(new RuleReasons.Placed(
-                    Placement.aFileOfThisCompile(new SourceId("one")).at(1, i + 1),
-                    WhereInTheRule.theRuleItself(), stopped[i]));
+            written.add(new RuleReasons.Said(RuleSite.at(aPart(i)), RuleSite.theRuleItself(),
+                    stopped[i]));
         }
         return of(new Weakening.ModelReadingIncomplete(ClosureGap.QuestionUnanswered.of(
                 StandingQuestion.Exact.of(cited,
@@ -262,5 +263,12 @@ class OneFactIsOneWeakeningHoweverItWasEvidencedTest {
 
     private static WeakeningSet of(Weakening one) {
         return WeakeningSet.of(one);
+    }
+
+    /** One part of one clause, which is what a reason about a rule is about. */
+    private static PartId<RuleRef.Invariant> aPart(int ordinal) {
+        return new PartId<>(new RuleRef.Invariant(new Clause.Ref(
+                new Clause.Id(TypeSymbols.declared(new TypeKey("demo", "N")), 0),
+                Optional.empty())), ordinal);
     }
 }

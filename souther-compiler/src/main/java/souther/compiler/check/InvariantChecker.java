@@ -23,6 +23,8 @@ import souther.compiler.diag.msg.Message;
 import souther.compiler.diag.msg.Supporting;
 import souther.compiler.diag.SourcePos;
 import souther.compiler.inputs.BlockReason;
+import souther.compiler.inputs.ChoiceToLift;
+import souther.compiler.inputs.RuleSite;
 import souther.compiler.types.BindingId;
 import souther.compiler.types.Type;
 import souther.compiler.types.TypeSymbol;
@@ -487,8 +489,8 @@ public final class InvariantChecker {
                   Map<RuleKey, List<UnreadReason>> unreadAt,
                   Set<RuleKey> notSeparated,
                   StringFacts stringMachines,
-                  Map<RuleRef.Invariant, EndsLeftOpen> endsLeftOpen,
-                  Map<RuleRef.Invariant, Map<OpenEnd, EndsLeftOpen.Behind>> boundsLeftOpen,
+                  Map<RuleRef.Invariant, Map<FactSubject, Set<ChoiceToLift>>> endsLeftOpen,
+                  Map<RuleRef.Invariant, Map<OpenEnd, Set<ChoiceToLift>>> boundsLeftOpen,
                   BoundaryState derived, SettledOrderEnvelope settledOrder) {
 
         /** The atom each count is recorded against, for a reader that wants the subject and not
@@ -1037,21 +1039,42 @@ public final class InvariantChecker {
         // composed over the tree the author wrote, with the branches nobody can be in already
         // dropped, and a walk here would be asking a second time about a shape the settlement has
         // finished with.
-        Map<RuleRef.Invariant, EndsLeftOpen> endsLeftOpen = new LinkedHashMap<>();
-        Map<RuleRef.Invariant, Map<OpenEnd, EndsLeftOpen.Behind>> boundsLeftOpen =
+        Map<RuleRef.Invariant, Map<FactSubject, Set<ChoiceToLift>>> endsLeftOpen =
+                new LinkedHashMap<>();
+        Map<RuleRef.Invariant, Map<OpenEnd, Set<ChoiceToLift>>> boundsLeftOpen =
                 new LinkedHashMap<>();
         answered.perClause().forEach((each, one) -> {
             narrowedBy.put(each.from(), one);
             one.account().adopted().forEach(position -> took.record(each.from(), position));
-            took.stoppedBy(each.from(), one.account().aboutARule());
+            // Here, and here alone, what a reading met becomes what an author wrote. Everything
+            // above is coordinates of the tree this reading was built over, which two constructions
+            // of one declaration number differently ({@link ClauseOccurrence}); what is filed is
+            // the part its author wrote, which is the same whichever reading met it. Two readings
+            // short of one thing about one part are one fact from here on.
+            Map<ClauseOccurrence, PartId<RuleRef.Invariant>> wrote = authoredPartsOf(each);
+            Set<RuleShortfall> filed = new LinkedHashSet<>();
+            one.account().aboutARule().forEach(met -> filed.add(met.of(wroteIt(met.at(), wrote))));
+            took.stoppedBy(each.from(), filed);
             // Only the rules with one, so that a reader asking a position what is left open there
             // walks the rules that have something rather than every rule of the declaration.
-            if (!one.account().endsLeftOpen().byNumber().isEmpty()) {
-                endsLeftOpen.merge(each.from(), one.account().endsLeftOpen(), EndsLeftOpen::both);
-            }
-            one.account().boundsLeftOpen().forEach((number, behind) ->
+            //
+            // And only what a choice is answerable for. An end left open under a conjunction is one
+            // the rule's own questions already leave standing, and a second account of it is one
+            // stop said twice — so it does not cross.
+            one.account().endsLeftOpen().byNumber().forEach((position, behind) -> {
+                if (behind.underAChoice()) {
+                    endsLeftOpen.computeIfAbsent(each.from(), _ -> new LinkedHashMap<>())
+                            .computeIfAbsent(position, _ -> new LinkedHashSet<>())
+                            .addAll(wroteAll(behind, wrote));
+                }
+            });
+            one.account().boundsLeftOpen().forEach((number, behind) -> {
+                if (behind.underAChoice()) {
                     boundsLeftOpen.computeIfAbsent(each.from(), _ -> new LinkedHashMap<>())
-                            .merge(number, behind, EndsLeftOpen.Behind::and));
+                            .computeIfAbsent(number, _ -> new LinkedHashSet<>())
+                            .addAll(wroteAll(behind, wrote));
+                }
+            });
         });
         // And each reading with the account of its own parts, which is what the walk below reads
         // them off. One rule is read once per place the walk opens a value at, and each of those
@@ -1595,6 +1618,67 @@ public final class InvariantChecker {
         List<Clauses.StatedPart> parts() {
             return view.present();
         }
+    }
+
+    /**
+     * Which part its author wrote each part of {@code reading}'s tree is.
+     *
+     * <p>Read off what the reading was built from and not counted again. Which parts a clause has
+     * was settled where it was split, and a second count made where a reading stands is a count
+     * that moves with whatever that reading's substitution put into the tree.
+     */
+    private static Map<ClauseOccurrence, PartId<RuleRef.Invariant>> authoredPartsOf(
+            Written reading) {
+        Map<ClauseOccurrence, PartId<RuleRef.Invariant>> out = new LinkedHashMap<>();
+        reading.parts().forEach(part -> under(part.of(), part.id(), out));
+        return out;
+    }
+
+    /**
+     * Every occurrence of {@code shape} filed under the part it is written in.
+     *
+     * <p>Over the shape and not over what some reading of it happened to reach. A walk that stopped
+     * where a reading did would leave the coordinates it never got to naming no part, and what was
+     * decided under a choice it gave up at is exactly what has to cross.
+     */
+    private static void under(ClauseExpr shape, PartId<RuleRef.Invariant> part,
+                              Map<ClauseOccurrence, PartId<RuleRef.Invariant>> out) {
+        out.put(shape.at(), part);
+        switch (shape) {
+            case ClauseExpr.Leaf _ -> { }
+            case ClauseExpr.Joined it -> {
+                under(it.left(), part, out);
+                under(it.right(), part, out);
+            }
+            case ClauseExpr.Scoped it -> under(it.body(), part, out);
+        }
+    }
+
+    /**
+     * Which part its author wrote {@code at} is, refusing a coordinate of no part of the reading.
+     *
+     * <p>Every coordinate that reaches here was handed out by the same reading, so one that names
+     * no part of it is this compiler's two answers disagreeing rather than a fact about a model.
+     * Answered with nothing, what a rule is answerable for would be filed under no part and a
+     * report would have nowhere to send anybody.
+     */
+    private static PartId<RuleRef.Invariant> wroteIt(
+            ClauseOccurrence at, Map<ClauseOccurrence, PartId<RuleRef.Invariant>> wrote) {
+        PartId<RuleRef.Invariant> part = wrote.get(at);
+        if (part == null) {
+            throw new IllegalStateException(
+                    "a reading decided something at " + at + ", which is no part of it");
+        }
+        return part;
+    }
+
+    /** Each of {@code behind}'s choices, as what a reader is owed and where they go about it. */
+    private static Set<ChoiceToLift> wroteAll(
+            EndsLeftOpen.Behind behind, Map<ClauseOccurrence, PartId<RuleRef.Invariant>> wrote) {
+        Set<ChoiceToLift> out = new LinkedHashSet<>();
+        behind.named().forEach(choice -> out.add(new ChoiceToLift(choice.writtenAs(),
+                RuleSite.at(choice.writtenAs().origin(), wroteIt(choice.writtenIn(), wrote)))));
+        return out;
     }
 
     /**

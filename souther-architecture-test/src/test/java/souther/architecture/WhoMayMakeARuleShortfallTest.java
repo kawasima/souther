@@ -37,18 +37,27 @@ class WhoMayMakeARuleShortfallTest {
 
     private static final String OWNER = "souther/compiler/check/RuleShortfall";
 
-    private static final String A_LEAF = OWNER + "$Site$AtALeaf";
-
-    // A place of its own and not one of the shortfall's, because both readings name it: a choice
-    // offering an alternative nothing reads leaves the values open and the ends open, and an author
-    // lifting it lifts both. Held under the shortfall, the reading that never files one would have
-    // had to name a shortfall to say which choice it means.
-    private static final String A_CHOICE = "souther/compiler/check/ChoiceSite";
+    // What a reading decides while it is still running, which is what crosses out of it as the
+    // fact above. Told apart by where in this reading's own tree it was met, so a second maker is
+    // a second answer to which decision this is.
+    private static final String AS_MET = "souther/compiler/check/ReadingShortfall";
 
     private static final CompiledOutputs COMPILED = CompiledOutputs.ofWhatThisRepositoryPublishes();
 
     /**
      * Every class that makes one, and why it is entitled to.
+     *
+     * <p>One, because there is one crossing. What a reading decided is met while the reading runs
+     * and is told apart by where in its own tree it stands; what crosses out of it is about what an
+     * author wrote, and the one place that turns the first into the second is where the reading is
+     * filed. A second maker is a pass answering what a rule is answerable for out of what it has in
+     * hand, which is a place's reasons wherever the asking is not.
+     */
+    private static final List<String> MAKING_ONE = List.of(
+            AS_MET + " -> " + OWNER + "#<init>");
+
+    /**
+     * And every class that decides one while a reading is running, which is more.
      *
      * <p>{@code AdmissibleReading} is where a form nothing reads is met, and it holds what it was
      * short of at the node it was reading. {@code StatedByClauses} holds the two facts a reading
@@ -56,23 +65,10 @@ class WhoMayMakeARuleShortfallTest {
      * leaf asked with is matched to the refusal, and what a choice left open, which is a fact about
      * the choice and about no clause under it.
      */
-    private static final List<String> MAKING_ONE = List.of(
-            "souther/compiler/check/AdmissibleReading -> " + OWNER + "#<init>",
-            "souther/compiler/check/StatedByClauses -> " + OWNER + "#<init>",
-            "souther/compiler/check/StatedByClauses$Part -> " + OWNER + "#<init>");
-
-    /**
-     * And every class that settles the place one is filed at, which is fewer.
-     *
-     * <p>A leaf is settled where the node is being read, and nowhere after: a reading that met a
-     * clause holds the place it met, and what is decided later about that clause is filed at the
-     * place it was handed rather than at one made again from a node in hand. A choice is settled
-     * where the branches are joined, which is the one place that holds both what tells this choice
-     * from every other and the operator an author wrote it with.
-     */
-    private static final List<String> MAKING_A_SITE = List.of(
-            "souther/compiler/check/AdmissibleReading -> " + A_LEAF + "#<init>",
-            "souther/compiler/check/StatedByClauses$Reading -> " + A_CHOICE + "#<init>");
+    private static final List<String> DECIDING_ONE = List.of(
+            "souther/compiler/check/AdmissibleReading -> " + AS_MET + "#<init>",
+            "souther/compiler/check/StatedByClauses -> " + AS_MET + "#<init>",
+            "souther/compiler/check/StatedByClauses$Part -> " + AS_MET + "#<init>");
 
     @Test
     void everyClassThatSaysARuleIsAnswerableForAPositionIsWrittenDown() {
@@ -82,10 +78,10 @@ class WhoMayMakeARuleShortfallTest {
     }
 
     @Test
-    void andEveryClassThatSettlesWhereOneIsFiledIsWrittenDown() {
-        assertEquals(MAKING_A_SITE, new ArrayList<>(naming(Set.of(A_LEAF, A_CHOICE))),
-                "a site minted where a fact is carried rather than where it is made turns one copy"
-                        + " of a fact into a second fact of the same shape");
+    void andEveryClassThatDecidesOneWhileAReadingRunsIsWrittenDown() {
+        assertEquals(DECIDING_ONE, new ArrayList<>(naming(Set.of(AS_MET))),
+                "a decision minted where a fact is carried rather than where it is made turns one"
+                        + " copy of a fact into a second fact of the same shape");
     }
 
     /**

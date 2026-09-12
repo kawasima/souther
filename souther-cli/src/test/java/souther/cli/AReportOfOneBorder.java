@@ -278,7 +278,8 @@ final class AReportOfOneBorder {
                                 .toList()),
                         null, null),
                 souther.compiler.query.ClaimAnnotations.NONE, List.of(), java.util.Map.of(),
-                java.util.Map.of(), rulePlaces(lines), java.util.Map.of(), java.util.Map.of());
+                java.util.Map.of(), rulePlaces(lines), java.util.Map.of(), java.util.Map.of(),
+                java.util.Map.of());
         return new AdequacyReport(AdequacyReport.SCHEMA_VERSION, "test",
                 held, WeakeningSet.none(),
                 List.of(new AdequacyReport.ModuleReport("example.wide",

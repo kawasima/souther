@@ -9,6 +9,8 @@ import souther.compiler.check.BehaviorImplementation;
 import souther.compiler.check.Carrier;
 import souther.compiler.check.ComparisonClaim;
 import souther.compiler.check.CoverageObligation;
+import souther.compiler.check.PartId;
+import souther.compiler.types.SourceConstructOrigin;
 import souther.compiler.check.RuleCitation;
 import souther.compiler.check.RuleRef;
 import souther.compiler.numeric.Towards;
@@ -34,10 +36,12 @@ import souther.compiler.partition.ReportedReason;
 import souther.compiler.partition.RoleAnswer;
 import souther.compiler.partition.UndividedPosition;
 import souther.compiler.diag.Citation;
+import souther.compiler.diag.SourcePos;
 import souther.compiler.diag.SourceRendering;
+import souther.compiler.inputs.AuthoredOrder;
 import souther.compiler.inputs.InputQuestion;
 import souther.compiler.inputs.StandingQuestion;
-import souther.compiler.inputs.WhereInTheRule;
+import souther.compiler.inputs.RuleSite;
 import souther.compiler.meta.ModuleMetadata;
 import souther.compiler.check.CheckSurface;
 import souther.compiler.observe.Disposition;
@@ -118,6 +122,7 @@ import tools.jackson.databind.node.ObjectNode;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -451,6 +456,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                                  Map<ArmReportAnchor, Citation> armPlaces,
                                  Map<ConditionReportAnchor, Citation> conditionPlaces,
                                  Map<RuleCitation.Written, Citation> rulePlaces,
+                                 Map<RuleSite, Citation> partPlaces,
                                  Map<DecisionReading.Ruled, List<ShownCondition>> ruleReadings,
                                  Map<DecisionRule, RuleSettlement> ruleSettlements) {
         public BehaviorReport {
@@ -458,6 +464,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             armPlaces = Map.copyOf(armPlaces);
             conditionPlaces = Map.copyOf(conditionPlaces);
             rulePlaces = Map.copyOf(rulePlaces);
+            partPlaces = Map.copyOf(partPlaces);
             ruleReadings = Map.copyOf(ruleReadings);
             ruleSettlements = Map.copyOf(ruleSettlements);
         }
@@ -517,6 +524,31 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                             + cited + " of `" + name + "`");
                 }
                 return at;
+            };
+        }
+
+        /** Where this report shows each part of a rule any of it points inside — see
+         *  {@link WhereAPartIs}. */
+        public WhereAPartIs partPlace() {
+            return new WhereAPartIs() {
+                @Override
+                public Citation of(PartId<RuleRef.Invariant> part) {
+                    return shown(RuleSite.at(part));
+                }
+
+                @Override
+                public Citation of(SourceConstructOrigin origin) {
+                    return shown(new RuleSite.AConstructTheAuthorWrote(origin));
+                }
+
+                private Citation shown(RuleSite site) {
+                    Citation at = partPlaces.get(site);
+                    if (at == null) {
+                        throw new IllegalStateException("this report was not assembled with "
+                                + site + " of `" + name + "`");
+                    }
+                    return at;
+                }
             };
         }
 
@@ -746,6 +778,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                             accounts == null ? List.of()
                                     : pointsOf(accounts.get(behavior.name())),
                             reported),
+                    partPlaces(compilation, partition, reported),
                     ruleReadings(compilation, name, behavior.name(),
                             decisions == null ? null : decisions.get(behavior.name()),
                             requirements),
@@ -1011,6 +1044,50 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                     .filter(About.OfARule.class::isInstance)
                     .map(About.OfARule.class::cast)
                     .forEach(each -> each.cited().forEach(take));
+        }
+        return places;
+    }
+
+    /**
+     * Where each part of a rule this report points inside is written.
+     *
+     * <p>Asked once, here, and by the same rule the rules' own places are: what a reading decided
+     * says which part it was about and never where that part is, so the places are looked up where
+     * the compilation is still in reach and travel with the report instead of with the judgment.
+     *
+     * <p>Every way a finding names a part is read, and each of them through the one thing that
+     * says so ({@link RuleSite}). A part named by two of them is one entry — what is asked about is
+     * the part, and two readers naming one part name one place.
+     */
+    private static Map<RuleSite, Citation> partPlaces(
+            Compilation compilation, PartitionEvidence partition, List<ReportedFinding> found) {
+        Map<RuleSite, Citation> places = new LinkedHashMap<>();
+        Consumer<RuleSite> take = sentTo -> {
+            switch (sentTo) {
+                case RuleSite.TheRuleItself _ -> { }
+                case RuleSite.APartOfIt it -> places.computeIfAbsent(it,
+                        _ -> Sites.placeOf(compilation.db(), it.part()));
+                case RuleSite.AConstructTheAuthorWrote it -> places.computeIfAbsent(it,
+                        _ -> Sites.placeOf(compilation.db(), it.origin()));
+            }
+        };
+        if (partition != null) {
+            partition.unanswered().forEach(each ->
+                    whyStanding(each).forEach(stop -> {
+                        take.accept(stop.about());
+                        take.accept(stop.sentTo());
+                    }));
+            partition.notRead().forEach(each -> {
+                if (each instanceof PartitionEvidence.NotRead.ARule rule) {
+                    take.accept(rule.finding().sentTo());
+                }
+            });
+        }
+        if (found != null) {
+            found.stream().map(ReportedFinding::finding).map(Adequacy.Finding::about)
+                    .filter(About.ARuleWithoutALine.class::isInstance)
+                    .map(About.ARuleWithoutALine.class::cast)
+                    .forEach(each -> take.accept(each.finding().finding().sentTo()));
         }
         return places;
     }
@@ -1977,7 +2054,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                             said.classId(), said.at(), because(said.reasons()),
                             unproven(said.why())));
         }
-        undivided(out, behavior, rendering, declaredIn, places);
+        undivided(out, behavior, rendering, declaredIn, places, behavior.partPlace());
         // On a line of its own, and this is the whole of why it has one. Counting combinations
         // across two positions is the neighbouring technique rather than this one, and printed at
         // the end of the partition line it sat beside the border counts where a reader could add
@@ -2054,7 +2131,8 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
         // it. It is exactly where none did that the question stands, so this cannot be written by
         // walking the borders.
         unaccounted(out, behavior, rendering, declaredIn,
-                asked -> asked.holdsOpen(CoverageObligation.Measure.BOUNDARY), places);
+                asked -> asked.holdsOpen(CoverageObligation.Measure.BOUNDARY), places,
+                behavior.partPlace());
         // The rule as this report writes it. The finding carries the rule and not words about it,
         // because what to say differs between here — where a file has a name — and the warning built
         // from the same finding, where nothing knows what to call one.
@@ -2191,7 +2269,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
      */
     private void undivided(StringBuilder out, BehaviorReport behavior,
                                   SourceRendering rendering, SourceId declaredIn,
-                                  PublishedRuleHandle.WhereARuleIs places) {
+                                  PublishedRuleHandle.WhereARuleIs places, WhereAPartIs parts) {
         for (Adequacy.Finding f : behavior.findings()) {
             if (f.about() instanceof About.APositionNoLineDivides(var position)) {
                 // What was found and not what was missed. This line is written from
@@ -2223,7 +2301,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                         mark(f), it.readingStopped() ? "not read" : "no line",
                         cited(it.cited(), rendering, declaredIn, places),
                         whyUnread(it.reason()), it.at(),
-                        sentTo(it.finding().sentTo(), rendering, declaredIn)));
+                        sentTo(it.finding().sentTo(), parts, rendering, declaredIn)));
             }
             if (f.about() instanceof About.ARuleNothingClassified(var it)) {
                 out.append(String.format("      %s not read: %s — %s, about `%s`%n",
@@ -2254,7 +2332,8 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
         // The questions this measure answers: which values may stand where, which classes hold
         // them, and which value a rule tells from every other. A border is the section below's.
         unaccounted(out, behavior, rendering, declaredIn,
-                asked -> asked.holdsOpen(CoverageObligation.Measure.PARTITION), places);
+                asked -> asked.holdsOpen(CoverageObligation.Measure.PARTITION), places,
+                behavior.partPlace());
     }
 
     /**
@@ -3256,7 +3335,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                                     SourceRendering rendering,
                                     SourceId declaredIn,
                                     Predicate<PartitionEvidence.Unanswered> mine,
-                                    PublishedRuleHandle.WhereARuleIs places) {
+                                    PublishedRuleHandle.WhereARuleIs places, WhereAPartIs parts) {
 
         for (Adequacy.Finding f : behavior.findings()) {
             if (f.about() instanceof About.AQuestionNothingAnswered(var asked)
@@ -3269,9 +3348,9 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                 out.append(String.format("      %s not accounted for: %s — %s %s: %s%s%n",
                         mark(f), cited(asked.cited(), rendering, declaredIn, places),
                         asked(asked.asked()), subjectOf(asked),
-                        whyStanding(asked).written().stream()
+                        whyStanding(asked, parts).written().stream()
                                 .map(stop -> whyUnread(stop.reason())
-                                        + sentTo(stop.sentTo(), rendering, declaredIn))
+                                        + sentTo(stop.sentTo(), parts, rendering, declaredIn))
                                 .collect(Collectors.joining("; ")),
                         whatItsPositionWasShortOf(asked).map(AdequacyReport::whyUnread)
                                 .map(each -> ", and the answer at its position: " + each)
@@ -3305,8 +3384,52 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
      * writes, nothing left can tell the author's order from a walk's, and a claim made here would
      * be a claim about something this cannot see.
      */
-    private static ReportedReason.Published whyStanding(PartitionEvidence.Unanswered asked) {
+    private static List<ReportedReason.Stop> whyStanding(PartitionEvidence.Unanswered asked) {
         return ReportedReason.wordsFor(asked.stopped().itsRuleLeft());
+    }
+
+    /**
+     * The same, in the order their author wrote them where that is an order.
+     *
+     * <p><b>The one place the claim is made, and the only one that can make it.</b> Which of two
+     * reasons an author wrote first is a fact about where they wrote them; what a reading publishes
+     * holds no place, so the claim is made here, out of the places this report has just resolved
+     * them to. Made upstream, it was read off positions carried inside every answer — which is what
+     * made an edit that moved a declaration an edit that changed what the model says.
+     *
+     * <p><b>One text is asked before anything is compared.</b> A line and a column are a place
+     * inside one text and two numbers outside it, so a walk that sorted first and asked afterwards
+     * would have ordered the ones it had no order for and then said so. A reason this report cannot
+     * place is one nothing can be ordered against either, and it takes the whole list with it:
+     * ordering the rest around it would put it wherever the walk left it and call that an author's
+     * doing.
+     *
+     * <p>One reason is in an order by there being nothing to order it against, which is why the
+     * list is asked its size before it is asked anything else.
+     */
+    private static ReportedReason.Published whyStanding(PartitionEvidence.Unanswered asked,
+                                                        WhereAPartIs parts) {
+        List<ReportedReason.Stop> these = whyStanding(asked);
+        if (these.size() <= 1) {
+            return ReportedReason.asTheAuthorWroteThem(AuthoredOrder.asWritten(these));
+        }
+        Map<ReportedReason.Stop, SourcePos> at = new LinkedHashMap<>();
+        Set<SourceId> texts = new LinkedHashSet<>();
+        for (ReportedReason.Stop each : these) {
+            PublishedAt where = placeInTheRule(each.about(), parts).orElse(null);
+            if (where == null || !(where.at().quotedFrom()
+                    instanceof QuotedFrom.ASourceThisCompileHolds(SourceId in))) {
+                return ReportedReason.inNoAuthoredOrder(these);
+            }
+            at.put(each, where.at());
+            texts.add(in);
+        }
+        if (texts.size() != 1) {
+            return ReportedReason.inNoAuthoredOrder(these);
+        }
+        List<ReportedReason.Stop> sorted = new ArrayList<>(these);
+        sorted.sort(Comparator.comparing(at::get, SourcePos.IN_WRITTEN_ORDER));
+        return ReportedReason.asTheAuthorWroteThem(AuthoredOrder.asWritten(sorted));
     }
 
     /**
@@ -3918,7 +4041,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                 signature(b, behavior.name(), behavior.signature(), sources);
                 partition(b, behavior.partition(), behavior.boundaryReadings(),
                         behavior.account(), behavior.claimed(), sources,
-                        behavior.rulePlace());
+                        behavior.rulePlace(), behavior.partPlace());
                 branch(b, behavior, sources);
                 decision(b, behavior);
                 findings(b, behavior, sources);
@@ -4027,8 +4150,9 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
      * is sent to it by the handle beside this, and a second place saying the same thing would be
      * two answers to one question — free, one day, to disagree.
      */
-    private static void sentTo(ObjectNode into, WhereInTheRule sentTo, DocumentSources sources) {
-        placeInTheRule(sentTo).ifPresent(at -> place(into.putObject("sentTo"), at, sources));
+    private static void sentTo(ObjectNode into, RuleSite sentTo, WhereAPartIs parts,
+                               DocumentSources sources) {
+        placeInTheRule(sentTo, parts).ifPresent(at -> place(into.putObject("sentTo"), at, sources));
     }
 
     /**
@@ -4038,19 +4162,35 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
      * this compilation cannot point at — which is the state {@link PublishedAt} answers for and not
      * one decided again here.
      */
-    private static String sentTo(WhereInTheRule sentTo, SourceRendering rendering,
+    private static String sentTo(RuleSite sentTo, WhereAPartIs parts, SourceRendering rendering,
                                  SourceId declaredIn) {
-        return placeInTheRule(sentTo)
+        return placeInTheRule(sentTo, parts)
                 .map(at -> ", at " + PlaceProse.said(at, rendering, declaredIn))
                 .orElse("");
     }
 
-    /** Where inside the rule a reader is sent, for the two surfaces that write it. */
-    private static Optional<PublishedAt> placeInTheRule(WhereInTheRule sentTo) {
-        return switch (sentTo) {
-            case WhereInTheRule.TheRuleItself _ -> Optional.empty();
-            case WhereInTheRule.APlaceInIt(Citation at) -> PublishedAt.of(at);
+    /**
+     * Where inside the rule a reader is sent, for the two surfaces that write it.
+     *
+     * <p>The one place the question is asked, so that the two readings short at one part answer it
+     * alike. Asked twice, the day one of them treated a splice as a place inside the rule the other
+     * would still be sending readers to the rule, and the addresses a consumer joins on would have
+     * come apart for a reason nothing in the model says.
+     *
+     * <p>A place is one somebody can edit. A part whose code is written elsewhere — spliced in from
+     * a module this compile holds no file for — points at the call rather than at what the author
+     * wrote, and a reader sent there under a word meaning "inside the rule" would be looking for
+     * something that is not in front of them and could not edit it if it were. There is nothing
+     * inside such a rule to send them to, so what they get is the rule.
+     */
+    private static Optional<PublishedAt> placeInTheRule(RuleSite sentTo, WhereAPartIs parts) {
+        Citation at = switch (sentTo) {
+            case RuleSite.TheRuleItself _ -> null;
+            case RuleSite.APartOfIt it -> parts.of(it.part());
+            case RuleSite.AConstructTheAuthorWrote it -> parts.of(it.origin());
         };
+        return at == null || at instanceof Citation.Elsewhere
+                ? Optional.empty() : PublishedAt.of(at);
     }
 
     private static void signature(ObjectNode behavior, String named,
@@ -4109,7 +4249,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                                   Measure<List<BorderAssessment>> lines,
                                   List<BorderObligationPointAssessment> account,
                                   ClaimAnnotations claimed, DocumentSources sources,
-                                  PublishedRuleHandle.WhereARuleIs places) {
+                                  PublishedRuleHandle.WhereARuleIs places, WhereAPartIs parts) {
         // The one decision, the same one the page reads. Written here as well, the two surfaces
         // answered a reader differently about which behaviors have a section at all.
         if (!(PartitionSection.of(partition) instanceof PartitionSection.Present)) {
@@ -4208,12 +4348,12 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                 // Each with where inside the rule to go about it, because the word is coarser than
                 // what produced it and two things to lift can arrive under one of them: a clause
                 // whose ends two choices left open leaves two, and a list of words says one.
-                if (!whyStanding(each).written().isEmpty()) {
+                if (!whyStanding(each).isEmpty()) {
                     ArrayNode stopped = one.putArray("stopped");
-                    whyStanding(each).written().forEach(stop -> {
+                    whyStanding(each, parts).written().forEach(stop -> {
                         ObjectNode standsOn = stopped.addObject();
                         standsOn.put("reason", word(stop.reason()));
-                        sentTo(standsOn, stop.sentTo(), sources);
+                        sentTo(standsOn, stop.sentTo(), parts, sources);
                     });
                 }
                 whatItsPositionWasShortOf(each)
@@ -4377,7 +4517,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                 // is the rule; an end a choice left open is lifted at the `||`, and the clause the
                 // handle names reads perfectly well. Absent where the rule is the whole of it,
                 // rather than repeating the rule's own place under a second key.
-                sentTo(said, rule.finding().sentTo(), sources);
+                sentTo(said, rule.finding().sentTo(), parts, sources);
             }
             if (each instanceof PartitionEvidence.NotRead.AnUnclassifiedRule rule) {
                 RuleHandleSurface.NOT_READ_RULE.put(
@@ -5277,7 +5417,8 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                 PartitionEvidence.Unanswered asked = new PartitionEvidence.Unanswered(it.question());
                 yield RuleHandleProse.said(PublishedRuleHandle.of(handle(asked.cited(), places), places), rendering,
                                 null)
-                        + " at " + asked.at() + " (" + whyStanding(asked).words().stream()
+                        + " at " + asked.at() + " (" + ReportedReason.words(whyStanding(asked))
+                        .stream()
                         .map(AdequacyReport::whyUnread).collect(Collectors.joining("; ")) + ")";
             }
             case Subject.AtABorder it -> it.border().label();
@@ -5385,7 +5526,8 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                 // the material to do it with.
                 yield new PublishedSubject.AtARule(asked.at(), id,
                         PublishedRuleHandle.of(handle(asked.cited(), places), places),
-                        whyStanding(asked).words().stream().map(AdequacyReport::word).toList());
+                        ReportedReason.words(whyStanding(asked)).stream()
+                                .map(AdequacyReport::word).toList());
             }
             case Subject.AtABorder it -> {
                 // The line the rules drew, as this document identifies one. Named by the rule

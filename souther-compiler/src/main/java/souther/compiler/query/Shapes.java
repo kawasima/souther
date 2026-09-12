@@ -8,7 +8,9 @@ import souther.compiler.check.DeclarationCitations;
 import souther.compiler.check.DeclarationLocations;
 import souther.compiler.check.DeclarationMeaning;
 import souther.compiler.check.Normalized;
+import souther.compiler.check.PartId;
 import souther.compiler.check.PublishedDeclarations;
+import souther.compiler.check.RuleRef;
 import souther.compiler.stdlib.Stdlib;
 import souther.compiler.check.ExpandedClauseLookup;
 import souther.compiler.check.ExpandedClauseResult;
@@ -30,6 +32,7 @@ import souther.compiler.diag.Citation;
 import souther.compiler.diag.CompileException;
 import souther.compiler.diag.DiagnosticPlace;
 import souther.compiler.diag.Region;
+import souther.compiler.diag.SourcePos;
 import souther.compiler.types.BindingOwner;
 import souther.compiler.types.TypeKey;
 import souther.compiler.types.TypeSymbol;
@@ -806,6 +809,43 @@ public final class Shapes {
             DiagnosticPlace at = DiagnosticPlace.of(clause.reportedAt());
             return at instanceof DiagnosticPlace.Unavailable out
                     ? new DiagnosticPlace.Unavailable(out.provenance().asDeclared()) : at;
+        }
+    }
+
+    /**
+     * Where one part of one clause is written.
+     *
+     * <p>Beside {@link ClauseLocation} for the reason that one is beside {@link ClausesExpandedFor},
+     * and at the grain a reader means. A clause written as several rules sends a reader to the one
+     * of them that stopped the reading, and a reader pointed at the second part has no business
+     * being worked out again because the third moved.
+     *
+     * <p>Split over the declaration as resolution left it, which is the tree its author wrote. A
+     * tree an expansion has been over holds conjunctions no author wrote, so the parts of that one
+     * are not the parts anybody is holding the name of.
+     *
+     * <p>Absent where the declaration writes no such part — nothing declares the name, its kind has
+     * no {@code invariant} to write, or the clause is written as fewer rules than this. Those are
+     * one answer because they are one fact for a reader: there is no such part to be pointed at.
+     */
+    public record PartLocation(PartId<RuleRef.Invariant> part) implements Key<Citation> {
+        @Override
+        public String module() {
+            return part.rule().clause().id().declaredOn().key().module();
+        }
+
+        @Override
+        public Answer<Citation> compute(Db db) {
+            souther.compiler.check.Clause.Id clause = part.rule().clause().id();
+            Hir.Def declared =
+                    ClausesExpandedFor.declarationOf(db, clause.declaredOn().key());
+            if (!(declared instanceof Hir.Data data)
+                    || clause.ordinal() < 0 || clause.ordinal() >= data.invariants().size()) {
+                return Answer.absent();
+            }
+            SourcePos at = ClauseHelpers.placeOfPart(
+                    data.invariants().get(clause.ordinal()).expr(), part.ordinal());
+            return at == null ? Answer.absent() : Answer.of(Citation.of(at));
         }
     }
 

@@ -43,13 +43,16 @@ class WhatARuleIsAnswerableForIsNotSiftedOutOfAPlaceTest {
      * refuses a reason of the wrong kind in either. {@code BlockReason} and {@code RuleShortfall}
      * refuse rather than sift: a reason no rule is answerable for is turned away where it would have
      * been filed under one, so what is filed is of the right kind by having been made at all.
+     * {@code ReadingShortfall} refuses it where the decision is made, which is one step before the
+     * filing and is the same refusal.
      *
      * <p>Nowhere reads it to answer with. What a rule is answerable for is made where the asking
      * is and handed on as {@code RuleShortfall}, and a reading with one in hand has the answer
      * rather than a place to sift for it.
      */
     private static final Set<String> ENTITLED = Set.of(
-            "UnreadReason.java", "Unbuilt.java", "BlockReason.java", "RuleShortfall.java");
+            "UnreadReason.java", "Unbuilt.java", "BlockReason.java", "RuleShortfall.java",
+            "ReadingShortfall.java");
 
     @Test
     void onlyTheseTellTheTwoKindsApart() throws IOException {

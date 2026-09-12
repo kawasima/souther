@@ -79,8 +79,9 @@ record ReadByClauses(Confinement.Worked<FactSubject> confinement,
      * branch this declaration has already dropped — and would pay for machines the whole answer
      * never needed to find out.
      *
-     * @param aboutARule what a rule of this part is answerable for, each saying the written place
-     *                   the reading decided it at. Not sifted out of what the positions were left
+     * @param aboutARule what a rule of this part is answerable for, each saying the part of this
+     *                   reading's tree it was decided under. Not sifted out of what the positions
+     *                   were left
      *                   holding: a place holds the reasons of every rule that reached it and names
      *                   none of them, so what came back from sifting it was a list of reasons and
      *                   no clause
@@ -110,7 +111,7 @@ record ReadByClauses(Confinement.Worked<FactSubject> confinement,
     record OfAPart(Adoption<FactSubject, ReadingLanguage.Values> byValues,
                    Adoption<FactSubject, ReadingLanguage.Order> byOrder,
                    Set<FactSubject> stopped,
-                   Set<RuleShortfall> aboutARule,
+                   Set<ReadingShortfall> aboutARule,
                    java.util.Map<FactSubject, AdmittedStrings> aboutStrings,
                    EndsLeftOpen endsLeftOpen,
                    java.util.Map<OpenEnd, EndsLeftOpen.Behind> boundsLeftOpen) {
