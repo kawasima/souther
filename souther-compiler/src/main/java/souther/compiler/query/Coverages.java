@@ -974,6 +974,10 @@ final class Coverages {
         // against and never what the answer keeps; the account it was built from is what travels.
         souther.compiler.partition.Reachability reaching =
                 souther.compiler.partition.Reachability.of(within, rules.region());
+        // Once for the border rather than once for each of its points. What the positions of this
+        // input admit is the same answer at every point of it, and working it out where it is spent
+        // walks every position of the input at every point a row is searched for.
+        souther.compiler.partition.WitnessSearch looking = input.witnessSearch();
         return new OneSearchOfABorder() {
 
             @Override
@@ -1000,7 +1004,7 @@ final class Coverages {
                 // in the same side is at the point as much as this one would be, so what the row is
                 // offered for goes in beside it rather than being read back off it.
                 return switch (realizer.realize(quantity.standingAt(criterion), able.region(),
-                        input.witnessSearch())) {
+                        looking)) {
                     case Realization.Found found -> {
                         // Asking nothing of what the dependencies answer. A point of a line is a
                         // place the positions stand at, and nothing about it turns on what a
