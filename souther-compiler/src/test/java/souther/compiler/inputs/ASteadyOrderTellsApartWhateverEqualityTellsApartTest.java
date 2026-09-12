@@ -88,6 +88,21 @@ class ASteadyOrderTellsApartWhateverEqualityTellsApartTest {
                 RuleSite.at(part("m", "N", Optional.of(new ClauseName("hi")))));
     }
 
+    /**
+     * And a clause nobody named is told from one named with no characters.
+     *
+     * <p>An absence is not a value that happens to be empty. Nothing an author can write makes the
+     * second of these today, and the type admits it: what the order promises is over the values
+     * this compiler can hold, so a pair it can hold and cannot tell apart is a hole in the promise
+     * whether or not a source reaches it.
+     */
+    @Test
+    void andAnUnnamedClauseIsToldFromOneNamedWithNothing() {
+        tellsApart(RuleSite.IN_A_STEADY_ORDER,
+                RuleSite.at(part("m", "N", Optional.empty())),
+                RuleSite.at(part("m", "N", Optional.of(new ClauseName("")))));
+    }
+
     /** And a site of one kind is told from one of another, which is the coarsest half of it. */
     @Test
     void andTheKindsAreToldApartToo() {

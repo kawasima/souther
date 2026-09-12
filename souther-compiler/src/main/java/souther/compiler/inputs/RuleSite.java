@@ -1,5 +1,6 @@
 package souther.compiler.inputs;
 
+import souther.compiler.check.ClauseName;
 import souther.compiler.check.PartId;
 import souther.compiler.check.RuleRef;
 import souther.compiler.types.SourceConstructOrigin;
@@ -124,6 +125,7 @@ public sealed interface RuleSite {
                     .thenComparing(RuleSite::inWhichModule, Comparator.naturalOrder())
                     .thenComparing(RuleSite::onWhatItIsDeclared, Comparator.naturalOrder())
                     .thenComparingInt(RuleSite::whichClause)
+                    .thenComparing(RuleSite::wasNamed, Comparator.naturalOrder())
                     .thenComparing(RuleSite::calledWhat, Comparator.naturalOrder())
                     .thenComparingInt(RuleSite::whichPart)
                     .thenComparing(RuleSite::wroteIt,
@@ -160,18 +162,32 @@ public sealed interface RuleSite {
     }
 
     /**
-     * What the author called the clause, where they named it.
+     * Whether the author named the clause, and what they called it — two questions and two
+     * comparisons.
      *
      * <p>Part of what a part is, so part of what tells two apart: a clause carries the name it was
      * written under beside the number it is, and two parts alike in every number and not in the
      * name are two parts. Left out, the order would call them one while everything that holds them
      * calls them two.
+     *
+     * <p>Asked apart because an absence is not a name. A clause nobody named and one named with no
+     * characters are two clauses to everything that holds them, and a comparison that answered
+     * both with the same word would be reading an absence as a value that happens to be empty —
+     * which is how an order comes to call two things one.
      */
+    private static boolean wasNamed(RuleSite site) {
+        return switch (site) {
+            case TheRuleItself _, AConstructTheAuthorWrote _ -> false;
+            case APartOfIt it -> it.part().rule().clause().name().isPresent();
+        };
+    }
+
+    /** What they called it, where they named it — see {@link #wasNamed}. */
     private static String calledWhat(RuleSite site) {
         return switch (site) {
             case TheRuleItself _, AConstructTheAuthorWrote _ -> "";
             case APartOfIt it -> it.part().rule().clause().name()
-                    .map(Object::toString).orElse("");
+                    .map(ClauseName::value).orElse("");
         };
     }
 
