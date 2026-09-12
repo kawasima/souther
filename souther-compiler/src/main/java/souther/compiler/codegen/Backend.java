@@ -253,7 +253,8 @@ public final class Backend {
             }
         }
         CodegenContext ctx = new CodegenContext(module.name(), symbols, kernels, caseToSums, typePackage,
-                module.exposing().isEmpty(), exposed, standingCalls, layouts);
+                module.exposing().isEmpty(), exposed, standingCalls, layouts,
+                module.pos().quotedFrom());
         ctx.setDischargeInvariants(dischargeInvariants);
         ctx.setInvariantStatements(invariantStatements);
         ctx.setValueShapes(shapes);
@@ -1326,7 +1327,7 @@ public final class Backend {
             // implements its public interface (which itself extends Behavior for a single-input one)
             cb.withInterfaceSymbols(cdBehavior(spec.name()));
             emitInjection(cb, cdB, injected);
-            if (where instanceof EnsuresEnforcement.AtTheCallee(Contract contract)) {
+            if (where instanceof EnsuresEnforcement.AtTheCallee(Contract _)) {
                 emitCheckingApply(cb, cdB, spec, mtdApply, n);
             }
             cb.withMethodBody(bodyMethod, mtdApply, bodyFlags, code -> {
@@ -1553,7 +1554,7 @@ public final class Backend {
                             code.goto_(end);
                             code.labelBinding(doApply);
                         }
-                        case Composition.Routing.Always ignored -> { }
+                        case Composition.Routing.Always _ -> { }
                     }
                     applyStage(code, cdP, stage.behavior(), requiredNames, reqStages, behaviorDeps,
                             stage.answers(), arity + 1);

@@ -627,11 +627,26 @@ final class BodyGen {
             code.invokestatic(CD_Probe, "hit", MTD_Probe_hit);
         }
 
-        /** Binds the bytecode that follows to {@code e}'s source line, for the {@code LineNumberTable}
-         * (spec §target-jdk). Every {@code Core} node keeps its {@code SourcePos}, so a runtime stack trace
-         * — an invariant abort above all — points back to the {@code .sou} line. Consecutive nodes on
-         * the same line (a subexpression tree, or a tail node re-lined by {@code genExpr}) collapse to
-         * one entry. */
+        /**
+         * Binds the bytecode that follows to {@code e}'s source line, for the {@code LineNumberTable}
+         * (spec §target-jdk). Every {@code Core} node keeps its {@code SourcePos}, so a runtime stack
+         * trace — an invariant abort above all — points back to the {@code .sou} line. Consecutive
+         * nodes on the same line (a subexpression tree, or a tail node re-lined by {@code genExpr})
+         * collapse to one entry.
+         *
+         * <p>A node written in another text writes nothing. The class carries one
+         * {@code SourceFile}, which is this module's, and a helper declared in another file of the
+         * same compile keeps the positions it was written at — so its line is a line of a file this
+         * class does not name, and the file it does name may be shorter than it. Leaving the entry
+         * out is what the table has for saying so: the pc then falls under the entry before it,
+         * which is a line of this class's own file because that is the only kind of line written
+         * here.
+         *
+         * <p>What stands there is the call. A helper takes at least one parameter — the language
+         * refuses a {@code let} with an empty parameter list, and a helper that takes nothing is a
+         * value, whose construction is settled where it is written — so the copy is always wrapped
+         * in the bindings the expansion made, and those carry the call's own position.
+         */
         private void emitLine(Core e) {
             souther.compiler.diag.PhysicalPos sits = ctx.sits(e.pos());
             int line = sits == null ? 0 : sits.line();
@@ -824,9 +839,13 @@ final class BodyGen {
          *
          * <p>No file name. This compiler is not given one — a generated class's {@code SourceFile}
          * is derived from its module name rather than threaded down from a path — and deriving one
-         * here would name a file that need not exist, and would name the reading module's when the
-         * {@code unreachable} came in with an inlined helper of another. A reader at run time has
-         * the frame's own file and line; a reader of E1911 has the row's place beside this one.
+         * here would name a file that need not exist. A reader at run time has the frame's own file
+         * and line; a reader of E1911 has the row's place beside this one.
+         *
+         * <p>Which is why an {@code unreachable} that came in with an inlined helper of another file
+         * says its reason and no numbers. A place with no file beside it is read against the frame's,
+         * and the frame's file is this class's — so a line of the helper's file put here would be
+         * read as a line of this one. The reason is what the model wrote and stands on its own.
          */
         private String abortMessage(Core.Unreachable u) {
             souther.compiler.diag.PhysicalPos sits = ctx.sits(u.pos());
@@ -929,7 +948,7 @@ final class BodyGen {
                     unbox(code, bound, bslot);
                     bind(c.binder(), bslot, bound);
                 }
-                case Refinement.OptionAbsent ignored -> { }
+                case Refinement.OptionAbsent _ -> { }
             }
         }
 

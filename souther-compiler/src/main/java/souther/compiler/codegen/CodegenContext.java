@@ -11,7 +11,10 @@ import souther.compiler.core.KernelSignatures;
 import souther.compiler.core.ValueShape;
 import souther.compiler.check.DerivedSymbols;
 import souther.compiler.ast.Hir;
+import souther.compiler.diag.PhysicalPos;
+import souther.compiler.diag.QuotedFrom;
 import souther.compiler.diag.SourceLayouts;
+import souther.compiler.diag.SourcePos;
 import souther.compiler.types.Type;
 import souther.compiler.types.TypeSymbol;
 import souther.compiler.check.TypeOps;
@@ -27,6 +30,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 import static souther.compiler.codegen.Descriptors.*;
@@ -85,8 +89,22 @@ final class CodegenContext {
      */
     private final SourceLayouts layouts;
 
-    /** Where a place sits in the text it is in, or null where this compilation holds no such text. */
-    souther.compiler.diag.PhysicalPos sits(souther.compiler.diag.SourcePos place) {
+    /**
+     * Which text the classes generated here are of.
+     *
+     * <p>A class carries one {@code SourceFile}, and it is this module's. So this is the one text
+     * whose line numbers a class generated here can be read against: a place in any other text has
+     * no line to contribute, because whatever line that place is at is a line of a file the class
+     * does not name, and the file it does name may be shorter than it.
+     */
+    private final QuotedFrom home;
+
+    /** Where a place sits in the text this module's classes name, or null where it sits in another
+     *  text or this compilation holds none. */
+    PhysicalPos sits(SourcePos place) {
+        if (place == null || !home.equals(place.quotedFrom())) {
+            return null;
+        }
         return layouts.resolve(place);
     }
 
@@ -420,8 +438,9 @@ final class CodegenContext {
     CodegenContext(String pkg, DerivedSymbols symbols, KernelSignatures kernels,
                    Map<String, List<GeneratedClass>> caseToSums,
                    Map<String, String> typePackage, boolean exposeAll, Set<String> exposed,
-                   Map<String, Type> standingCalls, SourceLayouts layouts) {
+                   Map<String, Type> standingCalls, SourceLayouts layouts, QuotedFrom home) {
         this.layouts = layouts;
+        this.home = Objects.requireNonNull(home, "the classes of a module are of the text it was read from");
         this.pkg = pkg;
         this.symbols = symbols;
         this.kernels = kernels;
