@@ -57,10 +57,11 @@ class AnArmSaysWhichCaseAValueIsAndDoesNotMakeASecondOneTest {
     private static final TypeSymbol AN_INT = TypeSymbol.primitive("Int");
 
     private final Hir.Binders binders = new Hir.Binders(OWNER);
-    private final PathEngine engine =
-            new PathEngine(RuleReadings.ofNoClauseFiled(Symbols.none(DefaultStdlib.get())),
-                Terms.Of.THE_DISCHARGE_TREE,
-                souther.compiler.query.ReadAs.THE_COMPILATION_DOES);
+    private final PathEngine engine = new PathEngine(
+            RuleReadingContext.unshared(
+                    RuleReadings.ofNoClauseFiled(Symbols.none(DefaultStdlib.get())),
+                    souther.compiler.query.ReadAs.THE_COMPILATION_DOES),
+            Terms.Of.THE_DISCHARGE_TREE);
 
     @Test
     void anArmOverOneCaseIsAboutTheValueItOpened() {
@@ -191,9 +192,10 @@ class AnArmSaysWhichCaseAValueIsAndDoesNotMakeASecondOneTest {
         Core.Binder x = CoreBinders.of(binders.binder("x", POS));
         Core.Binder y = CoreBinders.of(binders.binder("y", POS));
         PathEngine reading = new PathEngine(
-                RuleReadings.ofNoClauseFiled(Symbols.none(DefaultStdlib.get())),
-                Map.of(FIND, statesThatTheIntIsPositive()), Terms.Of.THE_DISCHARGE_TREE,
-                souther.compiler.query.ReadAs.THE_COMPILATION_DOES);
+                RuleReadingContext.unshared(
+                        RuleReadings.ofNoClauseFiled(Symbols.none(DefaultStdlib.get())),
+                        souther.compiler.query.ReadAs.THE_COMPILATION_DOES),
+                Map.of(FIND, statesThatTheIntIsPositive()), Terms.Of.THE_DISCHARGE_TREE);
 
         Denotations outer = reading.enteringArm(
                 arm(new Core.ResolvedPattern.AnyOf(
@@ -283,9 +285,10 @@ class AnArmSaysWhichCaseAValueIsAndDoesNotMakeASecondOneTest {
     @Test
     void aRuleHoldsOfAnArmWhoseValuesAreAllOnesItIsAbout() {
         Symbols symbols = symbolsOf(NESTED);
-        PathEngine reading = new PathEngine(RuleReadings.ofNoClauseFiled(symbols),
-                Terms.Of.THE_DISCHARGE_TREE,
-                souther.compiler.query.ReadAs.THE_COMPILATION_DOES);
+        PathEngine reading = new PathEngine(
+                RuleReadingContext.unshared(RuleReadings.ofNoClauseFiled(symbols),
+                        souther.compiler.query.ReadAs.THE_COMPILATION_DOES),
+                Terms.Of.THE_DISCHARGE_TREE);
         TypeSymbol once = named(symbols, "OnceKind");
         TypeSymbol station = named(symbols, "Station");
         Guard aboutOnceKind = new Guard.Case(
@@ -303,9 +306,10 @@ class AnArmSaysWhichCaseAValueIsAndDoesNotMakeASecondOneTest {
     @Test
     void anArmNamingSeveralTakesARuleThatIsAboutAllOfThem() {
         Symbols symbols = symbolsOf(NESTED);
-        PathEngine reading = new PathEngine(RuleReadings.ofNoClauseFiled(symbols),
-                Terms.Of.THE_DISCHARGE_TREE,
-                souther.compiler.query.ReadAs.THE_COMPILATION_DOES);
+        PathEngine reading = new PathEngine(
+                RuleReadingContext.unshared(RuleReadings.ofNoClauseFiled(symbols),
+                        souther.compiler.query.ReadAs.THE_COMPILATION_DOES),
+                Terms.Of.THE_DISCHARGE_TREE);
         TypeSymbol once = named(symbols, "OnceKind");
         TypeSymbol station = named(symbols, "Station");
         TypeSymbol hospital = named(symbols, "Hospital");

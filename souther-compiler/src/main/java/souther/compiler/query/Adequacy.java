@@ -33,6 +33,7 @@ import souther.compiler.check.DeclaredSig;
 import souther.compiler.check.PublishedDeclarations;
 import souther.compiler.check.RuleRef;
 import souther.compiler.publish.PublicationOrders;
+import souther.compiler.check.RuleReadingContext;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.CheckSurface;
 import souther.compiler.check.Sig;
@@ -851,8 +852,9 @@ public final class Adequacy {
                     continue;
                 }
                 out.put(spec.name(), souther.compiler.check.PathReachability.of(
-                        body, db.ask(new Front.Reading()).value(),
-                        SpecImplementation.align(spec, fn), plan, read, reading.value()));
+                        body, SpecImplementation.align(spec, fn), plan, read,
+                        RuleReadingContext.of(reading.value(),
+                                db.ask(new Front.Reading()).value(), db.readings())));
             }
             return Answer.of(Ordered.map(out));
         }

@@ -1,6 +1,7 @@
 package souther.compiler.query;
 
 import souther.compiler.check.ReadingPolicy;
+import souther.compiler.check.RuleReadingContext;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.ast.Ast;
 import souther.compiler.ast.DefinitionName;
@@ -644,7 +645,8 @@ public final class Bodies {
             }
             Map<String, ContractDischarge> out = new LinkedHashMap<>();
             stated.value().forEach((behavior, rules) -> out.put(behavior, ContractDischarge.of(
-                    rules, reading.value(), db.ask(new Front.Reading()).value())));
+                    rules, RuleReadingContext.of(reading.value(),
+                            db.ask(new Front.Reading()).value(), db.readings()))));
             return Answer.of(Ordered.map(out));
         }
     }
@@ -2098,9 +2100,12 @@ public final class Bodies {
                             // over the declarations as resolution left them: the two are different
                             // scopes, so a reading made here is not a reading made there and says
                             // so.
-                            new RuleReadingSource(scope.value(), Shapes.expandedClauses(db),
-                                    Shapes.publishedDeclarations(db), Shapes.clauseLocations(db)),
-                            db.readings(),
+                            RuleReadingContext.of(
+                                    new RuleReadingSource(scope.value(),
+                                            Shapes.expandedClauses(db),
+                                            Shapes.publishedDeclarations(db),
+                                            Shapes.clauseLocations(db)),
+                                    db.ask(new Front.Reading()).value(), db.readings()),
                             contracts.present() ? contracts.value() : Map.of())
                     : null;
             List<Diagnostic> warnings = new ArrayList<>();
@@ -2211,9 +2216,10 @@ public final class Bodies {
             Hir.FnDef fn = db.ask(new SettledFn(module, spec.name())).value();
             out.put(spec.name(), souther.compiler.claims.Claims.of(
                     souther.compiler.claims.UnreachableClaims.of(body, read, scope.value(), plan),
-                    souther.compiler.check.PathReachability.of(body, policy,
+                    souther.compiler.check.PathReachability.of(body,
                             fn == null ? null : SpecImplementation.align(spec, fn),
-                            plan, read, reading.value())));
+                            plan, read,
+                            RuleReadingContext.of(reading.value(), policy, db.readings()))));
         }
         // In the order the module declares them, which is the order a reader meets the diagnostics
         // these carry. `Map.copyOf` keeps the entries and not the order (see `Ordered`), so a

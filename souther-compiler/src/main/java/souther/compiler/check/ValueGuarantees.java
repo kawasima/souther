@@ -44,16 +44,15 @@ public final class ValueGuarantees {
      * <p>{@link InvariantChecker#seedFields} is what decides it and this reads that answer: a
      * record's own invariant bounds its fields, and a reading of the declarations is what has that.
      */
-    public static Map<RuleKey, Bounds> of(Type type, RuleReadingSource source,
-                                          ReadingPolicy policy) {
+    public static Map<RuleKey, Bounds> of(Type type, RuleReadingContext reading) {
         // Whose clauses hold of a value of this type is the one reading's answer. Asked here from
         // the declaration instead, an element that is a sum is an element nothing is known about,
         // while the same value read as a field of a record carries the shared part's bounds.
-        List<ValueReading.Owner> owners = ValueReading.of(type, source.symbols()).owners();
+        List<ValueReading.Owner> owners =
+                ValueReading.of(type, reading.source().symbols()).owners();
         Map<RuleKey, Bounds> guaranteed = new LinkedHashMap<>();
         for (ValueReading.Owner owner : owners) {
-            InvariantChecker.Seeded seeded =
-                    seededOf(owner.named(), source, policy);
+            InvariantChecker.Seeded seeded = seededOf(owner.named(), reading);
             if (seeded == null) {
                 // All of them or none, which is what leaves a value unbounded rather than bounded
                 // by half of what the declarations say.
@@ -76,9 +75,8 @@ public final class ValueGuarantees {
      * this says nothing from, which leaves a value unbounded rather than bounded by half of what
      * a declaration says. */
     private static InvariantChecker.Seeded seededOf(TypeSymbol.AtModule named,
-                                                    RuleReadingSource source, ReadingPolicy policy) {
-        InvariantChecker.Seeded seeded =
-                InvariantChecker.seedFieldsUnshared(named, source, policy);
+                                                    RuleReadingContext reading) {
+        InvariantChecker.Seeded seeded = InvariantChecker.seedFields(named, reading);
         return seeded.everyClauseRead() && !seeded.constraints().isBottom() ? seeded : null;
     }
 }

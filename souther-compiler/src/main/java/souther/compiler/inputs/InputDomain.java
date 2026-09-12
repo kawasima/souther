@@ -2,6 +2,7 @@ package souther.compiler.inputs;
 
 import souther.compiler.check.DeclaredSig;
 import souther.compiler.check.NumberAt;
+import souther.compiler.check.RuleReadingContext;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.SpecImplementation;
 import souther.compiler.check.DeclarationReadings;
@@ -854,8 +855,12 @@ public final class InputDomain {
         // position first and the declarations under one the reading stopped above, which is the one
         // resolution of it — worked out again from the positions this hands over, a rule about a
         // name every case of a sum spreads would be read as naming nothing.
+        // The world this reading was made in, handed on whole. What a quantity reaches below is a
+        // declaration this reading already reached, so it is read from the same rules under the
+        // same budget and borrows what this reading's own made of it.
         return ReadQuantities.of(byRoot, byRoot.keySet(), byPath, cases,
-                path -> typeAt(path, source), source, policy);
+                path -> typeAt(path, source),
+                source == null ? null : RuleReadingContext.of(source, policy, machines));
     }
 
     /**

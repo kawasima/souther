@@ -69,8 +69,9 @@ class WhatATypeGuaranteesIsOneAnswerWhoeverAsksTest {
 
     private final Symbols symbols = rules.symbols();
 
-    private final PathEngine engine = new PathEngine(rules,
-            Terms.Of.THE_DISCHARGE_TREE, souther.compiler.query.ReadAs.THE_COMPILATION_DOES);
+    private final PathEngine engine = new PathEngine(
+            RuleReadingContext.unshared(rules, souther.compiler.query.ReadAs.THE_COMPILATION_DOES),
+            Terms.Of.THE_DISCHARGE_TREE);
 
     private final GuaranteeWalk walk = new GuaranteeWalk(engine.guarantees(), symbols);
 

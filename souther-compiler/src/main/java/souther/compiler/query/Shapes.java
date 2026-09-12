@@ -12,6 +12,7 @@ import souther.compiler.stdlib.Stdlib;
 import souther.compiler.check.ExpandedClauseLookup;
 import souther.compiler.check.ExpandedClauseResult;
 import souther.compiler.check.ExpandedClauses;
+import souther.compiler.check.RuleReadingContext;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.InvariantSettled;
 import souther.compiler.check.Lower;
@@ -547,8 +548,9 @@ public final class Shapes {
                         for (ClausesForDischarge.ClauseReading written
                                 : declaring.conjunctsOf(declared.expr(), new BindingOwner.OfData(named))) {
                             clauses.add(InvariantChecker.capabilityOf(written, named,
-                                    reading.value(),
-                                    db.ask(new Front.Reading()).value()).named(declared.name()));
+                                    RuleReadingContext.of(reading.value(),
+                                            db.ask(new Front.Reading()).value(), db.readings()))
+                                    .named(declared.name()));
                         }
                     }
                     out.put(named, List.copyOf(clauses));
