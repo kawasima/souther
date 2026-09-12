@@ -138,7 +138,8 @@ record Cutting(BorderQuantity of, Level at, ComparisonClaim claim,
      * with it.
      */
     static Read read(String behavior, StatedComparison comparison,
-                     InputReading read, InputReads reads) {
+                     InputReading read, InputReads reads,
+                     souther.compiler.coverage.Arrivals answering) {
         AffineReading.OfAComparison canonical =
                 AffineReading.read(comparison, read.domain(), reads, read.rules());
         return switch (canonical) {
@@ -158,7 +159,7 @@ record Cutting(BorderQuantity of, Level at, ComparisonClaim claim,
             // is what a date against a written date and a case of an enumeration do: the values are
             // ones it cannot count, and the comparison still states a line.
             case AffineReading.OfAComparison.Stopped stopped ->
-                    asWritten(behavior, comparison, stopped, read, reads);
+                    asWritten(behavior, comparison, stopped, read, reads, answering);
         };
     }
 
@@ -273,7 +274,8 @@ record Cutting(BorderQuantity of, Level at, ComparisonClaim claim,
      */
     private static Read asWritten(String behavior, StatedComparison comparison,
                                   AffineReading.OfAComparison.Stopped canonical,
-                                  InputReading read, InputReads reads) {
+                                  InputReading read, InputReads reads,
+                                  souther.compiler.coverage.Arrivals answering) {
         Quantities quantities = read.quantities();
         Cutting drawn = atAPosition(behavior,
                 ComparedLine.asWritten(comparison, read, reads), quantities);
@@ -288,7 +290,7 @@ record Cutting(BorderQuantity of, Level at, ComparisonClaim claim,
             return new Read.Cuts(drawn);
         }
         return new Read.Stopped(GuardThresholds.whatEachPlaceIsLeftWith(
-                comparison, canonical, read, reads));
+                comparison, canonical, read, reads, answering));
     }
 
     /** One position's own values, cut where the reading found the line, or null where that reading

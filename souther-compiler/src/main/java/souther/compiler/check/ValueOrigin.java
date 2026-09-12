@@ -282,6 +282,16 @@ public sealed interface ValueOrigin<K> {
         /** Where the arm {@code decidedBy} chooses is read, which is {@code at} with whatever
          *  choosing that arm binds entered — or nowhere this reading goes. */
         Opened<E> choosing(Choice.Decides decidedBy, E at);
+
+        /**
+         * Whether {@code e}, standing where {@code at} says it stands, can be evaluated to a value.
+         *
+         * <p>{@link NormalReturn}'s question, asked of the caller because the answer is rooted: an
+         * expression read as a body of its own has every name in it free, and a name bound to
+         * something that aborts is what makes the difference. Which body {@code e} stands in is
+         * what the caller knows and this walk does not.
+         */
+        boolean answers(Core e, E at);
     }
 
     /**
@@ -308,57 +318,13 @@ public sealed interface ValueOrigin<K> {
         record NotEntered<E>() implements Opened<E> {}
     }
 
-    /**
-     * What one walk carries as it goes: the names it is already inside, and the tree it is reading.
-     *
-     * <p>The tree is here because whether an expression answers a value is asked of that expression
-     * where it stands, and a name read through stands in a tree of its own. Held rather than
-     * rebuilt, since the question is only ever asked of a fork's arms and most expressions hold
-     * none.
-     */
-    final class Walk {
-
-        private final Set<souther.compiler.types.BindingId> following = new java.util.HashSet<>();
-        private Core reading;
-        private NormalReturn answering;
-
-        private Walk(Core reading) {
-            this.reading = reading;
-        }
-
-        /** Whether {@code e}, standing where it stands in the tree being read, answers a value.
-         *  {@link NormalReturn}'s answer: an expression that has to evaluate an {@code unreachable}
-         *  on its way answers none, and which expressions those are is not a fact about the node. */
-        private boolean answers(Core e) {
-            if (answering == null) {
-                // A tree the language's own operations stand in, which is the tree this walk is
-                // for: what counts as one is asked of {@link Terms} above, and a call kept standing
-                // is the model naming an operation rather than an expansion that failed.
-                answering = NormalReturn.ofBodyWhereTheOperationsStand(reading);
-            }
-            return answering.at(e);
-        }
-
-        /** Read {@code tree} instead until {@link #leave}, a name having been read through to it. */
-        private Core enter(Core tree) {
-            Core was = reading;
-            reading = tree;
-            answering = null;
-            return was;
-        }
-
-        private void leave(Core was) {
-            reading = was;
-            answering = null;
-        }
-    }
-
     /** What {@code e} is made of. */
     static <K, E> ValueOrigin<K> of(Core e, E at, Reading<K, E> reading) {
-        return of(e, at, reading, new Walk(e));
+        return of(e, at, reading, new java.util.HashSet<>());
     }
 
-    private static <K, E> ValueOrigin<K> of(Core raw, E at, Reading<K, E> reading, Walk walk) {
+    private static <K, E> ValueOrigin<K> of(Core raw, E at, Reading<K, E> reading,
+                                            Set<souther.compiler.types.BindingId> following) {
         Core e = Terms.asOperator(raw);
         K here = reading.positionOf(e, at);
         if (here != null) {
@@ -366,11 +332,9 @@ public sealed interface ValueOrigin<K> {
         }
         if (e instanceof Core.Read read) {
             AffineForms.ReadThrough<E> through = reading.readThrough(read, at);
-            if (through != null && walk.following.add(read.binding())) {
-                Core was = walk.enter(through.value());
-                ValueOrigin<K> inside = of(through.value(), through.at(), reading, walk);
-                walk.leave(was);
-                walk.following.remove(read.binding());
+            if (through != null && following.add(read.binding())) {
+                ValueOrigin<K> inside = of(through.value(), through.at(), reading, following);
+                following.remove(read.binding());
                 return inside;
             }
             // A name standing for several values is not one this walk reads through. What may be
@@ -392,7 +356,7 @@ public sealed interface ValueOrigin<K> {
         // question about the library rather than about this body.
         ValueName operation = Terms.operationOf(e);
         if (operation != null) {
-            return new Applied<>(operation, partsOf(Terms.argsOf(e), at, reading, walk));
+            return new Applied<>(operation, partsOf(Terms.argsOf(e), at, reading, following));
         }
         if (writtenOut(e)) {
             return new Written<>();
@@ -404,7 +368,7 @@ public sealed interface ValueOrigin<K> {
         // arithmetic next door reaches it, so the two cannot come to different values for one
         // expression.
         if (e instanceof Core.LetIn li) {
-            return of(li.body(), reading.inside(li, at), reading, walk);
+            return of(li.body(), reading.inside(li, at), reading, following);
         }
         // A value that is one of several, said as the choice it is. Which several and what decides
         // each is {@link Choice}'s answer and not read off the node here: walked by its children a
@@ -412,14 +376,14 @@ public sealed interface ValueOrigin<K> {
         // two are not one relation.
         Choice choice = Choice.of(e);
         if (choice != null) {
-            return oneOf(choice, at, reading, walk);
+            return oneOf(choice, at, reading, following);
         }
         List<Core> children = new ArrayList<>();
         Core.forEachChild(e, children::add);
         if (children.isEmpty()) {
             return leafOf(e, at, reading);
         }
-        return new Composed<>(partsOf(children, at, reading, walk));
+        return new Composed<>(partsOf(children, at, reading, following));
     }
 
     /**
@@ -433,14 +397,14 @@ public sealed interface ValueOrigin<K> {
      * arm a reading does not go inside comes to a value it can say nothing about, which is what
      * such an arm is to it.
      *
-     * <p>Which arms are values the expression may be is {@link NormalReturn}'s answer and is not
-     * read off the node: an {@code unreachable} standing where a value is built takes the whole
-     * expression around it with it, and an operator that stops as soon as its answer is settled
-     * answers a value on some runs and not others. A choice no arm of which answers one comes to
-     * none itself.
+     * <p>Which arms are values the expression may be is asked of the reading and not read off the
+     * node: an {@code unreachable} standing where a value is built takes the whole expression
+     * around it with it, and an operator that stops as soon as its answer is settled answers a
+     * value on some runs and not others. A choice no arm of which answers one comes to none
+     * itself.
      */
     private static <K, E> ValueOrigin<K> oneOf(Choice choice, E at, Reading<K, E> reading,
-                                               Walk walk) {
+                                               Set<souther.compiler.types.BindingId> following) {
         List<Core> deciding = new ArrayList<>();
         List<ValueOrigin<K>> values = new ArrayList<>(choice.arms().size());
         for (Choice.Arm arm : choice.arms()) {
@@ -449,16 +413,16 @@ public sealed interface ValueOrigin<K> {
                     deciding.add(each);
                 }
             }
-            if (!walk.answers(arm.answers())) {
+            if (!reading.answers(arm.answers(), at)) {
                 continue;
             }
             values.add(switch (reading.choosing(arm.decidedBy(), at)) {
-                case Opened.Entered<E>(E inside) -> of(arm.answers(), inside, reading, walk);
+                case Opened.Entered<E>(E inside) -> of(arm.answers(), inside, reading, following);
                 case Opened.NotEntered<E> _ -> new Unnameable<K>();
             });
         }
         return values.isEmpty() ? new NoValue<>()
-                : new OneOf<>(partsOf(deciding, at, reading, walk), values);
+                : new OneOf<>(partsOf(deciding, at, reading, following), values);
     }
 
     /**
@@ -504,10 +468,10 @@ public sealed interface ValueOrigin<K> {
     }
 
     private static <K, E> List<ValueOrigin<K>> partsOf(List<Core> of, E at, Reading<K, E> reading,
-                                                       Walk walk) {
+                                                       Set<souther.compiler.types.BindingId> following) {
         List<ValueOrigin<K>> out = new ArrayList<>();
         for (Core each : of) {
-            out.add(of(each, at, reading, walk));
+            out.add(of(each, at, reading, following));
         }
         return out;
     }

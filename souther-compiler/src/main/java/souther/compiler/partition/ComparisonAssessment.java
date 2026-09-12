@@ -244,6 +244,7 @@ sealed interface ComparisonAssessment {
     static ComparisonAssessment of(String behavior, StatedComparison comparison, Citation at,
                                    InputReading read, InputReads reads,
                                    BindingId answer,
+                                   souther.compiler.coverage.Arrivals answering,
                                    boolean drawnByAnInvariant) {
         Quantities quantities = read.quantities();
         // Asked first, and of the whole comparison. A rule that reads the answer anywhere in it is
@@ -253,7 +254,7 @@ sealed interface ComparisonAssessment {
         if (readsAnswer(comparison.left(), answer) || readsAnswer(comparison.right(), answer)) {
             return new AnswerDependent();
         }
-        return switch (Cutting.read(behavior, comparison, read, reads)) {
+        return switch (Cutting.read(behavior, comparison, read, reads, answering)) {
             case Cutting.Read.Cuts cuts ->
                     onTheQuantity(at, cuts.cutting(), quantities, drawnByAnInvariant);
             // Read to the end and cutting nothing, which is a fact about the rule and not a limit

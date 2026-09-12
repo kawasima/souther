@@ -16,6 +16,7 @@ import souther.compiler.numeric.NumericDomain;
 import souther.compiler.core.Core;
 import souther.compiler.semantics.ConditionJoin;
 import souther.compiler.core.Evaluated;
+import souther.compiler.coverage.Arrivals;
 import souther.compiler.diag.CompileException;
 import souther.compiler.diag.Diagnostic;
 import souther.compiler.diag.msg.InvariantMessage;
@@ -2790,6 +2791,10 @@ public final class InvariantChecker {
      */
     private Places placesIn(Core e, Denotations at, Map<FactSubject, Coordinate> byName) {
         Map<RuleKey, Coordinate> met = new LinkedHashMap<>();
+        // A clause of a declaration stands in no body — it is checked whenever a value is built,
+        // and nothing is on the way to it — so what this walk is handed is a tree with nothing
+        // above it.
+        Arrivals answering = Arrivals.whereNothingStandsAbove();
         ValueOrigin<RuleKey> origin = ValueOrigin.of(e, at,
                 new ValueOrigin.Reading<RuleKey, Denotations>() {
 
@@ -2851,6 +2856,13 @@ public final class InvariantChecker {
                 Terms.Chose chose = terms.chose(decidedBy, where);
                 return chose.opened() == null ? new ValueOrigin.Opened.Entered<>(chose.at())
                         : new ValueOrigin.Opened.NotEntered<>();
+            }
+
+            /** Whether an expression answers a value, of the tree this reading was made for, as
+             *  for a body's reading next door. */
+            @Override
+            public boolean answers(Core here, Denotations where) {
+                return answering.at(here);
             }
         });
         return new Places(origin, met);

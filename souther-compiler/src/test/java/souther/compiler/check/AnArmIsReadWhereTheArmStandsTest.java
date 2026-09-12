@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import souther.compiler.ast.Hir;
 import souther.compiler.core.Core;
+import souther.compiler.coverage.NormalReturn;
 import souther.compiler.diag.SourcePos;
 import souther.compiler.types.BindingId;
 import souther.compiler.types.BindingOwner;
@@ -47,9 +48,15 @@ class AnArmIsReadWhereTheArmStandsTest {
     private static final SourceConstructOrigin ORIGIN = SourceConstructOrigin.written(
             new WrittenOwner.Body("demo", "go"), 0, SourceConstruct.IF);
 
-    /** A reading whose positions say which reading they were found in. */
-    private static final ValueOrigin.Reading<String, String> WHERE_IT_WAS_READ =
-            new ValueOrigin.Reading<>() {
+    /** A reading whose positions say which reading they were found in, of the tree {@code root}. */
+    private static ValueOrigin.Reading<String, String> whereItWasRead(Core root) {
+        NormalReturn answering = NormalReturn.lazilyWhereTheOperationsStand(root);
+        return new ValueOrigin.Reading<>() {
+
+        @Override
+        public boolean answers(Core e, String at) {
+            return answering.at(e);
+        }
 
         @Override
         public String positionOf(Core e, String at) {
@@ -81,15 +88,22 @@ class AnArmIsReadWhereTheArmStandsTest {
                 case Choice.Decides.ByArgumentRelations _ -> at;
             });
         }
-    };
+        };
+    }
 
     /** A reading that goes inside no arm, as the reading of a clause of a {@code data} does not. */
-    private static final ValueOrigin.Reading<String, String> WHICH_GOES_INSIDE_NO_ARM =
-            new ValueOrigin.Reading<>() {
+    private static ValueOrigin.Reading<String, String> whichGoesInsideNoArm(Core root) {
+        NormalReturn answering = NormalReturn.lazilyWhereTheOperationsStand(root);
+        return new ValueOrigin.Reading<>() {
+
+        @Override
+        public boolean answers(Core e, String at) {
+            return answering.at(e);
+        }
 
         @Override
         public String positionOf(Core e, String at) {
-            return WHERE_IT_WAS_READ.positionOf(e, at);
+            return e instanceof Core.Read read ? at + ":" + read.name() : null;
         }
 
         @Override
@@ -111,7 +125,8 @@ class AnArmIsReadWhereTheArmStandsTest {
         public ValueOrigin.Opened<String> choosing(Choice.Decides decidedBy, String at) {
             return new ValueOrigin.Opened.NotEntered<>();
         }
-    };
+        };
+    }
 
     private static Core.Read read(String name, int ordinal) {
         return new Core.Read(name, new BindingId(OWNER, ordinal), Type.STRING, POS);
@@ -130,7 +145,7 @@ class AnArmIsReadWhereTheArmStandsTest {
     }
 
     private static ValueOrigin<String> originOf(Core e) {
-        return ValueOrigin.of(e, "outside", WHERE_IT_WAS_READ);
+        return ValueOrigin.of(e, "outside", whereItWasRead(e));
     }
 
     /** What {@code e} is made of, where that is a choice. */
@@ -215,9 +230,9 @@ class AnArmIsReadWhereTheArmStandsTest {
      */
     @Test
     void anArmAReadingDoesNotGoInsideIsAValueItCannotName() {
-        ValueOrigin<String> origin = ValueOrigin.of(
-                attempt(read("a", 0), read("held", 1), List.of(read("b", 2))),
-                "outside", WHICH_GOES_INSIDE_NO_ARM);
+        Core fork = attempt(read("a", 0), read("held", 1), List.of(read("b", 2)));
+        ValueOrigin<String> origin =
+                ValueOrigin.of(fork, "outside", whichGoesInsideNoArm(fork));
 
         if (!(origin instanceof ValueOrigin.OneOf<String> choice)) {
             throw new AssertionError("a fork is a value that is one of several: " + origin);
