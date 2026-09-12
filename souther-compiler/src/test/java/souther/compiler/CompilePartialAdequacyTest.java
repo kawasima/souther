@@ -390,7 +390,7 @@ class CompilePartialAdequacyTest {
                 .findings();
 
         List<Adequacy.Finding> undecided = findings.stream()
-                .filter(f -> Adequacy.refuses(f.kind())).toList();
+                .filter(f -> f.kind().isAboutAnObligation()).toList();
 
         assertFalse(undecided.isEmpty(), () -> "the model has a kind a build gates on: " + findings);
         for (Adequacy.Finding f : undecided) {

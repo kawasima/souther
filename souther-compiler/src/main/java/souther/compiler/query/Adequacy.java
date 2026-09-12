@@ -161,46 +161,6 @@ public final class Adequacy {
     }
 
     /**
-     * Whether a gap of {@code kind} is a row the model asks for.
-     *
-     * <p>The account's answer and not a caller's. What a build refuses over used to be a bar it
-     * picked — a domain-coverage criterion, and a word for wanting the classes beside it — and a
-     * criterion a caller selects is a budget rather than a criterion: the same model came back
-     * satisfied or not depending on which subset of its own account the caller had asked to be held
-     * to, and the subsets nobody asked for were gaps a report printed and a build was never told
-     * about.
-     *
-     * <p>So there is one answer, and what a caller still chooses is how much to measure
-     * ({@link Level}) and whether a gap ends the build (the warnings policy). A measure that was
-     * not made finds nothing, which is a verdict that says {@code undetermined} rather than one
-     * held to less.
-     *
-     * <p>The whole table, written here rather than as a flag on each kind: what a kind is stays a
-     * fact about what a measure found, and whether it is work the author has left is this one's. An
-     * exhaustive switch, so a kind added later does not compile until somebody has said which side
-     * of it falls on.
-     */
-    public static boolean refuses(Kind kind) {
-        return switch (kind) {
-            // Every obligation the model derives, whichever derivation states it: a case of a
-            // signature, a point of a border, an arm of a body, a class of a position, a rule of
-            // the decision, and a row whose answer is owed. One account, so one answer.
-            case OUTPUT_CASE_UNSPECIFIED, INPUT_CASE_UNSPECIFIED, BOUNDARY_UNMET, ARM_UNREACHED,
-                 UNANSWERED_ROW, DOMAIN_POINT_UNCOVERED, AXIS_CLASS_UNCOVERED,
-                 DECISION_RULE_UNCOVERED -> true;
-            // Not a row anyone owes: what was seen rather than what was asked for. A case
-            // nothing was observed producing is the rows' own account of themselves.
-            case OUTPUT_CASE_UNVERIFIED -> false;
-            // What a measure could not establish, and what it established about the model
-            // rather than about the rows. Neither is a row somebody owes, and nothing can make
-            // one of them into one: a build that refused over these would be refusing over
-            // this compiler's reading rather than over the model.
-            case PARTITION_NOT_DERIVABLE, PARTITION_NOT_READ, RULE_UNACCOUNTED,
-                 PARTITION_RULES_NOT_REACHED, PARTITION_VALUES_NOT_SEPARATED -> false;
-        };
-    }
-
-    /**
      * What a build asked for: how much to measure, and whether to be told it as warnings.
      *
      * <p>Two things rather than one, because a caller can want either without the other.
@@ -260,10 +220,6 @@ public final class Adequacy {
             return new Asked(level, false);
         }
 
-        /** Whether a build that asked for this refuses over {@code kind}. */
-        public boolean refuses(Kind kind) {
-            return Adequacy.refuses(kind);
-        }
     }
 
     /** What the build asked for. Absent is {@link Asked#NOTHING}. */
@@ -4549,11 +4505,11 @@ public final class Adequacy {
     /**
      * What one measure found and nothing filled.
      *
-     * <p>What a kind is, is what a measure found, and nothing here says whether a build fails over it:
-     * that is {@link Criterion}'s, because the answer differs between the two criteria a build can be
-     * held to. A gap some criterion refuses over has to carry a diagnostic code, or a build would
-     * fail over something it never printed; the agreement is held by a test rather than by reading
-     * one off the other.
+     * <p>What a kind is, is what a measure found. Whether it is about something the model owes a row
+     * at is {@link #isAboutAnObligation}, and what a build then does about it is decided where a
+     * build is — a kind about an obligation has to carry a diagnostic code, or a build would fail
+     * over something it never printed; the agreement is held by a test rather than by reading one
+     * off the other.
      */
     public enum Kind {
         /** A case of the output no row expects. */
@@ -4671,6 +4627,41 @@ public final class Adequacy {
         /** The code a build is told this under, where it is told at all. */
         public Optional<DiagnosticCode> code() {
             return Optional.ofNullable(code);
+        }
+
+        /**
+         * Whether a finding of this kind is about something the model owes a row at.
+         *
+         * <p>The one division everything else is a projection of. A report marks these, a block
+         * offers rows against them and a build refuses over the ones a measure established — three
+         * surfaces reading one answer, none of them deciding it.
+         *
+         * <p>Said as what the kind is and not as what a build does with it, which is the shape the
+         * bars left behind. What a build refuses over was a word the caller wrote, so the table
+         * that survived them was named for the refusal; read that way, refusing is the primitive
+         * and being owed is derived from it, which is backwards. Whether the model owes a row is
+         * the model's answer, and a build refusing is one of the things that follow.
+         *
+         * <p>An exhaustive switch, so a kind added later does not compile until somebody has said
+         * which of the three it is.
+         */
+        public boolean isAboutAnObligation() {
+            return switch (this) {
+                // Every obligation the model derives, whichever derivation states it: a case of a
+                // signature, a point of a border, an arm of a body, a class of a position, a rule
+                // of the decision, and a row whose answer is owed. One account, so one answer.
+                case OUTPUT_CASE_UNSPECIFIED, INPUT_CASE_UNSPECIFIED, BOUNDARY_UNMET, ARM_UNREACHED,
+                     UNANSWERED_ROW, DOMAIN_POINT_UNCOVERED, AXIS_CLASS_UNCOVERED,
+                     DECISION_RULE_UNCOVERED -> true;
+                // An observation: what was seen rather than what is owed. A case nothing was
+                // observed producing is the rows' own account of themselves.
+                case OUTPUT_CASE_UNVERIFIED -> false;
+                // And this compiler's own shortfall: what a measure could not establish, and what
+                // it established about the model rather than about the rows. Neither is a row
+                // somebody owes, and nothing can make one of them into one.
+                case PARTITION_NOT_DERIVABLE, PARTITION_NOT_READ, RULE_UNACCOUNTED,
+                     PARTITION_RULES_NOT_REACHED, PARTITION_VALUES_NOT_SEPARATED -> false;
+            };
         }
 
         /**
@@ -4995,7 +4986,7 @@ public final class Adequacy {
          * apart.
          */
         public Finding.Disposition disposition() {
-            if (!Adequacy.refuses(kind())) {
+            if (!kind().isAboutAnObligation()) {
                 return Finding.Disposition.REPORTED;
             }
             // What the measurement that found this went without, and not a word for how far it
@@ -5892,7 +5883,7 @@ public final class Adequacy {
      * kinds nothing refuses over are kinds this surface will say nothing about whatever they hold —
      * and what answers those kinds is work this build would pay for and never read. Which
      * questions those are is not decided here: each kind says which question answers it, and the
-     * ones a build refuses over name the questions this asks.
+     * ones about an obligation name the questions this asks.
      *
      * <p>So the laziness is about which queries are demanded and never about what an account
      * means. A caller that wants the account asks {@link #accountOf}, which asks all of them.
@@ -5900,7 +5891,7 @@ public final class Adequacy {
     public static List<Finding> whatAWarningCouldBeAbout(Db db, String module) {
         EnumSet<AccountPart> asked = EnumSet.noneOf(AccountPart.class);
         for (Kind kind : Kind.values()) {
-            if (refuses(kind)) {
+            if (kind.isAboutAnObligation()) {
                 asked.add(kind.answeredBy());
             }
         }

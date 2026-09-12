@@ -1452,12 +1452,12 @@ public record AdequacyReport(int schemaVersion, String compilerVersion,
             for (BehaviorReport behavior : module.behaviors()) {
                 // The cases of the signature.
                 if (behavior.signature() != null
-                        && (refuses(Adequacy.Kind.OUTPUT_CASE_UNSPECIFIED)
-                                || refuses(Adequacy.Kind.INPUT_CASE_UNSPECIFIED))) {
+                        && (owesARowAt(Adequacy.Kind.OUTPUT_CASE_UNSPECIFIED)
+                                || owesARowAt(Adequacy.Kind.INPUT_CASE_UNSPECIFIED))) {
                     add(measures, new Subject.OfAMeasure(module.module(), behavior.name(),
                             MeasureWord.SIGNATURE), behavior.signature().counted());
                 }
-                if (behavior.branch() != null && refuses(Adequacy.Kind.ARM_UNREACHED)) {
+                if (behavior.branch() != null && owesARowAt(Adequacy.Kind.ARM_UNREACHED)) {
                     add(measures, new Subject.OfAMeasure(module.module(), behavior.name(),
                             MeasureWord.BRANCH), behavior.branch().measured());
                 }
@@ -1466,7 +1466,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion,
                 // body left as one a row may already take, and a verdict resting on the findings
                 // alone would call the model satisfied over exactly the rules nothing read.
                 if (behavior.evidence().decision() != null
-                        && refuses(Adequacy.Kind.DECISION_RULE_UNCOVERED)) {
+                        && owesARowAt(Adequacy.Kind.DECISION_RULE_UNCOVERED)) {
                     add(measures, new Subject.OfAMeasure(module.module(), behavior.name(),
                             MeasureWord.DECISION), behavior.evidence().decision().took());
                 }
@@ -1483,8 +1483,8 @@ public record AdequacyReport(int schemaVersion, String compilerVersion,
                 // ordinary shape whose boundary measure is made in full, and holding the verdict
                 // open for it would say a model was unmeasured on the strength of the one measure
                 // that was.
-                if (refuses(Adequacy.Kind.BOUNDARY_UNMET)
-                        || refuses(Adequacy.Kind.DOMAIN_POINT_UNCOVERED)) {
+                if (owesARowAt(Adequacy.Kind.BOUNDARY_UNMET)
+                        || owesARowAt(Adequacy.Kind.DOMAIN_POINT_UNCOVERED)) {
                     add(measures, new Subject.OfAMeasure(module.module(), behavior.name(),
                             MeasureWord.BOUNDARY), behavior.boundaryReadings());
                 }
@@ -1498,7 +1498,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion,
                 // nobody had found yet. A behavior the reading proved
                 // divides nothing answers {@code NotApplicable} and is dropped below, so this holds
                 // nothing open that was never going to be measured.
-                if (refuses(Adequacy.Kind.AXIS_CLASS_UNCOVERED)) {
+                if (owesARowAt(Adequacy.Kind.AXIS_CLASS_UNCOVERED)) {
                     add(measures, new Subject.OfAMeasure(module.module(), behavior.name(),
                             MeasureWord.PARTITION), behavior.partition().partitioned());
                     behavior.partition().axes().forEach(axis -> add(measures,
@@ -1563,10 +1563,10 @@ public record AdequacyReport(int schemaVersion, String compilerVersion,
         return owed;
     }
 
-    /** Whether a build refuses over {@code kind}, which is what puts the measure that finds them
-     *  among the answers a verdict needs. */
-    private boolean refuses(Adequacy.Kind kind) {
-        return Adequacy.refuses(kind);
+    /** Whether {@code kind} is about something the model owes a row at, which is what puts the
+     *  measure that finds one among the answers a verdict needs. */
+    private boolean owesARowAt(Adequacy.Kind kind) {
+        return kind.isAboutAnObligation();
     }
 
     /**

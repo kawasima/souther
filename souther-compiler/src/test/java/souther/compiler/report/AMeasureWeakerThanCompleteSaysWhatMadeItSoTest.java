@@ -205,7 +205,7 @@ class AMeasureWeakerThanCompleteSaysWhatMadeItSoTest {
         assertFalse(findings.isEmpty(), "the model produces findings");
         for (Adequacy.Finding each : findings) {
             Adequacy.Finding.Disposition said = each.disposition();
-            if (!Adequacy.refuses(each.kind())) {
+            if (!each.kind().isAboutAnObligation()) {
                 assertEquals(Adequacy.Finding.Disposition.REPORTED, said, each::toString);
                 continue;
             }

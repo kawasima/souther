@@ -279,18 +279,17 @@ class WhatStrictRefusesIsWhatTheRowsDoNotCoverTest {
     }
 
     /**
-     * Every kind some bar refuses over has something to refuse it under.
+     * Every kind about an obligation has something to be told under.
      *
-     * <p>What a bar asks for and what a kind carries are written out separately so that neither is
-     * read off the other. A kind some build can be held to and nobody gave a code to would be a gap
-     * a report prints and a build is never told about.
-     *
+     * <p>What the account owes and what a kind carries are written out separately so that neither
+     * is read off the other. A kind a build can be refused over and nobody gave a code to would be
+     * a gap a report prints and a build is never told about.
      */
     @Test
-    void everyKindABuildRefusesOverHasADiagnosticCode() {
+    void everyKindAboutAnObligationHasADiagnosticCode() {
         for (Adequacy.Kind kind : Adequacy.Kind.values()) {
-            if (Adequacy.refuses(kind)) {
-                assertTrue(kind.code().isPresent(), "a build refuses over " + kind);
+            if (kind.isAboutAnObligation()) {
+                assertTrue(kind.code().isPresent(), kind + " is about an obligation");
             }
         }
     }
@@ -305,14 +304,14 @@ class WhatStrictRefusesIsWhatTheRowsDoNotCoverTest {
      * the command.
      */
     @Test
-    void everyKindABuildRefusesOverIsToldAsAWarning() {
+    void everyKindAboutAnObligationIsToldAsAWarning() {
         for (Adequacy.Kind kind : Adequacy.Kind.values()) {
-            if (!Adequacy.refuses(kind)) {
+            if (!kind.isAboutAnObligation()) {
                 continue;
             }
             assertEquals(souther.compiler.diag.Severity.WARNING,
                     kind.code().orElseThrow().severity(),
-                    "a build refuses over " + kind + ", so its code is one a build is"
+                    kind + " is about an obligation, so its code is one a build is"
                             + " warned about rather than one a compile fails on");
         }
     }
