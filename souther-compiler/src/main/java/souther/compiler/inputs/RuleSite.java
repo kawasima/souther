@@ -4,6 +4,8 @@ import souther.compiler.check.PartId;
 import souther.compiler.check.RuleRef;
 import souther.compiler.types.SourceConstructOrigin;
 
+import java.util.Comparator;
+
 /**
  * Where inside a rule a reader is sent, said as what an author wrote rather than as where it is.
  *
@@ -101,4 +103,73 @@ public sealed interface RuleSite {
 
     /** The one of those, since it holds nothing and two of them say the same thing. */
     RuleSite THE_RULE_ITSELF = new TheRuleItself();
+
+    /**
+     * Where this stands among these, for a reader putting some of them in a steady order.
+     *
+     * <p>Beside the members, so that whoever adds one places it, and total, because what it is for
+     * is that nothing is left where a walk happened to put it. Two entries alike in every word a
+     * document prints are told apart by what they are about, and an order that stopped at the word
+     * would leave exactly those in the order they were met.
+     *
+     * <p><b>Steady and nothing else.</b> Which of two things an author wrote first is a fact about
+     * where they wrote them, and is asked of the places at the one boundary that has them. Nothing
+     * here is that, and nothing may be read off it: a part coming before a construct says only that
+     * this compiler writes them in that order twice.
+     */
+    Comparator<RuleSite> IN_A_STEADY_ORDER =
+            Comparator.<RuleSite>comparingInt(RuleSite::rank)
+                    .thenComparing(RuleSite::named, Comparator.naturalOrder())
+                    .thenComparingInt(RuleSite::whichClause)
+                    .thenComparingInt(RuleSite::whichPart)
+                    .thenComparing(RuleSite::wroteIt,
+                            Comparator.nullsFirst(SourceConstructOrigin.inASteadyOrder()));
+
+    private static int rank(RuleSite site) {
+        return switch (site) {
+            case TheRuleItself _ -> 0;
+            case APartOfIt _ -> 1;
+            case AConstructTheAuthorWrote _ -> 2;
+        };
+    }
+
+    /** Which clause a part is of, and nothing for what is not one. */
+    private static String named(RuleSite site) {
+        return switch (site) {
+            case TheRuleItself _, AConstructTheAuthorWrote _ -> "";
+            case APartOfIt it -> it.part().rule().clause().id().declaredOn().key().module() + " "
+                    + it.part().rule().clause().id().declaredOn().key().name();
+        };
+    }
+
+    /**
+     * Which clause of that declaration a part is of, and which of its parts it is.
+     *
+     * <p>Two numbers and two steps, because they are counted within two things: a clause within a
+     * declaration and a part within a clause. Packed into one, the pair would be an order until a
+     * clause was written in more parts than the packing left room for, and what came out then would
+     * be a document that had quietly changed its mind.
+     */
+    private static int whichClause(RuleSite site) {
+        return switch (site) {
+            case TheRuleItself _, AConstructTheAuthorWrote _ -> 0;
+            case APartOfIt it -> it.part().rule().clause().id().ordinal();
+        };
+    }
+
+    /** Which of that clause's parts it is — see {@link #whichClause}. */
+    private static int whichPart(RuleSite site) {
+        return switch (site) {
+            case TheRuleItself _, AConstructTheAuthorWrote _ -> 0;
+            case APartOfIt it -> it.part().ordinal();
+        };
+    }
+
+    /** And what an author wrote, for the one that names it. */
+    private static SourceConstructOrigin wroteIt(RuleSite site) {
+        return switch (site) {
+            case TheRuleItself _, APartOfIt _ -> null;
+            case AConstructTheAuthorWrote it -> it.origin();
+        };
+    }
 }

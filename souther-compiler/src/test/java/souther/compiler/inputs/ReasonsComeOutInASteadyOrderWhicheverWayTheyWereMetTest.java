@@ -70,6 +70,22 @@ class ReasonsComeOutInASteadyOrderWhicheverWayTheyWereMetTest {
                         + " neither");
     }
 
+    /**
+     * And two alike in the word are settled by what they are about, not by which was met first.
+     *
+     * <p>The half an order over the words alone cannot reach. Two of these agree about everything a
+     * document prints except which thing they are about, so a comparison that reads the word finds
+     * them equal and leaves them wherever the walk put them — which is the order this whole carrier
+     * is here to keep out of a document.
+     */
+    @Test
+    void andTwoAlikeInTheWordAreSettledByWhatTheyAreAbout() {
+        assertEquals(RuleReasons.from(List.of(said(0, FORM), said(1, FORM))).said(),
+                RuleReasons.from(List.of(said(1, FORM), said(0, FORM))).said(),
+                "one word and two things it is about is still two entries, and which of them this"
+                        + " compiler met first is a fact about the walk");
+    }
+
     /** One reason about the part numbered {@code part}, sent to the rule as a whole. */
     private static RuleReasons.Said said(int part, BlockReason.RuleReadingStopped reason) {
         return new RuleReasons.Said(RuleSite.at(new PartId<>(new RuleRef.Invariant(new Clause.Ref(

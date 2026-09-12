@@ -69,6 +69,53 @@ public sealed interface WrittenOwner {
                 + " it, and it was written by " + owner);
     }
 
+    /**
+     * Where this stands among these, for a reader putting some of them in a steady order.
+     *
+     * <p>Beside the members, so that whoever adds one places it. Every component each of them
+     * holds is read, because what this is for is that two owners this compiler can tell apart are
+     * two here as well — an order that stopped at the names would leave two rows of one behavior
+     * wherever a walk happened to put them.
+     *
+     * <p>What the result means is nothing beyond which comes first. Which of two owners an author
+     * wrote first is a fact about where they wrote them and is asked of the places.
+     */
+    static java.util.Comparator<WrittenOwner> inASteadyOrder() {
+        return java.util.Comparator.<WrittenOwner>comparingInt(WrittenOwner::rank)
+                .thenComparing(WrittenOwner::named, java.util.Comparator.naturalOrder())
+                .thenComparing(WrittenOwner::quoting, QuotedFrom.inASteadyOrder());
+    }
+
+    private static int rank(WrittenOwner owner) {
+        return switch (owner) {
+            case Declaration _ -> 0;
+            case Stated _ -> 1;
+            case Body _ -> 2;
+            case Examples _ -> 3;
+            case Fake _ -> 4;
+        };
+    }
+
+    /** What tells two of one rank apart, as the names each of them holds. */
+    private static String named(WrittenOwner owner) {
+        return switch (owner) {
+            case Declaration it -> it.declaration().module() + " " + it.declaration().name();
+            case Stated it -> it.module() + " " + it.behavior();
+            case Body it -> it.module() + " " + it.definition();
+            case Examples it -> it.module() + " " + it.behavior();
+            case Fake it -> it.module() + " " + it.target();
+        };
+    }
+
+    /** And the text one was read from, for the two that are named by one. */
+    private static QuotedFrom quoting(WrittenOwner owner) {
+        return switch (owner) {
+            case Declaration _, Stated _, Body _ -> new QuotedFrom.TextItCannotName();
+            case Examples it -> it.text();
+            case Fake it -> it.text();
+        };
+    }
+
     /** A type declaration, and everything written inside it: the clauses of its invariant. */
     record Declaration(TypeKey declaration) implements WrittenOwner {
 

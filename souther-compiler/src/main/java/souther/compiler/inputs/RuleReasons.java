@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Set;
 
 /**
  * What the parts of a rule left a question standing on.
@@ -106,8 +105,10 @@ public record RuleReasons(List<Said> said) {
      */
     public static RuleReasons from(List<Said> these) {
         List<Said> sorted = new ArrayList<>(new LinkedHashSet<>(these));
-        sorted.sort(Comparator.comparingInt(
-                each -> BlockReason.RuleReadingStopped.inASteadyOrder(each.reason())));
+        sorted.sort(Comparator.comparingInt((Said each) ->
+                        BlockReason.RuleReadingStopped.inASteadyOrder(each.reason()))
+                .thenComparing(Said::about, RuleSite.IN_A_STEADY_ORDER)
+                .thenComparing(Said::sentTo, RuleSite.IN_A_STEADY_ORDER));
         return new RuleReasons(List.copyOf(sorted));
     }
 

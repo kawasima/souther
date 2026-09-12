@@ -67,4 +67,33 @@ public sealed interface QuotedFrom {
      */
     record TextItCannotName() implements QuotedFrom {
     }
+
+    /**
+     * Where this stands among these, for a reader putting some of them in a steady order.
+     *
+     * <p>Beside the members, so that whoever adds one places it. What the numbers mean is nothing
+     * beyond which comes first, and nothing may be read off the result: a text this compile holds
+     * coming before one it cannot show says nothing about either.
+     */
+    static java.util.Comparator<QuotedFrom> inASteadyOrder() {
+        return java.util.Comparator.<QuotedFrom>comparingInt(QuotedFrom::rank)
+                .thenComparing(QuotedFrom::said, java.util.Comparator.naturalOrder());
+    }
+
+    private static int rank(QuotedFrom from) {
+        return switch (from) {
+            case ASourceThisCompileHolds _ -> 0;
+            case TextItCannotShow _ -> 1;
+            case TextItCannotName _ -> 2;
+        };
+    }
+
+    /** What tells two of one rank apart, as the words each of them holds. */
+    private static String said(QuotedFrom from) {
+        return switch (from) {
+            case ASourceThisCompileHolds it -> it.source().value();
+            case TextItCannotShow it -> it.publishedBy().module() + " " + it.publishedBy().reachedBy();
+            case TextItCannotName _ -> "";
+        };
+    }
 }

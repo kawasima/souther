@@ -65,6 +65,27 @@ package souther.compiler.types;
  */
 public record SourceConstructOrigin(WrittenOwner owner, int ordinal, int lowered, SourceConstruct kind) {
 
+    /**
+     * Where this stands among these, for a reader putting some of them in a steady order.
+     *
+     * <p>Every component, because every one of them tells two constructs apart: two of one owner
+     * are two ordinals, and one construct a lowering made several forks out of is one ordinal and
+     * several. An order that read fewer would leave the rest wherever a walk put them.
+     *
+     * <p><b>Not the order they were written in.</b> The builder does not take the numbers in that
+     * order — a statement guard folds the rest of its block before numbering itself — so nothing
+     * about an author may be read off this. What it is for is that a reader with nothing an author
+     * wrote to go on writes the same thing twice.
+     */
+    public static java.util.Comparator<SourceConstructOrigin> inASteadyOrder() {
+        // One no source wrote is counted within nothing, and comes before every one that is.
+        return java.util.Comparator.comparing(SourceConstructOrigin::owner,
+                        java.util.Comparator.nullsFirst(WrittenOwner.inASteadyOrder()))
+                .thenComparingInt(SourceConstructOrigin::ordinal)
+                .thenComparingInt(SourceConstructOrigin::lowered)
+                .thenComparing(SourceConstructOrigin::kind);
+    }
+
     public SourceConstructOrigin {
         // Three spellings of one fact, held together rather than left to agree. `isWritten` is asked
         // by readers that have no use for the kind, and a value answering it one way and carrying a
