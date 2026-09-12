@@ -5,6 +5,7 @@ import souther.test.RepositoryLayout;
 
 import java.lang.classfile.ClassModel;
 import java.lang.classfile.MethodModel;
+import java.lang.reflect.AccessFlag;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -69,6 +70,12 @@ class NoCheckAddressesAReaderByANameJavacMadeUpTest {
      */
     private static final String A_LAMBDA = "lambda$";
 
+    /** The method the lambdas here are written in, whose own name carries a {@code $}. */
+    private static final String THE_HOLDER = "named$inOneText";
+
+    /** The method here that is named the way javac names a lambda and is not one. */
+    private static final String THE_DECOY = "lambda$thisClass$0";
+
     @Test
     void nothingAddressesAReaderByAnIdentityJavacMadeUp() {
         Set<String> forbidden = whatJavacNamedTheLambdasHere();
@@ -112,11 +119,11 @@ class NoCheckAddressesAReaderByANameJavacMadeUpTest {
      */
     @Test
     void andALambdaOfAHolderSpelledWithADollarIsInThatPopulation() {
-        ClassModel itself = EVERYTHING.read(
-                NoCheckAddressesAReaderByANameJavacMadeUpTest.class.getName().replace('.', '/'));
-        assertTrue(holdsAMethodSpelledWithADollar(itself),
-                "the method the lambdas here are written in is not spelled with a $ any more, so"
-                        + " this witnesses an ordinary name and the case it exists for is unasked");
+        ClassModel itself = EVERYTHING.read(lambda$thisClass$0());
+        assertTrue(declares(itself, THE_HOLDER),
+                "the method the lambdas here are written in is gone or is called something else, so"
+                        + " what this reads is an ordinary name and the case it exists for is"
+                        + " unasked");
 
         Set<String> mine = new TreeSet<>();
         lambdasOf(itself, mine);
@@ -128,6 +135,42 @@ class NoCheckAddressesAReaderByANameJavacMadeUpTest {
         assertEquals(Set.of(), missing,
                 "a lambda this class compiled to is not in the population the rule beside this one"
                         + " is held to, so what javac named it was dropped on the way in");
+    }
+
+    /**
+     * And that a method the source named that way is not in it.
+     *
+     * <p>The other side of the same question. {@code $} is a letter, so a name javac gives a lambda
+     * is a name anybody may write, and a method somebody declared is a name the source states —
+     * exactly what a licence is entitled to address a reader by. The one below is declared here for
+     * this to ask about, and what tells it from a lambda's is the flag javac sets and not what
+     * either of them is called.
+     */
+    @Test
+    void andAMethodTheSourceDeclaredThatWayIsNotInThatPopulation() {
+        ClassModel itself = EVERYTHING.read(lambda$thisClass$0());
+        assertTrue(declares(itself, THE_DECOY),
+                "the method this reads is not declared here any more, so what it asks about is"
+                        + " nothing and the answer means nothing");
+
+        assertFalse(whatJavacNamedTheLambdasHere().contains(
+                        NoCheckAddressesAReaderByANameJavacMadeUpTest.class.getName()
+                                + "." + THE_DECOY),
+                "a method this source declares is in the population of what javac made up, so the"
+                        + " rule forbids an address the source states — which is the whole of what a"
+                        + " licence is asked to use");
+    }
+
+    /**
+     * This class, as the outputs name it.
+     *
+     * <p>Declared under a name javac would give a lambda, on purpose and as the subject of the case
+     * above: a name is something anybody may write, and what says who wrote a method is the flag
+     * beside it. It does a real piece of the work here so that it is a method this class has rather
+     * than one kept for a test to look at.
+     */
+    private static String lambda$thisClass$0() {
+        return NoCheckAddressesAReaderByANameJavacMadeUpTest.class.getName().replace('.', '/');
     }
 
     /**
@@ -167,6 +210,13 @@ class NoCheckAddressesAReaderByANameJavacMadeUpTest {
      * alone would be an address two classes could share, and the thing forbidden is an identity
      * rather than a spelling that happens to be in use somewhere.
      *
+     * <p><b>Written by javac, which the class file says and the name does not.</b> {@code $} is a
+     * letter to Java, so a method the source declares may be called anything a lambda's is called;
+     * what makes one a lambda's is that the compiler wrote it, and that is what the synthetic flag
+     * is. The name is asked as well, because the compiler writes other methods nobody declared — a
+     * bridge, an enum's own members — and those are not what a licence would be addressing a reader
+     * by.
+     *
      * <p>The owner is put together where one is found, because most classes have no lambda at all
      * and spelling a name for them is work this asks of every class of every module.
      */
@@ -174,7 +224,7 @@ class NoCheckAddressesAReaderByANameJavacMadeUpTest {
         String owner = null;
         for (MethodModel method : model.methods()) {
             String name = method.methodName().stringValue();
-            if (name.startsWith(A_LAMBDA)) {
+            if (name.startsWith(A_LAMBDA) && method.flags().has(AccessFlag.SYNTHETIC)) {
                 if (owner == null) {
                     owner = model.thisClass().asInternalName()
                             .replace('/', '.').replace('$', '.');
@@ -184,11 +234,12 @@ class NoCheckAddressesAReaderByANameJavacMadeUpTest {
         }
     }
 
-    /** Whether {@code model} still has the method the lambdas here are written in. */
-    private static boolean holdsAMethodSpelledWithADollar(ClassModel model) {
+    /** Whether {@code model} still declares {@code named} itself, rather than javac having written
+     *  a method of that name. */
+    private static boolean declares(ClassModel model, String named) {
         for (MethodModel method : model.methods()) {
-            String name = method.methodName().stringValue();
-            if (!name.startsWith(A_LAMBDA) && name.contains("$")) {
+            if (method.methodName().stringValue().equals(named)
+                    && !method.flags().has(AccessFlag.SYNTHETIC)) {
                 return true;
             }
         }
