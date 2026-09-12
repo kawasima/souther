@@ -77,6 +77,30 @@ class ARuleAboutTheStringsOfAMadeValueIsNamedWhereItCameFromTest {
                 if String.startsWith("JP", if flag then a else b) then Yes else No
             """;
 
+    private static final String A_CHOICE_DECIDED_BY_A_STRING = """
+            module example.codes
+
+            data Answer = Yes | No
+
+            behavior f : (sel: String, a: String, b: String) -> Answer
+            let f (sel, a, b) =
+                if String.startsWith("JP",
+                        if String.startsWith("X", sel) then a else b) then Yes else No
+            """;
+
+    private static final String A_VALUE_CHOSEN_BY_A_MATCH = """
+            module example.codes
+
+            data Answer = Yes | No
+            data Pick = First | Second
+
+            behavior f : (pick: Pick, a: String, b: String) -> Answer
+            let f (pick, a, b) =
+                if String.startsWith("JP", match pick with
+                        | First -> a
+                        | Second -> b) then Yes else No
+            """;
+
     private static final String AN_ELEMENT_IT_CAME_FROM = """
             module example.codes
 
@@ -130,24 +154,41 @@ class ARuleAboutTheStringsOfAMadeValueIsNamedWhereItCameFromTest {
     }
 
     /**
-     * And a rule about a value chosen between two is said nowhere, for want of a reading that
-     * tells a choice from a composition.
+     * And a rule about a value chosen between two is named where either value came from, and not
+     * where the choice was decided.
      *
-     * <p>Not what such a rule is owed. The value is what {@code a} is or what {@code b} is, and
-     * each of them is a position an author who wrote a rule about it has something to be told
-     * about — but what an expression is made of holds the arms of a choice and what it turns on in
-     * one arm, side by side with everything a value was built out of. Read as where the value came
-     * from, the rule would be filed at {@code flag} as well, which decided which value the subject
-     * is and holds none of the strings the rule is about.
-     *
-     * <p>So this is the reading falling short rather than the model saying nothing, and it is what
-     * the day a choice is told from a composition has to come back to.
+     * <p>The value is what {@code a} is or what {@code b} is, so each of them is a position an
+     * author who wrote a rule about it has something to be told about. What decided which of them
+     * it is holds none of the strings the rule is about, and a reader sent to {@code flag} is sent
+     * to a position the rule says nothing of.
      */
     @Test
-    void aValueChosenBetweenTwoIsNamedNowhereForNow() {
-        assertEquals(List.of(), derived(measured(A_VALUE_CHOSEN_BETWEEN)),
-                () -> "nothing is filed, and least of all what the choice turned on: "
+    void aValueChosenBetweenTwoIsNamedWhereEachAlternativeCameFrom() {
+        assertEquals(List.of("a", "b"), derived(measured(A_VALUE_CHOSEN_BETWEEN)),
+                () -> "said at each value it may be, and not at what decided which: "
                         + measured(A_VALUE_CHOSEN_BETWEEN).notRead());
+    }
+
+    /**
+     * And what decided it is left out for being what decided it, not for being of another kind.
+     *
+     * <p>The one above turns on a {@code Bool}, which is no position a rule about strings could be
+     * filed at anyway. Here the choice turns on a string of its own, read by a rule of the same
+     * shape as the one under test — so the only thing telling {@code sel} from {@code a} and
+     * {@code b} is which side of the choice it stands on.
+     */
+    @Test
+    void whatDecidedTheChoiceIsNotNamedEvenWhereItCouldBe() {
+        assertEquals(List.of("a", "b"), derived(measured(A_CHOICE_DECIDED_BY_A_STRING)),
+                () -> "sel decided which value the subject is and holds none of its strings: "
+                        + measured(A_CHOICE_DECIDED_BY_A_STRING).notRead());
+    }
+
+    /** And a value chosen by a match is named at every arm, the scrutinee being what decided it. */
+    @Test
+    void aValueChosenByAMatchIsNamedAtEveryArm() {
+        assertEquals(List.of("a", "b"), derived(measured(A_VALUE_CHOSEN_BY_A_MATCH)),
+                () -> "said at each arm: " + measured(A_VALUE_CHOSEN_BY_A_MATCH).notRead());
     }
 
     /**
@@ -174,7 +215,8 @@ class ARuleAboutTheStringsOfAMadeValueIsNamedWhereItCameFromTest {
      */
     @Test
     void everyOneOfThemNamesTheRuleAsAQuestionStandingThere() {
-        for (String model : List.of(ONE_POSITION, TWO_POSITIONS, AN_ELEMENT_IT_CAME_FROM)) {
+        for (String model : List.of(ONE_POSITION, TWO_POSITIONS, AN_ELEMENT_IT_CAME_FROM,
+                A_VALUE_CHOSEN_BETWEEN, A_VALUE_CHOSEN_BY_A_MATCH)) {
             PartitionEvidence measured = measured(model);
             assertTrue(measured.notRead().stream()
                             .filter(each -> each.reason()
@@ -208,8 +250,13 @@ class ARuleAboutTheStringsOfAMadeValueIsNamedWhereItCameFromTest {
                 "where the rule the report names is written");
     }
 
-    /** No line is drawn at any of them, since the strings the rule is about are not the ones
-     *  there. */
+    /**
+     * No line is drawn at any of them, since the strings the rule is about are not the ones there.
+     *
+     * <p>The models with a choice in them are not here: a fork's own condition is a rule about the
+     * values at the position it turns on, and the line drawn there is that rule's and not this
+     * one's.
+     */
     @Test
     void noLineIsDrawnAtAnyOfThem() {
         for (String model : List.of(ONE_POSITION, TWO_POSITIONS, AN_ELEMENT_IT_CAME_FROM)) {

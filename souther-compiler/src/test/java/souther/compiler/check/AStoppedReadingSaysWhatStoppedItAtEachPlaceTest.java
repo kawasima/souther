@@ -71,6 +71,61 @@ class AStoppedReadingSaysWhatStoppedItAtEachPlaceTest {
                         + "nothing about what that position carries");
     }
 
+    /**
+     * A clause over a value chosen between two, where every value it may be was made by an
+     * operation over a position.
+     *
+     * <p>Whichever way the choice went, what the rule is about is a length and what stands at the
+     * position is a string: the position was found and following the operation back is the part
+     * this compiler does not have.
+     */
+    private static final String EVERY_VALUE_IT_MAY_BE_WAS_MADE_BY_AN_OPERATION = """
+            module demo
+
+            let pick (flag: Bool, a: String, b: String) : Int =
+                if flag then String.length(String.uppercase(a))
+                else String.length(String.uppercase(b))
+
+            data N = { n: Int, flag: Bool, a: String, b: String }
+                invariant said = n < pick(flag, a, b)
+            """;
+
+    /**
+     * And the same where one of them is the values at a position rather than something made of
+     * them.
+     *
+     * <p>Whichever way that choice went is what nothing here read, so what an author is owed is not
+     * the word that promises the position was found and only the operation stands in the way.
+     */
+    private static final String ONE_VALUE_IT_MAY_BE_IS_A_POSITION = """
+            module demo
+
+            let pick (flag: Bool, a: String, b: Int) : Int =
+                if flag then String.length(String.uppercase(a)) else b
+
+            data N = { n: Int, flag: Bool, a: String, b: Int }
+                invariant said = n < pick(flag, a, b)
+            """;
+
+    @Test
+    void aChoiceEveryArmOfWhichAnOperationMadeIsARuleAboutADerivedValue() {
+        FieldDomains read = read(EVERY_VALUE_IT_MAY_BE_WAS_MADE_BY_AN_OPERATION);
+
+        assertEquals(List.of(new BlockReason.RuleAboutADerivedValue()), reasonsAt(read, "a"),
+                "the strings here are what the length the rule is about was taken of");
+        assertEquals(List.of(new BlockReason.RuleAboutADerivedValue()), reasonsAt(read, "b"));
+    }
+
+    @Test
+    void aChoiceOneArmOfWhichIsAPositionIsAFormThatWentUnread() {
+        FieldDomains read = read(ONE_VALUE_IT_MAY_BE_IS_A_POSITION);
+
+        assertEquals(List.of(new BlockReason.UnreadComparisonForm()), reasonsAt(read, "a"),
+                "one value it may be is the values at a position, so following an operation back "
+                        + "is not what stands between the rule and them");
+        assertEquals(List.of(new BlockReason.UnreadComparisonForm()), reasonsAt(read, "b"));
+    }
+
     private static List<BlockReason.RuleWithoutLineReason> reasonsAt(FieldDomains read,
                                                                      String field) {
         return read.noLineAt(RuleKey.of(field)).stream().map(FieldDomains.NoLine::why).toList();

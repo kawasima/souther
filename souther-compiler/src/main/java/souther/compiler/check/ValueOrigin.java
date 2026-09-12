@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -37,7 +38,7 @@ public sealed interface ValueOrigin<K> {
     record IsAPosition<K>(K at) implements ValueOrigin<K> {
 
         public IsAPosition {
-            java.util.Objects.requireNonNull(at, "this one names the position it is");
+            Objects.requireNonNull(at, "this one names the position it is");
         }
 
         @Override
@@ -58,7 +59,7 @@ public sealed interface ValueOrigin<K> {
             implements ValueOrigin<K> {
 
         public Applied {
-            java.util.Objects.requireNonNull(operation, "an application names its operation");
+            Objects.requireNonNull(operation, "an application names its operation");
             arguments = List.copyOf(arguments);
         }
 
@@ -93,6 +94,41 @@ public sealed interface ValueOrigin<K> {
         }
     }
 
+    /**
+     * A value that is one of several, and what decided which of them it is.
+     *
+     * <p>Told apart from {@link Composed} because the two are different relations. Everything under
+     * a composition contributed to the value; the alternatives of a choice are what the value may
+     * be, of which one is. A fork read as a composition puts what it turned on beside the values it
+     * chooses between, and a reader asking where the value came from is answered with the position
+     * that decided which value it is.
+     *
+     * <p><b>{@code decidedBy} contributes to dependency positions, but not to value provenance.</b>
+     * Which positions the expression depends on includes what it turned on — a comparison over
+     * {@code if flag then a else b} is one no reading of {@code flag} is outside of. Where its value
+     * came from does not: none of the strings the value is are {@code flag}'s.
+     */
+    record OneOf<K>(ValueOrigin<K> decidedBy, List<ValueOrigin<K>> alternatives)
+            implements ValueOrigin<K> {
+
+        public OneOf {
+            Objects.requireNonNull(decidedBy, "a choice names what decided it");
+            alternatives = List.copyOf(alternatives);
+            if (alternatives.isEmpty()) {
+                // A choice between nothing is not a choice. An expression that chooses has the
+                // values it chooses between, and one of them is what it comes to.
+                throw new IllegalArgumentException("a choice states what it is between");
+            }
+        }
+
+        @Override
+        public Set<K> positions() {
+            Set<K> out = new LinkedHashSet<>(decidedBy.positions());
+            out.addAll(across(alternatives));
+            return Collections.unmodifiableSet(out);
+        }
+    }
+
     /** A value written out where it stands. */
     record Written<K>() implements ValueOrigin<K> {
 
@@ -113,7 +149,7 @@ public sealed interface ValueOrigin<K> {
     record MadeFromAPosition<K>(K at) implements ValueOrigin<K> {
 
         public MadeFromAPosition {
-            java.util.Objects.requireNonNull(at, "this one names where the value came from");
+            Objects.requireNonNull(at, "this one names where the value came from");
         }
 
         @Override
@@ -148,8 +184,26 @@ public sealed interface ValueOrigin<K> {
             case MadeFromAPosition<K> from -> from.at();
             case Applied<K> applied -> firstMadeFrom(applied.arguments());
             case Composed<K> composed -> firstMadeFrom(composed.parts());
+            // Only where every value it could be came from the one position, since the value is
+            // one of them and nothing here says which. What decided it is not asked: a choice made
+            // on what stands at a position is not a value made from it.
+            case OneOf<K> choice -> sameMadeFrom(choice.alternatives());
             case IsAPosition<K> _, Written<K> _, Unnameable<K> _ -> null;
         };
+    }
+
+    /** The one position everything in {@code of} is made from, or null where they differ or any of
+     *  them is made from none. */
+    private static <K> K sameMadeFrom(List<ValueOrigin<K>> of) {
+        K agreed = null;
+        for (ValueOrigin<K> each : of) {
+            K from = each.madeFrom();
+            if (from == null || (agreed != null && !agreed.equals(from))) {
+                return null;
+            }
+            agreed = from;
+        }
+        return agreed;
     }
 
     private static <K> K firstMadeFrom(List<ValueOrigin<K>> of) {
@@ -240,12 +294,38 @@ public sealed interface ValueOrigin<K> {
         if (e instanceof Core.LetIn li) {
             return of(li.body(), reading.inside(li, at), reading, following);
         }
+        // A fork, said as the choice it is. Walked by its children it would come back composed of
+        // what it turned on and what it chooses between alike, and the two are not one relation.
+        if (e instanceof Core.If iff) {
+            return new OneOf<>(of(iff.cond(), at, reading, following),
+                    partsOf(List.of(iff.then(), iff.els()), at, reading, following));
+        }
+        if (e instanceof Core.IfConstructed attempt) {
+            // What the attempt builds is what decides the branch: its invariant is the test.
+            return new OneOf<>(of(attempt.construct(), at, reading, following),
+                    partsOf(armsOf(attempt), at, reading, following));
+        }
+        if (e instanceof Core.Match match) {
+            return new OneOf<>(of(match.scrutinee(), at, reading, following),
+                    partsOf(match.cases().stream().map(Core.Case::body).toList(), at, reading,
+                            following));
+        }
         List<Core> children = new ArrayList<>();
         Core.forEachChild(e, children::add);
         if (children.isEmpty()) {
             return leafOf(e, at, reading);
         }
         return new Composed<>(partsOf(children, at, reading, following));
+    }
+
+    /** What an attempted construction may come to: the value it builds, and every departure. */
+    private static List<Core> armsOf(Core.IfConstructed attempt) {
+        List<Core> out = new ArrayList<>();
+        out.add(attempt.then());
+        for (Core.ElseArm arm : attempt.els()) {
+            out.add(arm.body());
+        }
+        return out;
     }
 
     private static <K, E> List<ValueOrigin<K>> partsOf(List<Core> of, E at, Reading<K, E> reading,

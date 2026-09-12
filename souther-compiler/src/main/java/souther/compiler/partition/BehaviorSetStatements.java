@@ -382,9 +382,9 @@ public final class BehaviorSetStatements {
      *
      * <p>A subject that <em>is</em> what stands at more than one place is asked first, and of the
      * reading rather than of what the value is made of. That is the other sentence — nothing was
-     * made out of it and there is no operation to read backwards — and what an expression is made
-     * of has no way to say it: a value that is one of several places is not one built out of all
-     * of them.
+     * made out of it and there is no operation to read backwards — and it is not the choice a body
+     * writes: what may stand at several places is one name whose position differs from run to run,
+     * and the body holds no arms to read it off.
      */
     private static Outcome whereItsValueCameFrom(PredicateReadings.Reading each, Symbols symbols) {
         if (each.reads().cameFrom(each.subject(), symbols)
@@ -405,15 +405,15 @@ public final class BehaviorSetStatements {
      * from.
      *
      * <p>Read here and not asked of what an expression is made of as a whole, because that answer
-     * does not hold the question. What is made out of several things and what is one of several
-     * things arrive in one arm: the parts of a choice are the values it chooses between and what it
-     * turns on, side by side. A union over that arm files a rule at what decided which value the
-     * subject is, and a reader sent there is sent to a position the rule says nothing about.
+     * holds two questions and this is one of them. Which positions an expression names includes
+     * what a choice turned on — a reading of it is one nothing about the expression is outside of —
+     * and where the value came from does not. So a choice is read for the values it chooses
+     * between and never for what decided which of them it is.
      *
-     * <p>So the arms that do state where a value came from are read, and the one that does not is
-     * left. What that costs is a rule under a choice shown nowhere, which is what such a rule comes
-     * to already; what reading it would cost is a rule shown at the wrong position, which is worse
-     * and is the thing an author cannot tell from a rule their model states.
+     * <p>The arithmetic nothing here takes apart is left rather than read, because a form this
+     * could not read is one it cannot say the provenance of. What that costs is a rule under such a
+     * form shown nowhere; what reading it would cost is a rule shown at a position the rule says
+     * nothing about, which an author cannot tell from a rule their model states.
      *
      * <p>A switch with no default, so an arm added to what an expression is made of is one somebody
      * says the provenance of before this compiles.
@@ -426,6 +426,10 @@ public final class BehaviorSetStatements {
             // a string joined out of two positions is made out of both, and an author who wrote a
             // rule about the joined value is owed the sentence at each.
             case ValueOrigin.Applied<TermPath> it -> across(it.arguments());
+            // A value that is one of several came from wherever each of those came from, and from
+            // nowhere else: what decided which of them it is holds none of the values the rule is
+            // about, and an author sent there is sent to a position the rule says nothing of.
+            case ValueOrigin.OneOf<TermPath> it -> across(it.alternatives());
             // A value written where it stands came from no position, and one nothing here can name
             // came from none this can name.
             case ValueOrigin.Written<TermPath> _, ValueOrigin.Unnameable<TermPath> _ -> Set.of();
