@@ -169,7 +169,7 @@ public final class Adequacy {
      * both would be the same news twice.
      *
      * <p>What a build is held to is not here, because it is not asked for: every obligation the
-     * account derives is a row the model asks for ({@link #refuses}). A measure a build did not ask
+     * account derives is a row the model asks for ({@link Kind#isAboutAnObligation}). A measure a build did not ask
      * for is one that was not made rather than one that is outside the question, so a level that
      * measures less leaves a verdict of {@code undetermined} rather than a shorter list of what is
      * owed.
@@ -202,7 +202,7 @@ public final class Adequacy {
          *
          * <p>{@code souther examples} asks for this. That command chooses no measurement — its
          * output is the report, so everything is measured — and what the report marks as a gap is
-         * the account's ({@link #refuses}) rather than a word the caller wrote: a report answering
+         * the account's ({@link Kind#isAboutAnObligation}) rather than a word the caller wrote: a report answering
          * a narrower question than the build beside it is how {@code souther examples --strict}
          * came to exit 0 on a model a compile refused, with the gaps printed in the report that had
          * just called it satisfied.
@@ -4555,11 +4555,11 @@ public final class Adequacy {
          * A point away from a border that no row is at — the {@code IN} or the {@code OUT} point.
          *
          * <p>Beside {@link #BOUNDARY_UNMET} rather than among its findings, and the difference is
-         * which criterion a build is held to. A row on the line and a row one step over are what
-         * simplified domain coverage asks for; a row well inside and a row well outside are the two
-         * further items reliable domain coverage adds. A build held to the second refuses over this
-         * one and a build held to the first does not, which is {@link Criterion}'s to say — the
-         * report still names neither criterion as satisfied.
+         * what a row there shows. A row on the line and a row one step over fix where the border
+         * falls; a row well inside and a row well outside say the regions either side hold what the
+         * rules leave them. Both are obligations and a build is told about both under codes of
+         * their own — which of the syllabus's two criteria that adds up to is a reader's to decide,
+         * and the report names neither as satisfied.
          *
          * <p>Not a measure of its own. It comes off the same assessment of the same border as the
          * points against the line, so what a build refuses over is a reading of one measurement and
@@ -4901,7 +4901,7 @@ public final class Adequacy {
          * being refused over are different questions, and folding them left a finding read straight
          * off the source with no way to be a gap: a row written {@code <?>} is as certain as a fact
          * gets and is exactly the work a build should stop for. Which kinds a build refuses over is
-         * {@link #refuses} and is asked there.
+         * {@link Kind#isAboutAnObligation} and is asked there.
          */
         public static Finding noticed(String behavior, About about) {
             return noticed(new FindingSubject.OfABehavior(behavior), about);

@@ -150,7 +150,7 @@ import java.util.stream.Stream;
  * nothing, and the difference is not visible in the numbers.
  *
  * <p>Nothing the request decides is carried. What a report marks as a gap is every obligation the
- * account derives ({@link Adequacy#refuses}), and how much was measured is not held either: what a
+ * account derives ({@link Adequacy.Kind#isAboutAnObligation}), and how much was measured is not held either: what a
  * measure came to is the measure's own answer, and a report that kept the level beside the evidence
  * could read a measure's silence as something other than what the measure said (issue #955).
  */
@@ -1432,7 +1432,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion,
      *
      * <p>Two questions and each asked of the one thing that answers it. Whether a measure was made,
      * and how much of it, is the measurement's own answer and is read from it. Which kinds of gap a
-     * verdict needs an answer about is {@link Adequacy#refuses}, and is read from there — so a
+     * verdict needs an answer about is {@link Adequacy.Kind#isAboutAnObligation}, and is read from there — so a
      * measure that finds only what nobody is held to cannot leave the verdict undetermined for want
      * of an answer, and a measure that finds what they are held to cannot be left out.
      *
