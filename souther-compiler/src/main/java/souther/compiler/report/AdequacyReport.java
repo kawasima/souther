@@ -85,6 +85,7 @@ import souther.compiler.publish.CanonicalArrangement;
 import souther.compiler.publish.NoPlaceToWrite;
 import souther.compiler.publish.NotMeasuredWord;
 import souther.compiler.publish.PublicationOrders;
+import souther.compiler.publish.PublicationOrders;
 import souther.compiler.publish.PlaceProse;
 import souther.compiler.publish.PublishedAt;
 import souther.compiler.publish.PublishedIncompleteness;
@@ -2523,7 +2524,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
     private static void gathered(StringBuilder out, BehaviorReport behavior,
                                  DecisionEvidence decision,
                                  Class<? extends RuleRequirement> answer, String opening) {
-        Map<Integer, String> order = new java.util.TreeMap<>();
+        Set<Said> order = new java.util.TreeSet<>(Said.IN_ORDER);
         Map<String, Integer> counted = new LinkedHashMap<>();
         int all = 0;
         for (DecisionReading.Ruled ruled : decision.read().found()) {
@@ -2532,7 +2533,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                 continue;
             }
             Said said = said(came);
-            order.put(said.order(), said.text());
+            order.add(said);
             counted.merge(said.text(), 1, Integer::sum);
             all++;
         }
@@ -2545,12 +2546,12 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
         // most of them.
         if (counted.size() == 1) {
             out.append(line.stripTrailing()).append(" — ")
-                    .append(order.values().iterator().next()).append('\n');
+                    .append(order.iterator().next().text()).append('\n');
             return;
         }
         out.append(line);
-        order.forEach((_, said) ->
-                out.append(String.format("          · %d — %s%n", counted.get(said), said)));
+        order.forEach(said -> out.append(String.format("          · %d — %s%n",
+                counted.get(said.text()), said.text())));
     }
 
     /**
@@ -2559,8 +2560,27 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
      * <p>The order travels with the sentence because the two are one decision. Kept beside it, a
      * shape added to what a search comes back with would get a sentence and take whatever place an
      * enumeration happened to give it.
+     *
+     * <p>Two numbers rather than one, so that neither order is arithmetic over the other. Which
+     * kind of answer it is, is said here, and where a word stands among the words of its own kind
+     * is that kind's own order to give — asked of {@link PublicationOrders} the way every other
+     * plurality this report says together is.
      */
-    private record Said(int order, String text) { }
+    private record Said(int family, int within, String text) {
+
+        /**
+         * The order these are said in: by what kind of answer, then within it.
+         *
+         * <p>And by the sentence last, which orders nothing a reader sees and is what keeps two
+         * answers two. A comparator that called them one where their places agree would drop a
+         * sentence the count beside it still holds, and the numbers under a block would stop
+         * adding up to the block.
+         */
+        static final java.util.Comparator<Said> IN_ORDER =
+                java.util.Comparator.comparingInt(Said::family)
+                        .thenComparingInt(Said::within)
+                        .thenComparing(Said::text);
+    }
 
     /**
      * What a search's answer about one rule says, and where among the answers it is said.
@@ -2575,12 +2595,13 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             // Composed and run first, because they are what a reader can tell this compiler about:
             // a row that went elsewhere is a way this steered wrong and the model may be fine.
             case RuleRequirement.Unsettled.AComposedRowWentElsewhere _ ->
-                    new Said(1, "a row composed for one took another rule of the same body");
+                    new Said(0, 0, "a row composed for one took another rule of the same body");
             case RuleRequirement.Unsettled.NothingWasComposedToTry _ ->
-                    new Said(2 + came.synthesisShortfall().reason().ordinal(),
+                    new Said(1, PublicationOrders.positionOf(
+                                    came.synthesisShortfall().reason()),
                             whyUnresolved(came.synthesisShortfall()));
             case RuleRequirement.Unsettled.CouldNotTellWhereTheRowWent(var reading) ->
-                    new Said(100 + reading.ordinal(), switch (reading) {
+                    new Said(2, PublicationOrders.positionOf(reading), switch (reading) {
                         case NO_RULE_IS_RECOGNISABLE ->
                                 "a row was composed and run, and every rule of this body turns on"
                                         + " something no run through it is recorded at";
@@ -2592,13 +2613,14 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                                         + " than one rule, which one run cannot have taken";
                     });
             case RuleRequirement.Unsettled.NothingWatchedTheRow _ ->
-                    new Said(200, "a row was composed and run, and nothing watched where it went");
+                    new Said(3, 0,
+                            "a row was composed and run, and nothing watched where it went");
             // The model's own answers, after the ones that are about what this compiler managed.
             case RuleRequirement.Excluded.OnePositionCannotBeBoth _ ->
-                    new Said(300, "its way would need one position to be two things at once,"
+                    new Said(4, 0, "its way would need one position to be two things at once,"
                             + " which no value is");
             case RuleRequirement.Excluded.AnArmNothingReaches _ ->
-                    new Said(301, "its way goes through an arm the rules leave nothing for, which"
+                    new Said(5, 0, "its way goes through an arm the rules leave nothing for, which"
                             + " is an arm the branch count is made without");
             case RuleRequirement.Required _ ->
                     throw new IllegalArgumentException(

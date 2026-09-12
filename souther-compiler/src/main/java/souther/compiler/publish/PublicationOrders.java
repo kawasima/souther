@@ -7,7 +7,9 @@ import souther.compiler.observe.Incompleteness;
 import souther.compiler.observe.RunSensitivity;
 import souther.compiler.partition.CompositionBudget;
 import souther.compiler.partition.CompositionRepertoire;
+import souther.compiler.partition.Generator;
 import souther.compiler.partition.ReadingGap;
+import souther.compiler.partition.RulesTaken;
 import souther.compiler.query.EstablishmentGap;
 import souther.compiler.query.ItemAssessment;
 import souther.compiler.query.ObligationDisposition;
@@ -450,4 +452,55 @@ public final class PublicationOrders {
                     ItemAssessment.Coverage.NotAsked.NOT_ASKED,
                     ItemAssessment.Coverage.NotAsked.ARMS_NOT_ASKED,
                     ItemAssessment.Coverage.NotAsked.NO_ROWS));
+
+    /**
+     * Where one of the words a composing that came to nothing gives is said among the others.
+     *
+     * <p>A page gathers what it will not write out under these, so several of them stand together
+     * and the order they stand in is a decision like every other one here. Said as a switch rather
+     * than as a list, because the compiler is then what holds it total: a word added to the
+     * vocabulary is one somebody places, not one that arrives wherever the enumeration puts it.
+     *
+     * <p>From what was tried and came to nothing, through what this compiler does not write, to
+     * what was never asked for at all. So a reader who could act on something is told it before the
+     * ones nothing of theirs reaches. It is not a rank: what a reader does with two of these is
+     * look at both.
+     */
+    public static int positionOf(Generator.UnresolvedCombination.Reason reason) {
+        return switch (reason) {
+            case ALL_CANDIDATES_REJECTED -> 0;
+            case THE_RULES_LEAVE_NOTHING_THERE -> 1;
+            case ONE_POSITION_CANNOT_BE_BOTH -> 2;
+            case NOTHING_COMPOSES_ONE -> 3;
+            case NOTHING_STANDS_IN_FOR_A_DEPENDENCY -> 4;
+            case A_TABLE_IS_WHAT_THIS_NEEDS -> 5;
+            case NOTHING_TO_BUILD_AGAINST -> 6;
+            case THE_WAY_IN_PLACES_AT_NO_CLASS -> 7;
+            case THE_SEARCH_LEFT_SOMETHING_UNTRIED -> 8;
+            case THE_BLOCK_IS_AS_LONG_AS_IT_MAY_BE -> 9;
+            case THE_GROUP_WAS_NOT_OFFERED -> 10;
+            case THE_POSITION_WAS_WITHHELD -> 11;
+            case NO_VALUES_WERE_ASKED_FOR -> 12;
+            case NO_CANDIDATE_WAS_OFFERED -> 13;
+            case NO_CERTIFIED_WITNESS -> 14;
+            case NO_READING_OF_THE_LINE_COULD_BE_SEARCHED -> 15;
+            case THE_ROWS_WERE_NOT_READ -> 16;
+            case LINKAGE_FAILED -> 17;
+        };
+    }
+
+    /**
+     * Where one of the ways a run's rule could not be told is said among the others.
+     *
+     * <p>From the reading having nothing to recognise a run by, through a run it recognised and no
+     * rule matched, to one that matched more than one. The same decision as the order above and
+     * held the same way.
+     */
+    public static int positionOf(RulesTaken.WhichRule.Why why) {
+        return switch (why) {
+            case NO_RULE_IS_RECOGNISABLE -> 0;
+            case NO_RECOGNISABLE_RULE_MATCHES -> 1;
+            case MORE_THAN_ONE_RULE_MATCHES -> 2;
+        };
+    }
 }
