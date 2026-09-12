@@ -158,14 +158,14 @@ class WhatStrictRefusesIsWhatTheRowsDoNotCoverTest {
     /**
      * The round trip the report used to lose.
      *
-     * <p>{@code --generate --boundaries} proposes a row for the boundary nothing sits on. Answering it
-     * and pasting it back is what the generated block says to do, and it raises the number of rows
-     * waiting for a {@code let} by one — which is the number the flag used to fail on. What it does to
-     * the question the flag is named for is the opposite: the gap is gone.
+     * <p>{@code --generate} proposes a row for the boundary nothing sits on. Answering it and
+     * pasting it back is what the generated block says to do, and it raises the number of rows
+     * waiting for a {@code let} by one — which is the number this used to fail on. What it does to
+     * the question being asked is the opposite: the gap is gone.
      */
     @Test
     void generatedBoundaryRowCanImproveStrictAdequacyEvenWhilePendingRowsIncrease() throws Exception {
-        Run before = examples(WAITING_AND_UNCOVERED, "--generate", "--boundaries", "--strict");
+        Run before = examples(WAITING_AND_UNCOVERED, "--generate", "--strict");
 
         assertEquals(1, before.code(), before.out() + before.err());
         assertTrue(before.out().contains("no row is at the ON point value = 0"), before.out());

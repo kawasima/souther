@@ -797,7 +797,7 @@ class ACaseTheModelRulesOutIsNotOwedARowTest {
      */
     @Test
     void everyRowTheGeneratorOffersCompiles() {
-        String offered = GeneratedRows.of(measured(RULED_OUT), "example.probe", "pick", false,
+        String offered = GeneratedRows.of(measured(RULED_OUT), "example.probe", "pick",
                 SourceRendering.namedByIdentity(SourceLayouts.NONE)).text();
 
         assertTrue(offered.contains("(Pending)"), offered);

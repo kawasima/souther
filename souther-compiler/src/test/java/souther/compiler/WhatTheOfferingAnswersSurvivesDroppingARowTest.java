@@ -148,7 +148,7 @@ class WhatTheOfferingAnswersSurvivesDroppingARowTest {
                 Adequacy.generatedOf(compilation.db(), "example.shipping");
         assertNotNull(generated, "the model under test compiles: " + compilation.errors());
         Composition composed = Composition.composed(
-                OfferingRequest.overTheModule("example.shipping", true), generated,
+                OfferingRequest.overTheModule("example.shipping"), generated,
                 Adequacy.accountFor(compilation.db(), "example.shipping",
                         new GenerationScope.Module()));
         Settlements table = Settlements.of(compilation.db(), composed);

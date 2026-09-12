@@ -64,10 +64,10 @@ class CompileExampleGenerateTest {
      * <p>What is offered and not what was composed: a row another offered row answers is not one of
      * these, and a test that rendered the composition would be reading rows nobody is given.
      */
-    private static String blockOf(String source, String module, boolean boundaries) {
+    private static String blockOf(String source, String module) {
         Compilation compilation = compiledOf(source);
         souther.compiler.query.Offering offering = Adequacy.offeredFor(compilation.db(),
-                OfferingRequest.overTheModule(module, boundaries));
+                OfferingRequest.overTheModule(module));
         assertNotNull(offering, "the model under test compiles");
         return GeneratedRows.of(offering, Map.of(), SourceRendering.namedByIdentity(compilation.texts()),
                 compilation.db()).text();
@@ -365,7 +365,7 @@ class CompileExampleGenerateTest {
                 inputs(generated(tabbed).get("take").composed()),
                 "the tab is written the way a literal spells one");
 
-        String pasted = tabbed + sourceOf(blockOf(tabbed, "example.tabbed", false))
+        String pasted = tabbed + sourceOf(blockOf(tabbed, "example.tabbed"))
                 .replace("<?>", "Ok { n = 0 }");
 
         Compilation compilation = Compilation.ofSource(pasted, "Main");
@@ -688,7 +688,7 @@ class CompileExampleGenerateTest {
 
     /** The rows of the block, with the mark answered the way an author answers it. */
     private static String answered(String source, String expected) {
-        String rows = sourceOf(blockOf(source, "example.trip", false))
+        String rows = sourceOf(blockOf(source, "example.trip"))
                 .replace("<?>", expected);
         return source + rows;
     }
@@ -744,7 +744,7 @@ class CompileExampleGenerateTest {
             assertEquals(souther.compiler.observe.Disposition.HELD, row.disposition(),
                     row.identity().shown() + " -> " + row.failurePhase());
         }
-        assertEquals("", blockOf(source, "example.trip", false),
+        assertEquals("", blockOf(source, "example.trip"),
                 "nothing is left to fill");
     }
 
@@ -778,7 +778,7 @@ class CompileExampleGenerateTest {
      */
     @Test
     void theBlockPastedUnchangedIsRowsThatStateNoAnswer() {
-        String pasted = TRIP + sourceOf(blockOf(TRIP, "example.trip", false));
+        String pasted = TRIP + sourceOf(blockOf(TRIP, "example.trip"));
 
         Compilation compilation = Compilation.ofSource(pasted, "Main");
         compilation.answerEverything();
@@ -792,7 +792,7 @@ class CompileExampleGenerateTest {
                         .toList(),
                 "the row that was answered holds, and the two pasted hold nothing: " + rows);
 
-        assertEquals("", blockOf(pasted, "example.trip", false),
+        assertEquals("", blockOf(pasted, "example.trip"),
                 "and nothing is offered a second time");
     }
 
@@ -862,7 +862,7 @@ class CompileExampleGenerateTest {
             assertEquals(souther.compiler.observe.Disposition.HELD, row.disposition(),
                     row.identity().shown() + " -> " + row.failurePhase());
         }
-        assertEquals("", blockOf(source, "example.trip", false),
+        assertEquals("", blockOf(source, "example.trip"),
                 "and nothing is left to offer once they are answered");
     }
 
@@ -1072,7 +1072,7 @@ class CompileExampleGenerateTest {
     @Test
     void theBlockIsWrittenInTheFormattersOwnShape() {
         String rows = "examples for example.trip\n\n"
-                + sourceOf(blockOf(TRIP, "example.trip", false));
+                + sourceOf(blockOf(TRIP, "example.trip"));
 
         assertEquals(rows, souther.compiler.fmt.Formatter.format(rows));
     }
@@ -1126,7 +1126,7 @@ class CompileExampleGenerateTest {
                 souther.compiler.meta.ModulePath.EMPTY);
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
-        String block = GeneratedRows.of(compilation, null, null, false, SourceRendering.namedByIdentity(compilation.texts())).text();
+        String block = GeneratedRows.of(compilation, null, null, SourceRendering.namedByIdentity(compilation.texts())).text();
 
         assertEquals(declared, block.lines()
                         .filter(line -> line.startsWith("example "))
@@ -1144,7 +1144,7 @@ class CompileExampleGenerateTest {
                     | (Request { kind = Overseas, urgent = false }) -> Accepted { at = "now" }
                 """;
 
-        assertEquals("", blockOf(covered, "example.trip", false));
+        assertEquals("", blockOf(covered, "example.trip"));
     }
 
     /**
@@ -1175,29 +1175,24 @@ class CompileExampleGenerateTest {
             """;
 
     /**
-     * The edges are said where the edges were asked for, at every point of them.
+     * A point of a border is said at every point of it, beside everything else a block says.
      *
      * <p>A border owes rows at four points and they are reported under two kinds — the two against
-     * the line and the two away from it. Written to one of the kinds, the flag withheld the rows at
-     * all four and printed the notes for two of them.
+     * the line and the two away from it. Said of one kind alone, a block tells an author about half
+     * of what one line is owed, which reads as the other half being answered.
      */
     @Test
-    void aNoteAboutABorderPointIsSaidWhereTheBordersWereAskedFor() {
-        String asked = blockOf(EVERY_POINT_UNFILLED, "sz.gen", true);
-        String notAsked = blockOf(EVERY_POINT_UNFILLED, "sz.gen", false);
+    void aNoteAboutABorderPointIsSaidAtEveryPointOfIt() {
+        String block = blockOf(EVERY_POINT_UNFILLED, "sz.gen");
 
         // One against the line and one away from it, so neither kind is answering for the other.
-        assertTrue(asked.contains("// no row for `s = 5` in `label`"), asked);
-        assertTrue(asked.contains("// no row for `1 < s < 5` in `label`"), asked);
-        assertFalse(notAsked.contains("`s = 5`"),
-                "no edge is spoken of in a run that asked for none: " + notAsked);
-        assertFalse(notAsked.contains("`1 < s < 5`"),
-                "and no point away from one either: " + notAsked);
-        // And what a run that asked for no edges does still say, so this is not passing on a block
-        // with nothing in it. The arm is looked for at the classes the way into it leaves, and
-        // every value of them is refused here — which is the search's answer and is said as one.
-        assertTrue(notAsked.contains("// no row for `else` in `label`: every value tried was"
-                + " refused at construction"), notAsked);
+        assertTrue(block.contains("// no row for `s = 5` in `label`"), block);
+        assertTrue(block.contains("// no row for `1 < s < 5` in `label`"), block);
+        // And what the block says about the rest of the account, beside the points rather than in
+        // place of them. The arm is looked for at the classes the way into it leaves, and every
+        // value of them is refused here — which is the search's answer and is said as one.
+        assertTrue(block.contains("// no row for `else` in `label`: every value tried was"
+                + " refused at construction"), block);
     }
 
     /**

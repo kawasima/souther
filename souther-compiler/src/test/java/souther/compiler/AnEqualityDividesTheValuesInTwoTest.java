@@ -227,7 +227,7 @@ class AnEqualityDividesTheValuesInTwoTest {
         assertNotNull(all, "the model under test compiles");
         return GeneratedRows.of(Adequacy.offeredFor(compilation.db(),
                         souther.compiler.query.OfferingRequest.overTheModule(
-                                "example.ratio", false)),
+                                "example.ratio")),
                 Map.of(), SourceRendering.namedByIdentity(compilation.texts()), compilation.db()).text();
     }
 

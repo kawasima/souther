@@ -153,7 +153,7 @@ class ARuleOfferedARowIsCoveredOnceTheRowIsWrittenTest {
 
     private static String block(String model) {
         Compilation measured = measured(model);
-        return GeneratedRows.of(measured, "example.decide", null, true,
+        return GeneratedRows.of(measured, "example.decide", null,
                 SourceRendering.namedByIdentity(measured.texts())).text();
     }
 

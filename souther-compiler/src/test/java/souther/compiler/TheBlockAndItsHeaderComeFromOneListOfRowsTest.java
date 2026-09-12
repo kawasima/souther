@@ -90,7 +90,7 @@ class TheBlockAndItsHeaderComeFromOneListOfRowsTest {
                 Adequacy.generatedOf(compilation.db(), module);
         assertNotNull(generated, "the model under test compiles");
         return GeneratedRows.of(Adequacy.offeredFor(compilation.db(),
-                        souther.compiler.query.OfferingRequest.overTheModule(module, true)),
+                        souther.compiler.query.OfferingRequest.overTheModule(module)),
                 Map.of(), SourceRendering.namedByIdentity(compilation.texts()), compilation.db()).text();
     }
 

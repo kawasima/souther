@@ -53,7 +53,7 @@ class WhatIsWrittenInAnEnsuresIsQuotedOverTheRowsTest {
             """;
 
     private static String block(String source) {
-        return GeneratedRows.of(compiled(source), null, null, true,
+        return GeneratedRows.of(compiled(source), null, null,
                 SourceRendering.namedByIdentity(SourceLayouts.NONE)).text();
     }
 
@@ -200,7 +200,7 @@ class WhatIsWrittenInAnEnsuresIsQuotedOverTheRowsTest {
                         .containsKey("wrong"),
                 "the checker could not read this behavior's clause");
 
-        String block = GeneratedRows.of(compilation, null, null, true,
+        String block = GeneratedRows.of(compilation, null, null,
                 SourceRendering.namedByIdentity(compilation.texts())).text();
         assertTrue(block.contains("""
                 // `ensures` written for `wrong`:
@@ -258,7 +258,7 @@ class WhatIsWrittenInAnEnsuresIsQuotedOverTheRowsTest {
         // for, so there is no store to ask what its rows would settle.
         String block = GeneratedRows.of(souther.compiler.query.EveryRowOfIt.offered(
                         souther.compiler.query.Composition.composed(
-                        souther.compiler.query.OfferingRequest.overTheModule("example.todo", true),
+                        souther.compiler.query.OfferingRequest.overTheModule("example.todo"),
                         Map.of("findTodo", nothingOffered()), null)),
                 Map.of("findTodo", List.of("ensures asked = NotFound -> id.value > 0")),
                 SourceRendering.namedByIdentity(SourceLayouts.NONE), compiled(TODO).db()).text();

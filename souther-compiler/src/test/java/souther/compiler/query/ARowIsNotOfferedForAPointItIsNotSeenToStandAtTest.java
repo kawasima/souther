@@ -140,7 +140,7 @@ class ARowIsNotOfferedForAPointItIsNotSeenToStandAtTest {
 
     /** Whether a line was drawn at {@code number} of whatever it is a line of. */
     private static boolean isAt(souther.compiler.partition.Level level, Count number) {
-        return level instanceof souther.compiler.partition.Level.OnACarrier(var ignored, var at)
+        return level instanceof souther.compiler.partition.Level.OnACarrier(_, var at)
                 && at instanceof Count count && count.compareTo(number) == 0;
     }
 
@@ -150,7 +150,7 @@ class ARowIsNotOfferedForAPointItIsNotSeenToStandAtTest {
                 Adequacy.generatedOf(compilation.db(), "example.unspoken");
         assertNotNull(generated, "the model under test compiles");
         return Settlements.of(compilation.db(), Composition.composed(
-                OfferingRequest.overTheModule("example.unspoken", true), generated,
+                OfferingRequest.overTheModule("example.unspoken"), generated,
                 Adequacy.accountFor(compilation.db(), "example.unspoken",
                         new GenerationScope.Module())));
     }

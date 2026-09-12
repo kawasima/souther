@@ -208,7 +208,7 @@ class AnEquivalencePartitionIsWhatTheModelDistinguishesTest {
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
         String rows = souther.compiler.report.GeneratedRows.of(compilation, "example.between", "f",
-                true, souther.compiler.diag.SourceRendering.namedByIdentity(compilation.texts())).text();
+                souther.compiler.diag.SourceRendering.namedByIdentity(compilation.texts())).text();
 
         assertTrue(rows.contains("\"n=1 < 3 * x <= 2\""),
                 "the class between the two lines is offered a row:\n" + rows);
@@ -248,7 +248,7 @@ class AnEquivalencePartitionIsWhatTheModelDistinguishesTest {
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
         String rows = souther.compiler.report.GeneratedRows.of(compilation, "example.narrow", "f",
-                true, souther.compiler.diag.SourceRendering.namedByIdentity(compilation.texts())).text();
+                souther.compiler.diag.SourceRendering.namedByIdentity(compilation.texts())).text();
 
         assertFalse(rows.contains("no row for `n=1 < 3 * x and"),
                 "a decimal lies between the two lines, so the class between them is not one nothing"
@@ -351,7 +351,7 @@ class AnEquivalencePartitionIsWhatTheModelDistinguishesTest {
             compilation.measure(Adequacy.Asked.fullReport());
             compilation.answerEverything();
             String rows = souther.compiler.report.GeneratedRows.of(compilation, "example.bounded",
-                    "f", true, souther.compiler.diag.SourceRendering.namedByIdentity(compilation.texts())).text();
+                    "f", souther.compiler.diag.SourceRendering.namedByIdentity(compilation.texts())).text();
 
             assertFalse(rows.contains("no value this position can hold lies inside this range"),
                     "a decimal lies between the bound and the third, so the class between them is"

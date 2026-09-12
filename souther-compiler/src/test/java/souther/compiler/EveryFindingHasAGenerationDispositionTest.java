@@ -503,7 +503,7 @@ class EveryFindingHasAGenerationDispositionTest {
     void whatOneReadingCameToIsSaidAsThatReadings() {
         Compilation compilation = compiled(NARROWED);
 
-        String block = GeneratedRows.of(compilation, "example.narrowed", "held", true,
+        String block = GeneratedRows.of(compilation, "example.narrowed", "held",
                 SourceRendering.namedByIdentity(compilation.texts())).text();
 
         assertTrue(block.contains("in `held`"),
@@ -904,7 +904,7 @@ class EveryFindingHasAGenerationDispositionTest {
         // searched for, so there is no store to ask what their rows would settle.
         return GeneratedRows.of(souther.compiler.query.EveryRowOfIt.offered(
                         souther.compiler.query.Composition.composed(
-                        souther.compiler.query.OfferingRequest.overTheModule("example.kind", true),
+                        souther.compiler.query.OfferingRequest.overTheModule("example.kind"),
                         Map.of("pick", new Adequacy.Filling(stopped(why),
                                 atTheEdges(alsoAtTheEdges),
                                 Adequacy.Generated.RowsForRules.NOTHING,
@@ -984,7 +984,7 @@ class EveryFindingHasAGenerationDispositionTest {
         Compilation compilation = compiled(POLICY);
         String block = GeneratedRows.of(Adequacy.offeredFor(compilation.db(),
                         souther.compiler.query.OfferingRequest.overTheModule(
-                                "example.policy", true)),
+                                "example.policy")),
                 Map.of(), SourceRendering.namedByIdentity(compilation.texts()), compilation.db()).text();
 
         assertTrue(block.contains("`then`"),

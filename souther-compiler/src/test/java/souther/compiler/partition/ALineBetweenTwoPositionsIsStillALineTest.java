@@ -583,7 +583,7 @@ class ALineBetweenTwoPositionsIsStillALineTest {
         Compilation compilation = Compilation.ofSource(model, "Main");
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
-        return souther.compiler.report.GeneratedRows.of(compilation, null, null, true,
+        return souther.compiler.report.GeneratedRows.of(compilation, null, null,
                 SourceRendering.namedByIdentity(compilation.texts())).text();
     }
 

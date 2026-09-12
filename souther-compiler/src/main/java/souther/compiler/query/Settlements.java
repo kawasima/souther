@@ -205,7 +205,7 @@ public record Settlements(List<ObligationIdentity> requested,
         // so a walk that looked only there would find no reading of a declared line anywhere and
         // answer that no row stands at one, of rows composed to stand at exactly that.
         Map<BorderObligationPoint, Map<String, List<BorderAssessment>>> declaredReadings =
-                readingsOfTheDeclaredLines(db, module, offering.request().boundaries());
+                readingsOfTheDeclaredLines(db, module);
         // A reader for every behavior a row is written under, and not only for the ones a search
         // answered about. A row a declaration's line is owed is composed by whichever reading could
         // compose it, and that behavior need not be one anything else was asked of — read off the
@@ -277,11 +277,8 @@ public record Settlements(List<ObligationIdentity> requested,
      * that meets the line.
      */
     private static Map<BorderObligationPoint, Map<String, List<BorderAssessment>>>
-            readingsOfTheDeclaredLines(Db db, String module, boolean boundaries) {
+            readingsOfTheDeclaredLines(Db db, String module) {
         Map<BorderObligationPoint, Map<String, List<BorderAssessment>>> out = new LinkedHashMap<>();
-        if (!boundaries) {
-            return out;
-        }
         Adequacy.DeclaredBoundaries account = db.ask(new Adequacy.DeclaredBorders(module)).value();
         if (account == null) {
             return out;

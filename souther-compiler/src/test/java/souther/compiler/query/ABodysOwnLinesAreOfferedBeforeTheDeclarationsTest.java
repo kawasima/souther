@@ -88,7 +88,7 @@ class ABodysOwnLinesAreOfferedBeforeTheDeclarationsTest {
     void theRowComposedForTheBodysPointIsTheOneKept() {
         Compilation compilation = compiled();
         Composition composition = Composition.composed(
-                OfferingRequest.overTheModule("example.dense", true),
+                OfferingRequest.overTheModule("example.dense"),
                 Adequacy.generatedOf(compilation.db(), "example.dense"), account());
         Settlements table = Settlements.of(compilation.db(), composition);
 

@@ -170,7 +170,7 @@ class ALineReadUnderEachCaseIsOneRowToWriteTest {
     void whatIsAnsweredUnderOneCaseIsNotAFindingAndWhatIsNotIsOne() {
         Compilation compilation = compiled(UNDER_P);
         Offering offering = Adequacy.offeredFor(compilation.db(),
-                OfferingRequest.overTheModule("example.line", true));
+                OfferingRequest.overTheModule("example.line"));
         assertNotNull(offering, "an offering is made for a model in this state");
 
         Map<PointRole, GenerationOutcome> found = new LinkedHashMap<>();

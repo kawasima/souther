@@ -67,7 +67,7 @@ class AGeneratedRowIsNamedForWhatItWasComposedForTest {
     /** {@code | "name" : (inputs)} as the block writes it, over lines the formatter may have wrapped. */
     private static final Pattern OFFERED = Pattern.compile("\\|\\s*\"((?:[^\"\\\\]|\\\\.)*)\"\\s*\\n?\\s*:");
 
-    private static String block(String source, boolean boundaries) {
+    private static String block(String source) {
         Compilation compilation = Compilation.ofSource(source, "Main");
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
@@ -75,7 +75,7 @@ class AGeneratedRowIsNamedForWhatItWasComposedForTest {
         assertNotNull(filling, "the model under test compiles");
         return GeneratedRows.of(Adequacy.offeredFor(compilation.db(),
                         souther.compiler.query.OfferingRequest.overTheModule(
-                                compilation.modules().get(0), boundaries)),
+                                compilation.modules().get(0))),
                 Map.of(), SourceRendering.namedByIdentity(compilation.texts()), compilation.db()).text();
     }
 
@@ -128,7 +128,7 @@ class AGeneratedRowIsNamedForWhatItWasComposedForTest {
 
     @Test
     void noTwoRowsOfOneBehaviorAreOfferedUnderOneName() {
-        String block = block(LIMIT, true);
+        String block = block(LIMIT);
         List<String> offered = names(block);
 
         assertEquals(4, rows(block),
@@ -158,8 +158,8 @@ class AGeneratedRowIsNamedForWhatItWasComposedForTest {
      */
     @Test
     void aRowKeepsWhatItIsOfferedForWhenAnotherRowSettlesWhatItAlsoSatOn() {
-        String before = block(LIMIT, true);
-        String after = block(AND_A_ROW, true);
+        String before = block(LIMIT);
+        String after = block(AND_A_ROW);
 
         String over = "request.cost=100 < x";
         assertTrue(offeredFor(before).contains(over),
@@ -184,27 +184,13 @@ class AGeneratedRowIsNamedForWhatItWasComposedForTest {
      */
     @Test
     void whatIsOfferedBesideItIsAllowedToChange() {
-        List<String> before = names(block(LIMIT, true));
-        List<String> after = names(block(AND_A_ROW, true));
+        List<String> before = names(block(LIMIT));
+        List<String> after = names(block(AND_A_ROW));
 
         assertTrue(before.contains("request.tier=Silver"),
                 "the class the row was written for was owed: " + before);
         assertTrue(!after.contains("request.tier=Silver"),
                 "and is not owed once a row sits in it: " + after);
-    }
-
-    /**
-     * Nor does the flag rename anything. Asking for the lines adds rows; it does not make the rows
-     * already offered different rows.
-     */
-    @Test
-    void askingForTheLinesDoesNotRenameTheRowsOfferedWithoutThem() {
-        String without = block(LIMIT, false);
-        String with = block(LIMIT, true);
-
-        assertEquals(names(without), names(with),
-                "every row offered without the lines is offered under the same name with them");
-        assertTrue(rows(with) > rows(without), "and the lines add rows of their own: " + with);
     }
 
     /**
@@ -216,8 +202,8 @@ class AGeneratedRowIsNamedForWhatItWasComposedForTest {
      */
     @Test
     void aRowTwoLinesComposeIsOfferedWithoutAName() {
-        String before = block(POLICY, true);
-        String after = block(POLICY_AND_A_ROW_AT_THE_CAP, true);
+        String before = block(POLICY);
+        String after = block(POLICY_AND_A_ROW_AT_THE_CAP);
         String written = "| (0, Policy { rate = Rate(0), cap = Cap(0) }) -> <?>";
 
         assertTrue(before.contains(written), "the row two lines compose carries no name: " + before);

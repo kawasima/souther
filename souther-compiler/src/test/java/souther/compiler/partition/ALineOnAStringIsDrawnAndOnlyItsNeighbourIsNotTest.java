@@ -99,7 +99,7 @@ class ALineOnAStringIsDrawnAndOnlyItsNeighbourIsNotTest {
 
     private static String generated() {
         return souther.compiler.report.GeneratedRows.of(measured(), "example.month",
-                "classifyMonth", true,
+                "classifyMonth",
                 souther.compiler.diag.SourceRendering.namedByIdentity(SourceLayouts.NONE)).text();
     }
 }

@@ -96,7 +96,7 @@ class ARowComposedForAnItemSettlesThatItemTest {
         Map<String, Adequacy.Filling> generated =
                 Adequacy.generatedOf(compilation.db(), "example.declared");
         assertNotNull(generated, "the model under test compiles");
-        return Composition.composed(OfferingRequest.overTheModule("example.declared", true), generated,
+        return Composition.composed(OfferingRequest.overTheModule("example.declared"), generated,
                 Adequacy.accountFor(compilation.db(), "example.declared",
                         new souther.compiler.query.GenerationScope.Module()));
     }

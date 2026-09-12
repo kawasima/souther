@@ -51,7 +51,7 @@ class AClassOffersAValueTheDeclarationsAdmitTest {
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
         souther.compiler.query.Offering offering = Adequacy.offeredFor(compilation.db(),
-                OfferingRequest.overTheModule("example.away", false));
+                OfferingRequest.overTheModule("example.away"));
         assertNotNull(offering, "the model under test compiles");
         return GeneratedRows.of(offering, Map.of(), SourceRendering.namedByIdentity(compilation.texts()),
                 compilation.db()).text();

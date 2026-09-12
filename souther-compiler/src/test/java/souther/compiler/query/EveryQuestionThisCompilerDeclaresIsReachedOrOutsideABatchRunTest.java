@@ -161,12 +161,9 @@ class EveryQuestionThisCompilerDeclaresIsReachedOrOutsideABatchRunTest {
             // Analysing a corpus and writing the report, which is `souther examples`.
             into(corpus.analyse().compilation(), out);
 
-            // Offering an author the rows nothing covers, which is `souther examples --generate`,
-            // with and without the rows at the edges a rule draws.
+            // Offering an author the rows nothing covers, which is `souther examples --generate`.
             ConformanceCorpus.Analysed generating = corpus.analyse();
-            GeneratedRows.of(generating.compilation(), null, null, true,
-                    new SourceRendering(corpus.names(), generating.compilation().texts())).text();
-            GeneratedRows.of(generating.compilation(), null, null, false,
+            GeneratedRows.of(generating.compilation(), null, null,
                     new SourceRendering(corpus.names(), generating.compilation().texts())).text();
             into(generating.compilation(), out);
 

@@ -104,7 +104,7 @@ class ARowIsNotOfferedForWhatAnotherOfferedRowAnswersTest {
         Compilation compilation = compiled();
         Composition composed = composed(compilation);
         Offering offered = Adequacy.offeredFor(compilation.db(),
-                OfferingRequest.overTheModule("example.shippingfee", true));
+                OfferingRequest.overTheModule("example.shippingfee"));
         assertNotNull(offered, "the model under test compiles");
 
         // Five, of the eight the searches composed. Two of them stand at the ends of the
@@ -206,7 +206,7 @@ class ARowIsNotOfferedForWhatAnotherOfferedRowAnswersTest {
                 Adequacy.generatedOf(compilation.db(), "example.shippingfee");
         assertNotNull(generated, "the model under test compiles: " + compilation.errors());
         Composition composed = Composition.composed(
-                OfferingRequest.overTheModule("example.shippingfee", true), generated,
+                OfferingRequest.overTheModule("example.shippingfee"), generated,
                 Adequacy.accountFor(compilation.db(), "example.shippingfee",
                         new GenerationScope.Module()));
         assertEquals(8, composed.count(),

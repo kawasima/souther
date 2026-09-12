@@ -100,7 +100,7 @@ public final class GeneratedRows {
      * identity rather than a name.
      */
     public static Block of(Compilation compilation, String module, String behavior,
-                           boolean boundaries, SourceRendering rendering) {
+                           SourceRendering rendering) {
         StringBuilder out = new StringBuilder();
         int rows = 0;
         for (String name : compilation.modules()) {
@@ -113,7 +113,7 @@ public final class GeneratedRows {
             // together would be deciding that where the layout is.
             Offering offering = Adequacy.offeredFor(compilation.db(),
                     new OfferingRequest(name, behavior == null ? new GenerationScope.Module()
-                            : new GenerationScope.Behavior(behavior), boundaries));
+                            : new GenerationScope.Behavior(behavior)));
             if (offering == null) {
                 continue;
             }
@@ -202,7 +202,6 @@ public final class GeneratedRows {
                            SourceRendering rendering, Db db) {
         PublishedRuleHandle.WhereARuleIs places = cited -> Sites.placeOf(db, cited);
         String module = offering.request().module();
-        boolean boundaries = offering.request().boundaries();
         BorderAccount account = offering.account();
         // Written once and then read three times — printed, counted, and asked whether there is
         // anything to answer. Counting the candidates instead gives a number about work a reader
@@ -220,8 +219,7 @@ public final class GeneratedRows {
             out.append(stated(blocks(module, offered), ensures));
         }
         for (Map.Entry<String, Adequacy.Filling> behavior : offering.searched().entrySet()) {
-            notes(out, behavior.getKey(), behavior.getValue(), boundaries, rendering, offering,
-                    places);
+            notes(out, behavior.getKey(), behavior.getValue(), rendering, offering, places);
         }
         // And what the module's declarations are owed that nothing composed a row for. Here rather
         // than after this returns, because what this builds is the block: a caller that rendered
@@ -276,14 +274,10 @@ public final class GeneratedRows {
     /**
      * The findings this block owes a reader a word about.
      *
-     * <p>An edge is offered where the caller asked for edges, and everything else is offered either
-     * way: a run that did not ask about the lines a model draws still printed the arms and the cases
-     * nothing reaches, and what the generator can do about those does not depend on the flag.
-     *
-     * <p>What an edge is, is read off what the finding is about and not off its kind. A border owes
-     * rows at four points and they arrive under two kinds — the two against the line and the two away
-     * from it — so a flag written to one of the kinds offered the caller who asked for no edges the
-     * other two.
+     * <p>A point of a border is said like everything else. What a run offers is the account's, and
+     * the points are obligations of it: a block that held them back read as though the arms and the
+     * cases were all there was to write, and the report beside it went on naming what the block had
+     * decided not to mention.
      *
      * <p>A finding row synthesis is not about is left out. This block is rows to write and notes
      * about rows that could not be written; a measure this compiler could not make has no row
@@ -291,12 +285,9 @@ public final class GeneratedRows {
      * a list of the author's work. The report says those findings, which is where they belong.
      */
     private static List<Adequacy.GenerationDisposition> shown(Adequacy.Filling filling,
-                                                              boolean boundaries,
                                                               Offering offering) {
         return filling.generation().stream()
                 .filter(each -> !(each.outcome() instanceof GenerationOutcome.NotApplicable))
-                .filter(each -> boundaries
-                        || !(each.finding().about() instanceof About.APointOfABorder))
                 // And nothing about something one of the rows above stands at. What the search for
                 // this finding came to is what it came to, and a person reading the block is being
                 // told what is left to write — which a row in front of them is not.
@@ -573,14 +564,12 @@ public final class GeneratedRows {
      * the rows it was offering were printed two lines above the line saying it had stopped.
      */
     private static void notes(StringBuilder out, String behavior, Adequacy.Filling filling,
-                              boolean boundaries, SourceRendering rendering, Offering offering,
+                              SourceRendering rendering, Offering offering,
                               PublishedRuleHandle.WhereARuleIs places) {
         Set<String> said = new LinkedHashSet<>();
         List<Generator.UnresolvedCombination> left =
                 new ArrayList<>(filling.composed().unresolved());
-        if (boundaries) {
-            left.addAll(filling.boundaries().unresolved());
-        }
+        left.addAll(filling.boundaries().unresolved());
         for (Generator.UnresolvedCombination each : left) {
             say(out, said, String.format("// no row for `%s` in `%s`: %s%n",
                     each.subject(), behavior, saidOf(each)));
@@ -588,7 +577,7 @@ public final class GeneratedRows {
         // Every finding a row could answer, and not only the ones a strategy took. One printed in
         // the report and left out of this block is one an author is told nothing about, while the
         // rows above it read as though they filled everything.
-        for (Adequacy.GenerationDisposition each : shown(filling, boundaries, offering)) {
+        for (Adequacy.GenerationDisposition each : shown(filling, offering)) {
             switch (each.outcome()) {
                 case GenerationOutcome.Generated _ -> { }
                 // Each of what was tried, because they are not one fact: a combination the model
@@ -632,9 +621,7 @@ public final class GeneratedRows {
             }
         }
         List<GenerationReason> stopped = new ArrayList<>(filling.composed().reasons());
-        if (boundaries) {
-            stopped.addAll(filling.boundaries().reasons());
-        }
+        stopped.addAll(filling.boundaries().reasons());
         for (GenerationReason why : stopped) {
             // Through the same set the lines above went through. Two searches of one behavior stop
             // for one reason — nothing built to put a candidate through stops both — and a reader

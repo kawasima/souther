@@ -303,7 +303,6 @@ public final class Main {
         String behavior = null;
         boolean strict = false;
         boolean generate = false;
-        boolean boundaries = false;
         // The report is this command's whole output, so everything is measured and nothing is said
         // twice: what the warnings would say, the report says in one place. Measuring is not a
         // choice this command makes, and the bar it is read against is `--adequacy`'s — the same
@@ -342,7 +341,6 @@ public final class Main {
                     measure = Adequacy.Asked.fullReport(bar);
                 }
                 case "--generate" -> generate = true;
-                case "--boundaries" -> boundaries = true;
                 case "--strict" -> strict = true;
                 default -> sources.add(Path.of(args[i]));
             }
@@ -400,7 +398,7 @@ public final class Main {
                 // Beside it rather than in it where the report is JSON: the rows are source, and
                 // source in the middle of a JSON document is not a document.
                 if (generate) {
-                    String rows = GeneratedRows.of(compilation, module, behavior, boundaries, rendering).text();
+                    String rows = GeneratedRows.of(compilation, module, behavior, rendering).text();
                     (render.json() ? System.err : System.out).print(rows);
                 }
             }

@@ -2581,10 +2581,9 @@ public final class Adequacy {
             return null;
         }
         // And what the module's own declarations are owed, which is no behavior's and so is in none
-        // of the fillings above. Asked only where the request asked for the edges: a request that
-        // asked for no boundary rows is not asking about these either.
-        BorderAccount account = request.boundaries()
-                ? accountFor(db, request.module(), request.scope()) : null;
+        // of the fillings above. Asked whenever rows are, because what a declaration's line is owed
+        // is an obligation of the same account as the rest.
+        BorderAccount account = accountFor(db, request.module(), request.scope());
         Composition composed = Composition.composed(request, generated, account);
         // And then only the rows whose going would cost the offering something. A candidate is
         // composed for one thing and the positions that thing does not name hold whatever the row

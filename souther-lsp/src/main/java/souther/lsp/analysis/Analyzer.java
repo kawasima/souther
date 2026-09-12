@@ -1010,7 +1010,7 @@ public final class Analyzer {
         // server was given, so what identifies a source is already what this server calls it.
         souther.compiler.report.GeneratedRows.Block block =
                 souther.compiler.report.GeneratedRows.of(compilation, offer.module(),
-                        offer.behavior(), true,
+                        offer.behavior(),
                         souther.compiler.diag.SourceRendering.namedByIdentity(
                                 compilation.texts()));
         if (block.rowCount() == 0) {
