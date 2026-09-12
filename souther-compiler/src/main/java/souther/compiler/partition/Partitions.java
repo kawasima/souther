@@ -2182,5 +2182,24 @@ public final class Partitions {
                 ? List.of() : List.of(held);
     }
 
+    /**
+     * What a search composing a value at one of this phase's positions is given: the sets the
+     * declarations leave them, and what looking for a value in one may cost.
+     *
+     * <p>Here because this is where what a position admits is already in hand and where what writing
+     * one value out may cost is already granted. A search reaching for either would be a second
+     * answer about the model beside an allowance nothing granted it.
+     */
+    static WitnessSearch witnessSearch(List<PositionMeasurements> measurements) {
+        java.util.Map<TermPath, ValueSet> sets = new LinkedHashMap<>();
+        for (PositionMeasurements at : measurements) {
+            // Every position the reading measured, including the ones whose rules leave them
+            // everything. What a position admits and whether anybody asked are different states, and
+            // a map with a hole in it cannot tell a caller which of the two it is looking at.
+            sets.put(at.position().path(), at.position().admits());
+        }
+        return new WitnessSearch(AdmittedValues.of(sets), PatternPlan.Budget.OF_A_WITNESS::meter);
+    }
+
     private Partitions() {}
 }

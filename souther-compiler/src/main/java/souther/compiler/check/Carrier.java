@@ -862,8 +862,17 @@ public sealed interface Carrier extends ValueOrder {
      * <p>A place this order has no written value for is left in. What the set says is which values
      * the declarations leave, and a carrier that writes none of them back has nothing to put to it
      * — refused here, every class of a date would lose the representative the order composed.
+     *
+     * <p><b>For a candidate already in hand, and never for finding one.</b> A caller choosing a value
+     * out of a run and asking this afterwards is the search stopping at the first thing it reached:
+     * where the answer is no, the run may hold another value the set admits and this says nothing
+     * about it, and a class the declarations leave inhabited comes back with no representative. What
+     * finding one is is {@link #somewhereIn}, which narrows the search by the set instead of judging
+     * what came back. This is asked where a candidate comes from a policy the set does not encode —
+     * the end of a run a boundary is named for is one — and a caller that gets no for every such
+     * candidate goes on to ask that one.
      */
-    private boolean admitted(ValueSet admits, Place at) {
+    default boolean admitted(ValueSet admits, Place at) {
         Value wrote = valueAt(at);
         return wrote == null || admits.has(wrote);
     }

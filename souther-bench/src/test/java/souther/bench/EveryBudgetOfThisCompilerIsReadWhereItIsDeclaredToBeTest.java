@@ -115,7 +115,8 @@ class EveryBudgetOfThisCompilerIsReadWhereItIsDeclaredToBeTest {
                             + " assignment the narrowing would have and skips none of them"),
             Map.entry("souther.compiler.partition.LevelRealizer#ofTwo("
                             + "Lsouther/compiler/partition/Standing$OfTwoOnOneCarrier;"
-                            + "Lsouther/compiler/inputs/SearchRegion;)"
+                            + "Lsouther/compiler/inputs/SearchRegion;"
+                            + "Lsouther/compiler/partition/WitnessSearch;)"
                             + "Lsouther/compiler/partition/Realization;",
                     "stops walking a line at the places it tries and says which figure"),
             Map.entry("souther.compiler.partition.LevelRealizer#ofAForm("

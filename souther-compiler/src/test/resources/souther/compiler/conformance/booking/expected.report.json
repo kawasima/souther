@@ -1314,7 +1314,7 @@
             "relation" : "in",
             "against" : "voucher < spring",
             "knownWritable" : true,
-            "writableBecause" : [ "the_rules_prove_it" ],
+            "writableBecause" : [ "the_rules_prove_it", "a_value_was_built" ],
             "status" : "unavailable",
             "reason" : "no_rows"
           }, {
@@ -1326,7 +1326,7 @@
             "relation" : "in",
             "against" : "spring < voucher",
             "knownWritable" : true,
-            "writableBecause" : [ "the_rules_prove_it" ],
+            "writableBecause" : [ "the_rules_prove_it", "a_value_was_built" ],
             "status" : "unavailable",
             "reason" : "no_rows"
           } ]
@@ -1617,7 +1617,7 @@
           },
           "relation" : "in",
           "knownWritable" : true,
-          "writableBecause" : [ "the_rules_prove_it" ],
+          "writableBecause" : [ "the_rules_prove_it", "a_value_was_built" ],
           "status" : "unavailable",
           "reason" : "no_rows",
           "disposition" : "undecided",
@@ -1678,7 +1678,7 @@
           },
           "relation" : "in",
           "knownWritable" : true,
-          "writableBecause" : [ "the_rules_prove_it" ],
+          "writableBecause" : [ "the_rules_prove_it", "a_value_was_built" ],
           "status" : "unavailable",
           "reason" : "no_rows",
           "disposition" : "undecided",

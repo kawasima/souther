@@ -196,6 +196,26 @@ public final class MeasuredInput {
         return List.copyOf(out);
     }
 
+    /**
+     * What a search composing a value at one of its positions is given beside the region: the sets
+     * the declarations leave those positions, and what looking in one may cost.
+     *
+     * <p>Off this measurement and not worked out again by whoever searches. The sets are the
+     * reading's answer about the model, and the region a search runs inside is arithmetic — a caller
+     * that had only the second would compose a value the first refuses, with nothing on the way back
+     * able to tell it so.
+     *
+     * <p>Built when asked rather than held here. What it holds is a set per position and an allowance
+     * to spend, and an allowance is a capability — kept as a field it would be part of an answer that
+     * is compared, which is the arrangement {@link #machines} is under and the reason a walk that
+     * reads answers for settled equality would have one more place to explain. So a caller that asks
+     * at every point of a border walks the positions at every point, and one that wants it once holds
+     * it once.
+     */
+    public WitnessSearch witnessSearch() {
+        return Partitions.witnessSearch(divided.measurements());
+    }
+
     /** Every measure of its positions, in the order the rules name the numbers. */
     public MeasuredAxes axes() {
         return new MeasuredAxes(this, divided.axes());

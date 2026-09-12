@@ -126,7 +126,8 @@ class ANumberOverARunIsMeasuredWithoutAPositionTest {
         Standing standing = over.standingAt(
                 new Criterion.AtTheLevel(new Level.ACount(Count.of(100000))));
 
-        Realization made = new LevelRealizer().realize(standing, NothingTheRulesSay.REGION);
+        Realization made = new LevelRealizer().realize(standing, NothingTheRulesSay.REGION,
+                NothingTheDeclarationsRefuse.at());
 
         assertEquals(new Realization.Found(
                         Map.of(new RealizationTarget.OverARun(TOTAL), Count.of(100000))),

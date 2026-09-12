@@ -99,16 +99,39 @@ public sealed interface Criterion {
                 souther.compiler.check.Carrier carrier,
                 souther.compiler.numeric.Endpoint min, souther.compiler.numeric.Endpoint max) {
             LevelSpace space = LevelSpace.onACarrier(carrier);
-            LevelInterval leaves = new LevelInterval(
-                    endOf(carrier, min), endOf(carrier, max));
-            for (LevelInterval part : region().parts()) {
-                LevelInterval look = part.intersect(leaves);
-                Level found = look == null ? null : space.witness(look, away).level();
+            for (LevelInterval look : runsInside(carrier, min, max)) {
+                Level found = space.witness(look, away).level();
                 if (found instanceof Level.OnACarrier on) {
                     return on.at();
                 }
             }
             return null;
+        }
+
+        /**
+         * The runs this item leaves inside what the rules leave the position, in the order they are
+         * to be looked in.
+         *
+         * <p>One reading of the geometry, because there is more than one thing to do with it. A
+         * caller with a set of admitted values crosses each of these with that set rather than
+         * taking a value out of one of them and putting it to the set afterwards
+         * ({@link souther.compiler.check.Carrier#somewhereIn}), and it has to be looking in the same
+         * runs and in the same order as the caller that wants a value and nothing else. Read twice,
+         * the two would be free to disagree about which end of the item is the near one.
+         */
+        public java.util.List<LevelInterval> runsInside(
+                souther.compiler.check.Carrier carrier,
+                souther.compiler.numeric.Endpoint min, souther.compiler.numeric.Endpoint max) {
+            LevelInterval leaves = new LevelInterval(
+                    endOf(carrier, min), endOf(carrier, max));
+            java.util.List<LevelInterval> out = new java.util.ArrayList<>();
+            for (LevelInterval part : region().parts()) {
+                LevelInterval look = part.intersect(leaves);
+                if (look != null) {
+                    out.add(look);
+                }
+            }
+            return java.util.List.copyOf(out);
         }
 
         /** What the rules leave the position, as an end of a run of its values. */
