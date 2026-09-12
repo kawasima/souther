@@ -55,14 +55,16 @@ class ASettlingReadAgainAndASettlingTakenOnLeaveTheSameConstructionLimitsTest {
         int compared = 0;
         int stopped = 0;
         int counted = 0;
+        int deep = 0;
         for (Record record : recordsRead()) {
             FieldDomains base = FieldDomains.of(record.declared(), record.source(), record.policy(),
                     DeclarationReadings.NONE);
-            for (Map<RuleKey, Count> settling : settlings(base, record.fields())) {
+            List<RuleKey> coordinates = coordinatesOf(base, record.fields());
+            for (Map<RuleKey, Count> settling : settlings(base, coordinates)) {
                 FieldDomains readUnder = FieldDomains.of(record.declared(), record.source(),
                         record.policy(), settling, DeclarationReadings.NONE);
                 FieldDomains.Composing takenOn = base.composing(named(settling));
-                for (RuleKey field : record.fields()) {
+                for (RuleKey field : coordinates) {
                     NumericDomain.Bounds values = readUnder.at(field).bounds();
                     FieldDomains.Held held = readUnder.heldAt(field);
                     FieldDomains.ConstructionLimits limits = takenOn.at(field);
@@ -77,6 +79,7 @@ class ASettlingReadAgainAndASettlingTakenOnLeaveTheSameConstructionLimitsTest {
                     compared++;
                     stopped += values == null ? 0 : 1;
                     counted += held == null ? 0 : 1;
+                    deep += field.steps().size() > 1 ? 1 : 0;
                 }
             }
         }
@@ -90,13 +93,40 @@ class ASettlingReadAgainAndASettlingTakenOnLeaveTheSameConstructionLimitsTest {
                 + "was of one absent range against another");
         assertFalse(counted == 0, "no coordinate was counted, so nothing above compared what a "
                 + "position holds");
+        // And that a name reaching below a field was among them. A clause names a position at
+        // whatever depth it can reach, and a population that had come to hold only the shallowest
+        // of them would go on passing while saying it compared every coordinate.
+        assertFalse(deep == 0, "no coordinate below a field was compared, so nothing above says "
+                + "the two derivations agree about the names a clause reaches through");
         System.out.println("construction limits compared: " + compared + ", of them " + stopped
-                + " stopped and " + counted + " counted");
+                + " stopped, " + counted + " counted and " + deep + " named below a field");
     }
 
     /** One record declaration, read where its rules are. */
     private record Record(TypeSymbol.AtModule declared, RuleReadingSource source,
-                          ReadingPolicy policy, List<RuleKey> fields) {}
+                          ReadingPolicy policy, Map<String, Type> fields) {}
+
+    /**
+     * The coordinates of one record that are asked about.
+     *
+     * <p>Taken from the reading and not from the fields the type declares. A clause of a record
+     * names positions at whatever depth it can reach — {@code interval.startsAt} is one name and
+     * not two — so the names a search settles and asks under are the reading's own, and a
+     * population built by walking the fields one step at a time would compare only the shallowest
+     * of them while saying it compared every one.
+     *
+     * <p>The declared fields as well, which the reading has no entry for where no rule reaches
+     * them. A position nothing is written about is one both derivations must still answer alike
+     * about, and it is the answer a projection reading the wrong state gives most easily.
+     */
+    private static List<RuleKey> coordinatesOf(FieldDomains rules, Map<String, Type> fields) {
+        Set<RuleKey> out = new LinkedHashSet<>();
+        fields.keySet().forEach(field -> out.add(RuleKey.of(field)));
+        rules.placed().forEach(placed -> out.add(placed.path()));
+        rules.stated().forEach(placed -> out.add(placed.path()));
+        out.remove(RuleKey.THE_VALUE);
+        return List.copyOf(out);
+    }
 
     /**
      * The settlings asked about: each coordinate at each value it could take, and each pair of them
@@ -176,20 +206,39 @@ class ASettlingReadAgainAndASettlingTakenOnLeaveTheSameConstructionLimitsTest {
         return out;
     }
 
+    /**
+     * Every record a value of {@code type} can hold, however it is reached.
+     *
+     * <p>Through the cases of a sum, through what a collection holds and through what stands under
+     * an optional as well as through a record's fields. A search composing a value reaches a
+     * declaration by every one of these, so a walk that followed fields alone would leave out the
+     * records only a case or an element leads to and would say it had walked them.
+     */
     private static void under(Type type, RuleReadingSource source, ReadingPolicy policy,
                               Set<TypeSymbol> seen, List<Record> out) {
-        if (!(TypeView.of(type, source.symbols()).shape()
-                instanceof Shape.Product(TypeSymbol.AtModule declared, Map<String, Type> fields))) {
-            return;
+        Shape shape = TypeView.of(type, source.symbols()).shape();
+        switch (shape) {
+            case Shape.Product(TypeSymbol name, Map<String, Type> fields) -> {
+                if (!(name instanceof TypeSymbol.AtModule declared) || !seen.add(declared)) {
+                    return;
+                }
+                if (!fields.isEmpty()) {
+                    out.add(new Record(declared, source, policy, fields));
+                }
+                fields.values().forEach(field -> under(field, source, policy, seen, out));
+            }
+            case Shape.Cases(Set<TypeSymbol> members) ->
+                    members.forEach(each -> under(Type.ref(each), source, policy, seen, out));
+            case Shape.Sequence(var _, Type element) ->
+                    under(element, source, policy, seen, out);
+            case Shape.Optional(Type element) -> under(element, source, policy, seen, out);
+            case Shape.Mapping(Type key, Type value) -> {
+                under(key, source, policy, seen, out);
+                under(value, source, policy, seen, out);
+            }
+            case Shape.Tuple(List<Type> elements) ->
+                    elements.forEach(each -> under(each, source, policy, seen, out));
+            default -> { }
         }
-        if (!seen.add(declared)) {
-            return;
-        }
-        List<RuleKey> keys = new ArrayList<>();
-        fields.keySet().forEach(field -> keys.add(RuleKey.of(field)));
-        if (!keys.isEmpty()) {
-            out.add(new Record(declared, source, policy, keys));
-        }
-        fields.values().forEach(field -> under(field, source, policy, seen, out));
     }
 }

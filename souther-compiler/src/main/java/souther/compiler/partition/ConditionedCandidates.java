@@ -14,8 +14,8 @@ import java.util.Map;
  * What one position can take, for a search choosing them one at a time.
  *
  * <p>The rules of the value being composed are read once and handed each settling as it arrives
- * ({@link FieldDomains#given}), which is what a settling is: an equality taken onto everything the
- * clauses came to. A search that read the declaration at each position would be arriving at the
+ * ({@link FieldDomains#composing}), which is what a settling is: an equality taken onto everything
+ * the clauses came to. A search that read the declaration at each position would be arriving at the
  * same state by reading every clause over again.
  *
  * <p><b>What a position can take is kept, and this is where keeping it belongs.</b> A depth-first
