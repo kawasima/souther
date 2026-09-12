@@ -9,8 +9,8 @@ import souther.compiler.check.DeclaredSig;
 import souther.compiler.check.DeclaredTypeReading;
 import souther.compiler.check.FieldRead;
 import souther.compiler.check.ResolvedFieldTypes;
+import souther.compiler.check.ParameterFact;
 import souther.compiler.check.Sig;
-import souther.compiler.check.SpecImplementation;
 import souther.compiler.check.DerivedSymbols;
 import souther.compiler.check.Symbols;
 import souther.compiler.diag.Region;
@@ -28,7 +28,6 @@ import souther.compiler.types.Type;
 import souther.compiler.types.TypeSpelling;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -51,26 +50,6 @@ import java.util.Optional;
  * question: a fact this cannot reach is that fact absent, and not the snapshot going away.
  */
 public final class SemanticSnapshot {
-
-    /**
-     * What this module's declarations settle about one parameter a {@code let} wrote.
-     *
-     * <p>Told apart by what a reader may do with it rather than by which kind of position it fills.
-     * Two of these are types a name in a body has, and one of the two is also a type an author may
-     * write where the name is — which is the difference between what is put in a hint and what is
-     * answered when the name is asked about.
-     */
-    private sealed interface ParameterFact {
-
-        /** An input, as the signature says it arrives. */
-        record TypedInput(Hir.FnParam written, Type arrives) implements ParameterFact {}
-
-        /** An injected behavior, as what it takes and answers. */
-        record TypedInjection(Hir.FnParam written, Type takes) implements ParameterFact {}
-
-        /** A parameter this revision settles nothing about. */
-        record Untyped(Hir.FnParam written) implements ParameterFact {}
-    }
 
     private final Db db;
     private final String module;
@@ -193,8 +172,12 @@ public final class SemanticSnapshot {
      * body that will not check does not stop it saying so.
      */
     public List<DeclaredParameter> parametersIn(SourceId source) {
+        Answer<List<ParameterFact>> facts = db.ask(new Bodies.DeclaredParameters(module));
+        if (!facts.present()) {
+            return List.of();
+        }
         List<DeclaredParameter> out = new ArrayList<>();
-        for (ParameterFact fact : parameterFacts()) {
+        for (ParameterFact fact : facts.value()) {
             // The inputs alone. What the signature says arrives is a type an author may write where
             // the hint is drawn; a parameter a `depends on` clause fills is a behavior handed to the
             // implementation, and it has no spelling that goes in that place.
@@ -210,86 +193,6 @@ public final class SemanticSnapshot {
             }
         }
         return List.copyOf(out);
-    }
-
-    /**
-     * What the declarations say about each parameter every {@code let} of this module wrote.
-     *
-     * <p>One classification, read by everything here that is about a parameter. What a hint is drawn
-     * for and what a name in a body is typed by are two uses of one answer, and worked out apart they
-     * were two: the reading that drew hints and the reading that typed bodies each decided for
-     * itself which parameters a signature speaks for, and both decided it by comparing the length of
-     * the {@code let}'s parameter list with the length of the signature. A behavior with a
-     * {@code depends on} clause takes the behaviors it is injected with beside its inputs, so those
-     * two lengths differ for every one of them and both readings left the whole definition out.
-     *
-     * <p>Which parameters the signature speaks for is {@link SpecImplementation}'s to say, and is
-     * asked here rather than worked out from the lengths. What is added is the types: the signature
-     * says what arrives at an input, and an injected parameter is a behavior this module names, whose
-     * signature says what it takes and answers.
-     *
-     * <p>Answered whether or not the definition is one the checker will accept. A parameter the
-     * declaration accounts for nothing for is {@link ParameterFact.Untyped}, which is the same
-     * answer a reader gets for a parameter of a behavior whose signature this revision could not
-     * work out — nothing here says a type, and nothing here says the definition is wrong either.
-     */
-    private List<ParameterFact> parameterFacts() {
-        Answer<Hir.Module> resolved = db.ask(new Names.Resolved(module));
-        Answer<Map<String, DeclaredSig>> signatures = db.ask(new Bodies.DeclaredSignatures(module));
-        if (!resolved.present() || !signatures.present()) {
-            return List.of();
-        }
-        Answer<Map<ValueName.Behavior, Sig>> reachable = db.ask(new Bodies.Reachable(module));
-        List<ParameterFact> facts = new ArrayList<>();
-        SpecImplementation.implementationsOf(resolved.value())
-                .forEach((behavior, implemented) -> {
-                    DeclaredSig declared = signatures.value().get(behavior);
-                    for (SpecImplementation.ParameterBinding binding : implemented.bindings()) {
-                        facts.add(factOf(binding, declared, reachable));
-                    }
-                });
-        return List.copyOf(facts);
-    }
-
-    /** What one parameter is, given what this module's declarations say. */
-    private static ParameterFact factOf(SpecImplementation.ParameterBinding binding,
-                                        DeclaredSig declared,
-                                        Answer<Map<ValueName.Behavior, Sig>> reachable) {
-        return switch (binding) {
-            // At the position the declaration holds it at, and not tested against the declaration's
-            // length first. The division gave the position by walking the same parameters, so a
-            // test would be an answer checked against itself, and answering `Untyped` where it
-            // failed would put back the silence this reading exists to remove.
-            case SpecImplementation.ParameterBinding.AnInput input -> declared == null
-                    ? new ParameterFact.Untyped(input.written())
-                    : new ParameterFact.TypedInput(input.written(),
-                            declared.inputs().get(input.at()).type());
-            case SpecImplementation.ParameterBinding.AnInjection injected ->
-                    injectionFact(injected, reachable);
-            // A clause that reaches no declaration names no signature to read, and a parameter the
-            // declaration asks for no position for is spoken for by nothing.
-            case SpecImplementation.ParameterBinding.Unanswered unanswered ->
-                    new ParameterFact.Untyped(unanswered.written());
-            case SpecImplementation.ParameterBinding.Extraneous extraneous ->
-                    new ParameterFact.Untyped(extraneous.written());
-        };
-    }
-
-    /**
-     * An injected parameter, typed by the signature of the behavior it is handed.
-     *
-     * <p>What arrives there is that behavior with what it depends on already supplied, so what a
-     * body may do with the name is call it with the inputs the declaration names. Untyped where this
-     * revision has no signature for it, which is the module it is declared in still being read.
-     */
-    private static ParameterFact injectionFact(
-            SpecImplementation.ParameterBinding.AnInjection injected,
-            Answer<Map<ValueName.Behavior, Sig>> reachable) {
-        Sig injects = reachable.present() ? reachable.value().get(injected.behavior()) : null;
-        return injects == null
-                ? new ParameterFact.Untyped(injected.written())
-                : new ParameterFact.TypedInjection(injected.written(),
-                        Type.fn(injects.inputTypes(), injects.outputType()));
     }
 
     /**
@@ -490,42 +393,17 @@ public final class SemanticSnapshot {
     private Type declaredTypeOf(Hir.Expr e) {
         Answer<Map<String, Hir.FnDef>> values = db.ask(new Bodies.ModuleDefinitions(module));
         Answer<Map<ValueName.Behavior, Sig>> reachable = db.ask(new Bodies.Reachable(module));
-        if (!values.present() || !reachable.present()) {
+        // All the parameters of the module at once and not the ones the cursor is inside. A binding
+        // tells itself from every other, so a parameter of one behavior cannot be reached by a name
+        // in another, and working out which body a position is in would be a scope this does not
+        // have to keep.
+        Answer<Map<BindingId, BindingEvidence>> parameters =
+                db.ask(new Bodies.DeclaredParameterBindings(module));
+        if (!values.present() || !reachable.present() || !parameters.present()) {
             return null;
         }
         return new DeclaredTypeReading(declarations(), values.value(), reachable.value(),
-                parametersOfEveryBehavior()).declaredTypeOf(e);
-    }
-
-    /**
-     * What every parameter written in this module is declared to arrive as.
-     *
-     * <p>All of them at once and not the ones the cursor is inside. A binding tells itself from
-     * every other, so a parameter of one behavior cannot be reached by a name in another, and
-     * working out which body a position is in would be a scope this does not have to keep.
-     *
-     * <p>The injected parameters as well as the inputs. A name a body reads is a name whatever it
-     * stands for, and one standing for a behavior the module was handed has a type as much as one
-     * standing for an input does — so a reader asking what {@code dep(x).field} is gets the same
-     * answer here as it would for a call written any other way.
-     *
-     * <p>A parameter nothing here types is left out, which is a fact being absent rather than the
-     * parameter being. What is wrong with a definition the declaration does not account for is
-     * reported where it is written.
-     */
-    private Map<BindingId, BindingEvidence> parametersOfEveryBehavior() {
-        Map<BindingId, BindingEvidence> declared = new LinkedHashMap<>();
-        for (ParameterFact fact : parameterFacts()) {
-            switch (fact) {
-                case ParameterFact.TypedInput(Hir.FnParam written, Type arrives) ->
-                        declared.put(written.binder().id(),
-                                new BindingEvidence.DeclaredAs(arrives));
-                case ParameterFact.TypedInjection(Hir.FnParam written, Type takes) ->
-                        declared.put(written.binder().id(), new BindingEvidence.DeclaredAs(takes));
-                case ParameterFact.Untyped _ -> { }
-            }
-        }
-        return declared;
+                parameters.value()).declaredTypeOf(e);
     }
 
     /**

@@ -8,6 +8,8 @@ import souther.compiler.ast.Hir;
 import souther.compiler.check.AnalysisBody;
 import souther.compiler.check.Expansion;
 import souther.compiler.check.BehaviorChecker;
+import souther.compiler.check.BindingEvidence;
+import souther.compiler.check.ParameterFact;
 import souther.compiler.check.SpecChecker;
 import souther.compiler.check.SpecImplementation;
 import souther.compiler.check.CheckSurface;
@@ -422,6 +424,89 @@ public final class Bodies {
             } catch (CompileException e) {
                 return Answer.absent(e);
             }
+        }
+    }
+
+    /**
+     * What this module's declarations say about each parameter its {@code let}s wrote.
+     *
+     * <p>A question about the revision and about nothing else. What it comes to is read by an editor
+     * asking about one position — which parameter a hint stands after, what type a name in a body
+     * has — and a reader that worked it out where it asked would work out what every other behavior
+     * of the module declares to answer about one of them. So the table is the answer to a question
+     * of its own, and the second reader of a revision is handed the first reader's.
+     *
+     * <p>Asked here rather than kept on the snapshot that reads it. A {@link
+     * souther.compiler.sites.SemanticSnapshot} is built where it is used and dropped there, which is
+     * what makes it safe to ask about a buffer mid-edit; a field on one would live for one question.
+     *
+     * <p>Absent where the module's names are not resolved or its signatures could not be worked out.
+     * That is this reading having nothing to say, which is not the same as a module whose {@code
+     * let}s wrote no parameters.
+     */
+    public record DeclaredParameters(String name) implements Key<List<ParameterFact>> {
+        @Override
+        public String module() {
+            return name;
+        }
+
+        @Override
+        public Answer<List<ParameterFact>> compute(Db db) {
+            Answer<Hir.Module> resolved = db.ask(new Names.Resolved(name));
+            Answer<Map<String, DeclaredSig>> signatures = db.ask(new DeclaredSignatures(name));
+            if (!resolved.present() || !signatures.present()) {
+                return Answer.absent();
+            }
+            Answer<Map<ValueName.Behavior, Sig>> reachable = db.ask(new Reachable(name));
+            return Answer.of(ParameterFact.of(resolved.value(), signatures.value(),
+                    reachable.present() ? reachable.value() : Map.of()));
+        }
+    }
+
+    /**
+     * What a body's names are declared to be, for the parameters of every behavior of this module.
+     *
+     * <p>The cut {@link DeclaredParameters} is read through by the walk that says what an expression
+     * is declared to be. That walk is handed bindings and asks after the one it is looking at, so
+     * what it needs is the table under the binding rather than the list the declarations were read
+     * off — and building that from the list is work proportional to the module, which put back at
+     * each reader is the thing being answered once here.
+     *
+     * <p>The injected parameters as well as the inputs. A name a body reads is a name whatever it
+     * stands for, and one standing for a behavior the module was handed has a type as much as one
+     * standing for an input does — so a reader asking what {@code dep(x).field} is gets the same
+     * answer here as it would for a call written any other way.
+     *
+     * <p>A parameter nothing here types is left out, which is a fact being absent rather than the
+     * parameter being. What is wrong with a definition the declaration does not account for is
+     * reported where it is written.
+     */
+    public record DeclaredParameterBindings(String name)
+            implements Key<Map<BindingId, BindingEvidence>> {
+        @Override
+        public String module() {
+            return name;
+        }
+
+        @Override
+        public Answer<Map<BindingId, BindingEvidence>> compute(Db db) {
+            Answer<List<ParameterFact>> facts = db.ask(new DeclaredParameters(name));
+            if (!facts.present()) {
+                return Answer.absent();
+            }
+            Map<BindingId, BindingEvidence> declared = new LinkedHashMap<>();
+            for (ParameterFact fact : facts.value()) {
+                switch (fact) {
+                    case ParameterFact.TypedInput(Hir.FnParam written, Type arrives) ->
+                            declared.put(written.binder().id(),
+                                    new BindingEvidence.DeclaredAs(arrives));
+                    case ParameterFact.TypedInjection(Hir.FnParam written, Type takes) ->
+                            declared.put(written.binder().id(),
+                                    new BindingEvidence.DeclaredAs(takes));
+                    case ParameterFact.Untyped _ -> { }
+                }
+            }
+            return Answer.of(Ordered.map(declared));
         }
     }
 
