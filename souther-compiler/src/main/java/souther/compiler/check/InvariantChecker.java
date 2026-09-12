@@ -228,8 +228,7 @@ public final class InvariantChecker {
      * every name in. One value and not a scope beside a lookup, so that what is read and what a
      * reading made here is filed under cannot come from two places.
      */
-    public record Source(Hir.Expr body, ElementProvenance elements, RuleReadingSource rules,
-                         DeclarationReadings machines,
+    public record Source(Hir.Expr body, ElementProvenance elements, RuleReadingContext reading,
                          Map<ValueName.Behavior, AssumedContract> contracts) {
 
         public Source {
@@ -278,19 +277,16 @@ public final class InvariantChecker {
     private final List<CompileException> errors = new ArrayList<>();
     private final List<Diagnostic> warnings = new ArrayList<>();
 
-    private InvariantChecker(RuleReadingSource source,
-                             DeclarationReadings machines, ReadingPolicy policy) {
-        this(source, machines, Map.of(), policy);
+    private InvariantChecker(RuleReadingContext reading) {
+        this(reading, Map.of());
     }
 
-    private InvariantChecker(RuleReadingSource source,
-                             DeclarationReadings machines,
-                             Map<ValueName.Behavior, AssumedContract> contracts,
-                             ReadingPolicy policy) {
-        this.engine = new PathEngine(source, contracts, policy);
+    private InvariantChecker(RuleReadingContext reading,
+                             Map<ValueName.Behavior, AssumedContract> contracts) {
+        this.engine = new PathEngine(reading, contracts);
         // Borrowing nothing, since no declaration is being seeded yet, and knowing what the
         // revision knows: where a set stops is the same answer whoever met it.
-        this.answers = StringMachineAnswers.unborrowed(machines.extents());
+        this.answers = StringMachineAnswers.unborrowed(reading.readings().extents());
         // Named here because this check reads them directly and often. They are the engine's, not a
         // second copy: one engine builds them once and everything below sees those.
         this.symbols = engine.symbols();
@@ -308,8 +304,8 @@ public final class InvariantChecker {
      */
     public static ClauseDischarge capabilityOf(ClausesForDischarge.ClauseReading clause,
                                                TypeSymbol.AtModule named,
-                                               RuleReadingSource source, ReadingPolicy policy) {
-        InvariantChecker c = new InvariantChecker(source, DeclarationReadings.NONE, policy);
+                                               RuleReadingContext reading) {
+        InvariantChecker c = new InvariantChecker(reading);
         // Read over the declaration's own fields, each standing for itself: a construction hands one
         // value per field, so a clause naming a field names something wherever it is built. These
         // stand for a value rather than holding one, so they are entered as locations and nothing is
@@ -348,16 +344,16 @@ public final class InvariantChecker {
      *
      * @param conjunct the conjunct, as written and as this check reads it
      * @param locations the names it may read, each standing for itself
-     * @param source what the rule is read against — the symbols that type the form here and the
-     *               invariants it may reach — which is what says where the reading comes from
-     *               rather than leaving each reader to assemble one
-     * @param policy what to do where the reading does not finish
+     * @param reading the world the rule is read in — the symbols that type the form here and the
+     *                invariants it may reach, what the reading may spend where it does not finish,
+     *                and where it borrows what has already been made of a declaration. Handed over
+     *                whole rather than assembled by each reader
      * @param describing what is being read, for the record a fail-open leaves behind
      */
     static ClauseDischarge capabilityOf(StatedContract.Conjunct conjunct,
-                                        Denotations locations, RuleReadingSource source,
-                                        ReadingPolicy policy, String describing) {
-        return new InvariantChecker(source, DeclarationReadings.NONE, policy)
+                                        Denotations locations, RuleReadingContext reading,
+                                        String describing) {
+        return new InvariantChecker(reading)
                 .capabilityOf(conjunct.stated(), conjunct.at(), locations, describing);
     }
 
@@ -660,20 +656,15 @@ public final class InvariantChecker {
     }
 
     /**
-     * The same, borrowing nothing anybody else has made of the declaration.
+     * The same, read in the world a walk carries.
      *
-     * <p><b>Where a reading cannot be reached rather than where none would help.</b> The caller
-     * here runs while a reading is being made, from a reader that is handed the terms of the
-     * reading in progress and nothing that says where another declaration's reading comes from — so
-     * borrowing would take a capability carried into the reading itself, and what such a borrower
-     * should be handed when the reading it asks for is the one under way is not settled. This keeps
-     * what that caller did before while saying that is what it is: named, so that what is unsettled
-     * can be found by looking for it, and separate from {@link DeclarationReadings#NONE}, which is
-     * what a reader with no store says.
+     * <p>What a reader under a walk asks. It is handed the world the reading it stands inside was
+     * made in, so where it borrows from is already decided — including where that world was bounded
+     * for a reading under way ({@link RuleReadingContext#whileTheAnswerIsMade}), which a reader
+     * choosing a lender for itself would be choosing past.
      */
-    static Seeded seedFieldsUnshared(TypeSymbol.AtModule named, RuleReadingSource source,
-                                     ReadingPolicy policy) {
-        return seedFields(named, source, policy, DeclarationReadings.NONE);
+    static Seeded seedFields(TypeSymbol.AtModule named, RuleReadingContext reading) {
+        return seedFields(named, reading.source(), reading.policy(), reading.readings());
     }
 
     /** The same, reading for itself. */
@@ -791,7 +782,10 @@ public final class InvariantChecker {
                              StringMachineAnswers answers) {
         READINGS.incrementAndGet();
         Symbols symbols = source.symbols();
-        InvariantChecker c = new InvariantChecker(source, machines, policy);
+        // The three this was handed, put back together to hand on. Not a world of its own: nothing
+        // here chooses any of them, and a reader below is given what this reader was given.
+        InvariantChecker c =
+                new InvariantChecker(RuleReadingContext.of(source, policy, machines));
         c.answers = answers;
         // A newtype's value is the same location as the newtype, so it is at no name of its own and
         // its fields are the first step there is. Read from the world rather than off a node handed
@@ -3525,11 +3519,10 @@ public final class InvariantChecker {
      * analysis representation could not be built or typed for, and is not analyzed at all, which is
      * the {@code ABANDONED} this answers with.
      */
-    static Findings analyze(Core body, RuleReadingSource source,
-                            DeclarationReadings machines,
+    static Findings analyze(Core body, RuleReadingContext reading,
                             Map<ValueName.Behavior, AssumedContract> contracts,
-                            Scope params, ReadingPolicy policy) {
-        InvariantChecker c = new InvariantChecker(source, machines, contracts, policy);
+                            Scope params) {
+        InvariantChecker c = new InvariantChecker(reading, contracts);
         if (body == null) {
             return new Findings(c.errors, c.warnings, Status.ABANDONED);
         }

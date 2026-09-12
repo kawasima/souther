@@ -54,17 +54,22 @@ import java.util.Set;
  */
 final class Terms {
 
-    /** What a declaration read from here is read under. Handed down rather than made: two readings
-     *  of one declaration under different policies answer a position differently, and nothing that
-     *  reads one is in a position to know which the compilation asked for. */
-    private final ReadingPolicy policy;
+    /**
+     * The world a declaration read from here is read in: where its clauses come from, what the
+     * reading may spend, and what has already been made of it.
+     *
+     * <p>Handed down rather than made. Two readings of one declaration under different policies
+     * answer a position differently and nothing reading one knows which the compilation asked for;
+     * a source composed here would be one nothing else can name, and a lender chosen here would be
+     * chosen past whatever bound the reading this walk stands inside was made under. So the three
+     * arrive together and are handed on together ({@link RuleReadingContext}).
+     */
+    private final RuleReadingContext ruleReading;
 
     private final Symbols symbols;
 
-    /** The scope and the clause representation this reading was made with, for the readings below
-     *  that ask what a declaration states. Held rather than rebuilt: a reader composing its own
-     *  would be free to compose a different one. */
-    private final RuleReadingSource rules;
+    /** The declarations' clauses as this reading reads them, expanded from the world's source. */
+    private final Clauses clauses;
 
     /** The symbols this reading was made against — what a reader holding this reading folds an
      *  expression of it against, rather than reaching for a library of its own. */
@@ -301,7 +306,12 @@ final class Terms {
 
     /** What this reading may spend, which the compilation set and nothing here makes. */
     ReadingPolicy policy() {
-        return policy;
+        return ruleReading.policy();
+    }
+
+    /** The world the readings below this one are made in, which is the one this was handed. */
+    RuleReadingContext ruleReading() {
+        return ruleReading;
     }
 
     /** What a clause states, read through this reading. */
@@ -320,25 +330,32 @@ final class Terms {
     }
 
     /**
-     * A reading over {@code reading}'s tree, told where the declarations' invariants are.
+     * A reading over {@code reading}'s tree, made in the world {@code ruleReading} is of.
      *
-     * <p>{@code clauses} is what lets a recipe say what choosing an arm settles where the arm binds
-     * a value: the answer is what that value's type guarantees, read through the one reading of a
-     * declaration there is ({@link TypeGuarantees}).
+     * <p>The clauses are this reading's own and are made here rather than handed in. What they are
+     * read from is the world's source, and a reader that was handed both could hand a pair that
+     * disagree — clauses of one module and a world naming another — which is a reading of neither.
+     * Made here there is one source and nothing to keep agreeing.
      *
-     * <p>Where this reads is {@code clauses}'s own source and is not assembled here. A reading made
-     * under a source put together by whoever is reading is one nothing else can name, so a reader
-     * that rebuilt the source from the parts it was handed would be reading a world of its own and
-     * would be lent nothing ({@link RuleReadingSource#origin}).
+     * <p>What they are for is what lets a recipe say what choosing an arm settles where the arm
+     * binds a value: the answer is what that value's type guarantees, read through the one reading
+     * of a declaration there is ({@link TypeGuarantees}).
      */
-    Terms(Of reading, ReadingPolicy policy, Clauses clauses) {
-        this.rules = clauses.source();
-        this.symbols = rules.symbols();
+    Terms(Of reading, RuleReadingContext ruleReading) {
+        this.ruleReading = ruleReading;
+        this.symbols = ruleReading.source().symbols();
         this.reading = reading;
-        this.policy = policy;
+        this.clauses = new Clauses(ruleReading.source());
         this.predicates = new Predicates(this);
         this.guarantees = new TypeGuarantees(symbols, clauses, predicates);
         this.walk = new GuaranteeWalk(guarantees, symbols);
+    }
+
+    /** The clauses this reading is over, for a reader beside it that asks what a declaration
+     *  states. The same ones this reads, since a second set read from the same source is a second
+     *  expansion of what one of them already holds. */
+    Clauses clauses() {
+        return clauses;
     }
 
     /**
@@ -990,7 +1007,7 @@ final class Terms {
         // this has to keep, so the reaching is taken over both kinds of edge and not over the
         // recipes alone ({@link #reached}).
         InductiveBounds.Walk made = new InductiveBounds.Walk(seed, accumulator, step,
-                StepInputFacts.of(walk, inside, this, rules, policy, reached(step)));
+                StepInputFacts.of(walk, inside, this, reached(step)));
         computedBy(atom, new AtomKnowledge.Computation.Reduction(made));
     }
 
@@ -1027,7 +1044,7 @@ final class Terms {
             return;
         }
         UniversalElementFacts elements =
-                UniversalElementFacts.of(accumulating.container(), at, this, rules, policy);
+                UniversalElementFacts.of(accumulating.container(), at, this);
         computedBy(atom, new AtomKnowledge.Computation.Reduction(new InductiveBounds.Walk(
                 seed, accumulator, step,
                 StepInputFacts.ofTheElement(elements, element, this, reached(step)))));

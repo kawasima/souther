@@ -49,13 +49,13 @@ public record ContractDischarge(List<RuleDischarge> rules,
      * author is shown and what a caller is given cannot drift apart.
      *
      */
-    public static ContractDischarge of(StatedContract stated, RuleReadingSource source,
-                                       ReadingPolicy policy) {
+    public static ContractDischarge of(StatedContract stated, RuleReadingContext reading) {
         List<RuleDischarge> classified = new ArrayList<>();
         for (StatedContract.StatedRule rule : stated.rules()) {
-            classified.addAll(of(stated, rule, source, policy));
+            classified.addAll(of(stated, rule, reading));
         }
-        return new ContractDischarge(classified, unstatedCases(stated, source.symbols()));
+        return new ContractDischarge(classified,
+                unstatedCases(stated, reading.source().symbols()));
     }
 
     /**
@@ -67,7 +67,7 @@ public record ContractDischarge(List<RuleDischarge> rules,
      * it was written as.
      */
     private static List<RuleDischarge> of(StatedContract contract, StatedContract.StatedRule rule,
-                                          RuleReadingSource source, ReadingPolicy policy) {
+                                          RuleReadingContext reading) {
         // The parameters and `value` stand for themselves. A caller hands one value per parameter and
         // the behavior answers one value, so a rule naming either names something wherever it is read
         // — entered as locations, and nothing is seeded of them, since what the rule states is the
@@ -80,14 +80,14 @@ public record ContractDischarge(List<RuleDischarge> rules,
         // Its own reading, over the clauses as the analysis reads them. A rule may reach a
         // declaration through the values it names, and the representation those are read in is the
         // one every other reader of this module's rules uses.
-        Terms naming = new Terms(Terms.Of.THE_DISCHARGE_TREE, policy, new Clauses(source));
+        Terms naming = new Terms(Terms.Of.THE_DISCHARGE_TREE, reading);
         Denotations locations =
                 Denotations.none().locations(named, naming::placeSubject, naming::placeTerm);
 
         List<RuleDischarge> out = new ArrayList<>();
         for (StatedContract.Conjunct conjunct : rule.conjuncts()) {
             out.add(new RuleDischarge(rule.id(), InvariantChecker
-                    .capabilityOf(conjunct, locations, source, policy,
+                    .capabilityOf(conjunct, locations, reading,
                             contract.behavior().name())
                     .named(rule.clause())));
         }

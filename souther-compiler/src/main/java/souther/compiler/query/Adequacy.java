@@ -33,6 +33,7 @@ import souther.compiler.check.DeclaredSig;
 import souther.compiler.check.PublishedDeclarations;
 import souther.compiler.check.RuleRef;
 import souther.compiler.publish.PublicationOrders;
+import souther.compiler.check.RuleReadingContext;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.CheckSurface;
 import souther.compiler.check.Sig;
@@ -832,6 +833,9 @@ public final class Adequacy {
             }
             Map<String, InputDomain> readInputs = db.ask(new Inputs(name)).value();
             Map<String, souther.compiler.check.PathReachability.Answers> out = new LinkedHashMap<>();
+            // One world for every behavior of the module, since every walk below reads in it.
+            RuleReadingContext ruleReading = RuleReadingContext.of(reading.value(),
+                    db.ask(new Front.Reading()).value(), db.readings());
             for (Hir.BehaviorDef behavior : prepared.value().behaviors()) {
                 // A composition has no body of its own and so no places of its own, and a behavior
                 // whose input this compilation could not read is one nothing here is measured
@@ -851,8 +855,7 @@ public final class Adequacy {
                     continue;
                 }
                 out.put(spec.name(), souther.compiler.check.PathReachability.of(
-                        body, db.ask(new Front.Reading()).value(),
-                        SpecImplementation.align(spec, fn), plan, read, reading.value()));
+                        body, SpecImplementation.align(spec, fn), plan, read, ruleReading));
             }
             return Answer.of(Ordered.map(out));
         }

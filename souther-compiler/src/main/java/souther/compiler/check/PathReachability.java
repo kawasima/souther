@@ -231,9 +231,9 @@ public final class PathReachability {
      * reading, and a walk of a body against one made up says about this compilation having stopped
      * what it would say about the model. A caller without one measures nothing here.
      */
-    public static Answers of(Core body, ReadingPolicy policy,
-                             SpecImplementation.Implemented implemented,
-                             CoverageSites.Plan plan, InputDomain read, RuleReadingSource source) {
+    public static Answers of(Core body, SpecImplementation.Implemented implemented,
+                             CoverageSites.Plan plan, InputDomain read,
+                             RuleReadingContext ruleReading) {
         Objects.requireNonNull(read, "a reachability reading is made against an input that was read");
         if (implemented == null) {
             return Answers.NONE;
@@ -247,7 +247,7 @@ public final class PathReachability {
             params = params.with(input.written().binder(),
                     TypeOps.successType(input.declared().type()));
         }
-        return of(body, params, plan, read, source, policy);
+        return of(body, params, plan, read, ruleReading);
     }
 
     /**
@@ -258,12 +258,12 @@ public final class PathReachability {
      * answers about what it had reached and no more.
      */
     public static Answers of(Core body, Scope params, CoverageSites.Plan plan, InputDomain read,
-                             RuleReadingSource source, ReadingPolicy policy) {
+                             RuleReadingContext ruleReading) {
         Objects.requireNonNull(read, "a reachability reading is made against an input that was read");
         if (body == null) {
             return Answers.NONE;
         }
-        PathEngine engine = new PathEngine(source, Terms.Of.THE_TREE_THAT_RUNS, policy);
+        PathEngine engine = new PathEngine(ruleReading, Terms.Of.THE_TREE_THAT_RUNS);
         Map<ControlPlace, Reachability> out = new LinkedHashMap<>();
         Map<ConstructOccurrence,
                 souther.compiler.reach.ComparisonArrival> arriving = new LinkedHashMap<>();
@@ -273,7 +273,8 @@ public final class PathReachability {
                     p.getValue().type(), body.pos()), in.known(), in.at());
         }
         PathReachability reading =
-                new PathReachability(engine, plan, read, source.symbols(), out, arriving);
+                new PathReachability(engine, plan, read, ruleReading.source().symbols(), out,
+                        arriving);
         reading.entry = in.known();
         reading.entered = in.at();
         reading.walk(body, in.known(), in.at(),

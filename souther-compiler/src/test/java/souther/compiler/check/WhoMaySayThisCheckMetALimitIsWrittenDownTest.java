@@ -121,8 +121,7 @@ class WhoMaySayThisCheckMetALimitIsWrittenDownTest {
                     + ".of(Lsouther/compiler/core/Core;Lsouther/compiler/check/Scope;"
                     + "Lsouther/compiler/coverage/CoverageSites$Plan;"
                     + "Lsouther/compiler/inputs/InputDomain;"
-                    + "Lsouther/compiler/check/RuleReadingSource;"
-                    + "Lsouther/compiler/check/ReadingPolicy;)",
+                    + "Lsouther/compiler/check/RuleReadingContext;)",
                     "reads which of a plan's comparisons the walk settled nothing about"));
 
     @Test
