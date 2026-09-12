@@ -344,10 +344,10 @@ public final class InvariantChecker {
      *
      * @param conjunct the conjunct, as written and as this check reads it
      * @param locations the names it may read, each standing for itself
-     * @param source what the rule is read against — the symbols that type the form here and the
-     *               invariants it may reach — which is what says where the reading comes from
-     *               rather than leaving each reader to assemble one
-     * @param policy what to do where the reading does not finish
+     * @param reading the world the rule is read in — the symbols that type the form here and the
+     *                invariants it may reach, what the reading may spend where it does not finish,
+     *                and where it borrows what has already been made of a declaration. Handed over
+     *                whole rather than assembled by each reader
      * @param describing what is being read, for the record a fail-open leaves behind
      */
     static ClauseDischarge capabilityOf(StatedContract.Conjunct conjunct,

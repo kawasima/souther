@@ -204,19 +204,75 @@ class NothingHereStartsAReadingSomebodyElseHasAlreadyMadeTest {
     /**
      * The way in that reads for itself is the one written down, and it is there.
      *
-     * <p>The control for everything below, and it is one because it is a row the extraction has to
-     * find rather than a count of what it looked at. A walk that stopped reading call sites, or
-     * stopped resolving them to a method, comes back with nothing — and nothing is exactly what a
-     * compiler with no such edge looks like, so a check whose only claim was emptiness would pass
-     * at its most broken. This one fails there instead.
+     * <p>The population's other half: a second way in is a reading with nowhere to borrow from that
+     * nobody wrote down as one, and this one's disappearance is a way in that stopped saying what
+     * it is.
      *
-     * <p>And it is the other half of the population: a second way in is a reading with nowhere to
-     * borrow from that nobody wrote down as one.
+     * <p>Not the control for the emptiness below. This row is named by a {@code GETSTATIC}, so what
+     * it witnesses is that one of the three ways an instruction names a member is read. The
+     * emptiness is about the other two.
      */
     @Test
     void theWayInThatReadsForItselfIsFound() {
         assertEquals(Set.of(THE_WAY_IN_THAT_READS_FOR_ITSELF), waysInReachingNothingToBorrowFrom(),
                 "the ways in that read for themselves are not the one written down");
+    }
+
+    /**
+     * Each way an instruction names a member is read, witnessed on a member known to be named that
+     * way.
+     *
+     * <p>The control for the emptiness below, and it takes three because {@link #whatItNames} has
+     * three answers and they are three extractions. A member called is one; a static field read is
+     * another; a member handed over to be called later is a third, and it is named among the
+     * arguments a bootstrap is given rather than by an instruction of its own. Blinding any one of
+     * them leaves the other two reading, so a control standing on one says nothing about the rest.
+     *
+     * <p>What that costs is the claim below. A reader reaching a reading of its own reaches it by
+     * calling, so the emptiness there is an answer about the first of the three — and blinding that
+     * one empties it, which is what a compiler with no such reader looks like. Witnessed here
+     * instead, on members this test does not otherwise depend on.
+     *
+     * <p>Three assertions and not a walk over the three: nothing here can ask a switch what cases
+     * it has. A fourth way to name a member is a fourth line, and is noticed where the case is
+     * written rather than by anything failing.
+     */
+    @Test
+    void everyWayAnInstructionNamesAMemberIsRead() {
+        assertTrue(whatIsNamedIn(CHECK + "RuleReadingContext", "whileTheAnswerIsMade")
+                        .contains(LENDING + "#whileTheAnswerIsMade"),
+                "a member that is called is not read: deriving a bounded world calls the lender's"
+                        + " own, and nothing here saw it");
+        assertTrue(whatIsNamedIn(CHECK + "RuleReadingContext", "unshared")
+                        .contains(NOTHING_TO_BORROW_FROM),
+                "a static field that is read is not read: the way in names what there is nothing to"
+                        + " borrow from, and nothing here saw it");
+        assertTrue(whatIsNamedIn(CHECK + "InvariantChecker", "capabilityOf")
+                        .contains(CHECK + "Terms#placeSubject"),
+                "a member handed over to be called later is not read: reading a clause on its own"
+                        + " hands over where a name stands, and nothing here saw it");
+    }
+
+    /** Every member named by any instruction of any method called {@code method} on {@code owner},
+     *  read the way the walk below reads one. */
+    private static Set<String> whatIsNamedIn(String owner, String method) {
+        Set<String> named = new TreeSet<>();
+        for (ClassModel read : COMPILED.all()) {
+            if (!read.thisClass().name().stringValue().equals(owner)) {
+                continue;
+            }
+            for (MethodModel each : read.methods()) {
+                if (!each.methodName().stringValue().equals(method)) {
+                    continue;
+                }
+                for (Instruction instruction : instructionsOf(each)) {
+                    for (Named what : whatItNames(instruction)) {
+                        named.add(what.member());
+                    }
+                }
+            }
+        }
+        return named;
     }
 
     /**
