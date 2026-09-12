@@ -5,9 +5,12 @@ import souther.compiler.coverage.NormalReturn;
 import souther.compiler.types.ValueName;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
@@ -92,6 +95,37 @@ public sealed interface ValueOrigin<K> {
         @Override
         public Set<K> positions() {
             return across(parts);
+        }
+    }
+
+    /**
+     * A value built where it stands, as what each of its fields was given.
+     *
+     * <p>Told apart from {@link Composed}, which is a form this walk does not take apart. What a
+     * construction builds a value out of is written where it stands, so a reader taking a field back
+     * out of one is answered with the expression that field was given — the value it hands back is
+     * the one it was handed, and not a value derived from it.
+     *
+     * <p>By the name of the field and not by where it stands among them. Which field a value was
+     * given to is what a reader taking one back out has to go on, and a construction given two
+     * positions is told apart by nothing else.
+     *
+     * @param fields what each declared field was given, in the order the construction evaluates them
+     */
+    record Constructed<K>(Map<String, ValueOrigin<K>> fields) implements ValueOrigin<K> {
+
+        public Constructed {
+            fields = Collections.unmodifiableMap(new LinkedHashMap<>(fields));
+            if (fields.isEmpty()) {
+                // A construction given nothing builds a value written where it stands, and that is
+                // what such a value says of itself.
+                throw new IllegalArgumentException("a construction given nothing is a leaf");
+            }
+        }
+
+        @Override
+        public Set<K> positions() {
+            return across(fields.values());
         }
     }
 
@@ -201,7 +235,7 @@ public sealed interface ValueOrigin<K> {
     }
 
     /** The positions everything in {@code of} names, in the order they were met. */
-    private static <K> Set<K> across(List<ValueOrigin<K>> of) {
+    private static <K> Set<K> across(Collection<ValueOrigin<K>> of) {
         Set<K> out = new LinkedHashSet<>();
         for (ValueOrigin<K> each : of) {
             out.addAll(each.positions());
@@ -217,6 +251,7 @@ public sealed interface ValueOrigin<K> {
             case MadeFromAPosition<K> from -> from.at();
             case Applied<K> applied -> firstMadeFrom(applied.arguments());
             case Composed<K> composed -> firstMadeFrom(composed.parts());
+            case Constructed<K> built -> firstMadeFrom(built.fields().values());
             // Only where every value it could be came from the one position, since the value is
             // one of them and nothing here says which. What decided it is not asked: a choice made
             // on what stands at a position is not a value made from it.
@@ -239,7 +274,7 @@ public sealed interface ValueOrigin<K> {
         return agreed;
     }
 
-    private static <K> K firstMadeFrom(List<ValueOrigin<K>> of) {
+    private static <K> K firstMadeFrom(Collection<ValueOrigin<K>> of) {
         for (ValueOrigin<K> each : of) {
             K from = each.madeFrom();
             if (from != null) {
@@ -360,6 +395,29 @@ public sealed interface ValueOrigin<K> {
         }
         if (writtenOut(e)) {
             return new Written<>();
+        }
+        // What a construction was given, kept under the field it was given to. Walked by its
+        // children it would come back as a form nothing takes apart, and the provenance of a value
+        // read back out of it would be a thing this could not state — while what it was built with
+        // stands in the node.
+        if (e instanceof Core.Construct construct && !construct.values().isEmpty()) {
+            Map<String, ValueOrigin<K>> fields = new LinkedHashMap<>();
+            for (Core.FieldValue each : construct.values()) {
+                fields.put(each.field(), of(each.value(), at, reading, following));
+            }
+            return new Constructed<>(fields);
+        }
+        // A field read back out of a construction is what that field was given: the same value,
+        // named twice. So a rule about it is a rule about whatever that expression's value is made
+        // of, and the field the reader asked for is the one it is answered about — the other fields
+        // of the construction hold none of the values the rule is over.
+        if (e instanceof Core.FieldAccess access) {
+            ValueOrigin<K> target = of(access.target(), at, reading, following);
+            ValueOrigin<K> given = target instanceof Constructed<K> built
+                    ? built.fields().get(access.field()) : null;
+            // A field of anything else is the one child this node has, read once here rather than
+            // walked again below.
+            return given != null ? given : new Composed<>(List.of(target));
         }
         // What a {@code let} is made of is its body, read in the binding. The initializer is not a
         // part of the value: {@code let $x = a in 0} is zero, and reading both made a helper that
