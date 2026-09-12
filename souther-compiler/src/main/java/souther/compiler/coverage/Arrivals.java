@@ -2,9 +2,6 @@ package souther.compiler.coverage;
 
 import souther.compiler.core.Core;
 
-import java.util.ArrayList;
-import java.util.List;
-
 /**
  * Whether an expression answers a value, for a reader that asks about more than one of them.
  *
@@ -45,27 +42,20 @@ public interface Arrivals {
     }
 
     /**
-     * The same over several trees, for a reader whose expressions have no one root.
+     * Every expression taken for one that answers a value, for a reader that is not told which tree
+     * its expressions stand in.
      *
-     * <p>A declaration's clause arrives as the two sides of a comparison and no node above them, so
-     * those are the roots there are. Named here as they are named for one, and a node standing in
-     * none of them is refused the way a node from another body is — what this does not do is take
-     * the node it was asked about for a root of its own.
+     * <p>Not a root and not a guess at one. A reader handed a part of a clause and no clause has
+     * nothing to root a reading at, and rooting at the part is the one answer that is wrong — it
+     * reads the part as a tree of its own and loses whatever bound a name above it. So this says
+     * what it does not know, and what it costs is an arm that answers no value counted among the
+     * values, which is what such an arm came to before anybody asked.
+     *
+     * <p>For the reader to stop needing this, the walk that hands it a part has to hand over the
+     * clause the part was read out of.
      */
-    static Arrivals inTheTrees(Core... roots) {
-        List<NormalReturn> readings = new ArrayList<>(roots.length);
-        for (Core each : roots) {
-            readings.add(NormalReturn.lazilyWhereTheOperationsStand(each));
-        }
-        return e -> {
-            for (NormalReturn each : readings) {
-                if (each.holds(e)) {
-                    return each.at(e);
-                }
-            }
-            throw new IllegalArgumentException(
-                    "no tree this reads holds this " + e.getClass().getSimpleName()
-                            + " at " + e.pos());
-        };
+    static Arrivals everyArmIsTakenForAValue() {
+        return e -> true;
     }
+
 }

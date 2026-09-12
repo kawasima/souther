@@ -144,7 +144,9 @@ public final class EnsuresThresholds {
                         conjunct.part(), conjunct.stated().orNull(), reads, read.symbols())) {
                     switch (said.statement()) {
                         case ClauseStatements.Statement.Compares it ->
-                                compared(it, rule, said.id(), read, drawn);
+                                compared(it, rule, said.id(), read,
+                                        souther.compiler.coverage.Arrivals.inTheTree(
+                                                conjunct.stated().orNull()), drawn);
                         // A form no reader of clauses reads. Which positions it is about is still
                         // said, because a position left out of every answer is reported as one the
                         // model draws no line through — and the model says otherwise in the rule
@@ -152,7 +154,9 @@ public final class EnsuresThresholds {
                         // the statement is nobody's, which is one fact about it and not one per
                         // reader that turned it away.
                         case ClauseStatements.Statement.NotRead it ->
-                                notRead(it, rule, read, drawn);
+                                notRead(it, rule, read,
+                                        souther.compiler.coverage.Arrivals.inTheTree(
+                                                conjunct.stated().orNull()), drawn);
                         // Read by the reader that publishes what a rule tells apart
                         // ({@link BehaviorSetStatements}), and a finding here would be this reader
                         // saying it could not read a rule that was read.
@@ -182,12 +186,12 @@ public final class EnsuresThresholds {
      */
     private static void notRead(ClauseStatements.Statement.NotRead it,
                                 StatedContract.StatedRule rule,
-                                InputReading read, Drawn out) {
+                                InputReading read,
+                                souther.compiler.coverage.Arrivals answering, Drawn out) {
         reportRuleWithoutLine(rule.ref(), it.stated(), rule.value(),
                 ComparisonAssessment.atEachOf(
                         GuardThresholds.mentionedIn(it.stated(), it.reads(), read.symbols(),
-                                        souther.compiler.coverage.Arrivals
-                                                .inTheTree(it.stated())).stream()
+                                        answering).stream()
                                 .map(FilingCoordinate::at).toList(),
                         new BlockReason.UnreadComparisonForm()),
                 out.noLine());
@@ -206,7 +210,8 @@ public final class EnsuresThresholds {
      */
     private static void compared(ClauseStatements.Statement.Compares it,
                                  StatedContract.StatedRule rule, ClauseStatementId said,
-                                 InputReading read, Drawn out) {
+                                 InputReading read,
+                                 souther.compiler.coverage.Arrivals answering, Drawn out) {
         Core e = it.stated();
         InputReads reads = it.reads();
         Comparison comparison = it.comparison();
@@ -219,7 +224,7 @@ public final class EnsuresThresholds {
         ComparisonAssessment assessed = ComparisonAssessment.of(out.behavior(), comparison.stated(),
                 Citation.of(e.pos()), read,
                 reads, rule.value(),
-                souther.compiler.coverage.Arrivals.inTheTree(e), false);
+                answering, false);
         // What the positions this names are left with, where the reading of lines drew none. Asked
         // of the assessment and not worked out per arm here: the same table stood in the guard
         // reader, and a case added to an assessment had to be answered in both.

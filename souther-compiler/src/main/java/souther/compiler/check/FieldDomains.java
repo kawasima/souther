@@ -604,14 +604,20 @@ public final class FieldDomains {
      * @param wrote     where the author wrote it, for whoever reports about the clause. A position
      *                  and not the expression, so there is nothing here to read a meaning off a
      *                  second time
+     * @param root      the clause this conjunct was read out of. Carried because a reader below
+     *                  asks whether an expression answers a value, which is rooted: the sides of
+     *                  the comparison are what a binding above them is evaluated before, and read
+     *                  as trees of their own they have that name free. Not a meaning to read off a
+     *                  second time — nothing here reads the tree, and whoever asks the rooted
+     *                  question needs to be able to name it
      */
     public record WithoutAnEnd(InvariantStatementId statement, StatedComparison states,
-                               SourcePos wrote) {
+                               SourcePos wrote, Core root) {
 
         public WithoutAnEnd {
-            if (statement == null || states == null || wrote == null) {
-                throw new IllegalArgumentException(
-                        "a conjunct handed on is some clause's comparison, written somewhere");
+            if (statement == null || states == null || wrote == null || root == null) {
+                throw new IllegalArgumentException("a conjunct handed on is some clause's"
+                        + " comparison, written somewhere, read out of that clause");
             }
         }
 

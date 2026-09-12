@@ -77,8 +77,7 @@ public final class DeclaredThresholds {
         ComparisonAssessment assessed = ComparisonAssessment.of(behavior, clause.states(),
                 Citation.of(clause.wrote()), read,
                 InputReads.ofADeclaredClause(roots), null,
-                souther.compiler.coverage.Arrivals.inTheTrees(
-                        clause.states().left(), clause.states().right()), true);
+                souther.compiler.coverage.Arrivals.inTheTree(clause.readOutOf()), true);
         // Only the quantity that is on no position. Why this drew no line where it drew none is not
         // said here: the reading of ends already answered for this clause at each position it names,
         // and a second sentence about one rule is two answers to one question.
