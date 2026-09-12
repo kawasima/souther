@@ -250,11 +250,10 @@ class ARowWhoseAnswerIsOwedIsARowAndAssertsNothingTest {
                 "a build held to the arms refuses over a row that answers nothing");
     }
 
-    /** What a build held to the arms makes of this model, which is what {@code --strict} reads. */
+    /** What a build makes of this model, which is what {@code --strict} reads. */
     private static AdequacyReport.AdequacyStatus verdictOn(String source) {
         Compilation compilation = Compilation.ofSource(source, "Main");
-        compilation.measure(new Adequacy.Asked(Adequacy.Level.ALL, false,
-                Adequacy.AdequacyBar.CLASSES));
+        compilation.measure(new Adequacy.Asked(Adequacy.Level.ALL, false));
         compilation.answerEverything();
         return AdequacyReport.of(compilation).adequacy();
     }

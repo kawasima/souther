@@ -121,33 +121,6 @@ class EveryFindingHasAGenerationDispositionTest {
                 "one answer per finding, in the order the findings were established");
     }
 
-    /**
-     * And the same list whichever bar the run was held to.
-     *
-     * <p>The other half of the separation. The list above could be total over the findings and
-     * still be decided by the bar — a stricter one having more of them — and what says it is not is
-     * that two runs of one model under two bars answer for the same findings.
-     */
-    @Test
-    void whatIsAnsweredForDoesNotMoveWithTheBar() {
-        for (Adequacy.AdequacyBar bar : Adequacy.AdequacyBar.values()) {
-            Compilation compilation = Compilation.ofSource(POLICY, "Main");
-            compilation.measure(Adequacy.Asked.fullReport(bar));
-            compilation.answerEverything();
-
-            // Held within one compilation, because that is where the two lists are the same
-            // findings. Compared across two, a border's finding carries the region its row was
-            // composed over, which is one object per run and equal to nothing else — so the
-            // comparison would be about object identity rather than about what was answered for.
-            List<Adequacy.Finding> found = findings(compilation, "example.policy", "fee");
-            assertFalse(found.isEmpty(), "the model under test has findings to answer for");
-            assertEquals(found,
-                    filling(compilation, "example.policy", "fee").generation().stream()
-                            .map(Adequacy.GenerationDisposition::finding).toList(),
-                    bar::name);
-        }
-    }
-
     @Test
     void aBoundaryARowWasComposedForIsAnsweredWithThatRow() {
         Compilation compilation = compiled(GUARDED);

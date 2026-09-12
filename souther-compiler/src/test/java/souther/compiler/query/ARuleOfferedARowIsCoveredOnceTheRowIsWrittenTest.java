@@ -165,7 +165,7 @@ class ARuleOfferedARowIsCoveredOnceTheRowIsWrittenTest {
 
     private static Compilation measured(String model) {
         Compilation compilation = Compilation.ofSource(model, "Main");
-        compilation.measure(Adequacy.Asked.fullReport(Adequacy.AdequacyBar.CLASSES));
+        compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
         return compilation;
     }

@@ -149,13 +149,12 @@ import java.util.stream.Stream;
  * {@code status}: an evaluation that could not read everything must not be read as one that found
  * nothing, and the difference is not visible in the numbers.
  *
- * <p>{@code held} is the bar this report is written against, and it is the only thing here that the
- * request decides. How much was measured is not carried: what a measure came to is the measure's own
- * answer, and a report that held the level beside the evidence could read a measure's silence as
- * something other than what the measure said (issue #955). It is an input carried through rather
- * than a value derived from the modules, so filtering the report leaves it alone.
+ * <p>Nothing the request decides is carried. What a report marks as a gap is every obligation the
+ * account derives ({@link Adequacy#refuses}), and how much was measured is not held either: what a
+ * measure came to is the measure's own answer, and a report that kept the level beside the evidence
+ * could read a measure's silence as something other than what the measure said (issue #955).
  */
-public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy.AdequacyBar held,
+public record AdequacyReport(int schemaVersion, String compilerVersion,
                              WeakeningSet weakenedBy, List<ModuleReport> modules) {
 
     /**
@@ -644,11 +643,8 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             modules.add(report);
             overall = overall.union(report.weakenedBy());
         }
-        Adequacy.Asked asked = compilation.db().ask(new Adequacy.Requested()).value();
-        Adequacy.AdequacyBar held =
-                asked == null ? Adequacy.Asked.NOTHING.held() : asked.held();
         return new AdequacyReport(SCHEMA_VERSION, ModuleMetadata.compilerVersion(),
-                held, overall, List.copyOf(modules));
+                overall, List.copyOf(modules));
     }
 
     private static ModuleReport moduleReport(Compilation compilation, String name,
@@ -1159,8 +1155,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             kept.add(one);
             overall = overall.union(one.weakenedBy());
         }
-        return new AdequacyReport(schemaVersion, compilerVersion, held, overall,
-                List.copyOf(kept));
+        return new AdequacyReport(schemaVersion, compilerVersion, overall, List.copyOf(kept));
     }
 
     /** How many rows are recorded and waiting for a {@code let}, across everything reported.
@@ -1194,7 +1189,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
     /** The findings a build is entitled to refuse: a measure came to an answer and the answer was
      *  that something the rows are asked for is not there. */
     public List<Adequacy.Finding> adequacyGaps() {
-        return findings().stream().filter(f -> f.isAdequacyGap(held)).toList();
+        return findings().stream().filter(Adequacy.Finding::isAdequacyGap).toList();
     }
 
     /**
@@ -1540,17 +1535,17 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
     }
 
     /**
-     * What the verdict rests on that is owed rather than measured: every obligation the bar asks a
-     * row at.
+     * What the verdict rests on that is owed rather than measured: every obligation a row is owed
+     * at.
      *
      * <p>Beside {@link #requiredEvidence()} and not among it, because an obligation's standing is a
      * fold of the readings and not a measurement ({@link ObligationCoverage}) — it has what it went
      * without and no status, so what "made in full" means of it is its own answer.
      *
-     * <p><b>A selection and nothing more.</b> Which obligations this build is held to answer for is
-     * the bar's, and leaving one out here says the verdict is not about it — never that the model
-     * does not owe it. What the model owes is settled where a border decides whether to owe a point
-     * at all, and no policy of a build's reaches that.
+     * <p>All four roles of a border, because all four are obligations. Which of them a verdict is
+     * about used to be a bar's to select, and a verdict about part of the account is a verdict
+     * about a question the account does not ask. What the model owes is settled where a border
+     * decides whether to owe a point at all, which is where it stays.
      *
      * <p>One entry per thing a row is owed for, since each of them is an obligation: a place two of
      * a body's rules drew a line at leaves a run owed to each, and a verdict counting the role once
@@ -1565,25 +1560,21 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                 if (behavior.partition() == null) {
                     continue;
                 }
-                behavior.account().stream()
-                        .filter(point -> held.requires(point.role()))
-                        .forEach(point -> owed.add(new Owned<>(
-                                new Subject.AtAPoint(point.point()), point.owed())));
+                behavior.account().forEach(point -> owed.add(new Owned<>(
+                        new Subject.AtAPoint(point.point()), point.owed())));
             }
             for (Adequacy.DeclaredDebt debt : module.debts()) {
-                if (held.requires(debt.debt().role())) {
-                    owed.add(new Owned<>(new Subject.AtAPoint(debt.debt().point()),
-                            debt.debt().owed()));
-                }
+                owed.add(new Owned<>(new Subject.AtAPoint(debt.debt().point()),
+                        debt.debt().owed()));
             }
         }
         return owed;
     }
 
-    /** Whether the bar refuses over {@code kind}, which is what puts the measure that finds them
+    /** Whether a build refuses over {@code kind}, which is what puts the measure that finds them
      *  among the answers a verdict needs. */
     private boolean refuses(Adequacy.Kind kind) {
-        return held.refuses(kind);
+        return Adequacy.refuses(kind);
     }
 
     /**
@@ -1835,7 +1826,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
      * a kind changed sides.
      */
     private String mark(Adequacy.Finding finding) {
-        return finding.isAdequacyGap(held) ? "!" : "·";
+        return finding.isAdequacyGap() ? "!" : "·";
     }
 
     /**
@@ -4786,7 +4777,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             DocumentItem found = out.addObject();
             ObjectNode f = found.node();
             f.put("kind", word(finding.kind()));
-            f.put("disposition", word(finding.disposition(held)));
+            f.put("disposition", word(finding.disposition()));
             RuleHandleSurface.FINDING_SUBJECT.put(found, subject(finding, places),
                     sources.rendering(), null);
             // Which rule this is about, where the finding is about one. The words in `subject` are

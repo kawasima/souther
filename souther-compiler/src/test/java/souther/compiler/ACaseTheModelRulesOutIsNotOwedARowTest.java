@@ -745,14 +745,18 @@ class ACaseTheModelRulesOutIsNotOwedARowTest {
     /**
      * A warning an author cannot act on is worse than no warning.
      *
-     * <p>E1915 asks for a row at an input case and E1918 for a row through an arm. Both are warned
-     * about here and both are about {@code Pending}, which is a row that can be written; neither is
-     * about {@code Off}, which is not.
+     * <p>E1915 asks for a row at an input case, E1918 for a row through an arm, E1931 for a row in
+     * a class and E1935 for a row taking a rule of the decision. All four are warned about here,
+     * and every one of them is about a row that can be written; none is about {@code Off}, which is
+     * not. The rule of the decision names the behavior rather than the case, because a rule is a
+     * way through the body and the case it goes under is what the note beside it says.
      */
     @Test
     void nothingIsWarnedAboutThatNoRowCouldAnswer() {
-        assertEquals(List.of("E1915", "E1918"), warnings(RULED_OUT).stream().sorted().toList());
-        assertTrue(messages(RULED_OUT).stream().allMatch(said -> said.contains("Pending")),
+        assertEquals(List.of("E1915", "E1918", "E1931", "E1935"),
+                warnings(RULED_OUT).stream().sorted().toList());
+        assertTrue(messages(RULED_OUT).stream()
+                        .allMatch(said -> said.contains("Pending") || said.equals("pick")),
                 messages(RULED_OUT).toString());
         assertFalse(messages(RULED_OUT).stream().anyMatch(said -> said.contains("Off")),
                 messages(RULED_OUT).toString());

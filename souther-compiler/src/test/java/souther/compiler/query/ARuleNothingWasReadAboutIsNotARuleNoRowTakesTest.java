@@ -83,9 +83,9 @@ class ARuleNothingWasReadAboutIsNotARuleNoRowTakesTest {
                 new About.ARuleNoRowTakes("decides", ruled));
 
         assertEquals(Adequacy.Finding.Disposition.UNDECIDED,
-                finding.disposition(Adequacy.AdequacyBar.CLASSES),
+                finding.disposition(),
                 () -> "a rule a row may already take is not a gap: " + finding);
-        assertFalse(finding.isAdequacyGap(Adequacy.AdequacyBar.CLASSES),
+        assertFalse(finding.isAdequacyGap(),
                 "so no build is refused over it");
     }
 
@@ -111,7 +111,7 @@ class ARuleNothingWasReadAboutIsNotARuleNoRowTakesTest {
 
     private static DecisionEvidence decision() {
         Compilation compilation = Compilation.ofSource(MODEL, "Main");
-        compilation.measure(Adequacy.Asked.fullReport(Adequacy.AdequacyBar.CLASSES));
+        compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
         return compilation.db().ask(new Adequacy.Decides("example.decide")).value().get("decides");
     }

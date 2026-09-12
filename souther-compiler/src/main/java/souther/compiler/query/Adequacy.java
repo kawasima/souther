@@ -161,189 +161,60 @@ public final class Adequacy {
     }
 
     /**
-     * What a build is held to.
+     * Whether a gap of {@code kind} is a row the model asks for.
      *
-     * <p>Beside {@link Level} and not a rung of it. A level says how much work to do — what separates
-     * {@code WITNESS} from {@code ALL} is a second set of classes and a second run of every row — and
-     * this says which gaps a build refuses over. The two are different questions, and a fourth level
-     * would have been the first one that answered this one instead (issue #937).
+     * <p>The account's answer and not a caller's. What a build refuses over used to be a bar it
+     * picked — a domain-coverage criterion, and a word for wanting the classes beside it — and a
+     * criterion a caller selects is a budget rather than a criterion: the same model came back
+     * satisfied or not depending on which subset of its own account the caller had asked to be held
+     * to, and the subsets nobody asked for were gaps a report printed and a build was never told
+     * about.
      *
-     * <p>Whichever the level, and that is the whole of it. This names the kinds of gap; whether the
-     * measure that finds one was made is the measurement's own answer, and a measure a build did not
-     * ask for is one that was not made rather than one that is outside the question. So pairing this
-     * with a level that measures less is not a contradiction and is not a discount either: what such
-     * a build gets is a verdict that says so, which is what {@code undetermined} is for. What a
-     * criterion cannot do is name evidence a verdict then ignores — {@link #requires} and
-     * {@link #refuses} answer for the same criterion.
+     * <p>So there is one answer, and what a caller still chooses is how much to measure
+     * ({@link Level}) and whether a gap ends the build (the warnings policy). A measure that was
+     * not made finds nothing, which is a verdict that says {@code undetermined} rather than one
+     * held to less.
      *
-     * <p>The two the syllabus defines. Simplified domain coverage asks for a row on each line a rule
-     * draws and a row one step over it; reliable domain coverage adds a row well inside and a row
-     * well outside. Both come off one assessment of one border, so what a build is held to is a
-     * reading of one measurement and never a second one made to other rules.
+     * <p>The whole table, written here rather than as a flag on each kind: what a kind is stays a
+     * fact about what a measure found, and whether it is work the author has left is this one's. An
+     * exhaustive switch, so a kind added later does not compile until somebody has said which side
+     * of it falls on.
      */
-    public enum Criterion {
-
-        /** A row against each line, and every other gap a measure can find. */
-        SIMPLIFIED_DOMAIN,
-
-        /** Those, and the points away from the line. */
-        RELIABLE_DOMAIN;
-
-        /**
-         * Whether a build held to this is owed a row at {@code role}.
-         *
-         * <p>Beside {@link #refuses}, because a criterion has two consequences and they have to be
-         * one answer. Which findings violate it and which of a border's points must have come to an
-         * answer for a verdict to mean anything are the same statement read two ways: a build that
-         * refuses over a missing {@code IN} row and calls a model satisfied while the {@code IN}
-         * point could not be measured is holding it to a criterion in one place and not in the
-         * other. That is the shape issue #937 is about, and reading the roles off {@code refuses}
-         * would only be it again — a role is not a kind, and the two would agree until one moved.
-         */
-        public boolean requires(PointRole role) {
-            return switch (role) {
-                case ON, OFF -> true;
-                case IN, OUT -> this == RELIABLE_DOMAIN;
-            };
-        }
-
-        /**
-         * Whether a build held to this refuses over {@code kind}.
-         *
-         * <p>The whole table, written here rather than as a flag on each kind: what a kind is stays a
-         * fact about what a measure found, and which of them a build refuses over is this one's. An
-         * exhaustive switch, so a kind added later does not compile until somebody has said which
-         * side of every criterion it falls on.
-         */
-        public boolean refuses(Kind kind) {
-            return switch (kind) {
-                // A row somebody owes an answer to is work the author has left, and every bar asks
-                // for it: unlike an arm or a class, nothing about it turns on how much of the model
-                // was measured — the row is written down and its answer is not.
-                case OUTPUT_CASE_UNSPECIFIED, INPUT_CASE_UNSPECIFIED, BOUNDARY_UNMET, ARM_UNREACHED,
-                     UNANSWERED_ROW -> true;
-                case DOMAIN_POINT_UNCOVERED -> this == RELIABLE_DOMAIN;
-                // A row somebody owes, and no criterion is what asks for it. The syllabus's two
-                // are about a border's points, and a class of a position is not one — so which
-                // bar asks for it is {@link AdequacyBar}'s to say, and a criterion saying so
-                // would be the two questions answered by one ordered pair of values.
-                //
-                // A rule of the decision is the same answer for its own reason. Domain coverage is
-                // a data-based technique and a decision table is a rule-based one; neither of the
-                // two answers here is about the rules a body states, so a criterion refusing over
-                // one would be saying how strongly a border's points are asked for.
-                case AXIS_CLASS_UNCOVERED, DECISION_RULE_UNCOVERED -> false;
-                // Not a row anyone owes: what was seen rather than what was asked for. A case
-                // nothing was observed producing is the rows' own account of themselves.
-                case OUTPUT_CASE_UNVERIFIED -> false;
-                // What a measure could not establish, and what it established about the model
-                // rather than about the rows. Neither is a row somebody owes, and no bar can make
-                // one of them into one: a build that refused over these would be refusing over
-                // this compiler's reading rather than over the model.
-                case PARTITION_NOT_DERIVABLE, PARTITION_NOT_READ, RULE_UNACCOUNTED,
-                     PARTITION_RULES_NOT_REACHED, PARTITION_VALUES_NOT_SEPARATED -> false;
-            };
-        }
+    public static boolean refuses(Kind kind) {
+        return switch (kind) {
+            // Every obligation the model derives, whichever derivation states it: a case of a
+            // signature, a point of a border, an arm of a body, a class of a position, a rule of
+            // the decision, and a row whose answer is owed. One account, so one answer.
+            case OUTPUT_CASE_UNSPECIFIED, INPUT_CASE_UNSPECIFIED, BOUNDARY_UNMET, ARM_UNREACHED,
+                 UNANSWERED_ROW, DOMAIN_POINT_UNCOVERED, AXIS_CLASS_UNCOVERED,
+                 DECISION_RULE_UNCOVERED -> true;
+            // Not a row anyone owes: what was seen rather than what was asked for. A case
+            // nothing was observed producing is the rows' own account of themselves.
+            case OUTPUT_CASE_UNVERIFIED -> false;
+            // What a measure could not establish, and what it established about the model
+            // rather than about the rows. Neither is a row somebody owes, and nothing can make
+            // one of them into one: a build that refused over these would be refusing over
+            // this compiler's reading rather than over the model.
+            case PARTITION_NOT_DERIVABLE, PARTITION_NOT_READ, RULE_UNACCOUNTED,
+                 PARTITION_RULES_NOT_REACHED, PARTITION_VALUES_NOT_SEPARATED -> false;
+        };
     }
 
     /**
-     * What a build is held to: a domain-coverage criterion, and whatever else it refuses over
-     * beside it.
+     * What a build asked for: how much to measure, and whether to be told it as warnings.
      *
-     * <p>Beside {@link Criterion} and not a third value of it, because the two are independent.
-     * How strongly a border's points are asked for is one question — the syllabus defines the two
-     * answers to it — and whether a class no row is in is a row somebody owes is another. Written
-     * as one ordered enum, a build that wanted the second would have been made to take the
-     * strongest answer to the first, and the coupling would have been in the type rather than in
-     * anything anyone decided. {@code CLASSES} taking the stronger criterion is this bar's choice
-     * and not an order over the three.
-     *
-     * <p>A closed set, so that what has to be true of every bar can be asked of each. A kind some
-     * bar refuses over and nobody gave a code to is a gap a report prints and a build is never
-     * told about, and that is held by walking {@link #values()}.
-     *
-     * <p>What a bar is not is a measurement. How much was measured is {@link Level}'s, and the
-     * points away from a line are measured whenever the ones against them are (issue #937).
-     */
-    public enum AdequacyBar {
-
-        /** A row against each line, and nothing beside what every criterion refuses over. */
-        SIMPLIFIED_DOMAIN(Criterion.SIMPLIFIED_DOMAIN, Set.of()),
-
-        /** Those, and the points away from the line. */
-        RELIABLE_DOMAIN(Criterion.RELIABLE_DOMAIN, Set.of()),
-
-        /**
-         * Those, and everything the account is owed beside a border's points: a class of a position
-         * no row's value falls in, and a rule of the decision no row takes.
-         *
-         * <p>The bar that asks for a finished account rather than the bar that asks for classes.
-         * What it holds a build to is that every obligation the model derives has a row, whichever
-         * derivation states it — the name is what it was called when the only such obligation was a
-         * class, and the entries are what it means.
-         *
-         * <p>Not a default. A model being written has classes no row is in and rules no row takes —
-         * that is what writing rows is — so a bar refusing over them is one a build asks for when
-         * its rows are meant to be finished, and never the one it is held to for having said
-         * nothing.
-         *
-         * <p>One bar and not one per derivation. A build wanting the account finished wants it
-         * finished; a bar per derivation would put the criterion in the caller's hands one gap at a
-         * time, and their combinations would be listed here as values of an enum.
-         */
-        CLASSES(Criterion.RELIABLE_DOMAIN,
-                Set.of(Kind.AXIS_CLASS_UNCOVERED, Kind.DECISION_RULE_UNCOVERED));
-
-        private final Criterion domain;
-        private final Set<Kind> alsoRefuses;
-
-        AdequacyBar(Criterion domain, Set<Kind> alsoRefuses) {
-            this.domain = domain;
-            this.alsoRefuses = Set.copyOf(alsoRefuses);
-        }
-
-        /** Which of the syllabus's two the border points are asked for under. */
-        public Criterion domain() {
-            return domain;
-        }
-
-        /** What this refuses over beside what {@link #domain} already does. Disjoint from that by
-         *  construction, which a test holds: a kind both halves answered for would be one answer
-         *  written twice, free to disagree the moment either moved. */
-        public Set<Kind> alsoRefuses() {
-            return alsoRefuses;
-        }
-
-        /** Whether a build held to this refuses over {@code kind}. */
-        public boolean refuses(Kind kind) {
-            return domain.refuses(kind) || alsoRefuses.contains(kind);
-        }
-
-        /**
-         * Whether a build held to this is owed a row at {@code role}.
-         *
-         * <p>The criterion's answer, handed on. Never read off {@link #refuses}: a role is not a
-         * kind, and what a bar adds beside its criterion is kinds — so working the roles out from
-         * the kinds it refuses over would be the two consequences of a criterion derived from each
-         * other rather than said once, which is issue #937.
-         */
-        public boolean requires(PointRole role) {
-            return domain.requires(role);
-        }
-    }
-
-    /**
-     * What a build asked for: how much to measure, whether to be told it as warnings, and what it is
-     * held to.
-     *
-     * <p>Three things rather than one, because a caller can want any of them without the others.
+     * <p>Two things rather than one, because a caller can want either without the other.
      * {@code souther examples} wants the measurement without the warnings — its whole output is the
      * report, which says everything these warnings would say and says it in one place, so printing
-     * both would be the same news twice. And what a build refuses over is not how much it measured:
-     * the points away from a line are measured whenever the ones against it are, and whether they
-     * are owed is the criterion's answer (issue #937).
+     * both would be the same news twice.
+     *
+     * <p>What a build is held to is not here, because it is not asked for: every obligation the
+     * account derives is a row the model asks for ({@link #refuses}). A measure a build did not ask
+     * for is one that was not made rather than one that is outside the question, so a level that
+     * measures less leaves a verdict of {@code undetermined} rather than a shorter list of what is
+     * owed.
      */
-    public record Asked(Level level, boolean warn, AdequacyBar held) {
+    public record Asked(Level level, boolean warn) {
 
         /**
          * Nothing measured is nothing to be warned about.
@@ -359,68 +230,39 @@ public final class Adequacy {
             warn = warn && level.readsRows();
         }
 
-        public static final Asked NOTHING =
-                new Asked(Level.OFF, false, AdequacyBar.SIMPLIFIED_DOMAIN);
+        public static final Asked NOTHING = new Asked(Level.OFF, false);
 
-        /** Measured and said, held to what a build asks for by default. */
+        /** Measured and said. */
         public static Asked warningsAt(Level level) {
-            return warningsAt(level, AdequacyBar.SIMPLIFIED_DOMAIN);
-        }
-
-        /** Measured and said, held to {@code held}. */
-        public static Asked warningsAt(Level level, AdequacyBar held) {
-            return new Asked(level, true, held);
+            return new Asked(level, true);
         }
 
         /**
-         * Everything measured, for a report that is the whole of what a command answers with,
-         * held to the whole of what the syllabus asks for.
+         * Everything measured, for a report that is the whole of what a command answers with.
          *
          * <p>{@code souther examples} asks for this. That command chooses no measurement — its
-         * output is the report, so everything is measured — and the bar it is held to is not a
-         * build's default either: reading one here is what let {@code souther examples --strict}
-         * exit 0 on a model {@code souther compile --adequacy reliable-domain --warnings error}
-         * refused, with the two points away from the line printed in the report that had just
-         * called it satisfied.
-         *
-         * <p>A caller that names a bar asks for {@link #fullReport(AdequacyBar)} instead. Which
-         * bar a report is written against is a question with an answer; {@code --strict} is not
-         * where it is answered, because that flag decides an exit status and the report is the
-         * same either way.
+         * output is the report, so everything is measured — and what the report marks as a gap is
+         * the account's ({@link #refuses}) rather than a word the caller wrote: a report answering
+         * a narrower question than the build beside it is how {@code souther examples --strict}
+         * came to exit 0 on a model a compile refused, with the gaps printed in the report that had
+         * just called it satisfied.
          */
         public static Asked fullReport() {
-            return fullReport(AdequacyBar.RELIABLE_DOMAIN);
-        }
-
-        /**
-         * The same, held to {@code bar}.
-         *
-         * <p>What the bar changes is the report: which findings it marks as gaps and what its
-         * verdict comes to. It does not change what was measured — everything is, either way — so
-         * a reader comparing two runs is comparing two readings of one measurement.
-         */
-        public static Asked fullReport(AdequacyBar bar) {
-            return new Asked(Level.ALL, false, bar);
+            return new Asked(Level.ALL, false);
         }
 
         /**
          * As much as {@code level} measures, for a report to read. An editor asks for this: what it
          * draws beside a declaration is a report, and a warning saying the same thing again would be
          * the same news twice on the same line.
-         *
-         * <p>Held to the same bar as {@link #fullReport()}, and for the same reason: what a level
-         * says is how much was measured, and a caller reading a report picks no bar. What the bar
-         * decides for an editor is which findings the lens beside a declaration marks, and no more:
-         * the action that writes the rows a behavior does not cover is asked of every finding
-         * whatever the bar, so what it offers does not move with one.
          */
         public static Asked reportOnly(Level level) {
-            return new Asked(level, false, AdequacyBar.RELIABLE_DOMAIN);
+            return new Asked(level, false);
         }
 
         /** Whether a build that asked for this refuses over {@code kind}. */
         public boolean refuses(Kind kind) {
-            return held.refuses(kind);
+            return Adequacy.refuses(kind);
         }
     }
 
@@ -5152,8 +4994,8 @@ public final class Adequacy {
          * the kinds a second time, so what a report marks and what a build refuses over cannot come
          * apart.
          */
-        public Finding.Disposition disposition(AdequacyBar held) {
-            if (!held.refuses(kind())) {
+        public Finding.Disposition disposition() {
+            if (!Adequacy.refuses(kind())) {
                 return Finding.Disposition.REPORTED;
             }
             // What the measurement that found this went without, and not a word for how far it
@@ -5163,9 +5005,9 @@ public final class Adequacy {
                     ? Finding.Disposition.REFUSED : Finding.Disposition.UNDECIDED;
         }
 
-        /** Whether a build held to {@code held} is entitled to refuse over this. */
-        public boolean isAdequacyGap(AdequacyBar held) {
-            return disposition(held) == Finding.Disposition.REFUSED;
+        /** Whether a build is entitled to refuse over this. */
+        public boolean isAdequacyGap() {
+            return disposition() == Finding.Disposition.REFUSED;
         }
 
         public Optional<DiagnosticCode> code() {
@@ -6047,18 +5889,18 @@ public final class Adequacy {
      * The findings a build held to {@code held} could be warned about, and no more of the account.
      *
      * <p><b>Not the account.</b> A warning is said about a finding a build refuses over, so the
-     * kinds no bar here refuses are kinds this surface will say nothing about whatever they hold —
+     * kinds nothing refuses over are kinds this surface will say nothing about whatever they hold —
      * and what answers those kinds is work this build would pay for and never read. Which
      * questions those are is not decided here: each kind says which question answers it, and the
-     * ones the bar refuses name the questions this asks.
+     * ones a build refuses over name the questions this asks.
      *
      * <p>So the laziness is about which queries are demanded and never about what an account
      * means. A caller that wants the account asks {@link #accountOf}, which asks all of them.
      */
-    public static List<Finding> whatAWarningCouldBeAbout(Db db, String module, AdequacyBar held) {
+    public static List<Finding> whatAWarningCouldBeAbout(Db db, String module) {
         EnumSet<AccountPart> asked = EnumSet.noneOf(AccountPart.class);
         for (Kind kind : Kind.values()) {
-            if (held.refuses(kind)) {
+            if (refuses(kind)) {
                 asked.add(kind.answeredBy());
             }
         }
@@ -6124,13 +5966,13 @@ public final class Adequacy {
             // account. Asked for the whole of it, this build would settle what it is held to say
             // nothing about; read off part of it and called the account, the word would mean two
             // things in one compiler.
-            List<Finding> found = whatAWarningCouldBeAbout(db, name, asked.held());
+            List<Finding> found = whatAWarningCouldBeAbout(db, name);
             if (found == null) {
                 return Answer.absent();
             }
             List<Report> reports = new ArrayList<>();
             for (Finding finding : found) {
-                if (finding.isAdequacyGap(asked.held())) {
+                if (finding.isAdequacyGap()) {
                     reports.add(warning(db, name, finding));
                 }
             }
@@ -6150,7 +5992,7 @@ public final class Adequacy {
          * line owed once over all of them are the same technique's item, and what a row at the point
          * shows is the same thing to say about either.
          */
-        private static void hintFor(souther.compiler.partition.PointRole role,
+        private static void hintFor(PointRole role,
                                     souther.compiler.diag.Diagnostic.Builder built) {
             switch (role) {
                 case ON -> built.hint(

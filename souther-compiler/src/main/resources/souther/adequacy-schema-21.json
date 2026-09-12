@@ -836,7 +836,7 @@
             }
           },
           "disposition": {
-            "description": "What became of this obligation, which the evidence beside it is why. All three are in the count: whether a row is owed at a point is the model's answer, and nothing this compiler failed to read, compose or represent changes it. `unmet` says the absence is established, so it is a finding; whether the bar the build asked for refuses over that finding is a separate question and is answered under `findings[].disposition`. `undecided` says nobody could decide it and names the open questions under `undecidedAbout`. Every document this compiler writes carries this. Not in `required`: a document written before this field existed is still a document of this version.",
+            "description": "What became of this obligation, which the evidence beside it is why. All three are in the count: whether a row is owed at a point is the model's answer, and nothing this compiler failed to read, compose or represent changes it. `unmet` says the absence is established, so it is a finding; what a build does about that finding is a separate question and is answered under `findings[].disposition`. `undecided` says nobody could decide it and names the open questions under `undecidedAbout`. Every document this compiler writes carries this. Not in `required`: a document written before this field existed is still a document of this version.",
             "enum": [
               "met",
               "unmet",
@@ -2859,7 +2859,7 @@
             "unknown": {
               "type": "integer",
               "minimum": 0,
-              "description": "Combinations no row sits in. Not shown unreachable and not owed: nothing tried to build one, and no bar asks for a row at a combination."
+              "description": "Combinations no row sits in. Not shown unreachable and not owed: nothing tried to build one, and nothing asks for a row at a combination."
             },
             "weakening": {
               "$ref": "#/$defs/weakening"

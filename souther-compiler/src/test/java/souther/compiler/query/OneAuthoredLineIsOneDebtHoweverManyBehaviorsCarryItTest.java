@@ -242,19 +242,16 @@ class OneAuthoredLineIsOneDebtHoweverManyBehaviorsCarryItTest {
     @Test
     void aBehaviorWithNoRowsDoesNotHoldOpenALineAnotherSettles() {
         Compilation compilation = Compilation.ofSource(ONE_WRITES_ROWS, "Main");
-        // Held to the rows against a line and not to the regions either side, so that what is
-        // measured here is the line and not a region `touch` has no rows in. The regions stay with
-        // the reading whatever the bar, which is the other half of this change.
-        compilation.measure(Adequacy.Asked.fullReport(Adequacy.AdequacyBar.SIMPLIFIED_DOMAIN));
+        compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
         AdequacyReport report = AdequacyReport.of(compilation);
 
         assertEquals(List.of(), report.adequacyGaps().stream()
+                        .filter(each -> each.kind() == Adequacy.Kind.BOUNDARY_UNMET
+                                || each.kind() == Adequacy.Kind.DOMAIN_POINT_UNCOVERED)
                         .map(each -> each.about().toString()).toList(),
                 () -> "nothing is short of the line: "
                         + report.human(SourceRendering.namedByIdentity(compilation.texts())));
-        assertEquals(AdequacyReport.AdequacyStatus.SATISFIED, report.adequacy(),
-                () -> "and the verdict says so: " + report.human(SourceRendering.namedByIdentity(compilation.texts())));
     }
 
     /** Two behaviors carrying one type, one of them written a row at the boundary and the other
@@ -277,7 +274,8 @@ class OneAuthoredLineIsOneDebtHoweverManyBehaviorsCarryItTest {
             let touch (t) = Ok
 
             example schedule
-                | "at the boundary" : (Draft { owner = UserId("x") }) -> Ok
+                | "at the boundary" : (Draft { owner = UserId("x") })   -> Ok
+                | "well inside it"  : (Draft { owner = UserId("xyz") }) -> Ok
             """;
 
     /**

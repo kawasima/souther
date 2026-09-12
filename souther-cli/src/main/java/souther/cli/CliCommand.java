@@ -41,10 +41,7 @@ enum CliCommand {
     FMT("fmt", "<file.sou>...", "format source, to stdout or in place"),
     EXAMPLES("examples", "<file.sou>...", "how well the `example`s cover the model",
             Map.of(CliOption.FORMAT, Reads.saying("how to render the report, and any compile "
-                            + "error (default human)"),
-                    CliOption.ADEQUACY, Reads.taking("reliable-domain|classes",
-                            "which bar the report is read against (default reliable-domain); "
-                                    + "this command measures everything either way"))),
+                    + "error (default human)"))),
     DOC("doc", "[<anchor> | <error-code> | <set>/<topic>[/<section>]]",
             "read the language specification"),
     API("api", "[<Module>[.<name>]]", "the stdlib surface and its signatures",

@@ -30,8 +30,8 @@ import java.util.Set;
 enum CliOption {
 
     DIRECTORY("compile/init", "<path>", "where what this command writes goes", "-d", "--dir"),
-    ADEQUACY("compile/examples", "off|witness|all|reliable-domain|classes",
-            "how much to measure and which bar to warn against (default off)", "--adequacy"),
+    ADEQUACY("compile", "off|witness|all",
+            "how much of the model to measure and warn about (default off)", "--adequacy"),
     WARNINGS("compile", "report|error", "refuse a compile that warns (default report)",
             "--warnings"),
     BEHAVIOR("run/examples", "<name>", "report only this behavior", "--behavior"),

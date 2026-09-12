@@ -157,7 +157,6 @@ class CompileAdequacyWarningTest {
         List<String> codes = codesAt(Adequacy.Level.ALL);
 
         assertFalse(codes.contains("E1912"), "pending is not a warning: " + codes);
-        assertFalse(codes.contains("E1917"), "not derivable is not a warning: " + codes);
     }
 
     /** Every warning is a warning. None of these stops a build. */
@@ -182,6 +181,7 @@ class CompileAdequacyWarningTest {
                     | (Overseas, Amount(0))   -> Submitted { cost = Amount(0) }
                     | (Domestic, Amount(100)) -> Submitted { cost = Amount(100) }
                     | (Domestic, Amount(101)) -> Waiting { cost = Amount(101) }
+                    | (Domestic, Amount(200)) -> Waiting { cost = Amount(200) }
                 """;
         Compilation compilation = Compilation.ofSource(covered, "Main");
         compilation.measure(Adequacy.Level.ALL);
