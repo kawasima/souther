@@ -152,7 +152,23 @@ public final class CoverageSites {
         public WrittenOwner.Body writtenIn() {
             return WrittenOwner.theBodyThatWrote(origin.owner());
         }
+
+        /** The arm as the author wrote it, which is less than this and is what some readers have. */
+        public AsWritten asWritten() {
+            return new AsWritten(origin, part);
+        }
     }
+
+    /**
+     * One arm of one fork of the source, which is less than an {@link Obligation}.
+     *
+     * <p>What a reader has where it is reading the model's own text rather than the account: a
+     * condition of a decision rule names the fork the author wrote and which of its arms the way
+     * went down, and nothing about a rule says which rule a caller supplied to that fork. So one of
+     * these can name more than one obligation — a fork the caller decides is one obligation per rule
+     * handed in — and anything read off it holds of the arm only where it holds of all of them.
+     */
+    public record AsWritten(SourceConstructOrigin origin, int part) { }
 
     /**
      * One outcome of one construct, as it stands in the tree that runs.

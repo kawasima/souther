@@ -1,5 +1,6 @@
 package souther.compiler.codegen;
 
+import souther.compiler.diag.QuotedFrom;
 import souther.compiler.diag.SourceLayouts;
 import org.junit.jupiter.api.Test;
 
@@ -68,7 +69,7 @@ class APlannedArmNothingEmittedIsNamedTest {
         DerivedSymbols symbols = Scopes.derived(compilation.db(), MODULE).value();
         CodegenContext ctx = new CodegenContext(MODULE, symbols,
                 symbols.library().kernelSignatures(), Map.of(), Map.of(), true, Set.of(), Map.of(),
-                SourceLayouts.NONE);
+                SourceLayouts.NONE, new QuotedFrom.TextItCannotName());
         ctx.setCoveragePlan(plan);
         return ctx;
     }

@@ -225,6 +225,59 @@ class EverySchemaWordIsAccountedForTest {
         return words;
     }
 
+    /**
+     * What a document may say a search settled about a rule of a decision.
+     *
+     * <p>Held against the three answers and not against their leaves. Which of them a rule got is
+     * what a consumer acts on — owed a row, owed none, or nothing settled — and how many ways this
+     * compiler has of looking without finding is its own business, said in the sentence a page
+     * writes rather than in a word a document carries.
+     */
+    private static Set<String> requirementWords() {
+        Map<String, String> spelling = new LinkedHashMap<>();
+        spelling.put("Excluded", "excluded");
+        spelling.put("Required", "required");
+        spelling.put("Unsettled", "unsettled");
+        Set<String> words = new LinkedHashSet<>();
+        for (Class<?> answer : souther.compiler.query.RuleRequirement.class
+                .getPermittedSubclasses()) {
+            String word = spelling.get(answer.getSimpleName());
+            assertNotNull(word, answer.getSimpleName() + " is something a search settles about a"
+                    + " rule and this document has no word for it");
+            words.add(word);
+        }
+        return words;
+    }
+
+    /**
+     * What a document may say about how the requirement of one rule came to its answer.
+     *
+     * <p>The answers a search has, spelled here and held against the arms so that one added has to
+     * be given a word. What the composing fell short on is not among them: that is the other axis
+     * and has a field of its own, whose words are an enum's.
+     */
+    private static Set<String> requirementBecauseWords() {
+        Map<String, String> spelling = new LinkedHashMap<>();
+        spelling.put("OnePositionCannotBeBoth", "the_way_needs_one_position_to_be_two");
+        spelling.put("AnArmNothingReaches", "an_arm_nothing_reaches");
+        spelling.put("AComposedRowWentElsewhere", "a_composed_row_went_elsewhere");
+        spelling.put("CouldNotTellWhereTheRowWent", "the_rule_the_row_took_could_not_be_told");
+        spelling.put("NothingWatchedTheRow", "nothing_watched_the_row");
+        spelling.put("NothingWasComposedToTry", "nothing_was_composed_to_try");
+        // A rule owed a row, whose answer is the row that was seen standing in and is not a reason.
+        spelling.put("Required", null);
+        Set<String> words = new LinkedHashSet<>();
+        for (Class<?> answer : armsOf(souther.compiler.query.RuleRequirement.class)) {
+            assertTrue(spelling.containsKey(answer.getSimpleName()),
+                    answer.getSimpleName() + " is something a search settles about a rule and this"
+                            + " document has no word for it");
+            if (spelling.get(answer.getSimpleName()) != null) {
+                words.add(spelling.get(answer.getSimpleName()));
+            }
+        }
+        return words;
+    }
+
     /** The names a branch measure can give an arm, spelled by the writer's own encoder. */
     private static Set<String> armWords() {
         return Arrays.stream(souther.compiler.coverage.OutcomeName.values())
@@ -330,6 +383,28 @@ class EverySchemaWordIsAccountedForTest {
             Vocabulary.of("decision.coverage.reason",
                     List.of("$defs", "decision", "properties", "coverage", "properties", "reason"),
                     souther.compiler.query.DecisionEvidence.class),
+            // Whether a row is owed at one rule at all, which is a different question from whether
+            // one took it. Spelled here and held against the answers a search may come to, so an
+            // answer added to that vocabulary is one somebody gives a word rather than one a
+            // document goes quiet about.
+            new Vocabulary("decision.obligations[].requirement",
+                    List.of("$defs", "decision", "properties", "obligations", "items",
+                            "properties", "requirement"),
+                    requirementWords()),
+            // And which answer it was. Its own field beside that one because the two are different
+            // questions: whether a row is owed is what a bar and a count act on, and what the
+            // search came to is what a page groups the rules it is not asking for by.
+            new Vocabulary("decision.obligations[].because",
+                    List.of("$defs", "decision", "properties", "obligations", "items",
+                            "properties", "because"),
+                    requirementBecauseWords()),
+            // And what the composing fell short on, which is the other axis. Held against the
+            // vocabulary every search of this compiler answers in, so a reason added there is
+            // carried without anybody editing the schema by hand.
+            new Vocabulary("decision.obligations[].synthesisShortfall",
+                    List.of("$defs", "decision", "properties", "obligations", "items",
+                            "properties", "synthesisShortfall"),
+                    souther.compiler.partition.Generator.UnresolvedCombination.Reason.class),
             new Vocabulary("findings[].kind",
                     List.of("$defs", "findings", "items", "properties", "kind"),
                     Adequacy.Kind.class),

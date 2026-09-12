@@ -61,12 +61,13 @@ class ASearchStandsInARuleWithoutCoveringItTest {
         List<DecisionRule> open = evidence.notTakenByRows();
         assertEquals(1, open.size(), () -> "and one is left: " + open);
 
-        Map<DecisionRule, RuleRequirement> found =
+        Map<DecisionRule, souther.compiler.query.RuleSettlement> found =
                 compilation.db().ask(new Adequacy.DecisionSearch(module, "decides")).value();
         assertNotNull(found, "the search ran");
         assertEquals(open, List.copyOf(found.keySet()),
                 "it looks at the rules no row took and at no others");
-        assertInstanceOf(RuleRequirement.Required.class, found.get(open.get(0)),
+        assertInstanceOf(RuleRequirement.Required.class,
+                found.get(open.get(0)).requirement(),
                 () -> "and it composes a value that takes the rule: " + found);
     }
 
@@ -81,7 +82,9 @@ class ASearchStandsInARuleWithoutCoveringItTest {
         DecisionEvidence before =
                 compilation.db().ask(new Adequacy.Decides(module)).value().get("decides");
         assertTrue(compilation.db().ask(new Adequacy.DecisionSearch(module, "decides")).value()
-                        .values().stream().anyMatch(RuleRequirement.Required.class::isInstance),
+                        .values().stream().map(
+                                souther.compiler.query.RuleSettlement::requirement)
+                        .anyMatch(RuleRequirement.Required.class::isInstance),
                 "the search stands somewhere");
         DecisionEvidence after =
                 compilation.db().ask(new Adequacy.Decides(module)).value().get("decides");

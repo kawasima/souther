@@ -1913,7 +1913,7 @@ public final class Adequacy {
      * reading that may be wrong anywhere along it. Both leave the rule where it was.
      */
     public record DecisionSearch(String name, String behavior)
-            implements Key<Map<DecisionRule, RuleRequirement>> {
+            implements Key<Map<DecisionRule, RuleSettlement>> {
 
         @Override
         public String module() {
@@ -1921,7 +1921,7 @@ public final class Adequacy {
         }
 
         @Override
-        public Answer<Map<DecisionRule, RuleRequirement>> compute(Db db) {
+        public Answer<Map<DecisionRule, RuleSettlement>> compute(Db db) {
             Map<String, DecisionEvidence> decisions = db.ask(new Decides(name)).value();
             DecisionEvidence evidence = decisions == null ? null : decisions.get(behavior);
             Answer<CheckSurface> prepared = db.ask(new Shapes.CheckSurface(name));
@@ -1962,16 +1962,24 @@ public final class Adequacy {
                 return Answer.absent();
             }
             souther.compiler.inputs.SearchRegion declared = subject.quantities().region();
+            // The arms the branch count leaves out, which is what says a way is one the model
+            // refuses rather than one a search came up short on. Asked of the same subtraction the
+            // count is made by, so the two cannot disagree about an arm.
+            Map<String, souther.compiler.check.PathReachability.Answers.AsRun> arrivals =
+                    db.ask(new Arrived(name)).value();
+            Set<CoverageSites.AsWritten> unreachedArms = arrivals == null ? Set.of()
+                    : BranchEvidence.unreached(checked.value().plan().arms(behavior),
+                            arrivals.getOrDefault(behavior, NOTHING_PROVEN));
             // Asked once, because what it answers is one list and asking it per rule would walk the
             // rules once for every rule.
             Set<DecisionRule> toSettle = new LinkedHashSet<>(evidence.notTakenByRows());
-            Map<DecisionRule, RuleRequirement> out = new LinkedHashMap<>();
+            Map<DecisionRule, RuleSettlement> out = new LinkedHashMap<>();
             for (souther.compiler.partition.DecisionReading.Ruled ruled
                     : evidence.read().found()) {
                 if (!toSettle.contains(ruled.rule())) {
                     continue;
                 }
-                out.put(ruled.rule(), whatSettles(ruled, probe, taken, declared));
+                out.put(ruled.rule(), whatSettles(ruled, probe, taken, declared, unreachedArms));
             }
             return Answer.of(Ordered.map(out));
         }
@@ -1990,16 +1998,50 @@ public final class Adequacy {
          * what stands on the way, and a rule names no point, so the way is the whole of what the
          * row has to be.
          */
-        private static RuleRequirement whatSettles(
+        private static RuleSettlement whatSettles(
                 souther.compiler.partition.DecisionReading.Ruled ruled, Coverages.Probe probe,
                 souther.compiler.partition.RulesTaken taken,
-                souther.compiler.inputs.SearchRegion declared) {
+                souther.compiler.inputs.SearchRegion declared,
+                Set<CoverageSites.AsWritten> unreachedArms) {
+            CoverageSites.AsWritten unreached = armNothingReaches(ruled, unreachedArms);
+            if (unreached != null) {
+                return RuleSettlement.of(new RuleRequirement.Excluded.AnArmNothingReaches(
+                        unreached));
+            }
             return switch (souther.compiler.partition.Reachability.of(ruled.states(), declared)) {
                 case souther.compiler.partition.Reachability.NothingReaches nothing ->
-                        new RuleRequirement.Excluded(nothing.why());
+                        RuleSettlement.of(new RuleRequirement.Excluded.OnePositionCannotBeBoth(
+                                nothing.why()));
                 case souther.compiler.partition.Reachability.Reaching reaching ->
                         whatASearchFinds(ruled, probe, taken, reaching);
             };
+        }
+
+        /**
+         * The arm of this way nothing arrives at, or null where none of them is one.
+         *
+         * <p>Asked of the arms the branch count left out, which is the one answer to it. An arm the
+         * author wrote stands at a place per call site of whatever carries it, and what a rule's
+         * way names is the arm — so a reading that took one place for the arm would settle the way
+         * by whichever copy it met first, and a model whose helper is reachable from one call site
+         * and not from another would be answered by the order the copies were written in.
+         *
+         * <p>Matched on what the author wrote, which is all a rule of the decision has: the
+         * construct and which of its arms the way went down. What that names may be more than one
+         * obligation, which is why the answer it is looked up in is one an arm is in only where
+         * every obligation it names is out.
+         */
+        private static CoverageSites.AsWritten armNothingReaches(
+                souther.compiler.partition.DecisionReading.Ruled ruled,
+                Set<CoverageSites.AsWritten> unreached) {
+            for (souther.compiler.partition.ShownBy each : ruled.shownBy()) {
+                if (each instanceof souther.compiler.partition.ShownBy.AtAnArm(var fork, var part)
+                        && unreached.contains(
+                                new CoverageSites.AsWritten(fork.origin(), part))) {
+                    return new CoverageSites.AsWritten(fork.origin(), part);
+                }
+            }
+            return null;
         }
 
         /**
@@ -2020,16 +2062,20 @@ public final class Adequacy {
          * to one word, an author reading the rule was told a search came to nothing and not what it
          * came to nothing on.
          */
-        private static RuleRequirement whatASearchFinds(
+        private static RuleSettlement whatASearchFinds(
                 souther.compiler.partition.DecisionReading.Ruled ruled, Coverages.Probe probe,
                 souther.compiler.partition.RulesTaken taken,
                 souther.compiler.partition.Reachability.Reaching reaching) {
             return switch (probe.attempt("a rule of the decision", Map.of(), reaching,
                     ruled.demands())) {
+                // What the composing came to, said on the axis it is about. The rule is left where
+                // it was and nothing here is a word about the model: the way may be the easiest row
+                // in the file to write by hand, and a requirement carrying this reason would say
+                // otherwise.
                 case Generator.BoundaryAttempt.NoRow none ->
-                        new RuleRequirement.Unsettled.NothingComposedARow(none.why());
+                        RuleSettlement.nothingToTryWith(none.why());
                 case Generator.BoundaryAttempt.Built built ->
-                        whereItWent(built.row().toRun(), probe, taken, ruled);
+                        RuleSettlement.of(whereItWent(built.row().toRun(), probe, taken, ruled));
             };
         }
 
@@ -3042,6 +3088,43 @@ public final class Adequacy {
         }
 
         /**
+         * The arms of the source nothing arrives at, named the way a reader of the model names one.
+         *
+         * <p>The arm and not the place. An arm is one obligation however often a helper carrying it
+         * is called, and the copies stand at places of their own — a value refused at one call site
+         * is nothing about the arm while another call site reaches it. So an obligation is one
+         * nothing arrives at exactly where no copy of it survives {@link #owed}, which is the same
+         * subtraction the count is made by rather than a second reading of the same places.
+         *
+         * <p><b>And named by what the author wrote, which is less than an obligation.</b> A fork the
+         * caller decides is one obligation per rule handed in, and a reader that has the source's
+         * own arm has no rule to tell them apart by — so one of these is here only where every
+         * obligation it names is out. Answered per obligation and looked up by the arm, an arm
+         * reachable under one supplied rule would come back unreachable because a sibling under
+         * another is, which takes an obligation away on the strength of a different one.
+         *
+         * <p>Read as the difference and not by asking each arm for all of its copies: what the
+         * count leaves out is what is out, and a second walk deciding it again is free to leave out
+         * something the count kept.
+         */
+        public static Set<CoverageSites.AsWritten> unreached(
+                List<CoverageSites.ArmSite> all,
+                souther.compiler.check.PathReachability.Answers.AsRun reachable) {
+            Set<CoverageSites.Obligation> stands = new java.util.LinkedHashSet<>();
+            owed(all, reachable).forEach(site -> stands.add(site.obligation()));
+            Set<CoverageSites.AsWritten> written = new java.util.LinkedHashSet<>();
+            Set<CoverageSites.AsWritten> kept = new java.util.LinkedHashSet<>();
+            for (CoverageSites.ArmSite site : all) {
+                written.add(site.obligation().asWritten());
+                if (stands.contains(site.obligation())) {
+                    kept.add(site.obligation().asWritten());
+                }
+            }
+            written.removeAll(kept);
+            return java.util.Collections.unmodifiableSet(written);
+        }
+
+        /**
          * The arms a set of probes is about, which is asked here because here is where both are.
          *
          * <p>A probe is the number a run through an arm was recorded at; which arm that is, is what
@@ -3902,16 +3985,17 @@ public final class Adequacy {
                 return new RowsForRules(asked, Map.of(),
                         Generator.UnresolvedCombination.Reason.THE_ROWS_WERE_NOT_READ);
             }
-            Map<DecisionRule, RuleRequirement> settled =
+            Map<DecisionRule, RuleSettlement> settled =
                     db.ask(new DecisionSearch(module, behavior)).value();
             if (settled == null) {
                 return new RowsForRules(asked, Map.of(), null);
             }
             Map<DecisionRule, Generator.GeneratedRow> out = new LinkedHashMap<>();
             boolean stopped = false;
-            for (Map.Entry<DecisionRule, RuleRequirement> each : settled.entrySet()) {
+            for (Map.Entry<DecisionRule, RuleSettlement> each : settled.entrySet()) {
                 if (!asked.contains(each.getKey())
-                        || !(each.getValue() instanceof RuleRequirement.Required(var stoodBy))) {
+                        || !(each.getValue().requirement()
+                                instanceof RuleRequirement.Required(var stoodBy))) {
                     continue;
                 }
                 // What one block may hand a person, counted over every row in it. A body of five
@@ -5595,7 +5679,7 @@ public final class Adequacy {
                     || decision.notTakenByRows().isEmpty()) {
                 return;
             }
-            Map<DecisionRule, RuleRequirement> settled =
+            Map<DecisionRule, RuleSettlement> settled =
                     db.ask(new DecisionSearch(module, behavior)).value();
             if (settled == null) {
                 return;
@@ -5605,7 +5689,8 @@ public final class Adequacy {
             // row may already take.
             for (souther.compiler.partition.DecisionReading.Ruled ruled
                     : decision.read().found()) {
-                if (settled.get(ruled.rule()) instanceof RuleRequirement.Required) {
+                RuleSettlement came = settled.get(ruled.rule());
+                if (came != null && came.requirement() instanceof RuleRequirement.Required) {
                     out.add(Finding.by(new FindingSubject.OfABehavior(behavior), decision,
                             new About.ARuleNoRowTakes(behavior, ruled)));
                 }
