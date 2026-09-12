@@ -1,5 +1,6 @@
 package souther.compiler.query;
 
+import souther.compiler.coverage.CoverageSites;
 import souther.compiler.inputs.Requirements;
 import souther.compiler.partition.Generator;
 import souther.compiler.partition.RowToRun;
@@ -35,19 +36,52 @@ public sealed interface RuleRequirement {
      * The model's own rules leave no value that takes this rule, so no run of it exists.
      *
      * <p>A fact about the model, and the one answer here that is not about what this compiler
-     * managed. The way asks one position to be two things at once, which no value is —
-     * {@link souther.compiler.partition.Reachability.NothingReaches} is where that is established
-     * and this carries what it established rather than a word for it.
+     * managed. Not "no row takes it": that is what the rows happen to do and no author is refused
+     * over it here; this says no row anybody writes could.
      *
-     * <p>Not "no row takes it". That is what the rows happen to do and no author is refused over
-     * it here; this says no row anybody writes could.
+     * <p><b>Two readings already establish it and neither is the other.</b> One is about the way
+     * itself — it asks a position to be two things at once, which no value is. The other is about
+     * a construct the way goes through — a case a position's own rules refuse has an arm nothing
+     * arrives at, and the arms are already counted without it. Carried as what each established
+     * rather than folded to a word, so that a reader is sent to the reading that answered.
      */
-    record Excluded(Requirements.Merge.Conflict why) implements RuleRequirement {
+    sealed interface Excluded extends RuleRequirement {
 
-        public Excluded {
-            if (why == null) {
-                throw new IllegalArgumentException(
-                        "a way nothing can take is one something showed nothing can take");
+        /**
+         * The way asks one position to be two things at once.
+         *
+         * <p>{@link souther.compiler.partition.Reachability.NothingReaches} is where that is
+         * established and this carries what it established.
+         */
+        record OnePositionCannotBeBoth(Requirements.Merge.Conflict why) implements Excluded {
+
+            public OnePositionCannotBeBoth {
+                if (why == null) {
+                    throw new IllegalArgumentException(
+                            "a way nothing can take is one something showed nothing can take");
+                }
+            }
+        }
+
+        /**
+         * The way goes through an arm the readings show nothing arrives at.
+         *
+         * <p>The same fact the branch measure counts by, asked here rather than answered again. An
+         * arm for a case the position's own rules refuse is out of that count, and a rule whose way
+         * goes down it is out of this one — read separately, a search would compose against the
+         * arm, have every candidate refused, and report the model's own answer as this compiler
+         * having looked and not found.
+         *
+         * <p>Arms and not every construct on the way. What a comparison's outcome was proven to be
+         * is the other half of the same reading and the sites have no place for it to be asked at,
+         * so a rule turning on one is settled the way it was before.
+         */
+        record AnArmNothingReaches(CoverageSites.ArmSite arm) implements Excluded {
+
+            public AnArmNothingReaches {
+                if (arm == null) {
+                    throw new IllegalArgumentException("an arm nothing reaches is some arm");
+                }
             }
         }
     }

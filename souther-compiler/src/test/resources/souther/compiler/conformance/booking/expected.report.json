@@ -2145,7 +2145,8 @@
               "outcome" : "held"
             } ]
           },
-          "taken" : false
+          "taken" : false,
+          "requirement" : "unsettled"
         }, {
           "obligationId" : {
             "behavior" : "redeem",
@@ -2159,7 +2160,8 @@
               "outcome" : "held"
             } ]
           },
-          "taken" : false
+          "taken" : false,
+          "requirement" : "unsettled"
         }, {
           "obligationId" : {
             "behavior" : "redeem",
@@ -2169,7 +2171,8 @@
               "outcome" : "denied"
             } ]
           },
-          "taken" : false
+          "taken" : false,
+          "requirement" : "required"
         } ]
       },
       "findings" : [ {
@@ -3151,7 +3154,8 @@
               "outcome" : "held"
             } ]
           },
-          "taken" : false
+          "taken" : false,
+          "requirement" : "unsettled"
         }, {
           "obligationId" : {
             "behavior" : "seat",
@@ -3165,7 +3169,8 @@
               "outcome" : "held"
             } ]
           },
-          "taken" : false
+          "taken" : false,
+          "requirement" : "unsettled"
         }, {
           "obligationId" : {
             "behavior" : "seat",
@@ -3175,7 +3180,8 @@
               "outcome" : "denied"
             } ]
           },
-          "taken" : false
+          "taken" : false,
+          "requirement" : "unsettled"
         } ]
       },
       "findings" : [ ]
@@ -3354,7 +3360,8 @@
               "outcome" : "held"
             } ]
           },
-          "taken" : false
+          "taken" : false,
+          "requirement" : "unsettled"
         }, {
           "obligationId" : {
             "behavior" : "originOf",
@@ -3364,7 +3371,8 @@
               "outcome" : "denied"
             } ]
           },
-          "taken" : false
+          "taken" : false,
+          "requirement" : "unsettled"
         } ]
       },
       "findings" : [ {

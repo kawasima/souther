@@ -77,7 +77,12 @@ class WhoAsksAReadingAboutAPlaceSaysWhichPlanItIsOfTest {
                     "the arms and the reading both come out of the store under one module name,"
                             + " inside the one method that asks for either. Nothing hands this pair"
                             + " over, so there is no pair for a caller to get wrong and nothing"
-                            + " here for a check to be asked about"));
+                            + " here for a check to be asked about"),
+            new Licence("souther.compiler.query.Adequacy.DecisionSearch.armNothingReaches -> at", 1,
+                    "a private step of the search over one module's rules, whose way in asks the"
+                            + " store for the plan and the reading under that module's own name and"
+                            + " hands the pair no further. The arms it looks up are read off that"
+                            + " same plan, so the place and the reading are of one walk"));
 
     @Test
     void everyReaderThatAsksAReadingAboutAPlaceIsWrittenDownWithWhatMakesItSafe() {

@@ -1962,6 +1962,14 @@ public final class Adequacy {
                 return Answer.absent();
             }
             souther.compiler.inputs.SearchRegion declared = subject.quantities().region();
+            // What the walk proved about each place a run is recorded at, which is what the arms
+            // are counted by. Asked here so that a way through an arm nothing reaches is the
+            // model's answer rather than a search that had every candidate refused.
+            Map<String, souther.compiler.check.PathReachability.Answers> arrivals =
+                    db.ask(new PathReached(name)).value();
+            souther.compiler.check.PathReachability.Answers reachable =
+                    arrivalsOf(arrivals, spec);
+            CoverageSites.Plan plan = checked.value().plan();
             // Asked once, because what it answers is one list and asking it per rule would walk the
             // rules once for every rule.
             Set<DecisionRule> toSettle = new LinkedHashSet<>(evidence.notTakenByRows());
@@ -1971,7 +1979,8 @@ public final class Adequacy {
                 if (!toSettle.contains(ruled.rule())) {
                     continue;
                 }
-                out.put(ruled.rule(), whatSettles(ruled, probe, taken, declared));
+                out.put(ruled.rule(), whatSettles(ruled, probe, taken, declared,
+                        DecisionRuleReading.of(ruled, plan, behavior), reachable));
             }
             return Answer.of(Ordered.map(out));
         }
@@ -1993,13 +2002,39 @@ public final class Adequacy {
         private static RuleRequirement whatSettles(
                 souther.compiler.partition.DecisionReading.Ruled ruled, Coverages.Probe probe,
                 souther.compiler.partition.RulesTaken taken,
-                souther.compiler.inputs.SearchRegion declared) {
+                souther.compiler.inputs.SearchRegion declared,
+                List<DecisionRuleReading> read,
+                souther.compiler.check.PathReachability.Answers reachable) {
+            CoverageSites.ArmSite unreached = armNothingReaches(read, reachable);
+            if (unreached != null) {
+                return new RuleRequirement.Excluded.AnArmNothingReaches(unreached);
+            }
             return switch (souther.compiler.partition.Reachability.of(ruled.states(), declared)) {
                 case souther.compiler.partition.Reachability.NothingReaches nothing ->
-                        new RuleRequirement.Excluded(nothing.why());
+                        new RuleRequirement.Excluded.OnePositionCannotBeBoth(nothing.why());
                 case souther.compiler.partition.Reachability.Reaching reaching ->
                         whatASearchFinds(ruled, probe, taken, reaching);
             };
+        }
+
+        /**
+         * The first arm of the way the readings show nothing arrives at, or null where none is.
+         *
+         * <p>The first and not all of them. What this answers is whether the way is one the model
+         * leaves open, and one arm nothing reaches settles that — a list of them would be a second
+         * account of what the arms come to, kept beside the one the branch measure reads.
+         */
+        private static CoverageSites.ArmSite armNothingReaches(
+                List<DecisionRuleReading> read,
+                souther.compiler.check.PathReachability.Answers reachable) {
+            for (DecisionRuleReading each : read) {
+                if (each instanceof DecisionRuleReading.AForkTookAnArm(var arm)
+                        && reachable.at(arm.place())
+                                instanceof souther.compiler.reach.Reachability.Unreachable) {
+                    return arm;
+                }
+            }
+            return null;
         }
 
         /**

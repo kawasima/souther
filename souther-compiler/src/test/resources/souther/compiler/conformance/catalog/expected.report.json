@@ -2783,7 +2783,8 @@
               "outcome" : "書けなかった"
             } ]
           },
-          "taken" : false
+          "taken" : false,
+          "requirement" : "unsettled"
         }, {
           "obligationId" : {
             "behavior" : "出荷する",
@@ -2805,7 +2806,8 @@
               "outcome" : "出荷済み"
             } ]
           },
-          "taken" : false
+          "taken" : false,
+          "requirement" : "unsettled"
         }, {
           "obligationId" : {
             "behavior" : "出荷する",
@@ -2827,7 +2829,8 @@
               "outcome" : "出荷済み"
             } ]
           },
-          "taken" : false
+          "taken" : false,
+          "requirement" : "unsettled"
         }, {
           "obligationId" : {
             "behavior" : "出荷する",
@@ -2845,7 +2848,8 @@
               "outcome" : "denied"
             } ]
           },
-          "taken" : false
+          "taken" : false,
+          "requirement" : "unsettled"
         }, {
           "obligationId" : {
             "behavior" : "出荷する",

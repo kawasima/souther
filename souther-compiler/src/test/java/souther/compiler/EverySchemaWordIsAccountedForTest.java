@@ -225,6 +225,30 @@ class EverySchemaWordIsAccountedForTest {
         return words;
     }
 
+    /**
+     * What a document may say a search settled about a rule of a decision.
+     *
+     * <p>Held against the three answers and not against their leaves. Which of them a rule got is
+     * what a consumer acts on — owed a row, owed none, or nothing settled — and how many ways this
+     * compiler has of looking without finding is its own business, said in the sentence a page
+     * writes rather than in a word a document carries.
+     */
+    private static Set<String> requirementWords() {
+        Map<String, String> spelling = new LinkedHashMap<>();
+        spelling.put("Excluded", "excluded");
+        spelling.put("Required", "required");
+        spelling.put("Unsettled", "unsettled");
+        Set<String> words = new LinkedHashSet<>();
+        for (Class<?> answer : souther.compiler.query.RuleRequirement.class
+                .getPermittedSubclasses()) {
+            String word = spelling.get(answer.getSimpleName());
+            assertNotNull(word, answer.getSimpleName() + " is something a search settles about a"
+                    + " rule and this document has no word for it");
+            words.add(word);
+        }
+        return words;
+    }
+
     /** The names a branch measure can give an arm, spelled by the writer's own encoder. */
     private static Set<String> armWords() {
         return Arrays.stream(souther.compiler.coverage.OutcomeName.values())
@@ -330,6 +354,14 @@ class EverySchemaWordIsAccountedForTest {
             Vocabulary.of("decision.coverage.reason",
                     List.of("$defs", "decision", "properties", "coverage", "properties", "reason"),
                     souther.compiler.query.DecisionEvidence.class),
+            // Whether a row is owed at one rule at all, which is a different question from whether
+            // one took it. Spelled here and held against the answers a search may come to, so an
+            // answer added to that vocabulary is one somebody gives a word rather than one a
+            // document goes quiet about.
+            new Vocabulary("decision.obligations[].requirement",
+                    List.of("$defs", "decision", "properties", "obligations", "items",
+                            "properties", "requirement"),
+                    requirementWords()),
             new Vocabulary("findings[].kind",
                     List.of("$defs", "findings", "items", "properties", "kind"),
                     Adequacy.Kind.class),
