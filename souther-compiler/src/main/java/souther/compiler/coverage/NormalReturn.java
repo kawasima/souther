@@ -50,6 +50,19 @@ public final class NormalReturn {
         return new NormalReturn(ValueArrivals.ofBody(body, Anonymous.NAMING));
     }
 
+    /**
+     * The same, of a tree the language's own operations stand in.
+     *
+     * <p>Which kind of tree this is, is the caller's to say and this class's to spend. A call kept
+     * standing is a defect in a tree the operations were expanded in and the model naming an
+     * operation in one they stand in, and a reader that answered it for itself would be deciding
+     * what a tree is from the outside of the reading that walks it.
+     */
+    public static NormalReturn ofBodyWhereTheOperationsStand(Core body) {
+        return new NormalReturn(
+                ValueArrivals.ofBodyWhereTheOperationsStand(body, Anonymous.NAMING));
+    }
+
     /** Whether {@code e}, standing where it stands in this body, can be evaluated to a value. */
     public boolean at(Core e) {
         return reading.arrivesAt(e);

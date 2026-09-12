@@ -420,8 +420,9 @@ public final class GuardThresholds {
             /** The reading the arm opens, which is the reading's own answer: what a name an arm
              *  binds stands for is settled once, where every walk that goes inside one asks. */
             @Override
-            public InputReads choosing(Choice.Decides decidedBy, InputReads at) {
-                return at.choosing(decidedBy, symbols);
+            public ValueOrigin.Opened<InputReads> choosing(Choice.Decides decidedBy,
+                                                           InputReads at) {
+                return new ValueOrigin.Opened.Entered<>(at.choosing(decidedBy, symbols));
             }
         }), met);
     }

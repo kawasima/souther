@@ -72,14 +72,44 @@ class AnArmIsReadWhereTheArmStandsTest {
         }
 
         @Override
-        public String choosing(Choice.Decides decidedBy, String at) {
-            return switch (decidedBy) {
+        public ValueOrigin.Opened<String> choosing(Choice.Decides decidedBy, String at) {
+            return new ValueOrigin.Opened.Entered<>(switch (decidedBy) {
                 case Choice.Decides.ACondition _ -> at;
                 case Choice.Decides.ACase _ -> "arm";
                 case Choice.Decides.ItWasBuilt _ -> "built";
                 case Choice.Decides.ItDeparted _ -> at;
                 case Choice.Decides.ByArgumentRelations _ -> at;
-            };
+            });
+        }
+    };
+
+    /** A reading that goes inside no arm, as the reading of a clause of a {@code data} does not. */
+    private static final ValueOrigin.Reading<String, String> WHICH_GOES_INSIDE_NO_ARM =
+            new ValueOrigin.Reading<>() {
+
+        @Override
+        public String positionOf(Core e, String at) {
+            return WHERE_IT_WAS_READ.positionOf(e, at);
+        }
+
+        @Override
+        public String madeFrom(Core e, String at) {
+            return null;
+        }
+
+        @Override
+        public AffineForms.ReadThrough<String> readThrough(Core.Read read, String at) {
+            return null;
+        }
+
+        @Override
+        public String inside(Core.LetIn li, String at) {
+            return at;
+        }
+
+        @Override
+        public ValueOrigin.Opened<String> choosing(Choice.Decides decidedBy, String at) {
+            return new ValueOrigin.Opened.NotEntered<>();
         }
     };
 
@@ -173,6 +203,29 @@ class AnArmIsReadWhereTheArmStandsTest {
 
         assertEquals(1, choice.alternatives().size(),
                 () -> "the value it built, and not the departure: " + choice.alternatives());
+    }
+
+    /**
+     * And an arm a reading does not go inside is a value it can say nothing about, rather than one
+     * read where the fork stands.
+     *
+     * <p>Still one of the values the expression may be: the arm answers a value, and what this
+     * reading is short of is the name it answers with. Read outside the arm instead, a name that
+     * means something else out there would come back as the arm's own answer.
+     */
+    @Test
+    void anArmAReadingDoesNotGoInsideIsAValueItCannotName() {
+        ValueOrigin<String> origin = ValueOrigin.of(
+                attempt(read("a", 0), read("held", 1), List.of(read("b", 2))),
+                "outside", WHICH_GOES_INSIDE_NO_ARM);
+
+        if (!(origin instanceof ValueOrigin.OneOf<String> choice)) {
+            throw new AssertionError("a fork is a value that is one of several: " + origin);
+        }
+        assertEquals(2, choice.alternatives().size(),
+                () -> "both arms answer a value: " + choice.alternatives());
+        assertInstanceOf(ValueOrigin.Unnameable.class, choice.alternatives().getFirst());
+        assertInstanceOf(ValueOrigin.Unnameable.class, choice.alternatives().getLast());
     }
 
     /** And a fork every arm of which comes to no value comes to none itself. */

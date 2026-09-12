@@ -2829,25 +2829,28 @@ public final class InvariantChecker {
             }
 
             /**
-             * And an arm is read where the fork stands, which is this reader declining a reading
-             * it has and not one it lacks ({@link Terms#choosing} would give it).
+             * And an arm that opened a name is one this reader does not go inside, which it says
+             * rather than reading the arm where the fork stands.
              *
              * <p>What a clause is about is one of a pair. The reading of values reads the same
              * conjunct and says which coordinates it constrained, and a coordinate this names that
              * the other never reached is a question standing with nothing to account for it
              * ({@link FieldDomains.AStandingQuestionWithNoAccount}) — which is the two coming
-             * apart, not a fact about the model. That reading does not go inside an arm, so neither
-             * does this one, and a clause whose arm reads what the arm bound names one position
-             * fewer than it is about.
+             * apart, not a fact about the model. That reading does not go inside a name an arm
+             * opened, so neither does this one, and a clause whose arm reads what the arm bound
+             * names one position fewer than it is about.
              *
-             * <p>Declined and not answered wrongly. What comes back for such an arm is a value this
-             * reader can say nothing about, which is what it is here: the name is out of its reach.
-             * A body's reading is not in this position — what the reading of an input holds for an
-             * arm's name is settled for every walk that goes inside one — and it enters.
+             * <p>Which arms those are is {@link Terms}' answer and not a list kept here. It says
+             * what choosing an arm binds and what that arm opened, and an arm that opened nothing
+             * is read where the fork stands by every reader — a condition settles what it settles
+             * wherever it is read, and a departure was taken where nothing was built.
              */
             @Override
-            public Denotations choosing(Choice.Decides decidedBy, Denotations where) {
-                return where;
+            public ValueOrigin.Opened<Denotations> choosing(Choice.Decides decidedBy,
+                                                            Denotations where) {
+                Terms.Chose chose = terms.chose(decidedBy, where);
+                return chose.opened() == null ? new ValueOrigin.Opened.Entered<>(chose.at())
+                        : new ValueOrigin.Opened.NotEntered<>();
             }
         });
         return new Places(origin, met);

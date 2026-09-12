@@ -128,6 +128,21 @@ class ARuleAboutTheStringsOfAMadeValueIsNamedWhereItCameFromTest {
                     then Yes else No
             """;
 
+    private static final String AN_ARM_BUILDS_A_VALUE_OUT_OF_AN_UNREACHABLE = """
+            module example.codes
+
+            data Answer = Yes | No
+            data Count = Int
+            data Boxed = { n: Count }
+
+            behavior f : (flag: Bool, a: String) -> Answer
+                constructs Count, Boxed
+            let f (flag, a) =
+                if (if flag then String.length(String.uppercase(a))
+                    else Boxed { n = Count(unreachable "no number to give") }.n.value) > 10
+                    then Yes else No
+            """;
+
     private static final String AN_ELEMENT_IT_CAME_FROM = """
             module example.codes
 
@@ -252,6 +267,23 @@ class ARuleAboutTheStringsOfAMadeValueIsNamedWhereItCameFromTest {
         assertEquals(List.of("flag", "a"), derived(measured(ONE_ARM_COMES_TO_NO_VALUE)),
                 () -> "the one value the subject may be was made from the strings here: "
                         + measured(ONE_ARM_COMES_TO_NO_VALUE).notRead());
+    }
+
+    /**
+     * And the arm need not be an {@code unreachable} to be one: it is enough that it has to
+     * evaluate one.
+     *
+     * <p>The case a rule written over the shape of the node gets wrong. There is no fork in this
+     * arm and its outermost node is a field taken of a construction, so an arm counted by what it
+     * is made of is counted here — and the value the expression may be goes back to being one of
+     * two, of which one was made by no operation.
+     */
+    @Test
+    void anArmThatHasToEvaluateAnUnreachableIsNotOneOfTheValuesEither() {
+        assertEquals(List.of("flag", "a"),
+                derived(measured(AN_ARM_BUILDS_A_VALUE_OUT_OF_AN_UNREACHABLE)),
+                () -> "the one value the subject may be was made from the strings here: "
+                        + measured(AN_ARM_BUILDS_A_VALUE_OUT_OF_AN_UNREACHABLE).notRead());
     }
 
     /**
