@@ -230,6 +230,20 @@ final class AReportOfOneBorder {
      */
     static PartitionEvidence partition(Measurement<List<BorderAssessment>> border) {
         return new PartitionEvidence(
+                new Measurement.Complete<>(List.of()),
+                PartitionEvidence.PairSpace.NONE,
+                List.of(), List.of(), List.of(), List.of(), List.of(),
+                List.of());
+    }
+
+    /**
+     * And the same, from a reading that did not run out and derived no classes.
+     *
+     * <p>Which is not a behavior with no classes to cover: the positions were never divided, so
+     * what the rows reach of them is a measure nobody made rather than one that came back empty.
+     */
+    static PartitionEvidence partitionThatDidNotRunOut() {
+        return new PartitionEvidence(
                 new Measurement.FailedToMeasure<>(
                         PartitionDerivation.TheReadingDidNotRunOut.THE_READING_DID_NOT_RUN_OUT,
                         WeakeningSet.of(new Weakening.ModelReadingIncomplete(
@@ -257,15 +271,19 @@ final class AReportOfOneBorder {
     }
 
     /**
-     * What one behavior's lines make of the whole report, held to {@code held}.
+     * What one behavior's lines make of the whole report.
      *
-     * <p>The lines and nothing else, because the account is read off them: handed both, a fixture
-     * could put a verdict in front of an account made from other lines than the ones beside it, and
-     * what came back would be about neither.
+     * <p>The lines and nothing else, because the account is read off them: handed a verdict as
+     * well, a fixture could put one in front of an account made from other lines than the ones
+     * beside it, and what came back would be about neither.
      */
+    static AdequacyReport.AdequacyStatus verdictOf(Measurement<List<BorderAssessment>> lines) {
+        return verdictOf(lines, partition(lines));
+    }
+
+    /** The same, over a reading of the classes the caller states. */
     static AdequacyReport.AdequacyStatus verdictOf(Measurement<List<BorderAssessment>> lines,
-                                                   Adequacy.AdequacyBar held) {
-        PartitionEvidence partition = partition(lines);
+                                                   PartitionEvidence partition) {
         // The account is the module's one relation projected to this behavior, which over one
         // behavior's lines is the points its own rules settled, gathered across their readings.
         AdequacyReport.BehaviorReport behavior = new AdequacyReport.BehaviorReport(
@@ -279,8 +297,7 @@ final class AReportOfOneBorder {
                         null, null),
                 souther.compiler.query.ClaimAnnotations.NONE, List.of(), java.util.Map.of(),
                 java.util.Map.of(), rulePlaces(lines), java.util.Map.of(), java.util.Map.of());
-        return new AdequacyReport(AdequacyReport.SCHEMA_VERSION, "test",
-                held, WeakeningSet.none(),
+        return new AdequacyReport(AdequacyReport.SCHEMA_VERSION, "test", WeakeningSet.none(),
                 List.of(new AdequacyReport.ModuleReport("example.wide",
                         new SourceId("wide.sou"), List.of(behavior), List.of(),
                         // Nothing this module's declarations are owed, and nothing that finding

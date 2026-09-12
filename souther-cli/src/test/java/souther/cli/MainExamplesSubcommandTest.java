@@ -139,16 +139,21 @@ class MainExamplesSubcommandTest {
         assertFalse(streams.err().isBlank(), "the rows are still written");
     }
 
-    /** An edge nothing was written at is a different request from a class nothing covers, so asking
-     * for one does not bring the other. */
+    /**
+     * An edge nothing was written at is offered by the request a class nothing covers is: one block
+     * holds everything the behavior is owed.
+     *
+     * <p>Read off the rows rather than off the report above them. The report names the points
+     * either way — what this is about is the block an author pastes, which held the classes and
+     * left the points to a flag.
+     */
     @Test
-    void theBoundaryRowsNeedTheirOwnFlag() throws Exception {
-        String classes = run("--generate", "--behavior", "submit");
-        String andEdges = run("--generate", "--boundaries", "--behavior", "submit");
+    void theBlockHoldsTheEdgesBesideTheClasses() throws Exception {
+        String report = run("--behavior", "submit");
+        String rows = run("--generate", "--behavior", "submit").substring(report.length());
 
-        assertTrue(andEdges.length() > classes.length(),
-                "the edges are more rows than the classes alone:\n" + andEdges);
-        assertTrue(classes.lines().count() < andEdges.lines().count(), andEdges);
+        assertTrue(rows.contains("Amount(100)"),
+                "the row at the line the guard drew is one of these:\n" + rows);
     }
 
     @Test

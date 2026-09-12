@@ -64,7 +64,7 @@
         "not_satisfied",
         "undetermined"
       ],
-      "description": "Whether the rows meet what the asked measures require, which is not what `status` says. `undetermined` is a measure that was not asked for or could not be made; a build that gates on this refuses `not_satisfied` and nothing else."
+      "description": "Whether the rows satisfy the obligations the account derives, which is not what `status` says. What is owed is the model's — every obligation a derivation states is one a row is owed at, and no request narrows that — while what was measured decides whether the evidence to settle one was got at all. So `satisfied` is every obligation settled and none of them unmet, `not_satisfied` is one shown unmet, and `undetermined` is evidence that was not asked for or could not be established. A build that gates on this refuses `not_satisfied` and nothing else."
     },
     "keptOpenBy": {
       "type": "array",
@@ -836,7 +836,7 @@
             }
           },
           "disposition": {
-            "description": "What became of this obligation, which the evidence beside it is why. All three are in the count: whether a row is owed at a point is the model's answer, and nothing this compiler failed to read, compose or represent changes it. `unmet` says the absence is established, so it is a finding; whether the bar the build asked for refuses over that finding is a separate question and is answered under `findings[].disposition`. `undecided` says nobody could decide it and names the open questions under `undecidedAbout`. Every document this compiler writes carries this. Not in `required`: a document written before this field existed is still a document of this version.",
+            "description": "What became of this obligation, which the evidence beside it is why. All three are in the count: whether a row is owed at a point is the model's answer, and nothing this compiler failed to read, compose or represent changes it. `unmet` says the absence is established, so it is a finding; what a build does about that finding is a separate question and is answered under `findings[].disposition`. `undecided` says nobody could decide it and names the open questions under `undecidedAbout`. Every document this compiler writes carries this. Not in `required`: a document written before this field existed is still a document of this version.",
             "enum": [
               "met",
               "unmet",
@@ -1830,7 +1830,7 @@
             ]
           },
           "disposition": {
-            "description": "What a build does about this one. `refused` is a gap `--strict` and a warned build refuse over; `reported` is a kind neither refuses over, whatever its measurement managed; `undecided` is a kind they would refuse over, from a measurement that came to no answer — telling an author to write a row they may already have written is worse than saying nothing, so it is named and not refused.",
+            "description": "What a build does about this one. `refused` is an obligation shown unmet, which `--strict` and a warned build refuse over; `reported` is a finding about no obligation — what was seen rather than what is owed — whatever its measurement managed; `undecided` is an obligation from a measurement that came to no answer, so nothing is shown about it — telling an author to write a row they may already have written is worse than saying nothing, so it is named and not refused.",
             "enum": [
               "refused",
               "undecided",
@@ -2859,7 +2859,7 @@
             "unknown": {
               "type": "integer",
               "minimum": 0,
-              "description": "Combinations no row sits in. Not shown unreachable and not owed: nothing tried to build one, and no bar asks for a row at a combination."
+              "description": "Combinations no row sits in. Not shown unreachable and not owed: nothing tried to build one, and nothing asks for a row at a combination."
             },
             "weakening": {
               "$ref": "#/$defs/weakening"

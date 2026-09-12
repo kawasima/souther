@@ -20,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * What a build does about a finding is the bar's answer and the measurement's, together.
+ * What a build does about a finding is the account's answer and the measurement's, together.
  *
  * <p>The distinction is decided in one place and was written down in none. A report printed four
  * findings as four bullets of one shape, a build refused over three of them, and the count the
@@ -28,16 +28,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * either wrote rows for everything printed — more than the build asks — or wrote one and ran again
  * to find out.
  *
- * <p>Both surfaces read {@link Adequacy.Finding#disposition(Adequacy.AdequacyBar)}, so what is
- * marked here and what the document says are the same answer rather than two readings of the
- * finding kinds.
+ * <p>Both surfaces read {@link Adequacy.Finding#disposition()}, so what is marked here and what the
+ * document says are the same answer rather than two readings of the finding kinds.
  *
- * <p><b>And the answer moves with the bar rather than with the finding.</b> Which kinds are gaps
- * used to be a fact about the kind, and the sentence beside the pair below said so: a case no row
- * uses is a gap, a class no row is in is not. It is neither now — it is what the bar the build
- * asked for refuses over, and the same finding is reported under one bar and refused under another.
+ * <p><b>And the answer is not a caller's.</b> Which kinds are gaps was a bar the build named, and
+ * the same finding came back reported under one word and refused under another — a criterion a
+ * caller selects, which is a budget. It is the account's now: every obligation a derivation states
+ * is a row the model asks for, and what is left to the caller is how much to measure and what a
+ * build does about what it was told.
  */
-class FindingDispositionFollowsTheBarTest {
+class WhatABuildDoesAboutAFindingIsSaidOnceTest {
 
     private static final JsonMapper JSON = JsonMapper.builder().build();
 
@@ -91,13 +91,13 @@ class FindingDispositionFollowsTheBarTest {
         assertFalse(report.adequacyGaps().isEmpty(), "the model has gaps to mark:\n" + human);
     }
 
-    /** The pair the issue is about: one class, two findings, one of them refused over. */
+    /** The pair the issue is about: one class, two findings, each said in its own words. */
     @Test
-    void twoFindingsAboutOneClassAreMarkedApart() {
+    void twoFindingsAboutOneClassAreSaidApart() {
         String human = report().human(SourceRendering.namedByIdentity(SourceLayouts.NONE));
 
         assertTrue(human.contains("      ! no row uses `C`"), human);
-        assertTrue(human.contains("      · no row is in `C` at grade"), human);
+        assertTrue(human.contains("      ! no row is in `C` at grade"), human);
     }
 
     /**
@@ -183,22 +183,6 @@ class FindingDispositionFollowsTheBarTest {
         // apart.
         assertEquals(List.of("C (in #1)"), subjects(findings, "input_case_unspecified"));
         assertEquals(List.of("C (at grade)"), subjects(findings, "axis_class_uncovered"));
-        assertEquals("refused", disposition(findings, "input_case_unspecified"));
-        assertEquals("reported", disposition(findings, "axis_class_uncovered"));
-    }
-
-    /**
-     * The same document under the bar that asks for the classes, where the pair reads alike.
-     *
-     * <p>Which is what says the difference above is the bar's and not the kinds'. Nothing about the
-     * model, the measurement or either finding differs between the two runs.
-     */
-    @Test
-    void theClassesBarRefusesOverTheClassTheDefaultBarOnlyReports() {
-        JsonNode findings = JSON.readTree(
-                        report(Adequacy.AdequacyBar.CLASSES).json(SourceRendering.namedByIdentity(SourceLayouts.NONE)))
-                .get("modules").get(0).get("behaviors").get(0).get("findings");
-
         assertEquals("refused", disposition(findings, "input_case_unspecified"));
         assertEquals("refused", disposition(findings, "axis_class_uncovered"));
     }
@@ -287,24 +271,15 @@ class FindingDispositionFollowsTheBarTest {
      * not.
      */
     @Test
-    void aDispositionIsTheBarAndTheMeasurementTogether() {
+    void aDispositionIsTheAccountAndTheMeasurementTogether() {
         List<Adequacy.Finding> findings = report().findings();
 
-        // A kind every bar refuses over: the bar is not what decides this one.
-        for (Adequacy.AdequacyBar bar : Adequacy.AdequacyBar.values()) {
-            assertEquals(Adequacy.Finding.Disposition.REFUSED,
-                    of(findings, Adequacy.Kind.INPUT_CASE_UNSPECIFIED).disposition(bar), bar::name);
-        }
-        // And one only the bar that asks for it does.
-        assertEquals(Adequacy.Finding.Disposition.REPORTED,
-                of(findings, Adequacy.Kind.AXIS_CLASS_UNCOVERED)
-                        .disposition(Adequacy.AdequacyBar.SIMPLIFIED_DOMAIN));
-        assertEquals(Adequacy.Finding.Disposition.REPORTED,
-                of(findings, Adequacy.Kind.AXIS_CLASS_UNCOVERED)
-                        .disposition(Adequacy.AdequacyBar.RELIABLE_DOMAIN));
+        // Two derivations of one distinction, and one answer: what the model owes a row at is what
+        // a build refuses over, whichever derivation states it.
         assertEquals(Adequacy.Finding.Disposition.REFUSED,
-                of(findings, Adequacy.Kind.AXIS_CLASS_UNCOVERED)
-                        .disposition(Adequacy.AdequacyBar.CLASSES));
+                of(findings, Adequacy.Kind.INPUT_CASE_UNSPECIFIED).disposition());
+        assertEquals(Adequacy.Finding.Disposition.REFUSED,
+                of(findings, Adequacy.Kind.AXIS_CLASS_UNCOVERED).disposition());
         // The middle answer needs a measure that came to none, which this model does not have. It
         // is held where the unfinished rows are, beside the warning that is not printed for it
         // (`CompilePartialAdequacyTest#aGapFromAMeasureThatCameToNoAnswerIsUndecided`).
@@ -320,11 +295,9 @@ class FindingDispositionFollowsTheBarTest {
      */
     @Test
     void theGapAnswerIsTheDispositionAndNotASecondReading() {
-        for (Adequacy.AdequacyBar held : Adequacy.AdequacyBar.values()) {
-            for (Adequacy.Finding f : report().findings()) {
-                assertEquals(f.disposition(held) == Adequacy.Finding.Disposition.REFUSED,
-                        f.isAdequacyGap(held), f.kind() + " at " + f.weakenedBy());
-            }
+        for (Adequacy.Finding f : report().findings()) {
+            assertEquals(f.disposition() == Adequacy.Finding.Disposition.REFUSED,
+                    f.isAdequacyGap(), f.kind() + " at " + f.weakenedBy());
         }
     }
 
@@ -336,13 +309,8 @@ class FindingDispositionFollowsTheBarTest {
     }
 
     private static AdequacyReport report() {
-        return report(Adequacy.AdequacyBar.RELIABLE_DOMAIN);
-    }
-
-    /** The same model measured the same way, read against {@code bar}. */
-    private static AdequacyReport report(Adequacy.AdequacyBar bar) {
         Compilation compilation = Compilation.ofSource(MODEL, "Main");
-        compilation.measure(Adequacy.Asked.fullReport(bar));
+        compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
         return AdequacyReport.of(compilation);
     }

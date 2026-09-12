@@ -121,33 +121,6 @@ class EveryFindingHasAGenerationDispositionTest {
                 "one answer per finding, in the order the findings were established");
     }
 
-    /**
-     * And the same list whichever bar the run was held to.
-     *
-     * <p>The other half of the separation. The list above could be total over the findings and
-     * still be decided by the bar — a stricter one having more of them — and what says it is not is
-     * that two runs of one model under two bars answer for the same findings.
-     */
-    @Test
-    void whatIsAnsweredForDoesNotMoveWithTheBar() {
-        for (Adequacy.AdequacyBar bar : Adequacy.AdequacyBar.values()) {
-            Compilation compilation = Compilation.ofSource(POLICY, "Main");
-            compilation.measure(Adequacy.Asked.fullReport(bar));
-            compilation.answerEverything();
-
-            // Held within one compilation, because that is where the two lists are the same
-            // findings. Compared across two, a border's finding carries the region its row was
-            // composed over, which is one object per run and equal to nothing else — so the
-            // comparison would be about object identity rather than about what was answered for.
-            List<Adequacy.Finding> found = findings(compilation, "example.policy", "fee");
-            assertFalse(found.isEmpty(), "the model under test has findings to answer for");
-            assertEquals(found,
-                    filling(compilation, "example.policy", "fee").generation().stream()
-                            .map(Adequacy.GenerationDisposition::finding).toList(),
-                    bar::name);
-        }
-    }
-
     @Test
     void aBoundaryARowWasComposedForIsAnsweredWithThatRow() {
         Compilation compilation = compiled(GUARDED);
@@ -503,7 +476,7 @@ class EveryFindingHasAGenerationDispositionTest {
     void whatOneReadingCameToIsSaidAsThatReadings() {
         Compilation compilation = compiled(NARROWED);
 
-        String block = GeneratedRows.of(compilation, "example.narrowed", "held", true,
+        String block = GeneratedRows.of(compilation, "example.narrowed", "held",
                 SourceRendering.namedByIdentity(compilation.texts())).text();
 
         assertTrue(block.contains("in `held`"),
@@ -904,7 +877,7 @@ class EveryFindingHasAGenerationDispositionTest {
         // searched for, so there is no store to ask what their rows would settle.
         return GeneratedRows.of(souther.compiler.query.EveryRowOfIt.offered(
                         souther.compiler.query.Composition.composed(
-                        souther.compiler.query.OfferingRequest.overTheModule("example.kind", true),
+                        souther.compiler.query.OfferingRequest.overTheModule("example.kind"),
                         Map.of("pick", new Adequacy.Filling(stopped(why),
                                 atTheEdges(alsoAtTheEdges),
                                 Adequacy.Generated.RowsForRules.NOTHING,
@@ -984,7 +957,7 @@ class EveryFindingHasAGenerationDispositionTest {
         Compilation compilation = compiled(POLICY);
         String block = GeneratedRows.of(Adequacy.offeredFor(compilation.db(),
                         souther.compiler.query.OfferingRequest.overTheModule(
-                                "example.policy", true)),
+                                "example.policy")),
                 Map.of(), SourceRendering.namedByIdentity(compilation.texts()), compilation.db()).text();
 
         assertTrue(block.contains("`then`"),

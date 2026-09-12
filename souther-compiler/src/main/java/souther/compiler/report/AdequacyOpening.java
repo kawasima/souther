@@ -24,8 +24,8 @@ import souther.compiler.query.Weakening;
  * corpus produced a counterexample to.
  *
  * <p><b>What it is not.</b> Not everything that left the report weaker than it looks: a measure
- * this build is not held to may be as partial as it likes without a bar being any less settled by
- * it. And not a second vocabulary — each arm is projected to a word the document already has.
+ * no answer here rests on may be as partial as it likes without the verdict being any less settled
+ * by it. And not a second vocabulary — each arm is projected to a word the document already has.
  */
 public sealed interface AdequacyOpening {
 

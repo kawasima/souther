@@ -161,7 +161,7 @@ class ANameGoesBackOnTheWayItCameOffTest {
                 .ask(new Adequacy.Coverage("demo")).value().get("run");
 
         assertEquals(List.of("Approved", "Rejected"), evidence.axes().get(0).classes());
-        String rows = GeneratedRows.of(compilation, "demo", "run", true,
+        String rows = GeneratedRows.of(compilation, "demo", "run",
                 SourceRendering.namedByIdentity(compilation.texts())).text();
         assertTrue(rows.contains("DecisionN(Approved { id = 0 })"), rows);
         assertTrue(rows.contains("DecisionN(Rejected)"), rows);

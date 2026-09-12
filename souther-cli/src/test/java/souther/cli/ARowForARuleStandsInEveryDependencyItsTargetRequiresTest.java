@@ -187,7 +187,7 @@ class ARowForARuleStandsInEveryDependencyItsTargetRequiresTest {
         Compilation compilation = Compilation.ofSource(model, "Main");
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
-        return GeneratedRows.of(compilation, compilation.modules().get(0), "decides", true,
+        return GeneratedRows.of(compilation, compilation.modules().get(0), "decides",
                 SourceRendering.namedByIdentity(SourceLayouts.NONE)).text();
     }
 }

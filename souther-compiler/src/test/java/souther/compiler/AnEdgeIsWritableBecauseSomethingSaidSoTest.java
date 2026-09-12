@@ -149,7 +149,7 @@ at.coverage().made().orElseThrow());
         compilation.answerEverything();
 
         String block = souther.compiler.report.GeneratedRows.of(
-                compilation, "example.proven", "place", true, SourceRendering.namedByIdentity(compilation.texts())).text();
+                compilation, "example.proven", "place", SourceRendering.namedByIdentity(compilation.texts())).text();
 
         // In the behavior, because that is what this says. Every value tried at the point was
         // refused where a `Yen` is constructed, which is a fact about that reading and not about
@@ -461,7 +461,7 @@ at.coverage().made().orElseThrow());
             compilation.measure(Adequacy.Asked.fullReport());
             compilation.answerEverything();
             String block = souther.compiler.report.GeneratedRows.of(
-                    compilation, "example.temporal", each[0], true,
+                    compilation, "example.temporal", each[0],
                     SourceRendering.namedByIdentity(compilation.texts())).text();
 
             assertTrue(block.contains(each[1]),

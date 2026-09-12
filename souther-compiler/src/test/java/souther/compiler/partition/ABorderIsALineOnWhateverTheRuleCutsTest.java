@@ -765,7 +765,7 @@ class ABorderIsALineOnWhateverTheRuleCutsTest {
         Compilation compilation = Compilation.ofSource(model, "Main");
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
-        return GeneratedRows.of(compilation, null, null, true, SourceRendering.namedByIdentity(compilation.texts())).text();
+        return GeneratedRows.of(compilation, null, null, SourceRendering.namedByIdentity(compilation.texts())).text();
     }
 
     /**

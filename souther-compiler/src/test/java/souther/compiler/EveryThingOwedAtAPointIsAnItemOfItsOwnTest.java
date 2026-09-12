@@ -171,7 +171,7 @@ class EveryThingOwedAtAPointIsAnItemOfItsOwnTest {
         Map<String, Adequacy.Filling> generated =
                 Adequacy.generatedOf(compilation.db(), "example.stops");
         assertNotNull(generated, "the model under test compiles: " + compilation.errors());
-        return Composition.composed(OfferingRequest.overTheModule("example.stops", true), generated,
+        return Composition.composed(OfferingRequest.overTheModule("example.stops"), generated,
                 Adequacy.accountFor(compilation.db(), "example.stops",
                         new GenerationScope.Module()));
     }

@@ -122,7 +122,7 @@ class APositionUnderANameIsReachedThroughItTest {
     /** Write: what the row for the class nothing covers is, which is the value under the name. */
     @Test
     void aRowOfferedForThePositionIsWrittenUnderTheName() {
-        String rows = GeneratedRows.of(measured(FLAGS), "demo", "wrapped", true,
+        String rows = GeneratedRows.of(measured(FLAGS), "demo", "wrapped",
                 SourceRendering.namedByIdentity(SourceLayouts.NONE)).text();
 
         assertTrue(rows.contains("(SlotN(Slot { flag = false }))"), rows);
@@ -145,7 +145,7 @@ class APositionUnderANameIsReachedThroughItTest {
                 "the same record is bounded the same way under a name");
         assertTrue(lines(compilation, "wrapped").size() >= 4);
 
-        String rows = GeneratedRows.of(compilation, "demo", "wrapped", true,
+        String rows = GeneratedRows.of(compilation, "demo", "wrapped",
                 SourceRendering.namedByIdentity(compilation.texts())).text();
         assertTrue(rows.contains("(PairN(Pair { low = N(9), high = N(10) }))"), rows);
     }

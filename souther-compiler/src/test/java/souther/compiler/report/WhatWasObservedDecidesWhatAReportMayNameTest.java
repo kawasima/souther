@@ -114,8 +114,7 @@ class WhatWasObservedDecidesWhatAReportMayNameTest {
     @Test
     void andNothingSaysARowWasNotRead() {
         StringBuilder out = new StringBuilder();
-        new AdequacyReport(AdequacyReport.SCHEMA_VERSION, "x",
-                souther.compiler.query.Adequacy.AdequacyBar.RELIABLE_DOMAIN, WeakeningSet.none(),
+        new AdequacyReport(AdequacyReport.SCHEMA_VERSION, "x", WeakeningSet.none(),
                 List.of()).branch(out, reported(), null, SourceRendering.namedByIdentity(SourceLayouts.NONE));
 
         // Two arms and not four. What the count holds is what a row can be owed for, and a fork

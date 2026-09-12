@@ -107,7 +107,7 @@ class AWrappedRecordTakesItsFieldsFromWhatItWrapsTest {
         Compilation compilation = Compilation.ofSource(source, "Main");
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
-        return GeneratedRows.of(compilation, "demo", "run", true,
+        return GeneratedRows.of(compilation, "demo", "run",
                 SourceRendering.namedByIdentity(compilation.texts())).text();
     }
 

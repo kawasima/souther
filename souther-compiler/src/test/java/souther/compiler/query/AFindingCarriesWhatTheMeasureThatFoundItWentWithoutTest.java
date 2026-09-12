@@ -158,28 +158,26 @@ class AFindingCarriesWhatTheMeasureThatFoundItWentWithoutTest {
         Adequacy.Findings.signatureFindings("sort", signature, found);
         assertFalse(found.isEmpty(), "the producer says something about these cases");
 
-        Adequacy.AdequacyBar held = Adequacy.AdequacyBar.SIMPLIFIED_DOMAIN;
         assertEquals(Adequacy.Finding.Disposition.REFUSED,
-                disposition(found, held, About.ACaseNoRowExpects.class, dropped),
+                disposition(found, About.ACaseNoRowExpects.class, dropped),
                 () -> "a gap the output's own measure established, read through the signature's: "
                         + found);
         assertEquals(Adequacy.Finding.Disposition.REFUSED,
-                inputGap(found, held, 1, large),
+                inputGap(found, 1, large),
                 () -> "one position's unreadable row deciding another position's gap: " + found);
         assertEquals(Adequacy.Finding.Disposition.UNDECIDED,
-                inputGap(found, held, 0, large),
+                inputGap(found, 0, large),
                 () -> "a gap from a measure that went without something: " + found);
     }
 
     /** What a build does about the one finding of {@code kind} about {@code missing}. */
     private static Adequacy.Finding.Disposition disposition(
-            List<Adequacy.Finding> found, Adequacy.AdequacyBar held, Class<?> kind,
-            TypeSymbol missing) {
+            List<Adequacy.Finding> found, Class<?> kind, TypeSymbol missing) {
         for (Adequacy.Finding each : found) {
             if (kind.isInstance(each.about())
                     && each.about() instanceof About.ACaseNoRowExpects(var what)
                     && what.equals(missing)) {
-                return each.disposition(held);
+                return each.disposition();
             }
         }
         throw new AssertionError("no finding of " + kind.getSimpleName() + " about " + missing
@@ -188,12 +186,11 @@ class AFindingCarriesWhatTheMeasureThatFoundItWentWithoutTest {
 
     /** And of the one about the case {@code missing} at input {@code at}. */
     private static Adequacy.Finding.Disposition inputGap(
-            List<Adequacy.Finding> found, Adequacy.AdequacyBar held, int at,
-            TypeSymbol missing) {
+            List<Adequacy.Finding> found, int at, TypeSymbol missing) {
         for (Adequacy.Finding each : found) {
             if (each.about() instanceof About.ACaseNoRowAppliesItTo(var input, var what, var _)
                     && input.at() == at && what.equals(missing)) {
-                return each.disposition(held);
+                return each.disposition();
             }
         }
         throw new AssertionError("no finding about " + missing + " at input " + at

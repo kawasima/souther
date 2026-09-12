@@ -48,7 +48,7 @@ class EveryRowOfferedStandsInWhatItsTargetRequiresTest {
             Compilation compilation = corpus.analyse().compilation();
             for (String module : compilation.modules()) {
                 Offering offering = Adequacy.offeredFor(compilation.db(),
-                        new OfferingRequest(module, new GenerationScope.Module(), true));
+                        new OfferingRequest(module, new GenerationScope.Module()));
                 if (offering == null) {
                     continue;
                 }

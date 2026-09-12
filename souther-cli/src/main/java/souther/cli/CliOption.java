@@ -17,8 +17,8 @@ import java.util.Set;
  * {@code api Option --nope} ran as though nothing had been written. It also cannot answer the other
  * question at all. An option arrives as a local variable, and a local carries its value and not the
  * fact that somebody wrote it, so an option whose reader sits behind a condition that did not hold
- * is indistinguishable from one nobody asked for. {@code --boundaries} without {@code --generate}
- * was accepted, never read, and answered with the report it would have printed anyway.
+ * is indistinguishable from one nobody asked for. {@code --limit} without {@code --search} is that
+ * shape: accepted, never read, and answered with the listing it would have printed anyway.
  *
  * <p>So what a line wrote is kept as what it wrote — the set of options present, before any of them
  * is turned into a value — and the constraints are read off this table once, above the dispatch,
@@ -30,8 +30,8 @@ import java.util.Set;
 enum CliOption {
 
     DIRECTORY("compile/init", "<path>", "where what this command writes goes", "-d", "--dir"),
-    ADEQUACY("compile/examples", "off|witness|all|reliable-domain|classes",
-            "how much to measure and which bar to warn against (default off)", "--adequacy"),
+    ADEQUACY("compile", "off|witness|all",
+            "how much of the model to measure and warn about (default off)", "--adequacy"),
     WARNINGS("compile", "report|error", "refuse a compile that warns (default report)",
             "--warnings"),
     BEHAVIOR("run/examples", "<name>", "report only this behavior", "--behavior"),
@@ -45,8 +45,6 @@ enum CliOption {
             "how much of a model to start with (default full when creating, none when adding)",
             "--model"),
     GENERATE("examples", null, "print commented rows for what nothing covers", "--generate"),
-    BOUNDARIES("examples", null, "with --generate, add rows at the untried boundaries",
-            "--boundaries"),
     STRICT("examples", null, "exit non-zero on a gap the report names", "--strict"),
     SEARCH("doc/api", "<term>", "sections and topics that say the term, best answer first",
             "--search"),
@@ -156,12 +154,11 @@ enum CliOption {
     /**
      * What each option needs written beside it.
      *
-     * <p>The usage text has said this all along — {@code [--generate [--boundaries]]}, {@code doc
-     * --search <term> [--limit <n>]} — as a nesting of brackets, which is a statement no program
-     * reads. Here it is the same statement in the form the check is made from.
+     * <p>The usage text has said this all along — {@code doc --search <term> [--limit <n>]} — as a
+     * nesting of brackets, which is a statement no program reads. Here it is the same statement in
+     * the form the check is made from.
      */
     private static final Map<CliOption, CliOption> NEEDS = new EnumMap<>(Map.of(
-            BOUNDARIES, GENERATE,
             LIMIT, SEARCH));
 
     /**

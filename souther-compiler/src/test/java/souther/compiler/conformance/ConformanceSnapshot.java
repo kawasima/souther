@@ -57,22 +57,17 @@ final class ConformanceSnapshot {
      * it was while composing a different value shows in neither the report nor a fixture written for
      * one rule.
      *
-     * <p>Both readings of the command, because the flag is what tells them apart. {@code --generate}
-     * alone offers the rows for what a combination of classes leaves uncovered; {@code --boundaries}
-     * adds the rows at the edges a rule draws, and those are the ones composed by putting a value
-     * through this module's own decoders. Written down apart, a change that moved one into the other
-     * would leave a document that still added up.
+     * <p>What the command offers, which is the whole account: the rows for what a combination of
+     * classes leaves uncovered and the rows at the edges a rule draws, the latter composed by
+     * putting a value through this module's own decoders.
      */
     static String generated(ConformanceCorpus.Analysed analysed) {
         SourceRendering rendering = new SourceRendering(analysed.corpus().names(),
                 analysed.compilation().texts());
         // Every module and every behavior, which is what the command does when it is told no
-        // narrower. Asked twice over the one compilation: the rows are read off answers it already
-        // holds, so the second reading costs what reading costs rather than what composing does.
+        // narrower.
         return "// --generate" + System.lineSeparator()
-                + GeneratedRows.of(analysed.compilation(), null, null, false, rendering).text()
-                + "// --generate --boundaries" + System.lineSeparator()
-                + GeneratedRows.of(analysed.compilation(), null, null, true, rendering).text();
+                + GeneratedRows.of(analysed.compilation(), null, null, rendering).text();
     }
 
     /**

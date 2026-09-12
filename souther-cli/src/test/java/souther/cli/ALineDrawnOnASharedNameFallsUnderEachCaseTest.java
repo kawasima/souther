@@ -75,8 +75,8 @@ class ALineDrawnOnASharedNameFallsUnderEachCaseTest {
     void theRowsOfferedAreUnderTheCases() throws Exception {
         String generated = report(guarded("Q"), "--generate");
 
-        assertTrue(generated.contains("A { limit = 10"), () -> generated);
-        assertTrue(generated.contains("B { limit = 10"), () -> generated);
+        assertTrue(generated.contains("A { limit ="), () -> generated);
+        assertTrue(generated.contains("B { limit ="), () -> generated);
         assertFalse(generated.contains("q.limit ="),
                 () -> "and none of them is offered at a name no row is written at:\n" + generated);
     }
