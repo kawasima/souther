@@ -367,20 +367,27 @@ public final class ClauseHelpers {
     }
 
     /**
-     * Where the part numbered {@code ordinal} of {@code clause} is written, and nothing where the
-     * clause has no such part.
+     * Where each part of {@code clause} is written, in the order the clause numbers them.
      *
-     * <p>Over the same split every part is numbered by, which is what makes this an answer about
-     * the part a reader is holding rather than about whichever conjunct a second count landed on.
-     * A reader asking here has a {@link PartId} and no tree, and the tree it would have to be given
+     * <p>Over the same split every part is numbered by, which is what makes these answers about the
+     * parts a reader is holding rather than about whichever conjuncts a second count landed on. A
+     * reader asking here has a {@link PartId} and no tree, and the tree it would have to be given
      * is the one before anything was expanded into it — so the split is done here, where that tree
      * is what the declaration holds.
      *
+     * <p>All of them and not the one that was asked for. Splitting a clause reads the whole of it
+     * however few of the parts a caller wants, so a question per part splits the clause once per
+     * part and throws the rest away. What tells the parts of one clause apart is the one split, so
+     * answering them together is the same answer and one reading of it.
+     *
      * @param clause the clause as its author wrote it, before any expansion
      */
-    public static SourcePos placeOfPart(Hir.Expr clause, int ordinal) {
-        List<AuthoredPart> parts = conjunctsOf(clause);
-        return ordinal < parts.size() ? beginsAt(parts.get(ordinal).written()) : null;
+    public static List<SourcePos> placesOfParts(Hir.Expr clause) {
+        List<SourcePos> out = new ArrayList<>();
+        for (AuthoredPart each : conjunctsOf(clause)) {
+            out.add(beginsAt(each.written()));
+        }
+        return List.copyOf(out);
     }
 
     /** {@code shape} with each of the parts its author wrote replaced by what {@code onPart} makes

@@ -19,6 +19,7 @@ import souther.compiler.sites.WrittenForks;
 import souther.compiler.types.SourceConstructOrigin;
 import souther.compiler.types.TypeSymbol;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -449,11 +450,12 @@ public final class Sites {
      * @throws NothingPlacesIt where the clause writes no such part
      */
     public static Citation placeOf(Db db, PartId<RuleRef.Invariant> part) {
-        Answer<Citation> at = db.ask(new Shapes.PartLocation(part));
-        if (!at.present()) {
+        Answer<List<Citation>> written =
+                db.ask(new Shapes.PartLocations(part.rule().clause().id()));
+        if (!written.present() || part.ordinal() >= written.value().size()) {
             throw new NothingPlacesIt("a part of a rule reported at " + part);
         }
-        return at.value();
+        return written.value().get(part.ordinal());
     }
 
     /**
