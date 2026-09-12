@@ -1962,14 +1962,14 @@ public final class Adequacy {
                 return Answer.absent();
             }
             souther.compiler.inputs.SearchRegion declared = subject.quantities().region();
-            // What the walk proved about each place a run is recorded at, which is what the arms
-            // are counted by. Asked here so that a way through an arm nothing reaches is the
-            // model's answer rather than a search that had every candidate refused.
-            Map<String, souther.compiler.check.PathReachability.Answers> arrivals =
-                    db.ask(new PathReached(name)).value();
-            souther.compiler.check.PathReachability.Answers reachable =
-                    arrivalsOf(arrivals, spec);
-            CoverageSites.Plan plan = checked.value().plan();
+            // The arms the branch count leaves out, which is what says a way is one the model
+            // refuses rather than one a search came up short on. Asked of the same subtraction the
+            // count is made by, so the two cannot disagree about an arm.
+            Map<String, souther.compiler.check.PathReachability.Answers.AsRun> arrivals =
+                    db.ask(new Arrived(name)).value();
+            Set<CoverageSites.Obligation> unreachedArms = arrivals == null ? Set.of()
+                    : BranchEvidence.unreached(checked.value().plan().arms(behavior),
+                            arrivals.getOrDefault(behavior, NOTHING_PROVEN));
             // Asked once, because what it answers is one list and asking it per rule would walk the
             // rules once for every rule.
             Set<DecisionRule> toSettle = new LinkedHashSet<>(evidence.notTakenByRows());
@@ -1979,8 +1979,7 @@ public final class Adequacy {
                 if (!toSettle.contains(ruled.rule())) {
                     continue;
                 }
-                out.put(ruled.rule(), whatSettles(ruled, probe, taken, declared,
-                        DecisionRuleReading.of(ruled, plan, behavior), reachable));
+                out.put(ruled.rule(), whatSettles(ruled, probe, taken, declared, unreachedArms));
             }
             return Answer.of(Ordered.map(out));
         }
@@ -2003,9 +2002,8 @@ public final class Adequacy {
                 souther.compiler.partition.DecisionReading.Ruled ruled, Coverages.Probe probe,
                 souther.compiler.partition.RulesTaken taken,
                 souther.compiler.inputs.SearchRegion declared,
-                List<DecisionRuleReading> read,
-                souther.compiler.check.PathReachability.Answers reachable) {
-            CoverageSites.ArmSite unreached = armNothingReaches(read, reachable);
+                Set<CoverageSites.Obligation> unreachedArms) {
+            CoverageSites.Obligation unreached = armNothingReaches(ruled, unreachedArms);
             if (unreached != null) {
                 return new RuleRequirement.Excluded.AnArmNothingReaches(unreached);
             }
@@ -2018,20 +2016,29 @@ public final class Adequacy {
         }
 
         /**
-         * The first arm of the way the readings show nothing arrives at, or null where none is.
+         * The arm of this way nothing arrives at, or null where none of them is one.
          *
-         * <p>The first and not all of them. What this answers is whether the way is one the model
-         * leaves open, and one arm nothing reaches settles that — a list of them would be a second
-         * account of what the arms come to, kept beside the one the branch measure reads.
+         * <p>Asked of the arms the branch count left out, which is the one answer to it. An arm the
+         * author wrote stands at a place per call site of whatever carries it, and what a rule's
+         * way names is the arm — so a reading that took one place for the arm would settle the way
+         * by whichever copy it met first, and a model whose helper is reachable from one call site
+         * and not from another would be answered by the order the copies were written in.
+         *
+         * <p>Matched on what the author wrote, which is what both sides key an arm by: the
+         * construct and which of its arms this is.
          */
-        private static CoverageSites.ArmSite armNothingReaches(
-                List<DecisionRuleReading> read,
-                souther.compiler.check.PathReachability.Answers reachable) {
-            for (DecisionRuleReading each : read) {
-                if (each instanceof DecisionRuleReading.AForkTookAnArm(var arm)
-                        && reachable.at(arm.place())
-                                instanceof souther.compiler.reach.Reachability.Unreachable) {
-                    return arm;
+        private static CoverageSites.Obligation armNothingReaches(
+                souther.compiler.partition.DecisionReading.Ruled ruled,
+                Set<CoverageSites.Obligation> unreached) {
+            for (souther.compiler.partition.ShownBy each : ruled.shownBy()) {
+                if (!(each instanceof souther.compiler.partition.ShownBy.AtAnArm(
+                        var fork, var part))) {
+                    continue;
+                }
+                for (CoverageSites.Obligation arm : unreached) {
+                    if (arm.part() == part && arm.origin().equals(fork.origin())) {
+                        return arm;
+                    }
                 }
             }
             return null;
@@ -3074,6 +3081,33 @@ public final class Adequacy {
                     .filter(site -> !(reachable.answers().at(site.place())
                             instanceof Reachability.Unreachable))
                     .toList();
+        }
+
+        /**
+         * The arms the author wrote that nothing arrives at, which is what leaves the count.
+         *
+         * <p>The arm and not the place. An arm is one obligation however often a helper carrying it
+         * is called, and the copies stand at places of their own — a value refused at one call site
+         * is nothing about the arm while another call site reaches it. So an arm is one nothing
+         * arrives at exactly where no copy of it survives {@link #owed}, which is the same
+         * subtraction the count is made by rather than a second reading of the same places.
+         *
+         * <p>Read as the difference and not by asking each arm for all of its copies: what the
+         * count leaves out is what is out, and a second walk deciding it again is free to leave out
+         * something the count kept.
+         */
+        public static Set<CoverageSites.Obligation> unreached(
+                List<CoverageSites.ArmSite> all,
+                souther.compiler.check.PathReachability.Answers.AsRun reachable) {
+            Set<CoverageSites.Obligation> stands = new java.util.LinkedHashSet<>();
+            owed(all, reachable).forEach(site -> stands.add(site.obligation()));
+            Set<CoverageSites.Obligation> out = new java.util.LinkedHashSet<>();
+            for (CoverageSites.ArmSite site : all) {
+                if (!stands.contains(site.obligation())) {
+                    out.add(site.obligation());
+                }
+            }
+            return java.util.Collections.unmodifiableSet(out);
         }
 
         /**

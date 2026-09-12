@@ -81,12 +81,20 @@ class ARuleNothingCouldComposeARowForIsSaidAndNotDroppedTest {
 
     @Test
     void everyRuleTheCountHoldsHasALineUnderIt() {
-        List<String> decision = decisionSection(human(TWO_CALLS));
+        // Over the shapes a rule can be in and not over one model. What the headline says is how
+        // many ways the body has and how many some row took; each of the rest is in one of three
+        // states, and a state with no line is a way a reader is told about only by the arithmetic.
+        for (String model : List.of(TWO_CALLS, REFUSED, bothWays("On"), bothWays("Off"))) {
+            List<String> decision = decisionSection(human(model));
+            String headline = decision.get(0);
+            int rules = Integer.parseInt(headline.replaceAll(".*rules +(\\d+).*", "$1"));
+            int taken = Integer.parseInt(headline.replaceAll(".*taken +(\\d+).*", "$1"));
 
-        assertEquals(4, decision.stream()
-                        .filter(line -> line.contains("decision rule")).count(),
-                () -> "the body states four rules and no row takes one, so the page has a line"
-                        + " apiece: " + decision);
+            assertEquals(rules - taken, decision.stream()
+                            .filter(line -> line.contains("decision rule")).count(),
+                    () -> "every way the count holds that no row took is named under it: "
+                            + decision);
+        }
     }
 
     @Test
@@ -156,6 +164,83 @@ class ARuleNothingCouldComposeARowForIsSaidAndNotDroppedTest {
                         + " mouth: " + said);
         assertFalse(said.contains("unsettled"),
                 () -> "which is the model answering rather than a search coming up short: " + said);
+    }
+
+    /**
+     * The same fork, carried by a helper two call sites reach it differently at.
+     *
+     * <p>{@code look} is applied to a position whose rules refuse {@code Off} and to one that does
+     * not, so the arm for {@code Off} stands at two places and nothing arrives at one of them. The
+     * arm is one the author wrote once, and a row through the second call site goes through it.
+     *
+     * @param first which of the two is written first, which nothing about the model turns on
+     */
+    private static String bothWays(String first) {
+        String open = "        | On  -> look(open.value)\n";
+        String shut = "        | Off -> look(shut)\n";
+        return """
+                module example.copies
+
+                data On
+                data Off
+                data Flag = On | Off
+                data Open = Flag invariant value /= Off
+                data Answer = Int
+
+                behavior pick : (open: Open, shut: Flag) -> Answer
+                    constructs Answer
+
+                let look (f: Flag): Answer = match f with
+                    | On  -> Answer(1)
+                    | Off -> Answer(9)
+
+                let pick (open, shut) = match shut with
+                """
+                + ("On".equals(first) ? open + shut : shut + open)
+                + """
+
+                example pick
+                  | "on" : (Open(On), On) -> Answer(1)
+                """;
+    }
+
+    @Test
+    void anArmOneCallSiteCannotReachIsNotAnArmNothingReaches() {
+        for (String first : List.of("On", "Off")) {
+            JsonNode rules = JSON.readTree(json(bothWays(first)))
+                    .get("modules").get(0).get("behaviors").get(0)
+                    .get("decision").get("obligations");
+
+            List<String> said = new ArrayList<>();
+            rules.forEach(rule -> said.add(rule.get("requirement") == null ? "nothing said"
+                    : rule.get("requirement").stringValue()));
+            assertFalse(said.contains("excluded"),
+                    () -> "a row through the other call site goes through the arm, so nothing"
+                            + " shows the ways down it out of reach (" + first + " first): "
+                            + said);
+        }
+    }
+
+    @Test
+    void andTheAnswerIsTheSameWhicheverCallSiteIsWrittenFirst() {
+        // As a tally and not in the document's order. Writing the two arms the other way round is
+        // the same set of ways in another order, so the entries move with the source and what is
+        // being held here is that no answer changes with which copy of the arm a walk meets first.
+        assertEquals(requirementsOf(bothWays("On")).stream().sorted().toList(),
+                requirementsOf(bothWays("Off")).stream().sorted().toList(),
+                "which copy of an arm a walk meets first is not something the account is a"
+                        + " function of");
+    }
+
+    /** What the document says a row is owed at, rule by rule. */
+    private static List<String> requirementsOf(String model) {
+        JsonNode rules = JSON.readTree(json(model))
+                .get("modules").get(0).get("behaviors").get(0)
+                .get("decision").get("obligations");
+        List<String> said = new ArrayList<>();
+        rules.forEach(rule -> said.add(rule.get("requirement") == null ? "nothing said"
+                : rule.get("requirement").stringValue()));
+        return said;
     }
 
     /** The lines of the one implemented behavior's decision measure. */

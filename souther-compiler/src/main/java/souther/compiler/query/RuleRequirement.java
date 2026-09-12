@@ -72,11 +72,16 @@ public sealed interface RuleRequirement {
          * arm, have every candidate refused, and report the model's own answer as this compiler
          * having looked and not found.
          *
+         * <p>The arm the author wrote and not a place a run through it is recorded at. A helper
+         * carrying a fork stands once per call site, and an arm one call site cannot reach is one
+         * another may — so what shows the way out of reach is the arm being out of the count, which
+         * is settled over every copy of it at once.
+         *
          * <p>Arms and not every construct on the way. What a comparison's outcome was proven to be
          * is the other half of the same reading and the sites have no place for it to be asked at,
          * so a rule turning on one is settled the way it was before.
          */
-        record AnArmNothingReaches(CoverageSites.ArmSite arm) implements Excluded {
+        record AnArmNothingReaches(CoverageSites.Obligation arm) implements Excluded {
 
             public AnArmNothingReaches {
                 if (arm == null) {

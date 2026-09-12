@@ -829,11 +829,10 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
         CoverageSites.Plan plan = placesOf(compilation, module);
         Map<DecisionReading.Ruled, List<ShownCondition>> out = new LinkedHashMap<>();
         for (DecisionReading.Ruled rule : decision.read().found()) {
-            // The rules a page has a line for, which is what a description is for. A rule the
-            // model's own rules leave nothing at is said by neither line, and one no search was
-            // asked about is one this behavior's page has nothing to say of.
-            if (requirements.get(rule.rule()) instanceof RuleRequirement.Excluded
-                    || !requirements.containsKey(rule.rule())) {
+            // Every rule the search was asked about, whichever way it answered. A rule some row
+            // took is described by the count and needs no line; each of the rest gets one, and a
+            // rule described by nothing is a way the count holds that a reader cannot place.
+            if (!requirements.containsKey(rule.rule())) {
                 continue;
             }
             List<ShownCondition> shown = new ArrayList<>();
@@ -2495,20 +2494,53 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                 out.append(String.format("          · %s%n", said(read, declaredIn, rendering)));
             }
         }
-        // And the rules the search settled nothing about, which are owed no row and are not gaps.
-        // Under the same count and after the findings: a reader walks from the count to the work
-        // under it, and a rule with no line at all is a difference with nothing to act on.
+        // And the rules no row took that no finding is about, which are the two ways a rule is owed
+        // no row. Under the same count and after the findings: a reader walks from the count to the
+        // work under it, and a way the count holds with no line at all is a difference with nothing
+        // to act on.
         for (DecisionReading.Ruled ruled : decision.read().found()) {
-            if (!(behavior.ruleRequirements().get(ruled.rule())
-                    instanceof RuleRequirement.Unsettled unsettled)) {
+            String opening = switch (behavior.ruleRequirements().get(ruled.rule())) {
+                case RuleRequirement.Unsettled unsettled ->
+                        "      ? nothing could show a row can be written at a decision rule — "
+                                + why(unsettled);
+                // The model's own answer, marked the way this report marks what the rules refuse
+                // rather than as a question. Nothing about it is open and nobody is asked for
+                // anything; what a reader needs is which of the ways it is and that it is not work.
+                case RuleRequirement.Excluded excluded ->
+                        "      · no row is owed at a decision rule — " + why(excluded);
+                // A rule some row took, or one a finding above is about. Either is said already,
+                // and a second line would be one way of the body counted twice.
+                case null -> null;
+                case RuleRequirement.Required _ -> null;
+            };
+            if (opening == null) {
                 continue;
             }
-            out.append(String.format("      ? nothing could show a row can be written at a"
-                    + " decision rule — %s%n", why(unsettled)));
+            out.append(opening).append('\n');
             for (ShownCondition read : behavior.readingsOf(ruled)) {
                 out.append(String.format("          · %s%n", said(read, declaredIn, rendering)));
             }
         }
+    }
+
+    /**
+     * What shows a rule of a decision is one no row anybody writes takes.
+     *
+     * <p>The model's own answer in both arms, and which reading established it. Folded to one word,
+     * a reader is told a way is out of reach and left to work out whether anything of theirs could
+     * change that.
+     */
+    private static String why(RuleRequirement.Excluded excluded) {
+        return switch (excluded) {
+            case RuleRequirement.Excluded.OnePositionCannotBeBoth _ ->
+                    "its way would need one position to be two things at once, which no value is";
+            // Named by what the arms are counted by, which is the arm the author wrote and not the
+            // places its copies stand at. Where a reader is sent for it is the arms' own line, and
+            // this says why the way is not work rather than where to look.
+            case RuleRequirement.Excluded.AnArmNothingReaches _ ->
+                    "its way goes through an arm the rules leave nothing for, which is an arm the"
+                            + " branch count is made without";
+        };
     }
 
     /**

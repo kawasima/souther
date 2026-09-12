@@ -20,6 +20,7 @@ import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
@@ -119,8 +120,38 @@ class AnArmNothingReachesIsNotOwedARowTest {
                 () -> "the `Off` arm is one no value reaches:\n" + report);
         assertTrue(report.contains("no row goes through `case Pending`"),
                 () -> "and the arm that is owed a row is still named:\n" + report);
-        assertFalse(report.contains("case Off"),
+        // Asked of what the lines say and not of whether the arm is spelled anywhere. The account
+        // names it where it says no row is owed through it, which is the opposite of asking for
+        // one; held as the arm going unmentioned, this would refuse the report for explaining
+        // itself.
+        assertEquals(List.of(), asksForARowAt(report, "case Off"),
                 () -> "nothing asks for a row through the arm nothing reaches:\n" + report);
+    }
+
+    /**
+     * The lines saying a row is missing somewhere that names {@code arm}.
+     *
+     * <p>The line and whatever it stands over. A block's entry says what is missing and the lines
+     * under it say which construct, so a check reading either alone answers about half of what the
+     * page says — an entry asking for a row at a rule names the rule under itself.
+     */
+    private static List<String> asksForARowAt(String report, String arm) {
+        List<String> asking = new ArrayList<>();
+        String entry = "";
+        for (String line : report.split("\n")) {
+            if (!line.startsWith("          ")) {
+                entry = line;
+            }
+            if (!line.contains(arm) && !entry.contains(arm)) {
+                continue;
+            }
+            if (entry.contains("no row goes through") || entry.contains("no row takes")
+                    || entry.contains("undecided whether a row")
+                    || entry.contains("nothing could show a row")) {
+                asking.add(entry);
+            }
+        }
+        return asking.stream().distinct().toList();
     }
 
     /** The control: the same arms with nothing refusing the case. Without this the assertion above

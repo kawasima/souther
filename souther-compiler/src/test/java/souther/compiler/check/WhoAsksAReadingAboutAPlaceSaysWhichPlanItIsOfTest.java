@@ -37,6 +37,15 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * together with nothing holding them to each other. This is the population, taken off the compiled
  * classes, and a new reader arriving in it is one to look at rather than one this can decide about.
  *
+ * <p><b>A licence answers a second question beside that one.</b> An answer here is about a place,
+ * and a construct the author wrote stands at a place per call site of whatever carries it — so a
+ * reader turning one of these answers into a fact about the construct is reading one copy for all
+ * of them, and which copy it met is the order the walk went in. What may be said of the construct
+ * is what holds of every copy, and where the count of those constructs is already made that way
+ * ({@link souther.compiler.query.Adequacy.BranchEvidence#unreached}) the answer is there rather than
+ * in a second walk. A licence that does not say which of the two a reader is doing is a licence for
+ * the wrong one.
+ *
  * <p>{@code asRunWith} is not here. What it is handed is a set of probes rather than a place, and it
  * holds them to this reading's numbering itself — one pass over what it was given, which is a set it
  * already walks.
@@ -77,12 +86,7 @@ class WhoAsksAReadingAboutAPlaceSaysWhichPlanItIsOfTest {
                     "the arms and the reading both come out of the store under one module name,"
                             + " inside the one method that asks for either. Nothing hands this pair"
                             + " over, so there is no pair for a caller to get wrong and nothing"
-                            + " here for a check to be asked about"),
-            new Licence("souther.compiler.query.Adequacy.DecisionSearch.armNothingReaches -> at", 1,
-                    "a private step of the search over one module's rules, whose way in asks the"
-                            + " store for the plan and the reading under that module's own name and"
-                            + " hands the pair no further. The arms it looks up are read off that"
-                            + " same plan, so the place and the reading are of one walk"));
+                            + " here for a check to be asked about"));
 
     @Test
     void everyReaderThatAsksAReadingAboutAPlaceIsWrittenDownWithWhatMakesItSafe() {
