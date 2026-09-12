@@ -55,10 +55,17 @@ public record RowKey(String behavior, List<String> written, List<String> stoodIn
      * <p>The dependency under the module that declares it, because two modules may declare
      * behaviors of one name and a key that left the module off would join two rows standing two
      * dependencies in.
+     *
+     * <p>A row leaning on the module's table writes no value at it, which is what the name standing
+     * alone says. Spelt as though it wrote one, two rows a person pastes different text for would
+     * come out as one piece of work.
      */
     private static String spelled(StoodInAnswer stood) {
-        return stood.dependency().module() + "." + stood.dependency().name()
-                + " = " + stood.value().text();
+        String named = stood.dependency().module() + "." + stood.dependency().name();
+        return switch (stood) {
+            case StoodInAnswer.OnTheRow(var _, var value) -> named + " = " + value.text();
+            case StoodInAnswer.InTheModule _ -> named;
+        };
     }
 
     /** The values as one line, which is how a row reads where it is written. */

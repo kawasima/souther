@@ -171,6 +171,42 @@ public final class ExampleStatements {
         return said;
     }
 
+    /**
+     * The {@code _} row this table falls through to, or null where it has none.
+     *
+     * <p>The last one written. A {@code _} with another after it is a row the dispatch never
+     * returns, so which one answers is the last and not the first.
+     *
+     * <p>Read off what the rows state and nothing else, so it is the same question whether or not
+     * there is anything to build the answers with. That is what lets a reader with no values in
+     * hand ask whether this table can fail to answer ({@link #answersEveryCall}) — the rule that
+     * decides it is this one, asked once.
+     */
+    static Hir.FakeRow fallenThroughTo(Hir.Fake table) {
+        Hir.FakeRow last = null;
+        for (Hir.FakeRow row : table.rows()) {
+            if (row.matched() instanceof Hir.Matched.Anything) {
+                last = row;
+            }
+        }
+        return last;
+    }
+
+    /**
+     * Whether this table has an answer for whatever it is asked.
+     *
+     * <p>A property of the table and not of any call. A table with a {@code _} row answers every
+     * call that reaches it; one without answers the calls its rows state and refuses the rest,
+     * which is <em>E1909</em> where the row that made the call was written.
+     *
+     * <p>Off the same reading the dispatch falls through by, so the two cannot come apart: a reader
+     * told a table answers everything and a dispatch that then refuses a call would be two answers
+     * to one question, and the reader's is the one somebody acted on.
+     */
+    public static boolean answersEveryCall(Hir.Fake table) {
+        return fallenThroughTo(table) != null;
+    }
+
     /** What the author wrote for a fake's target, for a message that quotes the source. */
     public static String wrote(Hir.Fake table) {
         return table.target().written().quoted();
@@ -1109,12 +1145,7 @@ public final class ExampleStatements {
         // Which `_` the table falls through to is the last one written, and that is read off the
         // rows rather than built: a `_` with another after it answers nothing, so nothing of it is
         // built either.
-        Hir.FakeRow lastDefault = null;
-        for (Hir.FakeRow r : fk.rows()) {
-            if (r.matched() instanceof Hir.Matched.Anything) {
-                lastDefault = r;
-            }
-        }
+        Hir.FakeRow lastDefault = fallenThroughTo(fk);
         List<Written> reachable = new ArrayList<>();
         List<Standin.Explicit> explicit = new ArrayList<>();
         List<Shadowed> shadowed = new ArrayList<>();

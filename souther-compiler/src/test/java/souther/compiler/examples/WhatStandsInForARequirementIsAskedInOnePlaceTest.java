@@ -1,6 +1,7 @@
 package souther.compiler.examples;
 
 import souther.compiler.ast.Hir;
+import souther.compiler.check.FakeTables;
 import souther.compiler.check.Prepared;
 import souther.compiler.query.Compilation;
 import souther.compiler.query.Shapes;
@@ -81,7 +82,7 @@ class WhatStandsInForARequirementIsAskedInOnePlaceTest {
         Model model = modelOf(FAKED);
         assertInstanceOf(ExampleProvisioning.Standin.InTheModule.class,
                 ExampleProvisioning.standingIn(model.row().withs(), model.of("findMember"),
-                        model.execution()));
+                        model.declared()));
     }
 
     /** And the row is looked at first, so what it writes stands in over the table beside it. */
@@ -89,7 +90,7 @@ class WhatStandsInForARequirementIsAskedInOnePlaceTest {
     void theRowIsLookedAtBeforeTheTableBesideIt() {
         Model model = modelOf(WITH_ON_THE_ROW);
         ExampleProvisioning.Standin found = ExampleProvisioning.standingIn(model.row().withs(),
-                model.of("findMember"), model.execution());
+                model.of("findMember"), model.declared());
         assertInstanceOf(ExampleProvisioning.Standin.OnTheRow.class, found,
                 "the `with` on the row was passed over for the table beside it");
     }
@@ -100,7 +101,7 @@ class WhatStandsInForARequirementIsAskedInOnePlaceTest {
         Model model = modelOf(FAKED);
         assertInstanceOf(ExampleProvisioning.Standin.Nothing.class,
                 ExampleProvisioning.standingIn(model.row().withs(), model.of("somethingElse"),
-                        model.execution()));
+                        model.declared()));
     }
 
     /**
@@ -117,7 +118,7 @@ class WhatStandsInForARequirementIsAskedInOnePlaceTest {
         assertInstanceOf(ExampleProvisioning.Standin.Nothing.class,
                 ExampleProvisioning.standingIn(model.row().withs(),
                         new ValueName.Behavior("example.elsewhere", "findMember"),
-                        model.execution()),
+                        model.declared()),
                 "a table written for this module's `findMember` answered another module's");
     }
 
@@ -134,18 +135,18 @@ class WhatStandsInForARequirementIsAskedInOnePlaceTest {
         Model model = modelOf(WITH_ON_THE_ROW);
         assertInstanceOf(ExampleProvisioning.Standin.InTheModule.class,
                 ExampleProvisioning.standingIn(List.of(), model.of("findMember"),
-                        model.execution()),
+                        model.declared()),
                 "the table beside the rows answers a row that has not been written");
         assertEquals(List.of(),
                 ExampleProvisioning.unsupplied(List.of(), List.of(model.of("findMember")),
-                        model.execution()));
+                        model.declared()));
         assertEquals(List.of(model.of("somethingElse")),
                 ExampleProvisioning.unsupplied(List.of(),
                         List.of(model.of("findMember"), model.of("somethingElse")),
-                        model.execution()));
+                        model.declared()));
     }
 
-    private record Model(String module, Hir.ExampleRow row, Prepared.ForExamples execution) {
+    private record Model(String module, Hir.ExampleRow row, FakeTables declared) {
 
         /** One of the model's own behaviors, as the declaration a requirement is. */
         ValueName.Behavior of(String name) {
@@ -160,6 +161,6 @@ class WhatStandsInForARequirementIsAskedInOnePlaceTest {
         Prepared prepared = compilation.db().ask(new Shapes.Prepared(module)).value();
         assertNotNull(prepared, "the model under test compiles");
         Hir.ExampleRow row = prepared.examples().get(0).read().rows().get(0);
-        return new Model(module, row, prepared.forExamples());
+        return new Model(module, row, prepared.forExamples().fakes());
     }
 }

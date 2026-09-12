@@ -84,9 +84,10 @@ public record RequiredDependencies(List<Required> inOrder) {
      * is a row nothing was seen doing — which reads as a row that went nowhere unless the shortfall
      * is said here instead.
      *
-     * <p>One value per dependency, which is what a row's {@code with} states and what it answers
-     * every call with. A row holding two answers for one dependency is a row nothing composed,
-     * said where a row is composed rather than read back out of a list here.
+     * <p>One answer per dependency, which is what a row states and what it is run against. A row
+     * holding two answers for one dependency is a row nothing composed, said where a row is
+     * composed rather than read back out of a list here. Which of the two things answers it travels
+     * across as it was composed: the run stands the dependency in the way the row says.
      */
     public List<RowTrials.AnsweredWith> standingIn(List<StoodInAnswer> answers) {
         Map<ValueName.Behavior, StoodInAnswer> byDependency = new LinkedHashMap<>();
@@ -99,8 +100,13 @@ public record RequiredDependencies(List<Required> inOrder) {
             if (stood == null) {
                 return null;
             }
-            out.add(new RowTrials.AnsweredWith(each.dependency(), each.signature(),
-                    stood.value().value()));
+            out.add(switch (stood) {
+                case StoodInAnswer.OnTheRow(var dependency, var value) ->
+                        new RowTrials.AnsweredWith.OnTheRow(dependency, each.signature(),
+                                value.value());
+                case StoodInAnswer.InTheModule(var dependency) ->
+                        new RowTrials.AnsweredWith.InTheModule(dependency, each.signature());
+            });
         }
         return List.copyOf(out);
     }

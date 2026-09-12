@@ -2169,7 +2169,7 @@ public final class Analyzer {
             }
         }
         List<String> unsupplied = ExampleProvisioning.unsupplied(List.of(),
-                        Requirements.names(required), prepared.forExamples()).stream()
+                        Requirements.names(required), prepared.forExamples().fakes()).stream()
                 .map(dependency -> Requirements.writtenIn(prepared.name(), dependency)).toList();
         DeclaredSig written = declarations.get(declared.name());
         List<String> arguments = written == null
