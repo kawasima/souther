@@ -1823,8 +1823,12 @@ public final class Partitions {
         java.util.Set<TypeSymbol> inside = new LinkedHashSet<>(expanding);
         inside.add(record);
         Map<RuleKey, Count> settled = new LinkedHashMap<>();
-        FieldDomains left = FieldDomains.of(record, ruleSource, reading.policy(), settled,
+        // The record's rules, read once. Each field is then chosen against this with the fields
+        // before it settled into it, which is what a settling states — a reading per settled field
+        // would be paying for every clause again to arrive where the first one already is.
+        FieldDomains rules = FieldDomains.of(record, ruleSource, reading.policy(),
                 reading.readings());
+        FieldDomains.Composing left = rules.composing(Map.of());
         Map<String, FixtureTemplate> chosen = new LinkedHashMap<>();
         if (!fields.keySet().containsAll(given.keySet())) {
             return null;
@@ -1832,10 +1836,9 @@ public final class Partitions {
         for (Map.Entry<String, Type> field : fields.entrySet()) {
             FixtureTemplate at = given.get(field.getKey());
             if (at == null) {
-                RuleKey named =
-                        RuleKey.of(field.getKey());
+                FieldDomains.ConstructionLimits limits = left.at(RuleKey.of(field.getKey()));
                 List<FixtureTemplate> stands = representativesHolding(field.getValue(), reading,
-                        left.at(named).bounds(), left.heldAt(named), inside);
+                        limits.values(), limits.held(), inside);
                 if (stands.isEmpty()) {
                     return null;
                 }
@@ -1847,8 +1850,7 @@ public final class Partitions {
             // which leaves `b` its whole range and takes the bottom of it.
             if (Counts.writtenIn(at.value()) instanceof Count count) {
                 settled.put(RuleKey.of(field.getKey()), count);
-                left = FieldDomains.of(record, ruleSource, reading.policy(), settled,
-                        reading.readings());
+                left = rules.composing(FieldDomains.atValues(settled));
             }
         }
         return chosen;

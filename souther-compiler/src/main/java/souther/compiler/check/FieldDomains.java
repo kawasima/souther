@@ -432,7 +432,7 @@ public final class FieldDomains {
 
     /** Settlings written as names, read as what stands at each. What a caller naming a place means
      *  is the value there; a count taken of one is a coordinate it has to name. */
-    private static Map<NumberAt<RuleKey>, Count> atValues(Map<RuleKey, Count> settled) {
+    public static Map<NumberAt<RuleKey>, Count> atValues(Map<RuleKey, Count> settled) {
         Map<NumberAt<RuleKey>, Count> out = new LinkedHashMap<>();
         settled.forEach((path, at) -> out.put(NumberAt.valueOf(path), at));
         return out;
@@ -945,6 +945,25 @@ public final class FieldDomains {
      * worked out before the settling.
      */
     public Settled given(Map<NumberAt<RuleKey>, Count> fixed) {
+        return new Settled(settling(fixed), namedBy, atomAt, countAt);
+    }
+
+    /**
+     * The same rules with these coordinates settled, for a caller building a value at a position
+     * under them.
+     *
+     * <p>Beside {@link #given} and not part of it. What a caller settling on behalf of an input
+     * wants is the constraints themselves, to be said together with another parameter's; what a
+     * caller composing a value wants is where one position stops and how many it holds. The second
+     * is a question one value's rules answer alone, and the first is a question they must not — so
+     * the two are handed over as two, and neither of them can be asked for the other.
+     */
+    public Composing composing(Map<NumberAt<RuleKey>, Count> fixed) {
+        return new Composing(settling(fixed), atomAt, countAt);
+    }
+
+    /** These constraints with an equality on each settled coordinate taken onto them. */
+    private ConstraintState<FactSubject> settling(Map<NumberAt<RuleKey>, Count> fixed) {
         ConstraintState<FactSubject> taken = constraints;
         for (Map.Entry<NumberAt<RuleKey>, Count> each : fixed.entrySet()) {
             NumberAt<RuleKey> where = each.getKey();
@@ -957,7 +976,55 @@ public final class FieldDomains {
                 taken = ConstraintState.settling(taken, atom, each.getValue(), spaced);
             }
         }
-        return new Settled(taken, namedBy, atomAt, countAt);
+        return taken;
+    }
+
+    /**
+     * One value's rules with some of its coordinates settled, read for building a value under them.
+     *
+     * <p>Not a {@link FieldDomains} and not a {@link Settled}. What it answers is read off the
+     * constraints as they now stand, so a position is told where it stops under everything chosen
+     * before it — which is the reading a search choosing one position at a time is entitled to, and
+     * the one it would otherwise get by reading the declaration over at every position.
+     */
+    public static final class Composing {
+
+        private final ConstraintState<FactSubject> constraints;
+        private final Map<RuleKey, FactSubject> atomAt;
+        private final Map<RuleKey, Counted> countAt;
+
+        private Composing(ConstraintState<FactSubject> constraints,
+                          Map<RuleKey, FactSubject> atomAt, Map<RuleKey, Counted> countAt) {
+            this.constraints = constraints;
+            this.atomAt = atomAt;
+            this.countAt = countAt;
+        }
+
+        /**
+         * The two numeric projections a caller building a value at {@code path} chooses against.
+         *
+         * <p>The value's own range and what it holds are handed over together and stay apart
+         * ({@link Held}). A caller filling a position needs both — which values may stand there,
+         * and how many a collection there must hold — and the two are numbers of different things.
+         */
+        public ConstructionLimits at(RuleKey path) {
+            if (path == null || path.isTheValueItself()) {
+                return ConstructionLimits.NONE;
+            }
+            NumericDomain.Bounds values = boundsOn(atomAt.get(path));
+            Counted counted = countAt.get(path);
+            NumericDomain.Bounds held = counted == null ? null : boundsOn(counted.atom());
+            return new ConstructionLimits(values, held == null ? null : new Held(held));
+        }
+
+        /** Where these constraints stop one subject, or null where they stop it nowhere. */
+        private NumericDomain.Bounds boundsOn(FactSubject atom) {
+            if (atom == null) {
+                return null;
+            }
+            NumericDomain.Bounds bounds = constraints.numbers().boundsOf(atom);
+            return bounds.saysNothing() ? null : bounds;
+        }
     }
 
     /**
@@ -1063,6 +1130,24 @@ public final class FieldDomains {
                         + claim.position() + "`, so neither name is the whole of it");
             }
         }
+    }
+
+    /**
+     * What a caller composing a value at one position chooses against.
+     *
+     * <p>A projection of constraints and not a reading. Every other answer of a
+     * {@link FieldDomains} is worked out while the declaration is being read; these two are read
+     * off the state the clauses came to, so they can be asked again of that state with a coordinate
+     * settled into it — which is the whole reason a search choosing one position at a time does not
+     * have to read the declaration once per position it chooses.
+     *
+     * @param values where the value standing at the position stops, or null where nothing stops it
+     * @param held   how many a collection there holds, or null where no rule counts it
+     */
+    public record ConstructionLimits(NumericDomain.Bounds values, Held held) {
+
+        /** A position the rules reach in neither way. */
+        public static final ConstructionLimits NONE = new ConstructionLimits(null, null);
     }
 
     /**
