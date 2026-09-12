@@ -2,8 +2,13 @@ package souther.compiler.report;
 
 import org.junit.jupiter.api.Test;
 import souther.compiler.diag.SourceRendering;
+import souther.compiler.partition.RuleEvidenceOrigin;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.Compilation;
+import souther.compiler.query.PartitionEvidence;
+
+import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -52,6 +57,28 @@ class ARuleThatDividedAPositionIsShownWithAPlaceTest {
                 else No
             """;
 
+    /**
+     * One rule read at two places of one position.
+     *
+     * <p>A helper is not a rule of its own: it is expanded at each call, so the predicate written
+     * once inside it is read wherever the behavior calls it, and each reading divides the position
+     * the call names. The rule the author wrote is on the fifth line and its call begins at the
+     * thirty-fourth column, counted from one.
+     */
+    private static final String ONE_RULE_READ_TWICE = """
+            module example.codes
+
+            data Answer = Yes | No
+
+            let japanese (s: String): Bool = String.startsWith("JP", s)
+
+            behavior f : (code: String) -> Answer
+            let f (code) =
+                if japanese(code) then
+                    (if japanese(code) then Yes else No)
+                else No
+            """;
+
     /** A comparison, which puts a line on the order the values are counted on rather than telling
      *  a set of them from the rest. */
     private static final String A_LINE = """
@@ -71,13 +98,43 @@ class ARuleThatDividedAPositionIsShownWithAPlaceTest {
                 () -> "the page says which rule divided `code`:\n" + page(A_PREDICATE));
     }
 
-    /** One sentence per rule, so a position two of them compose is a reader's two rules to read. */
+    /** One sentence per rule, so a position two of them compose is a reader's two rules to read —
+     *  and the two sentences send them to two places, since they are two rules. */
     @Test
     void aPositionTwoRulesComposeNamesBoth() {
-        assertEquals(2, page(TWO_PREDICATES).lines()
-                        .filter(each -> each.contains("is divided by")).count(),
+        assertEquals(2, dividedBy(page(TWO_PREDICATES)).size(),
                 () -> "one sentence per rule that composed the classes:\n"
                         + page(TWO_PREDICATES));
+        assertEquals(2, Set.copyOf(dividedBy(page(TWO_PREDICATES))).size(),
+                () -> "and the two rules are two places a reader can open:\n"
+                        + page(TWO_PREDICATES));
+    }
+
+    /**
+     * A rule read at several places of one position is one sentence, naming the rule.
+     *
+     * <p>What the page sends a reader to is the rule the author wrote. A helper expanded at each
+     * call is read as many times as it is called, and a sentence per reading would be the same rule
+     * said twice with nothing to tell the two apart — the second is not another thing to go and
+     * read.
+     *
+     * <p>The subject is asserted before the sentence, because a model whose rules are read once
+     * each satisfies the count below whatever the page does with the readings.
+     */
+    @Test
+    void oneRuleReadAtSeveralPlacesIsOneSentence() {
+        PartitionEvidence measured = measured(ONE_RULE_READ_TWICE);
+        PartitionEvidence.AxisCoverage code = measured.axes().stream()
+                .filter(each -> each.name().equals("code")).findFirst().orElseThrow();
+        assertEquals(2, code.divides().size(),
+                () -> "the position under test was divided by two readings: " + code.divides());
+        assertEquals(1, code.divides().stream().map(RuleEvidenceOrigin::rule).distinct().count(),
+                () -> "and both of them are readings of one rule: " + code.divides());
+
+        assertEquals(List.of("· code is divided by predicate@5:34"),
+                dividedBy(page(ONE_RULE_READ_TWICE)),
+                () -> "one sentence, naming the rule the author wrote:\n"
+                        + page(ONE_RULE_READ_TWICE));
     }
 
     /**
@@ -93,11 +150,28 @@ class ARuleThatDividedAPositionIsShownWithAPlaceTest {
                 () -> "a line is not what composes a position's classes:\n" + page(A_LINE));
     }
 
+    /** The sentences a page writes about what divided a position, in the order it writes them. */
+    private static List<String> dividedBy(String page) {
+        return page.lines().map(String::strip)
+                .filter(each -> each.contains("is divided by")).toList();
+    }
+
     private static String page(String model) {
+        Compilation compilation = compiled(model);
+        return AdequacyReport.of(compilation)
+                .human(SourceRendering.namedByIdentity(compilation.texts()));
+    }
+
+    /** What the model's positions came to, for an assertion about the readings themselves. */
+    private static PartitionEvidence measured(String model) {
+        return compiled(model).db()
+                .ask(new Adequacy.Coverage("example.codes")).value().get("f");
+    }
+
+    private static Compilation compiled(String model) {
         Compilation compilation = Compilation.ofSource(model, "Main");
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
-        return AdequacyReport.of(compilation)
-                .human(SourceRendering.namedByIdentity(compilation.texts()));
+        return compilation;
     }
 }
