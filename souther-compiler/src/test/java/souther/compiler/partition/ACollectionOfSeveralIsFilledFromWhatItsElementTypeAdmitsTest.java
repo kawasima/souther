@@ -2,11 +2,13 @@ package souther.compiler.partition;
 
 import org.junit.jupiter.api.Test;
 
+import souther.compiler.OfferedAtTheLines;
 import souther.compiler.check.DeclaredSig;
 import souther.compiler.check.RuleReadingContext;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.RuleReadings;
 import souther.compiler.inputs.InputDomain;
+import souther.compiler.query.Adequacy;
 import souther.compiler.query.Bodies;
 import souther.compiler.query.Compilation;
 import souther.compiler.query.ReadAs;
@@ -158,6 +160,29 @@ class ACollectionOfSeveralIsFilledFromWhatItsElementTypeAdmitsTest {
     }
 
     /**
+     * A rule about which strings and a rule about how many characters are met with each other.
+     *
+     * <p>The two reach one position in vocabularies read by different things — a predicate over the
+     * strings, and a number counted by the measure the type is written in. A value clears both or
+     * it is refused, so a reader of either alone hands out a string the other rules out: the
+     * shortest string a format accepts is exactly what a floor on the characters was written to
+     * exclude.
+     */
+    @Test
+    void aFormatAndAFloorOnTheCharactersAreBothRead() {
+        Model model = modelOf("""
+                module ex.sized
+
+                data Sized = String
+                    invariant format = String.matches("003[0-9]+", value)
+                    invariant size = String.length(value) >= 15
+                """);
+
+        assertEquals(List.of("Sized(\"003000000000000\")", "Sized(\"003000000000001\")"),
+                model.admitted("Sized", 2));
+    }
+
+    /**
      * And nothing where no rule says which strings, which is where the length is what one more of
      * them is.
      *
@@ -175,6 +200,59 @@ class ACollectionOfSeveralIsFilledFromWhatItsElementTypeAdmitsTest {
                 """);
 
         assertEquals(List.of(), model.admitted("Plain", 2));
+    }
+
+    /**
+     * And the row an author is offered for such a collection, which is where the decoder answers.
+     *
+     * <p>The one claim here asked of the block a person reads rather than of the fill. What the
+     * fill composes is a proposal, and whether the model admits it is the decoder's — so a test
+     * that only read what was composed would go on passing for a collection of values every rule
+     * refuses, which is the report #1624 is about.
+     */
+    @Test
+    void aRowIsOfferedWhereTheValuesExist() {
+        Compilation compilation = Compilation.ofSource("""
+                module ex.offered
+
+                data ContactId = String
+                    invariant format = String.matches("003[0-9]+", value)
+                    invariant size = String.length(value) >= 15
+
+                data DecisionMakers = Set<ContactId>
+                    invariant atLeastOne = Set.size(value) >= 1
+
+                data Opportunity = { makers: DecisionMakers }
+                data Decided = { makers: DecisionMakers }
+
+                behavior decide : (opp: Opportunity) -> Decided
+                    constructs Decided
+
+                let decide (opp) = Decided { makers = opp.makers }
+
+                example decide
+                    | (Opportunity { makers = DecisionMakers([ContactId("003000000000000")]) })
+                        -> Decided { makers = DecisionMakers([ContactId("003000000000000")]) }
+                """, "Main");
+        compilation.measure(Adequacy.Asked.fullReport());
+        compilation.answerEverything();
+        assertEquals(List.of(), compilation.diagnostics().values().stream()
+                        .flatMap(List::stream).map(each -> each.diagnostic().code()).toList(),
+                "the model under test is a program that can be written");
+        Generator.GenerationResult offered = OfferedAtTheLines.of(
+                compilation, compilation.modules().get(0), "decide");
+
+        assertEquals(List.of(), offered.unresolved(),
+                "the values are there, so no combination is left unresolved");
+        // One row for the set holding more than one, and one for the element above the line its
+        // characters are counted at. Both are a string the format and the count admit together:
+        // either read alone writes the other's refusal into the row.
+        assertEquals(List.of(
+                        "Opportunity { makers = DecisionMakers([ContactId(\"003000000000000\"),"
+                                + " ContactId(\"003000000000001\")]) }",
+                        "Opportunity { makers = DecisionMakers(["
+                                + "ContactId(\"0030000000000000\")]) }"),
+                offered.rows().stream().map(row -> row.inputs().get(0).text()).toList());
     }
 
     /** A model to read a type's own rules off, held to compiling. */

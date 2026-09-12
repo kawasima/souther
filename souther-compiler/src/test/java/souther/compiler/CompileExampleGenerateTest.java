@@ -1151,6 +1151,11 @@ class CompileExampleGenerateTest {
      * A model with a gap at every point of a border, and a search that composes a row for none of
      * them: the string the rules admit is one the generator's candidates never spell.
      *
+     * <p>A rule this compiler cannot read is what leaves it there. Rules it can read are met with
+     * each other and a value clearing all of them is composed, so a position whose rules are all
+     * readable is one a row is offered at — what is left unspelled is what a reading stopped short
+     * of, and the candidates are then the other rules' alone.
+     *
      * <p>What it is for is the note beside a withheld row. A run asking for no edges withholds the
      * rows at them, so a line saying why one could not be composed is a line about work that run did
      * not ask for — and an author reads it as a report on the rows above it.
@@ -1164,14 +1169,14 @@ class CompileExampleGenerateTest {
             data Tag = Big | Small
 
             data C = String
-                invariant String.length(value) >= 2 && String.matches("[0-9]+", value)
+                invariant String.length(value) >= 2 && String.matches("(a+)\\\\1", value)
 
             behavior label : (c: C, s: Size) -> Tag
 
             let label (c, s) = if s.value >= 5 then Big else Small
 
             example label
-                | "digits" : (C("123"), Size(9)) -> Big
+                | "doubled" : (C("aa"), Size(9)) -> Big
             """;
 
     /**
