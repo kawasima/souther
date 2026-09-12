@@ -210,12 +210,13 @@ final class Intervals {
             // — so it held every value, and two such classes each held everything the other did.
             Recognition is = new Recognition.OfACount(of, orders,
                     new Recognition.CountIs.InARun(run));
-            // Nothing composed here is what this compiler did not manage, and never what the run
-            // holds. Above a string a rule stops short of, the order declines to name a value on
-            // purpose — every string with that one as a prefix is greater, and choosing between
-            // them puts a character nobody wrote into a row somebody reads. Which is why both empty
-            // answers are said in the one sentence, and why that sentence is about this compiler
-            // rather than about the model (ADR-0091).
+            // Nothing composed here says what this compiler did not manage, and says nothing about
+            // what the run holds. Above a string a rule stops short of, the order declines to name
+            // a value on purpose — every string with that one as a prefix is greater, and choosing
+            // between them puts a character nobody wrote into a row somebody reads. So the sentence
+            // both empty answers carry is about composing: it is true of a run that holds nothing
+            // as much as of one the order would not choose in, and it is the only one of the two
+            // claims this compiler is in a position to make (ADR-0091).
             List<FixtureTemplate> values = inside == null ? List.of()
                     : standingIn(of, inside, type, carrier, ruleReading);
             classes.add(values.isEmpty()
@@ -245,9 +246,13 @@ final class Intervals {
      * whether the range holds the value it stops at is written down.
      *
      * <p>Null says what came back and not what the range holds. Which values are in it is
-     * {@link LevelSpace#inspect}'s answer and is asked where the runs are chosen; this asks the
-     * other question, and a caller that read the two as one would put the order's restraint into a
-     * sentence about the model.
+     * {@link LevelSpace#inspect}'s answer; this asks the other question, and a caller that read the
+     * two as one would put the order's own restraint into a sentence about the model.
+     *
+     * <p>Nothing asks the first question of a run that reaches here. What a run is held to before
+     * this is {@code Interval.inhabited}, which reads the ends as places and never asks the carrier
+     * — so an empty answer here is a run the order would not choose in and a run it has nothing in
+     * at all, and the caller is owed a sentence that is true of both.
      *
      * <p>How the values step is the carrier's to say and is asked of it. Carried as "is it a decimal"
      * it was a second spelling of the same fact, and a carrier that is dense without being the
