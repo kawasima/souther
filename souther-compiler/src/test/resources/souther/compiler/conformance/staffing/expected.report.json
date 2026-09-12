@@ -2919,7 +2919,8 @@
               "outcome" : "held"
             } ]
           },
-          "taken" : false
+          "taken" : false,
+          "requirement" : "required"
         }, {
           "obligationId" : {
             "behavior" : "grantLeave",
@@ -2933,7 +2934,8 @@
               "outcome" : "denied"
             } ]
           },
-          "taken" : false
+          "taken" : false,
+          "requirement" : "required"
         }, {
           "obligationId" : {
             "behavior" : "grantLeave",
@@ -2943,7 +2945,8 @@
               "outcome" : "denied"
             } ]
           },
-          "taken" : false
+          "taken" : false,
+          "requirement" : "required"
         } ]
       },
       "findings" : [ {
@@ -3977,7 +3980,8 @@
               "outcome" : "Extended"
             } ]
           },
-          "taken" : false
+          "taken" : false,
+          "requirement" : "required"
         }, {
           "obligationId" : {
             "behavior" : "judgeHours",
@@ -3991,7 +3995,8 @@
               "outcome" : "Extended"
             } ]
           },
-          "taken" : false
+          "taken" : false,
+          "requirement" : "required"
         }, {
           "obligationId" : {
             "behavior" : "judgeHours",
@@ -4005,7 +4010,8 @@
               "outcome" : "Standard"
             } ]
           },
-          "taken" : false
+          "taken" : false,
+          "requirement" : "required"
         }, {
           "obligationId" : {
             "behavior" : "judgeHours",
@@ -4019,7 +4025,8 @@
               "outcome" : "Standard"
             } ]
           },
-          "taken" : false
+          "taken" : false,
+          "requirement" : "required"
         } ]
       },
       "findings" : [ {

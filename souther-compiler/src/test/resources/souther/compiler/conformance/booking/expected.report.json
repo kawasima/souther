@@ -2145,7 +2145,9 @@
               "outcome" : "held"
             } ]
           },
-          "taken" : false
+          "taken" : false,
+          "requirement" : "unsettled",
+          "because" : "a_composed_row_went_elsewhere"
         }, {
           "obligationId" : {
             "behavior" : "redeem",
@@ -2159,7 +2161,9 @@
               "outcome" : "held"
             } ]
           },
-          "taken" : false
+          "taken" : false,
+          "requirement" : "unsettled",
+          "because" : "a_composed_row_went_elsewhere"
         }, {
           "obligationId" : {
             "behavior" : "redeem",
@@ -2169,7 +2173,8 @@
               "outcome" : "denied"
             } ]
           },
-          "taken" : false
+          "taken" : false,
+          "requirement" : "required"
         } ]
       },
       "findings" : [ {
@@ -3151,7 +3156,9 @@
               "outcome" : "held"
             } ]
           },
-          "taken" : false
+          "taken" : false,
+          "requirement" : "unsettled",
+          "because" : "the_rule_the_row_took_could_not_be_told"
         }, {
           "obligationId" : {
             "behavior" : "seat",
@@ -3165,7 +3172,9 @@
               "outcome" : "held"
             } ]
           },
-          "taken" : false
+          "taken" : false,
+          "requirement" : "unsettled",
+          "because" : "the_rule_the_row_took_could_not_be_told"
         }, {
           "obligationId" : {
             "behavior" : "seat",
@@ -3175,7 +3184,9 @@
               "outcome" : "denied"
             } ]
           },
-          "taken" : false
+          "taken" : false,
+          "requirement" : "unsettled",
+          "because" : "the_rule_the_row_took_could_not_be_told"
         } ]
       },
       "findings" : [ ]
@@ -3354,7 +3365,9 @@
               "outcome" : "held"
             } ]
           },
-          "taken" : false
+          "taken" : false,
+          "requirement" : "unsettled",
+          "because" : "the_rule_the_row_took_could_not_be_told"
         }, {
           "obligationId" : {
             "behavior" : "originOf",
@@ -3364,7 +3377,9 @@
               "outcome" : "denied"
             } ]
           },
-          "taken" : false
+          "taken" : false,
+          "requirement" : "unsettled",
+          "because" : "the_rule_the_row_took_could_not_be_told"
         } ]
       },
       "findings" : [ {

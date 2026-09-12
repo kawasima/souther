@@ -2783,7 +2783,9 @@
               "outcome" : "書けなかった"
             } ]
           },
-          "taken" : false
+          "taken" : false,
+          "requirement" : "unsettled",
+          "because" : "the_rule_the_row_took_could_not_be_told"
         }, {
           "obligationId" : {
             "behavior" : "出荷する",
@@ -2805,7 +2807,9 @@
               "outcome" : "出荷済み"
             } ]
           },
-          "taken" : false
+          "taken" : false,
+          "requirement" : "unsettled",
+          "because" : "the_rule_the_row_took_could_not_be_told"
         }, {
           "obligationId" : {
             "behavior" : "出荷する",
@@ -2827,7 +2831,9 @@
               "outcome" : "出荷済み"
             } ]
           },
-          "taken" : false
+          "taken" : false,
+          "requirement" : "unsettled",
+          "because" : "the_rule_the_row_took_could_not_be_told"
         }, {
           "obligationId" : {
             "behavior" : "出荷する",
@@ -2845,7 +2851,9 @@
               "outcome" : "denied"
             } ]
           },
-          "taken" : false
+          "taken" : false,
+          "requirement" : "unsettled",
+          "because" : "the_rule_the_row_took_could_not_be_told"
         }, {
           "obligationId" : {
             "behavior" : "出荷する",
