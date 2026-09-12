@@ -97,7 +97,7 @@ public sealed interface ReaderDisposition {
      * Nothing further to look at.
      *
      * <p>Not "nothing is owed", which is the other axis and is answered elsewhere. A combination no
-     * bar asks for a row at is not owed and may still be worth a look; this says the entry itself
+     * row is owed at is not owed and may still be worth a look; this says the entry itself
      * leads nowhere further, which is what a point the rules refuse comes to.
      */
     record Settled() implements ReaderDisposition {}

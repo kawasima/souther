@@ -12,11 +12,11 @@ import java.util.SequencedSet;
  * <p>Every finding has one of these, and a finding with none is one an author is told nothing about
  * while the block above it reads as though it filled everything.
  *
- * <p><b>Asked of every finding and not of the ones a build refuses over.</b> What a bar refuses is
- * one question and what a search can compose a row for is another, and the first used to decide
- * which findings the second was asked about — so a finding some bar would refuse over and no bar
- * had been asked for went unanswered, and a strategy could only ever be written for what the bars
- * already gated on. The two are projections of one set of findings now, neither through the other.
+ * <p><b>Asked of every finding and not of the ones a build refuses over.</b> What a build refuses
+ * is one question and what a search can compose a row for is another, and the first used to decide
+ * which findings the second was asked about — so a finding nobody had asked to be held to went
+ * unanswered, and a strategy could only ever be written for what was already gated on. The two are
+ * projections of one set of findings now, neither through the other.
  *
  * <p>Which of them it is, is a question about strategies and not about searches. A strategy
  * that takes a finding of this kind and composed nothing is {@link CannotGenerate}; a finding no

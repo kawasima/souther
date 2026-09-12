@@ -216,17 +216,18 @@ public record AdequacyReport(int schemaVersion, String compilerVersion,
             "/souther/adequacy-schema-" + SCHEMA_VERSION + ".json";
 
     /**
-     * Whether the rows meet what the bar this report is read against asks of them.
+     * Whether the rows meet what the account asks of them.
      *
      * <p>Apart from {@code status}, which says whether the measurement could be made at all. A
      * measurement that came back complete over a model with an arm nothing reaches is a measurement
      * that worked and a model that does not satisfy it, and one word cannot say both.
      */
     public enum AdequacyStatus {
-        /** Every measure the bar rests on came to an answer, and none of them found a gap. A model
-         *  the bar can ask nothing of is here too: it was asked and had nothing to answer for. */
+        /** Every measure the verdict rests on came to an answer, and none of them found a gap. A
+         *  model the account asks nothing of is here too: it was asked and had nothing to answer
+         *  for. */
         SATISFIED,
-        /** A measure found a gap the bar refuses over. One is enough, whatever else could not be
+        /** A measure found a gap a build refuses over. One is enough, whatever else could not be
          *  measured. */
         NOT_SATISFIED,
         /** A measure that could have found such a gap was not made, or could not be. */
@@ -1174,7 +1175,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion,
      *
      * <p>What the declarations are short of as well as what the bodies are. A line an
      * {@code invariant} drew is not any behavior's, and a walk over the behaviors alone left it out
-     * of the verdict — so a report printed a gap and said the rows met the bar under it
+     * of the verdict — so a report printed a gap and said the rows covered the model under it
      * (issue #1062).
      */
     public List<Adequacy.Finding> findings() {
@@ -1193,7 +1194,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion,
     }
 
     /**
-     * Whether the rows meet what the bar this report is read against asks of them.
+     * Whether the rows meet what the account asks of them.
      *
      * <p>Derived on every call rather than held, because {@link #only(String, String)} makes a report
      * of part of this one and a verdict about the whole would be a verdict about behaviors that report
@@ -1209,12 +1210,11 @@ public record AdequacyReport(int schemaVersion, String compilerVersion,
      * came to is one of the two answers a point stands on; whether anything showed a row could be
      * written there is the other, and a verdict resting on the first alone called a model satisfied
      * over a point where every row was read, none was at it, and nothing could say whether one could
-     * be (issue #1249). Which obligations the verdict is about is still the bar's — that is the
-     * selection {@link #requiredObligations()} makes — and this reads the standing of the ones it
-     * selected.
+     * be (issue #1249). Which obligations the verdict is about is {@link #requiredObligations()},
+     * and this reads the standing of each of them.
      *
-     * <p>No measure to be short of is not a doubt. A model the bar can refuse nothing about — every
-     * measure it reads inapplicable — has been asked what the bar asks and has nothing to answer
+     * <p>No measure to be short of is not a doubt. A model nothing can be refused about — every
+     * measure it reads inapplicable — has been asked and has nothing to answer
      * for, so it is satisfied rather than undetermined; {@code undetermined} is for a measure that
      * could have found a gap and was not made. Answered the other way, this reported a doubt nobody
      * could act on and no row could settle, and it was doing it on the strength of a list that had
@@ -1226,12 +1226,12 @@ public record AdequacyReport(int schemaVersion, String compilerVersion,
         }
         // Every measure the verdict rests on came to an answer nothing weakened. A measurement made
         // in part is one whose gaps may not be gaps, and one that could not be finished came to no
-        // answer at all — neither settles a bar.
+        // answer at all — neither settles a verdict.
         //
         // The support evidence and the domain measures, which are two questions. This used to ask
-        // the second and then reach past it for a list of reasons, which is the bar's decision
-        // taken away from it: a reason about a measure this build is not held to held the verdict
-        // open, and a reason no measure carried held it open on nobody's authority (issue #996).
+        // the second and then reach past it for a list of reasons: a reason about a measure nothing
+        // rests on held the verdict open, and a reason no measure carried held it open on nobody's
+        // authority (issue #996).
         return Stream.concat(requiredSupport().stream(), requiredEvidence().stream())
                         .map(Owned::value)
                         .allMatch(m -> m instanceof Measurement.Complete<?>)
@@ -1246,8 +1246,8 @@ public record AdequacyReport(int schemaVersion, String compilerVersion,
      *
      * <p>Read from the same three lists {@link #adequacy()} is decided by, and never from
      * {@code weakenedBy}. What left this whole report weaker than it looks and what holds this
-     * verdict open are not one set: a measure this build is not held to may be as partial as it
-     * likes without a bar being any less settled by it, and the report says so of itself either
+     * verdict open are not one set: a measure no answer here rests on may be as partial as it
+     * likes without the verdict being any less settled, and the report says so of itself either
      * way. Taken from the wider list, a reader would be shown causes that no answer here rests on.
      *
      * <p>A set and so counted once per fact, however many measures went without it. One rule this
@@ -1397,21 +1397,20 @@ public record AdequacyReport(int schemaVersion, String compilerVersion,
      * <p>Every domain measure below is counted over the rows, so how far they were read is what
      * each of those answers is worth. A measure of the model that found no gap over rows that did
      * not all come back has found that no gap is <em>visible</em>, which is not the same answer and
-     * is the one a bar cannot be settled by.
+     * is the one a verdict cannot be settled by.
      *
      * <p>Required whether or not any domain measure applies, which is where the two differ. "No
-     * measure to be short of is not a doubt" is about the model: a behavior the bar can refuse
-     * nothing about has been asked and has nothing to answer for (issue #955). Its rows were still
+     * measure to be short of is not a doubt" is about the model: a behavior nothing can be refused
+     * about has been asked and has nothing to answer for (issue #955). Its rows were still
      * read or not read, and that is a separate fact — a module every measure of which is
      * inapplicable and whose one row did not come back is undetermined, and every one of those
      * measures is entitled to say it went without nothing (issue #996).
      *
      * <p><b>Except where the build does not read rows at all.</b> That is not a reading that fell
      * short; it is this build saying it makes no measurement over rows, and every measure over them
-     * says so too — so a bar that asks for one of those is held open by that measure, and a bar
-     * that asks for none of them is a bar this build was never going to answer. Held open here as
-     * well, a build that measures nothing would be undetermined about a model the bar can refuse
-     * nothing about, which is the answer #955 took out.
+     * says so too — so what holds such a verdict open is those measures, each on its own account.
+     * Held open here as well, a build that measures nothing would be undetermined about a model
+     * nothing can be refused about, which is the answer #955 took out.
      */
     private List<Owned<Measurement<?>>> requiredSupport() {
         List<Owned<Measurement<?>>> support = new ArrayList<>();
@@ -1428,19 +1427,18 @@ public record AdequacyReport(int schemaVersion, String compilerVersion,
     }
 
     /**
-     * The measures of the model this verdict rests on: the ones that could find a gap the bar
+     * The measures of the model this verdict rests on: the ones that could find a gap a build
      * refuses over.
      *
      * <p>Two questions and each asked of the one thing that answers it. Whether a measure was made,
      * and how much of it, is the measurement's own answer and is read from it. Which kinds of gap a
-     * verdict needs an answer about is the bar's, and is read from that — so a measure that finds
-     * only what this build is not held to cannot leave the verdict undetermined for want of an
-     * answer, and a measure it is held to cannot be left out.
+     * verdict needs an answer about is {@link Adequacy#refuses}, and is read from there — so a
+     * measure that finds only what nobody is held to cannot leave the verdict undetermined for want
+     * of an answer, and a measure that finds what they are held to cannot be left out.
      *
      * <p>Which is why each entry below names the kind it can find. Read as "everything that was
-     * measured", a build held to a bar that asks nothing of the classes was undetermined for a
-     * position nobody had classified, and a build that asked for the classes was satisfied while
-     * one went unread.
+     * measured" instead, a verdict was undetermined for a position nobody had classified where no
+     * row was owed at one, and settled while a position it did owe rows at went unread.
      *
      * <p>Whether a measure applies at all is the measure's own answer, and never the shape of what
      * came back. A behavior with no body has no arms, and a position whose rules the walk never
@@ -1452,7 +1450,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion,
         List<Owned<Measure<?>>> measures = new ArrayList<>();
         for (ModuleReport module : modules) {
             for (BehaviorReport behavior : module.behaviors()) {
-                // The cases of the signature, which every bar refuses over.
+                // The cases of the signature.
                 if (behavior.signature() != null
                         && (refuses(Adequacy.Kind.OUTPUT_CASE_UNSPECIFIED)
                                 || refuses(Adequacy.Kind.INPUT_CASE_UNSPECIFIED))) {
@@ -1463,8 +1461,8 @@ public record AdequacyReport(int schemaVersion, String compilerVersion,
                     add(measures, new Subject.OfAMeasure(module.module(), behavior.name(),
                             MeasureWord.BRANCH), behavior.branch().measured());
                 }
-                // Which rules of the decision the rows took, which one bar refuses over and no
-                // other does. A reading that could place none of the rows has every rule of the
+                // Which rules of the decision the rows took. A reading that could place none of
+                // the rows has every rule of the
                 // body left as one a row may already take, and a verdict resting on the findings
                 // alone would call the model satisfied over exactly the rules nothing read.
                 if (behavior.evidence().decision() != null
@@ -1490,17 +1488,14 @@ public record AdequacyReport(int schemaVersion, String compilerVersion,
                     add(measures, new Subject.OfAMeasure(module.module(), behavior.name(),
                             MeasureWord.BOUNDARY), behavior.boundaryReadings());
                 }
-                // What the rows reach of each position, which finds a class no row is in — a gap
-                // the `classes` bar refuses over and no other does. A bar that asks nothing about
-                // the classes is not held open by one nobody read, and is not satisfied by one that
-                // was.
+                // What the rows reach of each position, which finds a class no row is in.
                 //
                 // The derivation as well as the positions it produced, the way the lines are asked
                 // for above. Which positions there are to cover is the first half of the answer: a
                 // reading that did not run out produced the axes it reached and no others, so
                 // walking those alone leaves a position nobody could derive looking exactly like a
-                // position with nothing to cover — and a bar that refuses over a class no row is in
-                // was satisfied by the classes nobody had found yet. A behavior the reading proved
+                // position with nothing to cover — and a verdict was satisfied by the classes
+                // nobody had found yet. A behavior the reading proved
                 // divides nothing answers {@code NotApplicable} and is dropped below, so this holds
                 // nothing open that was never going to be measured.
                 if (refuses(Adequacy.Kind.AXIS_CLASS_UNCOVERED)) {
@@ -1510,7 +1505,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion,
                             new Subject.OfAnAxisMeasure(module.module(), behavior.name(),
                                     axis.at()), axis.reached()));
                 }
-                // And of what this behavior is owed a row for, the points the bar asks for. A line
+                // And of what this behavior is owed a row for, which is every point of it. A line
                 // the declarations are owed is answered once for the module below, from every
                 // reading of it, and is no part of this account: weighed here as well, a row
                 // standing at it in one behavior would be weighed against another behavior having
@@ -1519,12 +1514,9 @@ public record AdequacyReport(int schemaVersion, String compilerVersion,
                 // an obligation: a place two of this body's rules drew a line at leaves a run owed
                 // to each, and a verdict counting the role once would be short by the rest. How
                 // many rows answer them is a different count and is the generator's.
-                // Which of the four those are is the bar's answer and not a second reading of it
-                // here: a build refusing over a missing IN row and calling a model satisfied while
-                // the IN point could not be measured would be held to one bar in one place and
-                // another in the other. What the report says about itself still reads all four:
-                // how much of the measurement was made and what a build is held to are two
-                // questions.
+                // All four of them, because all four are obligations: a build refusing over a
+                // missing IN row and calling a model satisfied while the IN point could not be
+                // measured would be answering two questions in one report.
                 // A dropped axis is not asked after here. What it was carrying went with it and no
                 // question stands for it, which is a fact about the measure's reading — so it
                 // leaves the measure's own answer short of complete, and reading it back off the
@@ -2680,7 +2672,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion,
         // And that nobody is behind on the second number. A count printed with no obligation
         // beside it is read as one, which is what sent an author after a row that bought a
         // combination and no evidence; a combination is not a thing this compiler finds a gap
-        // about, and no bar refuses over one (PairCombinationsAreNotRowObligationsTest).
+        // about, and nothing refuses over one (PairCombinationsAreNotRowObligationsTest).
         return String.format("pairs %d covered, %d unknown%s%s",
                 pairs.counts().covered(), pairs.unknown(),
                 whole ? "" : " of the rows that were read",

@@ -1431,7 +1431,7 @@ public final class Adequacy {
                     // What this measure works from, or the fact that it has none. A behavior left
                     // out of this map reads as a measure nobody asked for, and a measure nobody
                     // asked for goes without nothing — so a behavior nothing could be established
-                    // about would be held to no bar at all, and say nothing about it.
+                    // about would be held to nothing at all, and say nothing about it.
                     switch (BoundaryForMeasurement.of(sigs.value(), readInputs, behavior)) {
                         case BoundaryForMeasurement.NotDerived why ->
                                 SignatureEvidence.notMeasurable(behavior, why);
@@ -3497,8 +3497,8 @@ public final class Adequacy {
      * to read is which part of the shortfall was answered and which was not. A block that printed
      * only what it managed reads as though it filled everything.
      *
-     * <p>Named for generation and not for gaps, which is what it used to be called. A gap is what
-     * some bar refuses over, and that is not what decides whether a row can be composed for a
+     * <p>Named for generation and not for gaps, which is what it used to be called. A gap is what a
+     * build refuses over, and that is not what decides whether a row can be composed for a
      * finding: the two are separate readings of one set of findings, and a name that said gap kept
      * the older arrangement alive in every reader that met it.
      */
@@ -3690,8 +3690,8 @@ public final class Adequacy {
          *
          * <p>Every finding, and not the ones a build refuses over. Those are two questions asked of
          * one set of findings, and the first used to be the doorway of the second — so a finding
-         * some bar would refuse over and no bar had been asked for went unanswered, and no strategy
-         * could be written for one until a bar gated on it first. No bar reaches this.
+         * nobody had asked to be held to went unanswered, and no strategy could be written for one
+         * until something gated on it first. What a build refuses over does not reach this.
          *
          * <p>Walked over the findings rather than over the strategies, which is the other half. A
          * walk over the strategies answers for the findings somebody wrote a strategy for and
@@ -4904,13 +4904,13 @@ public final class Adequacy {
          * <p>A rule this compiler could not read, a position nothing divides, a question nobody
          * answered, a row whose answer is owed: each is worth telling an author and none of them is
          * a measure coming to an answer. Nothing weakened them because nothing measured them, and a
-         * build's answer to one is its criterion's alone.
+         * build's answer to one is the account's alone.
          *
          * <p>What that does not say is whether a build refuses. Being read rather than measured and
          * being refused over are different questions, and folding them left a finding read straight
          * off the source with no way to be a gap: a row written {@code <?>} is as certain as a fact
-         * gets and is exactly the work a build held to the rows should stop for. Which kinds a bar
-         * refuses over is {@link AdequacyBar#refuses} and is asked there.
+         * gets and is exactly the work a build should stop for. Which kinds a build refuses over is
+         * {@link #refuses} and is asked there.
          */
         public static Finding noticed(String behavior, About about) {
             return noticed(new FindingSubject.OfABehavior(behavior), about);
@@ -5120,8 +5120,8 @@ public final class Adequacy {
      *
      * <p>Every debt and not only the ones something is short of. A line a row already stands at is
      * what a verdict rests on as much as one nothing stands at: read off the findings, the debts
-     * that are covered are not there at all, and a bar would be settled by a denominator made of
-     * the gaps.
+     * that are covered are not there at all, and a verdict would be settled by a denominator made
+     * of the gaps.
      *
      * <p><b>The module's own, which takes two things and not one.</b> A line is here when one of
      * this module's declarations owes it and some behavior of this module reads it. Owing it is the
@@ -5662,7 +5662,7 @@ public final class Adequacy {
          *
          * <p>{@link Finding#noticed} because nothing measured it. There is no run behind this and
          * nothing about it could have come out otherwise — the row is written and its answer is
-         * not — so it carries no weakening and a build's answer to it is its bar's alone.
+         * not — so it carries no weakening and a build's answer to it is the account's alone.
          */
         private static void unansweredRows(Hir.Module module, String behavior, List<Finding> out) {
             for (Hir.Example example : module.examples()) {
@@ -6014,8 +6014,8 @@ public final class Adequacy {
          *
          * <p>The message keys are written out per kind rather than derived from the code's name, so
          * that a scan for the keys this names finds them — a key built by concatenation is one nothing
-         * can see is used. Which findings get here is
-         * {@link Finding#isAdequacyGap(AdequacyBar)}'s answer and not this method's.
+         * can see is used. Which findings get here is {@link Finding#isAdequacyGap}'s answer and not
+         * this method's.
          */
         private static Report warning(Db db, String module, Finding finding) {
             About said = finding.about();

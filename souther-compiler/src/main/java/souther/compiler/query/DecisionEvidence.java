@@ -27,7 +27,7 @@ import java.util.Set;
  * come back read in part — and those are the four states {@link Measure} already has. Written as a
  * sum of its own, the three nothings were one word with no weakening behind it: a build that read
  * no row and one whose rows are all placed and take none of the rules both said the rules are
- * uncovered, and a bar refused over the first.
+ * uncovered, and a build refused over the first.
  *
  * @param read the rules the body states
  * @param took which of them the rows were seen taking, and how far that reading got
@@ -153,7 +153,7 @@ public record DecisionEvidence(DecisionReading read, Measure<RowsPlaced> took) {
      *
      * <p>Every one of these leaves what the rows take unknown rather than empty. A rule nothing was
      * seen taking under one of them is a rule a row may already take, so no account may call it
-     * missing and no bar may refuse over it.
+     * missing and nothing may refuse over it.
      */
     public enum Unreadable implements FailureReason {
 
