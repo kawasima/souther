@@ -1066,14 +1066,20 @@ public record AdequacyReport(int schemaVersion, String compilerVersion,
         return cited;
     }
 
-    /** Every handle the findings hold, read through the one question that spans the kinds of them
-     *  about a rule ({@link About.OfARule}). */
+    /**
+     * Every handle the findings hold.
+     *
+     * <p>Asked of what a finding is about, by the same question every value holding a handle
+     * answers ({@link RuleCitations}). Matched against the kinds that happen to be about a rule
+     * instead, a kind added later is a kind whose rules a page names with nowhere to point — which
+     * is the fault this gathering was rewritten to keep out, one seal over.
+     */
     private static Set<RuleCitation> citedBy(List<ReportedFinding> found) {
         Set<RuleCitation> cited = new LinkedHashSet<>();
         if (found != null) {
             found.stream().map(ReportedFinding::about)
-                    .filter(About.OfARule.class::isInstance)
-                    .map(About.OfARule.class::cast)
+                    .filter(RuleCitations.class::isInstance)
+                    .map(RuleCitations.class::cast)
                     .forEach(each -> cited.addAll(each.ruleCitations()));
         }
         return cited;
@@ -1121,12 +1127,6 @@ public record AdequacyReport(int schemaVersion, String compilerVersion,
                     .forEach(each -> take.accept(each.finding().finding().sentTo()));
         }
         return places;
-    }
-
-    /** The points one behavior's account holds, or none where the measure could not be made. */
-    private static List<BorderObligationPointAssessment> pointsOf(
-            Measure<List<BorderObligationPointAssessment>> account) {
-        return account == null ? List.of() : account.made().orElse(List.of());
     }
 
     /** The lines one behavior met, or none where the measure could not be made. */
