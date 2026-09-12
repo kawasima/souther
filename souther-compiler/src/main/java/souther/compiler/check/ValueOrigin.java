@@ -124,7 +124,9 @@ public sealed interface ValueOrigin<K> {
         @Override
         public Set<K> positions() {
             Set<K> out = new LinkedHashSet<>(decidedBy.positions());
-            out.addAll(across(alternatives));
+            for (ValueOrigin<K> each : alternatives) {
+                out.addAll(each.positions());
+            }
             return Collections.unmodifiableSet(out);
         }
     }
@@ -307,8 +309,7 @@ public sealed interface ValueOrigin<K> {
         }
         if (e instanceof Core.Match match) {
             return new OneOf<>(of(match.scrutinee(), at, reading, following),
-                    partsOf(match.cases().stream().map(Core.Case::body).toList(), at, reading,
-                            following));
+                    partsOf(armsOf(match), at, reading, following));
         }
         List<Core> children = new ArrayList<>();
         Core.forEachChild(e, children::add);
@@ -324,6 +325,15 @@ public sealed interface ValueOrigin<K> {
         out.add(attempt.then());
         for (Core.ElseArm arm : attempt.els()) {
             out.add(arm.body());
+        }
+        return out;
+    }
+
+    /** What a match may come to: what each of its arms answers. */
+    private static List<Core> armsOf(Core.Match match) {
+        List<Core> out = new ArrayList<>(match.cases().size());
+        for (Core.Case each : match.cases()) {
+            out.add(each.body());
         }
         return out;
     }

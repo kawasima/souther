@@ -331,11 +331,21 @@ public final class UnreadComparison {
             // a choice is a position's own values or a literal, that promise is false and what an
             // author is owed is the other word. What decided the choice is not asked: an operation
             // over the test made none of the values the rule is about.
-            case ValueOrigin.OneOf<K> choice ->
-                    choice.alternatives().stream().allMatch(UnreadComparison::madeByAnOperation);
+            case ValueOrigin.OneOf<K> choice -> everyOneMadeByAnOperation(choice.alternatives());
             case ValueOrigin.IsAPosition<K> _, ValueOrigin.Written<K> _,
                  ValueOrigin.Unnameable<K> _ -> false;
         };
+    }
+
+    /** Whether every value in {@code of} is one an operation made of a position. Stops at the
+     *  first that is not, each answer being a walk of whatever stands under it. */
+    private static <K> boolean everyOneMadeByAnOperation(List<ValueOrigin<K>> of) {
+        for (ValueOrigin<K> each : of) {
+            if (!madeByAnOperation(each)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private UnreadComparison() {}
