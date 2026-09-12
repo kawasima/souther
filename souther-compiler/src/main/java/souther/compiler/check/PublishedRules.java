@@ -4,6 +4,7 @@ import souther.compiler.types.TypeSymbol;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * The rules that govern a value, as the declarations that wrote them publish them.
@@ -47,21 +48,46 @@ public record PublishedRules(List<ClauseMeaning> reached, boolean everyRuleReach
      * every value its type does, and one whose module nobody could read holds whatever its author
      * wrote. Only where nothing declares it at all are there no rules to be short of — and then
      * there is nothing it spreads to be short of either, which is why the walk stops there.
+     *
+     * <p><b>{@code found} is what this walk has already worked out, and it is asked at every step.</b>
+     * A declaration reached twice is walked once: what governs it does not turn on which of the
+     * types that spread it was asked, so a second walk of it is the same walk. What that does not do
+     * is make a clause reached twice into one clause — two spreads of one type bring its rules in
+     * twice, and the two answers are put together the way any two are, from one walk instead of two.
+     *
+     * <p>An entry is written only once the walk under it has come back, so a declaration that
+     * spreads its way round to itself meets no entry of its own and recurses, which is what it did
+     * before there was a table here. Standing an entry in for a walk still running would make what
+     * a type is held to turn on which of the types in the ring was asked for first.
      */
     static PublishedRules governing(TypeSymbol.AtModule named, Symbols symbols,
-                                    PublishedDeclarations published) {
+                                    PublishedDeclarations published,
+                                    Map<TypeSymbol.AtModule, PublishedRules> found) {
+        PublishedRules known = found.get(named);
+        if (known != null) {
+            return known;
+        }
+        PublishedRules out = walked(named, symbols, published, found);
+        found.put(named, out);
+        return out;
+    }
+
+    /** What {@code named} publishes and what its spreads do, walked — see {@link #governing}. */
+    private static PublishedRules walked(TypeSymbol.AtModule named, Symbols symbols,
+                                         PublishedDeclarations published,
+                                         Map<TypeSymbol.AtModule, PublishedRules> found) {
         DeclarationMeaning said = published.of(named.key());
         if (!(said instanceof DeclarationMeaning.Product product)) {
             return new PublishedRules(List.of(),
                     said != null || symbols.declaredNode(named) == null);
         }
-        PublishedRules found = new PublishedRules(List.of(), true);
+        PublishedRules out = new PublishedRules(List.of(), true);
         for (DeclarationReference each : product.includes()) {
             if (each instanceof DeclarationReference.Named it
                     && it.declaration() instanceof TypeSymbol.AtModule spread) {
-                found = found.and(governing(spread, symbols, published));
+                out = out.and(governing(spread, symbols, published, found));
             }
         }
-        return found.and(new PublishedRules(product.clauses(), true));
+        return out.and(new PublishedRules(product.clauses(), true));
     }
 }

@@ -45,6 +45,8 @@ final class Clauses {
     /** Remembered per declaration, not per clause: a clause an include brings in is one expression
      * reached under two names, and what it types to is read against the fields of the one asking. */
     private final Map<TypeSymbol, Map<Hir.Expr, TypedClause>> typed = new HashMap<>();
+    /** What governs each declaration this reading has been asked about, and each one the walk
+     * reached under it: a type spread by two of them is walked once. */
     private final Map<TypeSymbol.AtModule, PublishedRules> effective = new HashMap<>();
     /** Which of a declaration's own fields each typed clause reads — what a construction has to have
      * filled for the clause to be read at all. */
@@ -67,6 +69,7 @@ final class Clauses {
         this.published = source.published();
     }
 
+
     /** Where this reads, for a reader that has to hand it on rather than ask for one of its own. */
     RuleReadingSource source() {
         return source;
@@ -81,8 +84,7 @@ final class Clauses {
     /** Every rule that applies to {@code named}, as the declarations that wrote them publish them,
      * with whether every one of them was reached. */
     PublishedRules of(TypeSymbol.AtModule named) {
-        return effective.computeIfAbsent(named, name ->
-                PublishedRules.governing(name, symbols, published));
+        return PublishedRules.governing(named, symbols, published, effective);
     }
 
     /**
@@ -96,9 +98,6 @@ final class Clauses {
     List<TypeOps.Declared> declaredHere(TypeSymbol.AtModule named) {
         return TypeOps.writtenOn(named, expandedClauses);
     }
-
-    private final Map<TypeSymbol.AtModule, List<ClauseMeaning>> declaredClauses =
-            new HashMap<>();
 
     /** What {@code named}'s fields are, read from this reading's own world for the reason
      *  {@link #declarationOf} gives. */
@@ -354,7 +353,7 @@ final class Clauses {
 
     /** Every clause of {@code named}, as the declaration that wrote it publishes it. */
     List<ClauseMeaning> declared(TypeSymbol.AtModule named) {
-        return declaredClauses.computeIfAbsent(named, name -> of(name).reached());
+        return of(named).reached();
     }
 
     /**
