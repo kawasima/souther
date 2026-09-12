@@ -399,11 +399,15 @@ public final class SemanticSnapshot {
         // have to keep.
         Answer<Map<BindingId, BindingEvidence>> parameters =
                 db.ask(new Bodies.DeclaredParameterBindings(module));
-        if (!values.present() || !reachable.present() || !parameters.present()) {
+        if (!values.present() || !reachable.present()) {
             return null;
         }
+        // What the walk is handed where the table could not be worked out is no bindings, and not
+        // no reading: every expression whose type rests on none of them is stated by the same
+        // declarations either way, and a parameter this cannot speak for is a name the walk goes on
+        // to say nothing about — which is what it says for one nothing declares.
         return new DeclaredTypeReading(declarations(), values.value(), reachable.value(),
-                parameters.value()).declaredTypeOf(e);
+                parameters.present() ? parameters.value() : Map.of()).declaredTypeOf(e);
     }
 
     /**
