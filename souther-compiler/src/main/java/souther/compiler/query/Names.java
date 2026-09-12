@@ -60,6 +60,18 @@ public final class Names {
     private Names() {}
 
     /**
+     * What every registry over this store answers {@link Registry#declares} with.
+     *
+     * <p>One answer and not one per rung, because being declared is not a fact about a rung. Written
+     * here rather than defaulted on the interface so that a registry reading this store cannot be
+     * left answering it out of the declaration it happens to hold, which is what puts where a
+     * declaration stands into a reader that asked only whether it was there.
+     */
+    private static boolean declared(Db db, TypeKey address) {
+        return Boolean.TRUE.equals(db.ask(new CompilationDeclares(address)).value());
+    }
+
+    /**
      * A registry over this compilation, reading each module's declarations as resolution left them.
      *
      * <p>One of the two declaration worlds a module can be read against, and which one a reader gets
@@ -74,6 +86,11 @@ public final class Names {
             public Hir.Def declaration(TypeKey address) {
                 Answer<Hir.Def> def = db.ask(new ResolvedDeclaration(address));
                 return def.present() ? def.value() : null;
+            }
+
+            @Override
+            public boolean declares(TypeKey address) {
+                return declared(db, address);
             }
 
             @Override
@@ -113,6 +130,11 @@ public final class Names {
             }
 
             @Override
+            public boolean declares(TypeKey address) {
+                return declared(db, address);
+            }
+
+            @Override
             public Map<String, Ast.Def> declaredIn(String moduleName) {
                 Answer<Map<String, Ast.Def>> defs = db.ask(new Declarations(moduleName));
                 return defs.present() ? defs.value() : Map.of();
@@ -146,6 +168,11 @@ public final class Names {
             public Normalized.Def declaration(TypeKey address) {
                 Answer<Normalized.Def> def = db.ask(new Shapes.NormalizedDef(address));
                 return def.present() ? def.value() : null;
+            }
+
+            @Override
+            public boolean declares(TypeKey address) {
+                return declared(db, address);
             }
 
             @Override
@@ -191,6 +218,11 @@ public final class Names {
                 Answer<Derived.Def> def =
                         db.ask(new Shapes.DerivedDef(address));
                 return def.present() ? def.value() : null;
+            }
+
+            @Override
+            public boolean declares(TypeKey address) {
+                return declared(db, address);
             }
 
             @Override
@@ -307,6 +339,33 @@ public final class Names {
             }
             Ast.Def def = defs.value().get(named.name());
             return def == null ? Answer.absent() : Answer.of(def);
+        }
+    }
+
+    /**
+     * Whether a module of this compilation declares something at {@code named}.
+     *
+     * <p>A question of its own because of what its answer is, and {@link HasScope} is the same shape
+     * for a module: read off a declaration, whose answer moves whenever the declaration is written
+     * over or written somewhere else in its text, and answered as a yes or a no, which does not. A
+     * reader that took the declaration to find out whether there was one would be told where it now
+     * stands, and so would every reader of that in turn.
+     *
+     * <p>Not a fact about any representation. Which rung the declarations a reader holds have
+     * reached decides what one says, and decides nothing about whether one is there — a product no
+     * representation could be derived for is a name this compilation declares all the same. So this
+     * is read off the declarations as they were indexed, which is where a name's being declared here
+     * was settled, and every rung is answered the same.
+     */
+    public record CompilationDeclares(TypeKey named) implements Key<Boolean> {
+        @Override
+        public String module() {
+            return named.module();
+        }
+
+        @Override
+        public Answer<Boolean> compute(Db db) {
+            return Answer.of(db.ask(new Declaration(named)).present());
         }
     }
 

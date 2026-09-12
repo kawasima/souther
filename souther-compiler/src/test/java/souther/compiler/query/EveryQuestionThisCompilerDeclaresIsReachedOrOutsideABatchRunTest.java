@@ -68,7 +68,6 @@ class EveryQuestionThisCompilerDeclaresIsReachedOrOutsideABatchRunTest {
      */
     private static final Set<String> NO_INPUT_IN_A_BATCH_RUN = Set.of(
             "souther.compiler.query.Bodies$ContractCapabilities",
-            "souther.compiler.query.Names$Declaration",
             "souther.compiler.query.Names$DeclaredAt",
             "souther.compiler.query.Names$DenotedAt",
             "souther.compiler.query.Names$Reachable",

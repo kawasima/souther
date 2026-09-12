@@ -39,14 +39,34 @@ public interface Registry<D> {
     D declaration(TypeKey address);
 
     /**
+     * Whether a module of this compilation declares something at {@code address}.
+     *
+     * <p>Not {@link #declaration} answering something. What a registry holds is declarations at one
+     * rung, and whether one is declared at all is not a fact about any rung: a product no
+     * representation could be derived for is a name its module declares, and a registry that
+     * answered no here would be saying this compilation has no such type. Asking the declaration is
+     * also more than the question needs — a reader wanting to know whether something is there is
+     * told, by the answer it gets, where the thing now stands.
+     *
+     * <p>The default is for a registry built out of declarations already in hand, where there is
+     * nothing else to ask and nothing the answer could be read from beside it.
+     */
+    default boolean declares(TypeKey address) {
+        return declaration(address) != null;
+    }
+
+    /**
      * The identity of the declaration that address names, or null where nothing declares it.
      *
      * <p>Asking rather than assembling. A reader with a module and a name has an address, and an
      * address is not an identity until something declares one there — so this is where the two are
      * told apart, and a reader that gets nothing back has nothing it could have gone on with.
+     *
+     * <p>Which is a question about the declaration being there and not about this registry having a
+     * representation of it, so it is {@link #declares} that decides it.
      */
     default TypeSymbol identify(TypeKey address) {
-        return declaration(address) != null ? TypeSymbols.declared(address) : null;
+        return declares(address) ? TypeSymbols.declared(address) : null;
     }
 
     /** Every definition of one module, keyed by the name written there. Empty when this compilation
