@@ -240,7 +240,7 @@ class AChoiceIsDecidedByEveryClauseAndAnsweredByItsOwnTest {
      */
     @Test
     void whatAChoiceLeftOpenIsWhatTheAlternativeBesideTheUnreadOneReachedAndWidened() {
-        StatedByClauses.AlternativeOpening opened = StatedByClauses.opens(new ChoiceId(),
+        StatedByClauses.AlternativeOpening opened = StatedByClauses.opens(new ClauseOccurrence(0),
                 widthRestingOnTheRight(),
                 theBranchRead(java.util.Set.of()),
                 theBranchNothingRead(java.util.Set.of()));
@@ -270,7 +270,7 @@ class AChoiceIsDecidedByEveryClauseAndAnsweredByItsOwnTest {
      */
     @Test
     void aPositionNoAlternativeWidenedIsNotOpenedByEitherOfThemGoingUnread() {
-        StatedByClauses.AlternativeOpening opened = StatedByClauses.opens(new ChoiceId(),
+        StatedByClauses.AlternativeOpening opened = StatedByClauses.opens(new ClauseOccurrence(0),
                 Settlement.WidthDependency.none(),
                 theBranchNothingRead(java.util.Set.of()),
                 theBranchNothingRead(java.util.Set.of()));
@@ -290,7 +290,7 @@ class AChoiceIsDecidedByEveryClauseAndAnsweredByItsOwnTest {
      */
     @Test
     void whereTwoUnreadAlternativesAreOneTheWidthRestsOnThePositionIsStillOpened() {
-        StatedByClauses.AlternativeOpening opened = StatedByClauses.opens(new ChoiceId(),
+        StatedByClauses.AlternativeOpening opened = StatedByClauses.opens(new ClauseOccurrence(0),
                 widthRestingOnTheRight(),
                 theBranchNothingRead(java.util.Set.of()),
                 theBranchNothingRead(java.util.Set.of()));
@@ -309,7 +309,7 @@ class AChoiceIsDecidedByEveryClauseAndAnsweredByItsOwnTest {
      */
     private static StatedByClauses.AlternativeOpening opened(
             ChoiceSite choice) {
-        return new StatedByClauses.AlternativeOpening(choice.id(),
+        return new StatedByClauses.AlternativeOpening(choice.at(),
                 new Opening<>(java.util.Set.of(CONSTRAINED), java.util.Set.of(),
                         java.util.Set.of(CONSTRAINED)),
                 Opening.nothing());
@@ -342,7 +342,7 @@ class AChoiceIsDecidedByEveryClauseAndAnsweredByItsOwnTest {
      */
     @Test
     void andTheEndsAreSentToTheChoiceByTheirOwnAlternativeGoingUnread() {
-        StatedByClauses.AlternativeOpening opened = StatedByClauses.opens(new ChoiceId(),
+        StatedByClauses.AlternativeOpening opened = StatedByClauses.opens(new ClauseOccurrence(0),
                 widthRestingOnTheRight(),
                 theBranchTheEndsCouldNotRead(), theBranchTheEndsRead());
 
@@ -389,9 +389,14 @@ class AChoiceIsDecidedByEveryClauseAndAnsweredByItsOwnTest {
     private static final WhatTheAlternativesLeave NEITHER_HOLDS_A_POSITION_DOWN =
             WhatTheAlternativesLeave.nothing();
 
-    /** One choice somebody wrote, told from every other by being this one. */
+    /** One choice somebody wrote, told from every other by where in its clause it stands. */
     private static ChoiceSite aChoice() {
-        return new ChoiceSite(new ChoiceId(), new SourcePos(1, 1));
+        return aChoiceWrittenAt(0);
+    }
+
+    /** The choice written at {@code occurrence} of the clause, which is what names one. */
+    private static ChoiceSite aChoiceWrittenAt(int occurrence) {
+        return new ChoiceSite(new ClauseOccurrence(occurrence), new SourcePos(1, 1));
     }
 
     /** A branch that was read, constraining one position and settling another. */
@@ -415,11 +420,18 @@ class AChoiceIsDecidedByEveryClauseAndAnsweredByItsOwnTest {
                 BoundaryState.nothing(), java.util.Map.of());
     }
 
-    /** And two choices leaving one position open are two things an author can look at. */
+    /**
+     * And two choices leaving one position open are two things an author can look at.
+     *
+     * <p>Two of them because their author wrote them at two places in the clause. Two readings
+     * meeting one written choice are one thing to look at and are told so by standing at one
+     * occurrence, which is the other half of this and is what an identity per object could not
+     * say.
+     */
     @Test
     void twoChoicesLeavingOnePositionOpenAreTwo() {
-        ChoiceSite one = aChoice();
-        ChoiceSite other = aChoice();
+        ChoiceSite one = aChoiceWrittenAt(0);
+        ChoiceSite other = aChoiceWrittenAt(3);
 
         assertEquals(2, java.util.Set.of(
                         new RuleShortfall(CONSTRAINED, UnreadReason.ALTERNATIVE_NOT_READ,

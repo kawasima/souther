@@ -1015,7 +1015,11 @@ public final class InvariantChecker {
             // only where the conjunct is out of both — which is what left a choice composed the
             // same way with the conjunct and without it, so that every end it was holding came back
             // held by nobody.
-            asked.read(reader, at, each, each.clause(), each.view());
+            // Which rule the clause is of, read off the parts that say it. A conjunct carries the
+            // rule it is of, and every one of these is a conjunct of the same clause, so the first
+            // of them answers for all — asked here, where the reading is known to have parts.
+            asked.read(reader, at, each, each.parts().getFirst().id().rule(),
+                    each.clause(), each.view());
         }
         // And now that every rule about this value has been said, what its positions admit is
         // worked out — and with it what each clause and each part of it took in, since a branch
@@ -1509,6 +1513,11 @@ public final class InvariantChecker {
      *
      * <p>And which reading of them this is ({@link ReadingId}), because what it made of each part
      * is its own and a rule is read once per place the walk opens a value at.
+     *
+     * <p>Which rule the clause is of is said by the parts and is not kept beside them. A part
+     * carries the rule it is a conjunct of, so a reading that held one as well would be keeping the
+     * same fact twice — and two of them can be built disagreeing, which is a reading filing an
+     * answer under one rule while describing another.
      */
     record Written(ReadingId opened, Core clause, ClauseView view,
                    Map<PartId<RuleRef.Invariant>, Map<ClauseOccurrence, PartAsRead>>

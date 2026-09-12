@@ -98,14 +98,19 @@ sealed interface StatedByClauses {
      * <p>The alternatives are what stands between the brackets and nothing else. Everything this
      * choice is answerable for is asked of them, so a conjunction written beside the brackets must
      * not reach them — and there is no operation on this type by which one could.
+     *
+     * <p>Which choice it is, is where it stands in the clause. This tree is one rule's, so the
+     * occurrence tells it from every other choice anything here can meet; what pairs it with its
+     * clause is the rule, which is the caller's and is put on where the fates of every rule are
+     * gathered ({@link ChoiceId}).
      */
-    record Either(ChoiceId id, Core writtenAt, StatedByClauses left, StatedByClauses right)
+    record Either(ClauseOccurrence at, Core writtenAt, StatedByClauses left, StatedByClauses right)
             implements StatedByClauses {
 
         public Either {
-            if (id == null || writtenAt == null || left == null || right == null) {
+            if (at == null || writtenAt == null || left == null || right == null) {
                 throw new IllegalArgumentException(
-                        "a choice is between two named readings, written somewhere");
+                        "a choice is between two readings, at some occurrence of a clause");
             }
         }
     }
@@ -483,7 +488,7 @@ sealed interface StatedByClauses {
      *                 which alternative went unread is each reading's own, and so is what a branch
      *                 leaves and where the branch beside it reached
      */
-    record AlternativeOpening(ChoiceId choice,
+    record AlternativeOpening(ClauseOccurrence choice,
                               Opening<FactSubject, ReadingLanguage.Values> byValues,
                               Opening<FactSubject, ReadingLanguage.Order> byOrder) {
 
@@ -523,7 +528,7 @@ sealed interface StatedByClauses {
      * accounts of one written branch are what this has to put side by side, and a caller picking
      * one of them out is the place the halves would come apart.
      */
-    static AlternativeOpening opens(ChoiceId choice, Settlement.WidthDependency width,
+    static AlternativeOpening opens(ClauseOccurrence choice, Settlement.WidthDependency width,
                                     Part one, Part other) {
         return new AlternativeOpening(choice,
                 openedBy(width.byValues(), one.byValues(), other.byValues()),
@@ -636,7 +641,7 @@ sealed interface StatedByClauses {
                             && mirrors(it.left(), both.left(), view)
                             && mirrors(it.right(), both.right(), view);
                 }
-                case EITHER -> under instanceof Either choice && choice.writtenAt() == it.of()
+                case EITHER -> under instanceof Either choice && choice.at().equals(it.at())
                         && mirrors(it.left(), choice.left(), view)
                         && mirrors(it.right(), choice.right(), view);
             };
@@ -835,7 +840,7 @@ sealed interface StatedByClauses {
             return switch (join.how()) {
                 case BOTH -> new Descent.Into<>(Both::new);
                 case EITHER -> new Descent.Into<>(
-                        (one, other) -> new Either(new ChoiceId(), join.of(), one, other));
+                        (one, other) -> new Either(join.at(), join.of(), one, other));
             };
         }
 
@@ -906,20 +911,21 @@ sealed interface StatedByClauses {
          * about the branches this walk decides: worked out beforehand, a choice would be answerable
          * for a position only a branch it has already shown nobody can be in ever reached.
          */
-        StatedTogether together(StatedByClauses read,
-                                Map<ChoiceId, Settlement.OfAChoice> decided) {
+        StatedTogether together(RuleRef.Invariant rule, StatedByClauses read,
+                                ChoicesDecided decided) {
             return switch (read) {
                 case Said it -> new StatedTogether.Said(it.confinement());
-                case CameFrom it -> together(it.of(), decided);
-                case Both it -> together(it.left(), decided).meet(together(it.right(), decided));
-                case Either it -> chosen(it, decided);
+                case CameFrom it -> together(rule, it.of(), decided);
+                case Both it -> together(rule, it.left(), decided)
+                        .meet(together(rule, it.right(), decided));
+                case Either it -> chosen(rule, it, decided);
             };
         }
 
-        private StatedTogether chosen(Either choice,
-                                      Map<ChoiceId, Settlement.OfAChoice> decided) {
-            StatedTogether one = together(choice.left(), decided);
-            StatedTogether other = together(choice.right(), decided);
+        private StatedTogether chosen(RuleRef.Invariant rule, Either choice,
+                                      ChoicesDecided decided) {
+            StatedTogether one = together(rule, choice.left(), decided);
+            StatedTogether other = together(rule, choice.right(), decided);
             if (one instanceof StatedTogether.Said here
                     && other instanceof StatedTogether.Said there) {
                 Confinement.Admission<FactSubject> mine = here.confinement().admission(machines);
@@ -929,7 +935,7 @@ sealed interface StatedByClauses {
                         souther.compiler.values.Emptiness.Alternatives.from(
                                 SidesShownEmpty.of(mine.emptiness(), theirs.emptiness()));
                 if (settledHere(standing, mine, theirs)) {
-                    decided.put(choice.id(), settled(here, mine, there, theirs));
+                    decided.settled(rule, choice.at(), settled(here, mine, there, theirs));
                     return switch (standing) {
                         case NEITHER_STANDS -> new StatedTogether.Said(
                                 here.confinement().bothDead(there.confinement(),
@@ -943,7 +949,7 @@ sealed interface StatedByClauses {
             }
             // And where whether a branch can be taken is not settled, the question waits, and the
             // fate comes back from where the machines are made.
-            return new StatedTogether.Choice(choice.id(), one, other);
+            return new StatedTogether.Choice(rule, choice.at(), one, other);
         }
 
         /**
@@ -1030,15 +1036,15 @@ sealed interface StatedByClauses {
          * for every choice its rule wrote.
          */
         Settlement settle(StatedTogether read, Allowance<FactSubject> by,
-                          Map<ChoiceId, Settlement.OfAChoice> decided, ChoicesRead.Tally tally) {
-            Map<ChoiceId, Settlement.OfAChoice> outcomes = new LinkedHashMap<>(decided);
+                          ChoicesDecided decided, ChoicesRead.Tally tally) {
+            ChoicesDecided outcomes = new ChoicesDecided(decided);
             StatedTogether.Said said = settling(read, by, outcomes, tally);
             return new Settlement(said.confinement().resolve(by), outcomes);
         }
 
         /** The same reading with every choice in it decided, each occurrence noting its fate. */
         private StatedTogether.Said settling(StatedTogether read, Allowance<FactSubject> by,
-                                             Map<ChoiceId, Settlement.OfAChoice> outcomes,
+                                             ChoicesDecided outcomes,
                                              ChoicesRead.Tally tally) {
             return switch (read) {
                 case StatedTogether.Said it -> it;
@@ -1048,8 +1054,7 @@ sealed interface StatedByClauses {
                     StatedTogether.Said other = settling(it.right(), by, outcomes, tally);
                     Settlement.Sided here = probed(one, by);
                     Settlement.Sided there = probed(other, by);
-                    outcomes.merge(it.id(), outcome(one, here, other, there),
-                            Settlement.OfAChoice::alsoSeen);
+                    outcomes.met(it.rule(), it.at(), outcome(one, here, other, there));
                     yield decided(one, here, other, there);
                 }
             };
@@ -1146,9 +1151,11 @@ sealed interface StatedByClauses {
          * read, so nothing here builds a machine and nothing here can be widened by a constraint a
          * neighbouring rule stated: no neighbouring rule is in the tree.
          */
-        Account accountOf(StatedByClauses rule, StatedTogether projected, Settlement made,
-                          Allowance<FactSubject> by, ChoicesRead.Tally tally) {
-            Taken took = accounted(rule, made.outcomes(), tally);
+        Account accountOf(RuleRef.Invariant rule, StatedByClauses clauses, StatedTogether projected,
+                          Settlement made, Allowance<FactSubject> by, ChoicesRead.Tally tally) {
+            // The rule is spent here, on choosing this rule's own fates out of the declaration's.
+            // What walks the tree below takes those and has no rule to pair an occurrence with.
+            Taken took = accounted(clauses, made.outcomes().of(rule), tally);
             // This rule's own settled reading, which is what an account of it rests on. The
             // derived numbers it still leaves open are read off the same one: which of them a
             // choice settled is that reading's answer, worked out where the branches were, and
@@ -1311,8 +1318,7 @@ sealed interface StatedByClauses {
          * derived from, every conjunct written beside a choice would be a conjunct of both its
          * alternatives, and a choice would be answerable for what a clause outside it left open.
          */
-        private Taken accounted(StatedByClauses read,
-                                Map<ChoiceId, Settlement.OfAChoice> outcomes,
+        private Taken accounted(StatedByClauses read, ChoicesOfRule outcomes,
                                 ChoicesRead.Tally tally) {
             return switch (read) {
                 case Said it -> new Taken(it.took(), Map.of(), Set.of());
@@ -1322,7 +1328,7 @@ sealed interface StatedByClauses {
                 case Either it -> {
                     Taken one = accounted(it.left(), outcomes, tally);
                     Taken other = accounted(it.right(), outcomes, tally);
-                    Settlement.OfAChoice fate = outcomes.get(it.id());
+                    Settlement.OfAChoice fate = outcomes.at(it.at());
                     if (fate == null) {
                         // Every choice of a rule is either settled off the descriptions or stands
                         // somewhere in the met-together reading, so a fate nobody settled is this
@@ -1359,8 +1365,8 @@ sealed interface StatedByClauses {
                         yield left.both(right).mapped(Part::underACollapsedChoice);
                     }
                     yield left.either(
-                            new ChoiceSite(it.id(), it.writtenAt().pos()),
-                            opens(it.id(), fate.width(), left.took(), right.took()),
+                            new ChoiceSite(it.at(), it.writtenAt().pos()),
+                            opens(it.at(), fate.width(), left.took(), right.took()),
                             fate.narrowed(), right);
                 }
             };
@@ -1606,11 +1612,20 @@ sealed interface StatedByClauses {
 
         private final Map<K, List<ClauseOccurrence>> byPart = new LinkedHashMap<>();
         private final Map<K, StatedByClauses> trees = new LinkedHashMap<>();
+        private final Map<K, RuleRef.Invariant> rules = new LinkedHashMap<>();
 
-        /** One clause read from {@code at} in the world {@code view} describes
-         *  ({@link ClauseView}), with the parts of it noted in the order the reading reached
-         *  them. */
-        StatedByClauses read(Reading reader, Denotations at, K key, Core clause, ClauseView view) {
+        /**
+         * One clause read from {@code at} in the world {@code view} describes
+         * ({@link ClauseView}), with the parts of it noted in the order the reading reached them.
+         *
+         * <p>{@code rule} is which clause the tree is of, said by the caller. What this holds is a
+         * reading per key, and the coordinates inside one of them are numbered within that clause —
+         * so the trees of two rules are met below under one table, and a key of its own is what
+         * keeps a choice of one from answering for a choice of the other. Which rule a key stands
+         * for is the caller's to say: nothing here can read it off a key it knows nothing about.
+         */
+        StatedByClauses read(Reading reader, Denotations at, K key, RuleRef.Invariant rule,
+                             Core clause, ClauseView view) {
             // Where in the clause each part is, in the order the reading reached them, and once
             // however many nodes one of them was spelled as: a part written `!(x)` and read at the
             // denial and at what it denies is one part of the clause, in one place.
@@ -1632,6 +1647,7 @@ sealed interface StatedByClauses {
                     : "the reading of a clause is not the tree its author wrote it as";
             byPart.put(key, parts);
             trees.put(key, one);
+            rules.put(key, rule);
             return one;
         }
 
@@ -1653,11 +1669,12 @@ sealed interface StatedByClauses {
             // one: what the rule leaves on its own is read off the tree that derives values, and a
             // second projection would be a second answer that agrees only until somebody changes
             // one of them.
-            Map<ChoiceId, Settlement.OfAChoice> decided = new LinkedHashMap<>();
+            ChoicesDecided decided = new ChoicesDecided();
             Map<K, StatedTogether> projected = new LinkedHashMap<>();
             StatedTogether whole = StatedTogether.top(reader.ordered().carriers());
             for (Map.Entry<K, StatedByClauses> each : trees.entrySet()) {
-                StatedTogether one = reader.together(each.getValue(), decided);
+                StatedTogether one = reader.together(rules.get(each.getKey()), each.getValue(),
+                        decided);
                 projected.put(each.getKey(), one);
                 whole = whole.meet(one);
             }
@@ -1691,7 +1708,7 @@ sealed interface StatedByClauses {
                 // decided by its own clauses against what the answer already established; met with
                 // its neighbours first, a branch they refuse is dropped and the rule is credited
                 // with a narrowing it did not do.
-                Account mine = reader.accountOf(each.getValue(),
+                Account mine = reader.accountOf(rules.get(each.getKey()), each.getValue(),
                         projected.get(each.getKey()), made, by, tally);
                 said.put(each.getKey(), mine.parts());
                 opened.addAll(mine.opened());

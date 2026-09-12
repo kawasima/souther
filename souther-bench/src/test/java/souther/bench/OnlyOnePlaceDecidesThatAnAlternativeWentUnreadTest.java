@@ -31,7 +31,7 @@ class OnlyOnePlaceDecidesThatAnAlternativeWentUnreadTest {
     /** The one method that answers what a choice left open, out of what its alternatives took in. */
     private static final String AUTHORITY =
             "souther.compiler.check.StatedByClauses#opens"
-                    + "(Lsouther/compiler/check/ChoiceId;"
+                    + "(Lsouther/compiler/check/ClauseOccurrence;"
                     + "Lsouther/compiler/check/Settlement$WidthDependency;"
                     + "Lsouther/compiler/check/StatedByClauses$Part;"
                     + "Lsouther/compiler/check/StatedByClauses$Part;)"
