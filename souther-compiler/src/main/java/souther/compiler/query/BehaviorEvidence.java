@@ -1,5 +1,13 @@
 package souther.compiler.query;
 
+import souther.compiler.check.RuleCitation;
+import souther.compiler.check.RuleCitations;
+
+import java.util.Collections;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
+
 /**
  * Everything measured about one behavior, and the one place what it went without is worked out.
  *
@@ -50,7 +58,7 @@ public record BehaviorEvidence(Adequacy.RowReading reading,
                                Measure<java.util.List<BorderAssessment>> boundaryReadings,
                                Measure<java.util.List<BorderObligationPointAssessment>> account,
                                Adequacy.BranchEvidence branch,
-                               DecisionEvidence decision) {
+                               DecisionEvidence decision) implements RuleCitations {
 
     public BehaviorEvidence {
         java.util.Objects.requireNonNull(reading,
@@ -146,5 +154,35 @@ public record BehaviorEvidence(Adequacy.RowReading reading,
             out = out.union(point.item().weakening());
         }
         return out;
+    }
+
+    /**
+     * Every handle this behavior's measures hold for a rule they read, all of them.
+     *
+     * <p>Asked of the parts, and each of those answers for its own, which is what
+     * {@link #weakening()} does one question over. A page that names a rule is sent somewhere by
+     * this, and what it may name is what was read rather than what some list of arrays happened to
+     * hold — the gathering it replaces was kept in step by whoever remembered, and the readings
+     * that compose a position's classes were the ones nobody did.
+     *
+     * <p><b>The parts that hold a handle, named as fields.</b> A measure is a measurement of some
+     * value and a handle is the value's, so this cannot be asked of {@link #parts()}: what comes
+     * back from there says how far a measurement ran and nothing about what it measured. Which
+     * fields those are is held to what this record is made of, where the union over the parts is.
+     */
+    @Override
+    public Set<RuleCitation> ruleCitations() {
+        Set<RuleCitation> out = new LinkedHashSet<>();
+        if (partition != null) {
+            out.addAll(partition.ruleCitations());
+        }
+        readings(boundaryReadings).forEach(each -> out.addAll(each.ruleCitations()));
+        readings(account).forEach(each -> out.addAll(each.ruleCitations()));
+        return Collections.unmodifiableSet(out);
+    }
+
+    /** What one of these measures made, or nothing where it was not made or not asked for. */
+    private static <T> List<T> readings(Measure<List<T>> measure) {
+        return measure == null ? List.of() : measure.made().orElseGet(List::of);
     }
 }
