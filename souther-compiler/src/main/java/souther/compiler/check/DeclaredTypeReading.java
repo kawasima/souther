@@ -63,8 +63,9 @@ import java.util.Set;
  *                  not defaulted to none: a reader that left it out would answer nothing for a call
  *                  of a behavior that another reader answers for, and two answers about one
  *                  expression is the state this walk exists to remove
- * @param bound     what the bindings in force where the walk starts have to say about themselves,
- *                  which the walk adds to as it enters more of them
+ * @param bound     what the bindings in force where the walk starts have to say about themselves.
+ *                  Read and not written: a walk enters its own bindings over these rather than into
+ *                  them, so what a caller works out once may be handed to every walk it makes
  */
 public record DeclaredTypeReading(DeclarationFacts facts,
                                   Map<String, Hir.FnDef> values,
@@ -201,8 +202,9 @@ public record DeclaredTypeReading(DeclarationFacts facts,
          *  rather than by specialization so that a recursion whose parameter types grow stops too. */
         private final Set<ValueName> entered = new HashSet<>();
 
-        /** What the bindings this walk has entered say about themselves. */
-        private final Map<BindingId, BindingEvidence> inForce = new HashMap<>(bound);
+        /** What the bindings in force say about themselves: the ones this walk was handed, under
+         *  the ones it entered itself. */
+        private final InForce inForce = new InForce(bound);
 
         /** How many answers a recursion cut short. An answer reached over one of those is about
          *  where it was asked from and not about the declaration, so it is not written down. */
@@ -271,7 +273,7 @@ public record DeclaredTypeReading(DeclarationFacts facts,
 
         /** What the binding in force says about itself. */
         private Type ofBinding(ValueName.Local local) {
-            return switch (inForce.get(local.id())) {
+            return switch (inForce.at(local.id())) {
                 // One more step of this walk, where the binding stands for an expression.
                 case BindingEvidence.BoundTo(Hir.Expr value) -> of(value);
                 // The answer outright, where a declaration gave it one.
@@ -336,7 +338,7 @@ public record DeclaredTypeReading(DeclarationFacts facts,
                     // would still be standing here.
                     Type required = declared.get(i) == null
                             ? null : decided.zonk(declared.get(i));
-                    outer.put(bound.binder().id(), inForce.put(bound.binder().id(),
+                    outer.put(bound.binder().id(), inForce.enter(bound.binder().id(),
                             boundBy(bound, required, arrived.get(i))));
                 }
                 Type answers = ex.declaredReturn() == null
@@ -351,7 +353,7 @@ public record DeclaredTypeReading(DeclarationFacts facts,
                 // make one declaration answer by how the call reached this reading.
                 return decided.open(answers) ? null : closed(decided.zonk(answers));
             } finally {
-                outer.forEach(this::restore);
+                outer.forEach(inForce::restore);
             }
         }
 
@@ -423,11 +425,11 @@ public record DeclaredTypeReading(DeclarationFacts facts,
         /** What a {@code let} puts in force while its body is read. */
         private Type ofLet(Hir.LetIn let) {
             BindingId binding = let.binder().id();
-            BindingEvidence outer = inForce.put(binding, evidenceOf(let));
+            BindingEvidence outer = inForce.enter(binding, evidenceOf(let));
             try {
                 return of(let.body());
             } finally {
-                restore(binding, outer);
+                inForce.restore(binding, outer);
             }
         }
 
@@ -644,7 +646,7 @@ public record DeclaredTypeReading(DeclarationFacts facts,
                 // hand the second what the first was given.
                 BindingId parameter = definition.params().get(i).binder().id();
                 outer.put(parameter,
-                        inForce.put(parameter, new BindingEvidence.DeclaredAs(at.get(i))));
+                        inForce.enter(parameter, new BindingEvidence.DeclaredAs(at.get(i))));
             }
             try {
                 Type states = of(written.expr());
@@ -655,7 +657,7 @@ public record DeclaredTypeReading(DeclarationFacts facts,
                 return states;
             } finally {
                 entered.remove(helper);
-                outer.forEach(this::restore);
+                outer.forEach(inForce::restore);
             }
         }
 
@@ -668,11 +670,59 @@ public record DeclaredTypeReading(DeclarationFacts facts,
             return readable.size() == 1 ? readable.values().iterator().next() : null;
         }
 
+    }
+
+    /**
+     * What the bindings a walk can see say about themselves, in two parts: the ones it was handed,
+     * and the ones it entered on the way.
+     *
+     * <p>Two parts because they are two things. What is handed over is what the declarations of a
+     * module come to, worked out once for a revision and read by every walk made against it; what a
+     * walk enters is its own, written as it goes into a {@code let} or an expansion and taken back
+     * on the way out. Held as one table, the walk would have to be given a copy of the first to have
+     * somewhere to write the second — which is the whole of what was handed over, copied for every
+     * question asked of it, however few bindings the question goes near.
+     *
+     * <p>So the handed-over table is read and never written, and this is the only thing that holds
+     * it: a walk reaches it through {@link #at} and has no way to put anything in it.
+     */
+    private static final class InForce {
+
+        /** What the walk was handed, which is nobody's to write. */
+        private final Map<BindingId, BindingEvidence> handed;
+
+        /** What it entered itself, which shadows what it was handed while it is in there. */
+        private final Map<BindingId, BindingEvidence> entered = new HashMap<>();
+
+        private InForce(Map<BindingId, BindingEvidence> handed) {
+            this.handed = handed;
+        }
+
+        /** What {@code binding} says about itself, or null where nothing in force does. */
+        private BindingEvidence at(BindingId binding) {
+            BindingEvidence own = entered.get(binding);
+            return own == null ? handed.get(binding) : own;
+        }
+
+        /** Puts {@code evidence} in force for {@code binding}, answering what this walk had in force
+         *  there — null where it had entered none, whether or not it was handed one. */
+        private BindingEvidence enter(BindingId binding, BindingEvidence evidence) {
+            if (evidence == null) {
+                // Nothing entered here would read as the binding not being entered, and what was
+                // handed over would answer for a name a walk put something else in force for.
+                throw new IllegalArgumentException(
+                        "a binding is entered with what it says about itself: " + binding);
+            }
+            return entered.put(binding, evidence);
+        }
+
+        /** Takes that back: what was entered outside goes back in force, and where nothing was, what
+         *  the walk was handed is what is left. */
         private void restore(BindingId binding, BindingEvidence outer) {
             if (outer == null) {
-                inForce.remove(binding);
+                entered.remove(binding);
             } else {
-                inForce.put(binding, outer);
+                entered.put(binding, outer);
             }
         }
     }
