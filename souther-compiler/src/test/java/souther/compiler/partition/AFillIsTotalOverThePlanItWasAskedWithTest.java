@@ -146,7 +146,7 @@ class AFillIsTotalOverThePlanItWasAskedWithTest {
     @Test
     void aRowNothingPointsAtIsRefused() {
         LinkedHashMap<RowId, ComposedRow> composed = new LinkedHashMap<>();
-        composed.put(new RowId(0), new ComposedRow(List.of(FixtureTemplate.integer(1))));
+        composed.put(new RowId(0), new ComposedRow(List.of(FixtureTemplate.integer(1)), List.of()));
 
         assertThrows(IllegalStateException.class,
                 () -> new FillResult(planOver(List.of(A_CLASS), List.of()), composed, List.of(),
@@ -161,7 +161,7 @@ class AFillIsTotalOverThePlanItWasAskedWithTest {
     @Test
     void aRunThatAnsweredForEverythingItWasAskedIsBuilt() {
         LinkedHashMap<RowId, ComposedRow> composed = new LinkedHashMap<>();
-        composed.put(new RowId(0), new ComposedRow(List.of(FixtureTemplate.integer(1))));
+        composed.put(new RowId(0), new ComposedRow(List.of(FixtureTemplate.integer(1)), List.of()));
 
         FillResult filled = new FillResult(planOver(List.of(A_CLASS), List.of(AN_ARM)), composed,
                 List.of(), List.of(), new Discharge(

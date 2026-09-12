@@ -128,8 +128,8 @@ class ACandidateThatMissedIsNotOfferedTest {
         Model model = Model.of(SHIPPING, "shippingFee");
         List<List<String>> ran = new ArrayList<>();
 
-        fill(model, inputs -> {
-            ran.add(inputs.stream().map(FixtureTemplate::text).toList());
+        fill(model, row -> {
+            ran.add(row.inputs().stream().map(FixtureTemplate::text).toList());
             return missed(model);
         });
 

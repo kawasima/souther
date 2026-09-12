@@ -87,7 +87,8 @@ public record FillResult(GenerationPlan plan, SequencedMap<RowId, ComposedRow> c
      * A run that ended before it looked for anything, with every obligation told the same thing.
      *
      * <p>For the ways a generation stops without searching: the rows could not be read, the classes
-     * would not link. Each of those is one fact about the run, said in {@code reasons} — and each of
+     * would not link, nothing could be composed to stand in for what the behavior requires. Each of
+     * those is one fact about the run, said in {@code reasons} — and each of
      * them used to be the whole of what was recorded, so a reader asking after one class or one arm
      * found nothing at all and said the generator had failed to say. The fact is the same for every
      * obligation here, which is why one word serves them all; what it is not is a reason for a
@@ -155,6 +156,6 @@ public record FillResult(GenerationPlan plan, SequencedMap<RowId, ComposedRow> c
                 purposes.add(new Generator.Purpose.ForAnArm(built.at()));
             }
         }
-        return new Generator.GeneratedRow(purposes, row.inputs());
+        return new Generator.GeneratedRow(purposes, row.inputs(), row.answers());
     }
 }

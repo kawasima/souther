@@ -6,11 +6,11 @@ import souther.compiler.coverage.CoverageSites;
 import souther.compiler.execute.BoundaryValues;
 import souther.compiler.partition.BorderObligationPoint;
 import souther.compiler.partition.ClassOfAPosition;
-import souther.compiler.partition.FixtureTemplate;
 import souther.compiler.partition.ObligationIdentity;
 import souther.compiler.partition.Generator;
 import souther.compiler.partition.InputClassifications;
 import souther.compiler.partition.ObservedInputs;
+import souther.compiler.partition.RowToRun;
 import souther.compiler.partition.RulesTaken;
 import souther.compiler.partition.StandingAtAPoint;
 import souther.compiler.observe.Classification;
@@ -257,7 +257,7 @@ public record Settlements(List<ObligationIdentity> requested,
                 // sit and what running it recorded — does not change between the questions put to
                 // it, and reading it per item would be the same row read as many times as this run
                 // happens to be asked about, at the price of running it that many times.
-                RowAsRead one = read == null ? RowAsRead.nothingRead() : read.read(row.inputs());
+                RowAsRead one = read == null ? RowAsRead.nothingRead() : read.read(row.toRun());
                 Map<ObligationIdentity, Settlement> here = new LinkedHashMap<>();
                 for (ObligationIdentity item : items) {
                     here.put(item, read == null ? undetermined(one) : read.settlementOf(one, item));
@@ -394,7 +394,8 @@ public record Settlements(List<ObligationIdentity> requested,
             return new OneBehavior(behavior, subject, sig, building,
                     sig == null || trials == null ? Generator.Trial.NOTHING_RUNS
                             : Adequacy.runningRowsOf(trials, behavior, sig,
-                                    Adequacy.numberingOf(db, module)),
+                                    Adequacy.numberingOf(db, module),
+                                    RequiredDependencies.of(db, module, behavior)),
                     filling == null ? List.of() : filling.composed().plan().classesOwed(),
                     filling == null ? List.of() : filling.composed().plan().armsOwed(),
                     armsOf, occurrencesOf, rulesOf(db, module, behavior),
@@ -478,8 +479,8 @@ public record Settlements(List<ObligationIdentity> requested,
         }
 
         /** The row as the two things every question here is put to ({@link RowAsRead}). */
-        RowAsRead read(List<FixtureTemplate> inputs) {
-            return RowAsRead.of(sig, building, trial, inputs);
+        RowAsRead read(RowToRun row) {
+            return RowAsRead.of(sig, building, trial, row);
         }
 
         Settlement settlementOf(RowAsRead asRead, ObligationIdentity item) {

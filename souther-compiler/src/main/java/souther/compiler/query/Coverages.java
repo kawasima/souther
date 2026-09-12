@@ -689,11 +689,18 @@ final class Coverages {
          *                 the placement rather than left out: the placement is about the positions
          *                 the item names and a condition above the line is about the others, and a
          *                 row is one row
+         * @param demands  what the thing being searched for asks of the dependencies the behavior
+         *                 requires. Part of the request and not of the probe, because it is what
+         *                 differs between the things one behavior is searched for: a point of a
+         *                 line asks nothing of them, and a rule of the decision asks what the body
+         *                 read. Held by the probe, a search would compose its row under whatever
+         *                 the behavior answers generally and be run under what it actually needs
          */
         souther.compiler.partition.Generator.BoundaryAttempt attempt(
                 String label,
                 Map<souther.compiler.partition.RealizationTarget, Place> fixing,
-                souther.compiler.partition.Reachability.Reaching reaching);
+                souther.compiler.partition.Reachability.Reaching reaching,
+                souther.compiler.partition.AnswersDemanded demands);
 
         /**
          * A composed row built and run, so that what it turned out to be can be asked.
@@ -703,7 +710,7 @@ final class Coverages {
          * read by the walk that reads the file's rows and never by a second account written where
          * the candidate was composed.
          */
-        RowAsRead read(java.util.List<souther.compiler.partition.FixtureTemplate> inputs);
+        RowAsRead read(souther.compiler.partition.RowToRun row);
     }
 
     /**
@@ -994,8 +1001,13 @@ final class Coverages {
                 // offered for goes in beside it rather than being read back off it.
                 return switch (realizer.realize(quantity.standingAt(criterion), able.region())) {
                     case Realization.Found found -> {
+                        // Asking nothing of what the dependencies answer. A point of a line is a
+                        // place the positions stand at, and nothing about it turns on what a
+                        // dependency says — so the row is stood in with whatever answers the
+                        // behavior generally, which is what asking nothing gets.
                         souther.compiler.partition.Generator.BoundaryAttempt made =
-                                probe.attempt(label, found.fixing(), able);
+                                probe.attempt(label, found.fixing(), able,
+                                        souther.compiler.partition.AnswersDemanded.NOTHING);
                         yield whatCameOfIt(made, label, within,
                                 () -> standingThere(probe, line, criterion, site,
                                         (souther.compiler.partition.Generator.BoundaryAttempt.Built)
@@ -1123,7 +1135,7 @@ final class Coverages {
             List<ComparisonEmissionSite> site,
             souther.compiler.partition.Generator.BoundaryAttempt.Built built) {
         souther.compiler.partition.ObservedInputs read =
-                probe.read(built.row().inputs()).asInputs();
+                probe.read(built.row().toRun()).asInputs();
         if (read == null) {
             // Nothing came back to read the row off, which is not an observation of it and is not a
             // position holding no value either. What did not happen here is the running: the values

@@ -1,11 +1,9 @@
 package souther.compiler.query;
 
 import souther.compiler.inputs.Requirements;
-import souther.compiler.partition.FixtureTemplate;
 import souther.compiler.partition.Generator;
+import souther.compiler.partition.RowToRun;
 import souther.compiler.partition.RulesTaken;
-
-import java.util.List;
 
 /**
  * What settles whether a rule of a body's decision is owed a row.
@@ -57,14 +55,20 @@ public sealed interface RuleRequirement {
     /**
      * Something was seen standing in the rule, which is what shows a row can be written at it.
      *
-     * @param stoodBy the values it was composed at, which a proposal for the rule may be offered
-     *                from. Not the proposal itself: what this shows is that the rule can be
+     * @param stoodBy the row it was composed at — the values at the positions and what the
+     *                dependencies were stood in with — which a proposal for the rule may be offered
+     *                from. Whole, because what was seen taking the rule is the whole of it: a
+     *                behavior deciding on what a dependency answers takes one rule under one answer
+     *                and another under another, and the values alone would be offered as a row that
+     *                takes either. Not the proposal itself: what this shows is that the rule can be
      *                reached, and a row an author can complete has more to it than that
      */
-    record Required(List<FixtureTemplate> stoodBy) implements RuleRequirement {
+    record Required(RowToRun stoodBy) implements RuleRequirement {
 
         public Required {
-            stoodBy = List.copyOf(stoodBy);
+            if (stoodBy == null) {
+                throw new IllegalArgumentException("a rule stood in is stood in by some row");
+            }
         }
     }
 

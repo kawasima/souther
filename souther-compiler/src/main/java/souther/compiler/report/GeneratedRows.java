@@ -8,6 +8,7 @@ import souther.compiler.diag.SourceRendering;
 import souther.compiler.fmt.Formatter;
 import souther.compiler.publish.PublishedIncompleteness;
 import souther.compiler.publish.PublishedRuleHandle;
+import souther.compiler.check.Requirements;
 import souther.compiler.publish.RuleHandleProse;
 import souther.compiler.query.Sites;
 import souther.compiler.partition.BorderObligationPoint;
@@ -15,6 +16,7 @@ import souther.compiler.partition.FixtureTemplate;
 import souther.compiler.partition.GenerationReason;
 import souther.compiler.partition.GenerationOutcome;
 import souther.compiler.partition.Generator;
+import souther.compiler.partition.StoodInAnswer;
 import souther.compiler.query.About;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.Compilation;
@@ -316,7 +318,7 @@ public final class GeneratedRows {
      * @param purposes what this layer calls the things it was composed for, in the order they were
      *                 taken
      */
-    private record Offered(String inputs, List<String> purposes) {
+    private record Offered(String inputs, String standsIn, List<String> purposes) {
 
         Offered {
             purposes = List.copyOf(purposes);
@@ -330,7 +332,7 @@ public final class GeneratedRows {
             }
             List<String> both = new ArrayList<>(purposes);
             both.add(purpose);
-            return new Offered(inputs, both);
+            return new Offered(inputs, standsIn, both);
         }
 
         /** The row as it is written: named where one thing names it, and not otherwise. What a
@@ -342,8 +344,8 @@ public final class GeneratedRows {
             // does — closes the literal early and the rest of it becomes source.
             return purposes.size() == 1
                     ? "    | " + FixtureTemplate.quoted(purposes.get(0))
-                            + " : (" + inputs + ") -> " + UNANSWERED
-                    : "    | (" + inputs + ") -> " + UNANSWERED;
+                            + " : (" + inputs + ")" + standsIn + " -> " + UNANSWERED
+                    : "    | (" + inputs + ")" + standsIn + " -> " + UNANSWERED;
         }
 
         /** What to say over the row, which is nothing where its name already says it. */
@@ -419,7 +421,8 @@ public final class GeneratedRows {
             Map<ArmProbe, String> arms = armNames(offering.searched().get(behavior));
             List<Offered> here = new ArrayList<>();
             for (OfferedRow row : rows) {
-                Offered offered = new Offered(row.key().inputs(), List.of());
+                Offered offered = new Offered(row.key().inputs(),
+                        standingIn(offering.request().module(), row), List.of());
                 for (String name : named(row.namedFor(), arms)) {
                     offered = offered.and(name);
                 }
@@ -428,6 +431,29 @@ public final class GeneratedRows {
             out.put(behavior, List.copyOf(here));
         });
         return out;
+    }
+
+    /**
+     * The {@code with} clause a row carries, or nothing where it stands nothing in.
+     *
+     * <p>A projection and not a decision. Every answer a row carries is one value answering every
+     * call that row makes, which is what a {@code with} states — settled where the row was composed
+     * and not read back out here. A way needing a dependency to answer by what it was applied to is
+     * one nothing composed a row for at all, so no row reaching this is short of a clause it needed.
+     *
+     * <p>The dependency spelled the way a person writes one, asked of the rule that answers it
+     * ({@link Requirements#writtenIn}). A behavior another module declares is reachable through
+     * that module whether or not an import brought its bare name in, so a block that wrote the bare
+     * name would hand a person a row naming a behavior nothing resolves — and the hint that says
+     * what to type and the skeleton that types it would be two answers to one question.
+     */
+    private static String standingIn(String module, OfferedRow row) {
+        List<String> written = new ArrayList<>();
+        for (StoodInAnswer each : row.answers()) {
+            written.add(Requirements.writtenIn(module, each.dependency())
+                    + " = " + each.value().text());
+        }
+        return written.isEmpty() ? "" : " with " + String.join(", ", written);
     }
 
     /**
@@ -471,6 +497,7 @@ public final class GeneratedRows {
      * <p>Matched by position rather than by reading the line. The rows go in in one order and come
      * out in it, and a row the formatter wrapped is still one row — its continuations are indented
      * past the {@code |} that starts it, so what starts a row is what a row starts with.
+     *
      */
     private static String fills(String rows, Map<String, List<Offered>> offered) {
         List<Offered> inOrder = new ArrayList<>();
@@ -753,6 +780,14 @@ public final class GeneratedRows {
             case ALL_CANDIDATES_REJECTED ->
                     "every value tried was refused at construction, which does not make the"
                             + " combination impossible";
+            // What is missing is the stand-in and not the row's values, so an author reading this
+            // is being told what to write beside the row rather than that no row exists.
+            case NOTHING_STANDS_IN_FOR_A_DEPENDENCY ->
+                    "nothing here could answer for a behavior the target depends on, and a row"
+                            + " that stands none in is a row nothing applies";
+            case A_TABLE_IS_WHAT_THIS_NEEDS ->
+                    "it needs a behavior the target depends on to answer by what it was applied to,"
+                            + " which is a table written for the module and not a line on a row";
             // As above: one of the two ways a search leaves something untried has a number in it
             // and the other has none, so neither is said as a halt here.
             case THE_SEARCH_LEFT_SOMETHING_UNTRIED -> "the search left something untried";

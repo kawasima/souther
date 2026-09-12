@@ -94,7 +94,8 @@ class AGenerationThatWentOnDoesNotSayItStoppedTest {
                         souther.compiler.query.OfferingRequest.overTheModule("example.trip", false),
                         Map.of("submit", new Adequacy.Filling(result,
                                 Generator.GenerationResult.NONE,
-                                Adequacy.Generated.RowsForRules.NOTHING, List.of())), null)),
+                                Adequacy.Generated.RowsForRules.NOTHING,
+                                List.of())), null)),
                 Map.of(), SourceRendering.namedByIdentity(SourceLayouts.NONE), COMPILED.db()).text();
     }
 
