@@ -103,7 +103,7 @@ class OnlyAClaimSaysWhatAComparisonStatesTest {
             new Licence("souther.compiler.check.Conditions.polar",
                     "keys a fact by the comparison a condition states, which is written as a node"
                             + " with what is asserted of it carried beside"),
-            new Licence("souther.compiler.check.Terms.lambda$binary$0",
+            new Licence("souther.compiler.check.Terms.comparisonTerm",
                     "names the value a comparison in a body is, which is written as a term"));
 
     /**

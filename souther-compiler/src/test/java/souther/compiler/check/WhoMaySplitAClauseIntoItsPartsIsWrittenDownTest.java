@@ -37,7 +37,7 @@ class WhoMaySplitAClauseIntoItsPartsIsWrittenDownTest {
     private record Licence(String who, int calls, String why) { }
 
     private static final List<Licence> MAY_SPLIT = List.of(
-            new Licence("souther.compiler.check.ClauseHelpers.lambda$withInlinedInvariants$1", 1,
+            new Licence("souther.compiler.check.ClauseHelpers.inlinedClause", 1,
                     "the expansion of a declaration's clauses, which splits before it expands so"
                             + " that each part is expanded where it stands and the shape it leaves"
                             + " is what every reader after it asks"),

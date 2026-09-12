@@ -160,10 +160,12 @@ public final class Preserved {
      *  may not. */
     private static Preserved readTheLibrary(Stdlib stdlib) {
         List<CompleteSignature> operations = new ArrayList<>();
-        stdlib.entries().forEach((operation, entry) -> {
-            operations.add(CompleteSignature.ofDeclaration(
-                    operation, entry.signature().params(), entry.signature().result()));
-        });
+        for (Map.Entry<ValueName.Stdlib.Operation, Stdlib.Entry> each
+                : stdlib.entries().entrySet()) {
+            operations.add(CompleteSignature.ofDeclaration(each.getKey(),
+                    each.getValue().signature().params(),
+                    each.getValue().signature().result()));
+        }
         return keeping(operations);
     }
 

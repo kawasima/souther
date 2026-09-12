@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 import java.util.function.UnaryOperator;
 
 /**
@@ -179,23 +180,31 @@ public final class ClauseHelpers {
      * apart by something other than {@link InliningPolicy}.
      */
     private static Hir.Def withInlinedInvariants(HelperInliner inliner, Hir.Def def,
-                                                java.util.function.Consumer<Made> met) {
+                                                Consumer<Made> met) {
         if (!(def instanceof Hir.Data d) || d.invariants().isEmpty()) {
             return def;
         }
         BindingOwner declared = new BindingOwner.OfData(d.declares());
         return new Hir.Data(d.written(), d.declares(), d.newtype(), d.includes(), d.fields(),
-                Hir.mapClauses(d.invariants(), clause -> {
-                    // The shape its author wrote it in, and the parts expanded where they stand —
-                    // so the clause is what those parts compose, and a reading of it holds each of
-                    // them where the shape says to look.
-                    AuthoredShape shape = shapeOf(clause);
-                    Expansion<Hir.Expr> one = inliner.expanding(() ->
-                            expandedOver(shape, part -> inliner.inline(part, declared)));
-                    met.accept(new Made(CallsLeftStanding.of(one.standing()), shape));
-                    return one.value();
-                }),
+                Hir.mapClauses(d.invariants(),
+                        clause -> inlinedClause(inliner, declared, met, clause)),
                 d.pos());
+    }
+
+    /**
+     * One clause of a declaration with its parts expanded where they stand.
+     *
+     * <p>The shape its author wrote it in, and the parts expanded where they stand — so the clause
+     * is what those parts compose, and a reading of it holds each of them where the shape says to
+     * look.
+     */
+    private static Hir.Expr inlinedClause(HelperInliner inliner, BindingOwner declared,
+                                          Consumer<Made> met, Hir.Expr clause) {
+        AuthoredShape shape = shapeOf(clause);
+        Expansion<Hir.Expr> one = inliner.expanding(() ->
+                expandedOver(shape, part -> inliner.inline(part, declared)));
+        met.accept(new Made(CallsLeftStanding.of(one.standing()), shape));
+        return one.value();
     }
 
     /**
