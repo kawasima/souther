@@ -1,7 +1,10 @@
 package souther.compiler.inputs;
 
 import souther.compiler.observe.RunSensitivity;
+import souther.compiler.regex.Meter;
 import souther.compiler.regex.PatternRead;
+
+import java.util.Comparator;
 import souther.compiler.values.UnreadReason;
 
 /**
@@ -174,7 +177,7 @@ public sealed interface BlockReason {
     sealed interface RuleReadingStopped extends StoppedWithoutALine, QuestionStandingReason {
 
         /**
-         * Where this stands among these, for a reader putting some of them in a steady order.
+         * These in a steady order, which is one two of them are equal in only where they are equal.
          *
          * <p>Beside the members and not inside whoever sorts them. A sealed type is a set and not a
          * sequence — {@code getPermittedSubclasses} says so itself, answering in no order it
@@ -182,15 +185,30 @@ public sealed interface BlockReason {
          * has none. Written here, whoever adds a member places it; written where a carrier sorts,
          * the next carrier to need an order writes a second one.
          *
-         * <p><b>Steady and nothing else.</b> What the numbers mean is nothing beyond which comes
-         * first, and they say nothing about what an author wrote: that is a fact about where the
+         * <p><b>The whole of what one is, and not which kind it is.</b> A member that carries
+         * something is two facts where what it carries differs, so an order over the kinds alone
+         * leaves those wherever the walk put them — which is what the order is here to stop. So the
+         * kind is compared, and then whatever the kind holds.
+         *
+         * <p><b>Steady and nothing else.</b> What the result means is nothing beyond which comes
+         * first, and it says nothing about what an author wrote: that is a fact about where the
          * rules stand and is asked where the places are ({@code AdequacyReport}). This is what
          * keeps one compiler over one source publishing one document where nobody wrote an order.
          *
          * <p>A switch and no {@code default}, so a reason added to the vocabulary is placed by
          * whoever adds it rather than arriving wherever the runtime happened to put it.
          */
-        static int inASteadyOrder(RuleReadingStopped reason) {
+        Comparator<RuleReadingStopped> IN_A_STEADY_ORDER =
+                Comparator.<RuleReadingStopped>comparingInt(RuleReadingStopped::rank)
+                        .thenComparing(RuleReadingStopped::carrying,
+                                Comparator.nullsFirst(Comparator.naturalOrder()));
+
+        /** What a member carries, where it carries anything a second of its kind can differ in. */
+        private static Meter.Stopped carrying(RuleReadingStopped reason) {
+            return reason instanceof OrderedExtentTooCostly it ? it.stopped() : null;
+        }
+
+        private static int rank(RuleReadingStopped reason) {
             return switch (reason) {
                 case UnreadComparisonForm _ -> 0;
                 case UnreadComparisonDomain _ -> 1;

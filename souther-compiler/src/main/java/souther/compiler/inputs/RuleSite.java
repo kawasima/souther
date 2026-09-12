@@ -107,10 +107,12 @@ public sealed interface RuleSite {
     /**
      * Where this stands among these, for a reader putting some of them in a steady order.
      *
-     * <p>Beside the members, so that whoever adds one places it, and total, because what it is for
-     * is that nothing is left where a walk happened to put it. Two entries alike in every word a
-     * document prints are told apart by what they are about, and an order that stopped at the word
-     * would leave exactly those in the order they were met.
+     * <p>Beside the members, so that whoever adds one places it. It calls two of these one exactly
+     * where they are one: every component the equality reads is read here too, in turn and never
+     * run together into a word — two names joined are one word, and one word is the same word for
+     * more than one pair of names. Two entries alike in every word a document prints are told apart
+     * by what they are about, and an order that stopped at the word would leave exactly those in
+     * the order they were met ({@code ASteadyOrderTellsApartWhateverEqualityTellsApartTest}).
      *
      * <p><b>Steady and nothing else.</b> Which of two things an author wrote first is a fact about
      * where they wrote them, and is asked of the places at the one boundary that has them. Nothing
@@ -119,8 +121,10 @@ public sealed interface RuleSite {
      */
     Comparator<RuleSite> IN_A_STEADY_ORDER =
             Comparator.<RuleSite>comparingInt(RuleSite::rank)
-                    .thenComparing(RuleSite::named, Comparator.naturalOrder())
+                    .thenComparing(RuleSite::inWhichModule, Comparator.naturalOrder())
+                    .thenComparing(RuleSite::onWhatItIsDeclared, Comparator.naturalOrder())
                     .thenComparingInt(RuleSite::whichClause)
+                    .thenComparing(RuleSite::calledWhat, Comparator.naturalOrder())
                     .thenComparingInt(RuleSite::whichPart)
                     .thenComparing(RuleSite::wroteIt,
                             Comparator.nullsFirst(SourceConstructOrigin.inASteadyOrder()));
@@ -133,12 +137,41 @@ public sealed interface RuleSite {
         };
     }
 
-    /** Which clause a part is of, and nothing for what is not one. */
-    private static String named(RuleSite site) {
+    /**
+     * Which module declared what a part is of, and which declaration of that module it is.
+     *
+     * <p>Two names and two comparisons, never joined into one word: two names run together are one
+     * word, and one word is the same word for more than one pair of names. An order that compared
+     * the rendering would call two declarations one and leave them wherever the walk put them.
+     */
+    private static String inWhichModule(RuleSite site) {
         return switch (site) {
             case TheRuleItself _, AConstructTheAuthorWrote _ -> "";
-            case APartOfIt it -> it.part().rule().clause().id().declaredOn().key().module() + " "
-                    + it.part().rule().clause().id().declaredOn().key().name();
+            case APartOfIt it -> it.part().rule().clause().id().declaredOn().key().module();
+        };
+    }
+
+    /** Which declaration of that module it is — see {@link #inWhichModule}. */
+    private static String onWhatItIsDeclared(RuleSite site) {
+        return switch (site) {
+            case TheRuleItself _, AConstructTheAuthorWrote _ -> "";
+            case APartOfIt it -> it.part().rule().clause().id().declaredOn().key().name();
+        };
+    }
+
+    /**
+     * What the author called the clause, where they named it.
+     *
+     * <p>Part of what a part is, so part of what tells two apart: a clause carries the name it was
+     * written under beside the number it is, and two parts alike in every number and not in the
+     * name are two parts. Left out, the order would call them one while everything that holds them
+     * calls them two.
+     */
+    private static String calledWhat(RuleSite site) {
+        return switch (site) {
+            case TheRuleItself _, AConstructTheAuthorWrote _ -> "";
+            case APartOfIt it -> it.part().rule().clause().name()
+                    .map(Object::toString).orElse("");
         };
     }
 

@@ -82,7 +82,8 @@ public sealed interface WrittenOwner {
      */
     static java.util.Comparator<WrittenOwner> inASteadyOrder() {
         return java.util.Comparator.<WrittenOwner>comparingInt(WrittenOwner::rank)
-                .thenComparing(WrittenOwner::named, java.util.Comparator.naturalOrder())
+                .thenComparing(WrittenOwner::inWhichModule, java.util.Comparator.naturalOrder())
+                .thenComparing(WrittenOwner::whatItNames, java.util.Comparator.naturalOrder())
                 .thenComparing(WrittenOwner::quoting, QuotedFrom.inASteadyOrder());
     }
 
@@ -96,14 +97,33 @@ public sealed interface WrittenOwner {
         };
     }
 
-    /** What tells two of one rank apart, as the names each of them holds. */
-    private static String named(WrittenOwner owner) {
+    /**
+     * Which module wrote it, and what inside that module it is — two names and two comparisons.
+     *
+     * <p>Compared apart and never joined into one word. Two names run together are one word, and
+     * one word is the same word for more than one pair of names: a module called {@code a b} that
+     * writes {@code c} and a module called {@code a} that writes {@code b c} render alike and are
+     * two owners. An order that compared the rendering would call them one and leave them wherever
+     * the walk put them.
+     */
+    private static String inWhichModule(WrittenOwner owner) {
         return switch (owner) {
-            case Declaration it -> it.declaration().module() + " " + it.declaration().name();
-            case Stated it -> it.module() + " " + it.behavior();
-            case Body it -> it.module() + " " + it.definition();
-            case Examples it -> it.module() + " " + it.behavior();
-            case Fake it -> it.module() + " " + it.target();
+            case Declaration it -> it.declaration().module();
+            case Stated it -> it.module();
+            case Body it -> it.module();
+            case Examples it -> it.module();
+            case Fake it -> it.module();
+        };
+    }
+
+    /** What inside that module it is — see {@link #inWhichModule}. */
+    private static String whatItNames(WrittenOwner owner) {
+        return switch (owner) {
+            case Declaration it -> it.declaration().name();
+            case Stated it -> it.behavior();
+            case Body it -> it.definition();
+            case Examples it -> it.behavior();
+            case Fake it -> it.target();
         };
     }
 

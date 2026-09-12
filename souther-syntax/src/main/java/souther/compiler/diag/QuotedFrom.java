@@ -77,7 +77,9 @@ public sealed interface QuotedFrom {
      */
     static java.util.Comparator<QuotedFrom> inASteadyOrder() {
         return java.util.Comparator.<QuotedFrom>comparingInt(QuotedFrom::rank)
-                .thenComparing(QuotedFrom::said, java.util.Comparator.naturalOrder());
+                .thenComparing(QuotedFrom::named, java.util.Comparator.naturalOrder())
+                .thenComparing(QuotedFrom::publishedBy,
+                        java.util.Comparator.nullsFirst(SourceProvenance.inASteadyOrder()));
     }
 
     private static int rank(QuotedFrom from) {
@@ -88,12 +90,26 @@ public sealed interface QuotedFrom {
         };
     }
 
-    /** What tells two of one rank apart, as the words each of them holds. */
-    private static String said(QuotedFrom from) {
+    /** What a source of this compile is called, which is what tells two of those apart. */
+    private static String named(QuotedFrom from) {
         return switch (from) {
             case ASourceThisCompileHolds it -> it.source().value();
-            case TextItCannotShow it -> it.publishedBy().module() + " " + it.publishedBy().reachedBy();
-            case TextItCannotName _ -> "";
+            case TextItCannotShow _, TextItCannotName _ -> "";
+        };
+    }
+
+    /**
+     * And where a text out of sight was published, compared as what it is.
+     *
+     * <p>Through its own order and not through the words it renders as. Two provenances rendering
+     * alike are two provenances — a module this compile was handed and one the compiler ships are
+     * told apart by which they are and not by the names they carry — and an order that compared the
+     * rendering would leave them wherever the walk put them.
+     */
+    private static SourceProvenance publishedBy(QuotedFrom from) {
+        return switch (from) {
+            case ASourceThisCompileHolds _, TextItCannotName _ -> null;
+            case TextItCannotShow it -> it.publishedBy();
         };
     }
 }

@@ -20,9 +20,10 @@ import java.util.List;
  * inside every answer a reading published, and what made an edit moving a declaration an edit that
  * changed what the model says.
  *
- * <p>Held in the order they were met all the same, and that order is asserted of nothing: it is
- * what keeps one compiler over one source publishing one document. A copy free to reorder would
- * have the same compiler over the same source publish two.
+ * <p>Held in a steady order all the same, and that order is asserted of nothing: it is what keeps
+ * one compiler over one source publishing one document. Held in the order a walk met them, the same
+ * compiler over the same source would publish two, and which one an author saw would be the run
+ * they happened to make.
  *
  * <p>So what is held is {@link Said} and not a word. Two reasons alike about two things inside one
  * rule are two things to lift, and a list of words says they are one.
@@ -99,14 +100,18 @@ public record RuleReasons(List<Said> said) {
      * wrote first; what settles that is where they wrote them, and that is asked where the places
      * are. What the order must not be is the one a walk happened to meet them in: a projection out
      * of this reaches a document, so a sequence left to the walk would have one compiler over one
-     * source publish two. So the members are put in the order their vocabulary declares them
-     * ({@link BlockReason.RuleReadingStopped#inASteadyOrder}), and two alike in the word fall back
-     * to the order they arrived in.
+     * source publish two.
+     *
+     * <p>So each of them is compared by the whole of what it is — the word, what it is about, and
+     * where it sends a reader — and each of those by the whole of what <em>it</em> is
+     * ({@link BlockReason.RuleReadingStopped#IN_A_STEADY_ORDER}, {@link RuleSite#IN_A_STEADY_ORDER}).
+     * Two of these are left in the order they arrived in only where they are one value, and a set
+     * holds one of those.
      */
     public static RuleReasons from(List<Said> these) {
         List<Said> sorted = new ArrayList<>(new LinkedHashSet<>(these));
-        sorted.sort(Comparator.comparingInt((Said each) ->
-                        BlockReason.RuleReadingStopped.inASteadyOrder(each.reason()))
+        sorted.sort(Comparator.comparing(Said::reason,
+                        BlockReason.RuleReadingStopped.IN_A_STEADY_ORDER)
                 .thenComparing(Said::about, RuleSite.IN_A_STEADY_ORDER)
                 .thenComparing(Said::sentTo, RuleSite.IN_A_STEADY_ORDER));
         return new RuleReasons(List.copyOf(sorted));

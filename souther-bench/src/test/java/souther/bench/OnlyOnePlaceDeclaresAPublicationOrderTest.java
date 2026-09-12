@@ -30,7 +30,6 @@ class OnlyOnePlaceDeclaresAPublicationOrderTest {
     private static final String AUTHORITY = "souther.compiler.publish.PublicationOrders";
     private static final String SOURCE_ORDERED = "souther.compiler.publish.SourceOrdered";
     private static final String AUTHORED_ORDER = "souther.compiler.inputs.AuthoredOrder";
-    private static final String REASONS = "souther.compiler.inputs.RuleReasons";
     private static final String REPORT = "souther.compiler.report.";
     private static final String PROJECTION = "souther.compiler.partition.ReportedReason";
 
