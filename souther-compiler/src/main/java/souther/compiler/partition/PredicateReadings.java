@@ -186,9 +186,8 @@ record PredicateReadings(List<Reading> predicates, Set<Core> statedAt,
         // Whether an expression answers a value, of this body. Rooted there and not at whatever a
         // reader happens to hand over: a subtree read as a body of its own has every name in it
         // free, and a name bound to something that aborts is what makes the difference.
-        return new PredicateReadings(predicates, statedAt, body == null
-                ? souther.compiler.coverage.Arrivals.whereNothingStandsAbove()
-                : souther.compiler.coverage.Arrivals.inTheBody(body.core()));
+        return new PredicateReadings(predicates, statedAt, souther.compiler.coverage.Arrivals
+                .inTheTree(body == null ? null : body.core()));
     }
 
     /**

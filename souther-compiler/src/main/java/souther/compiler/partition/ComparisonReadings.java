@@ -199,7 +199,7 @@ record ComparisonReadings(List<Reading> comparisons, List<ForkMet> forks,
         // — a condition inside a helper spliced in from elsewhere is still one this reading met.
         ConditionNumbering numbering =
                 new ConditionNumbering(read.symbols().module(), behavior);
-        walk(body, new Body(behavior, read, souther.compiler.coverage.Arrivals.inTheBody(body)),
+        walk(body, new Body(behavior, read, souther.compiler.coverage.Arrivals.inTheTree(body)),
                 reads,
                 LiveFlow.of(body), List.of(), true, readings, forks, numbering);
         return new ComparisonReadings(readings, forks, numbering.metAt());

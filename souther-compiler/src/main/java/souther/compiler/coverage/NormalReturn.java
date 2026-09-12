@@ -90,6 +90,11 @@ public final class NormalReturn {
                 () -> ValueArrivals.ofBodyWhereTheOperationsStand(body, Anonymous.NAMING));
     }
 
+    /** Whether this is the reading of the body {@code e} stands in. */
+    public boolean holds(Core e) {
+        return reading().holds(e);
+    }
+
     /** Whether {@code e}, standing where it stands in this body, can be evaluated to a value. */
     public boolean at(Core e) {
         return reading().arrivesAt(e);

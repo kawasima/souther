@@ -166,6 +166,17 @@ public final class ValueArrivals<P> {
     }
 
     /**
+     * Whether this reading was rooted at the body holding {@code e}.
+     *
+     * <p>For a caller that reads several trees and has to say which of them a node stands in. Asked
+     * rather than found out from the refusal above, since a reading answering a question it was not
+     * rooted for is the thing that refusal exists to stop.
+     */
+    public boolean holds(Core e) {
+        return e != null && settled.containsKey(e);
+    }
+
+    /**
      * The ways {@code e} is settled to {@code want}, or that this reading cannot enumerate them.
      *
      * <p>All of them or none. One arrival whose value is unread may be among the ways to either

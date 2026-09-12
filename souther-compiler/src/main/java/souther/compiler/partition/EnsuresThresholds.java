@@ -187,7 +187,7 @@ public final class EnsuresThresholds {
                 ComparisonAssessment.atEachOf(
                         GuardThresholds.mentionedIn(it.stated(), it.reads(), read.symbols(),
                                         souther.compiler.coverage.Arrivals
-                                                .whereNothingStandsAbove()).stream()
+                                                .inTheTree(it.stated())).stream()
                                 .map(FilingCoordinate::at).toList(),
                         new BlockReason.UnreadComparisonForm()),
                 out.noLine());
@@ -219,7 +219,7 @@ public final class EnsuresThresholds {
         ComparisonAssessment assessed = ComparisonAssessment.of(out.behavior(), comparison.stated(),
                 Citation.of(e.pos()), read,
                 reads, rule.value(),
-                souther.compiler.coverage.Arrivals.whereNothingStandsAbove(), false);
+                souther.compiler.coverage.Arrivals.inTheTree(e), false);
         // What the positions this names are left with, where the reading of lines drew none. Asked
         // of the assessment and not worked out per arm here: the same table stood in the guard
         // reader, and a case added to an assessment had to be answered in both.

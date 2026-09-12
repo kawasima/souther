@@ -2261,7 +2261,7 @@ public final class InvariantChecker {
         // places no end (ADR-0090). The reader already knows: the reason it records for such a
         // comparison is `ComparisonBetweenPositions`.
         if (about != null && numbered.claim() instanceof ComparisonClaim.Cut
-                && coordinatesIn(numbered.other(), at, byName).isEmpty()
+                && coordinatesIn(numbered.other(), at, byName, Arrivals.inTheTree(bin)).isEmpty()
                 && shape instanceof ClauseStates.SomethingElse named) {
             Set<RuleKey> names = new LinkedHashSet<>(named.named());
             // The name the bound sits at, which the walk over the comparison writes anyway. Added
@@ -2546,7 +2546,8 @@ public final class InvariantChecker {
             // would say — and every number the leaf writes about is one waiting on that reading,
             // the numbers an operation answers among them.
             case CanonicalForm.NotRead _ -> {
-                Coordinate against = heldAgainstAConstant(bin, at, byName);
+                Coordinate against =
+                        heldAgainstAConstant(bin, at, byName, Arrivals.inTheTree(bin));
                 yield against == null ? ELSEWHERE : statedOn(against);
             }
             // The positions cancelled, and what is left is a number against a number. Asked of the
@@ -2578,13 +2579,16 @@ public final class InvariantChecker {
      * narrower one.
      */
     private Coordinate heldAgainstAConstant(Core.Binary bin, Denotations at,
-                                            Map<FactSubject, Coordinate> byName) {
+                                            Map<FactSubject, Coordinate> byName,
+                                            Arrivals answering) {
         Coordinate left = byName.get(nameOf(bin.left(), at));
         Coordinate right = byName.get(nameOf(bin.right(), at));
-        if (left != null && right == null && coordinatesIn(bin.right(), at, byName).isEmpty()) {
+        if (left != null && right == null
+                && coordinatesIn(bin.right(), at, byName, answering).isEmpty()) {
             return left;
         }
-        if (right != null && left == null && coordinatesIn(bin.left(), at, byName).isEmpty()) {
+        if (right != null && left == null
+                && coordinatesIn(bin.left(), at, byName, answering).isEmpty()) {
             return right;
         }
         return null;
@@ -2628,8 +2632,12 @@ public final class InvariantChecker {
     private ClauseStates states(Core clause, Denotations at,
                                 Map<FactSubject, Coordinate> byName, CanonicalForm read,
                                 RunsRead runs) {
+        // Whether an expression answers a value, of this clause. A clause stands in no body, so it
+        // is the root; the nodes under it are read where they stand, a binding above one of them
+        // being evaluated before it.
+        Arrivals answering = Arrivals.inTheTree(clause);
         List<RuleKey> found = new ArrayList<>();
-        namedIn(clause, at, byName, found);
+        namedIn(clause, at, byName, answering, found);
         // What the rule cuts, ahead of what it looks like. Which values a rule restricts is settled
         // by the quantity its canonical form cuts, and that is the rule `UnreadComparison.why` is
         // written around one layer down — asked of what the rule cuts, and of the sides only where
@@ -2658,7 +2666,7 @@ public final class InvariantChecker {
             return new ClauseStates.ARelation();
         }
         SequencedMap<RuleKey, List<BlockReason.RuleReadingStopped>> stopped =
-                stoppedOnTheFormOf(found, read, byName);
+                stoppedOnTheFormOf(found, read, byName, answering);
         // And where whether it states one was not worked out, the question stands with no answer.
         // Left out, a limit of this compiler would come out as a rule that raises no such question,
         // which is what a rule read to the end and stating no bound comes out as.
@@ -2695,7 +2703,8 @@ public final class InvariantChecker {
      * answer about.
      */
     private SequencedMap<RuleKey, List<BlockReason.RuleReadingStopped>> stoppedOnTheFormOf(
-            List<RuleKey> found, CanonicalForm read, Map<FactSubject, Coordinate> byName) {
+            List<RuleKey> found, CanonicalForm read, Map<FactSubject, Coordinate> byName,
+            Arrivals answering) {
         SequencedMap<RuleKey, List<BlockReason.RuleReadingStopped>> out = new LinkedHashMap<>();
         // Only a rule that orders the values. An equality singles one out and puts no end anywhere,
         // which is what it states and not what a reading of it managed — so however little of the
@@ -2710,7 +2719,7 @@ public final class InvariantChecker {
         // here as separate readings of separate comparisons, which is why this is asked per name
         // rather than said once of the clause.
         BlockReason.RuleReadingStopped why = UnreadComparison.notAboutOwnValues(
-                placesIn(stopped.stoppedAt(), stopped.under(), byName).origin());
+                placesIn(stopped.stoppedAt(), stopped.under(), byName, answering).origin());
         found.forEach(each -> out.put(each, List.of(why)));
         return out;
     }
@@ -2724,8 +2733,8 @@ public final class InvariantChecker {
      * it is a coordinate of its own.
      */
     private void namedIn(Core e, Denotations at, Map<FactSubject, Coordinate> byName,
-                         List<RuleKey> out) {
-        for (Coordinate each : coordinatesIn(e, at, byName)) {
+                         Arrivals answering, List<RuleKey> out) {
+        for (Coordinate each : coordinatesIn(e, at, byName, answering)) {
             if (!out.contains(each.path())) {
                 out.add(each.path());
             }
@@ -2741,8 +2750,9 @@ public final class InvariantChecker {
      * its values are ordered on, and a count is ordered as a whole number whatever it counts.
      */
     private List<Coordinate> coordinatesIn(Core e, Denotations at,
-                                           Map<FactSubject, Coordinate> byName) {
-        Places places = placesIn(e, at, byName);
+                                           Map<FactSubject, Coordinate> byName,
+                                           Arrivals answering) {
+        Places places = placesIn(e, at, byName, answering);
         List<Coordinate> out = new ArrayList<>();
         for (RuleKey path : places.origin().positions()) {
             out.add(places.met().get(path));
@@ -2758,9 +2768,11 @@ public final class InvariantChecker {
      * walk reached through a value the readers below have no reason to hold.
      */
     private List<Coordinate> coordinatesIn(StatedComparison comparison, Denotations at,
-                                           Map<FactSubject, Coordinate> byName) {
-        List<Coordinate> out = new ArrayList<>(coordinatesIn(comparison.left(), at, byName));
-        out.addAll(coordinatesIn(comparison.right(), at, byName));
+                                           Map<FactSubject, Coordinate> byName,
+                                           Arrivals answering) {
+        List<Coordinate> out =
+                new ArrayList<>(coordinatesIn(comparison.left(), at, byName, answering));
+        out.addAll(coordinatesIn(comparison.right(), at, byName, answering));
         return out;
     }
 
@@ -2789,12 +2801,9 @@ public final class InvariantChecker {
      * shape are taken apart the same way. What is this reader's own is the lookup: a clause names a
      * coordinate of the value it is written about, where a body names a position of an input.
      */
-    private Places placesIn(Core e, Denotations at, Map<FactSubject, Coordinate> byName) {
+    private Places placesIn(Core e, Denotations at, Map<FactSubject, Coordinate> byName,
+                            Arrivals answering) {
         Map<RuleKey, Coordinate> met = new LinkedHashMap<>();
-        // A clause of a declaration stands in no body — it is checked whenever a value is built,
-        // and nothing is on the way to it — so what this walk is handed is a tree with nothing
-        // above it.
-        Arrivals answering = Arrivals.whereNothingStandsAbove();
         ValueOrigin<RuleKey> origin = ValueOrigin.of(e, at,
                 new ValueOrigin.Reading<RuleKey, Denotations>() {
 
@@ -2904,14 +2913,16 @@ public final class InvariantChecker {
             return;
         }
         StatedComparison comparison = read.comparison();
-        Places left = placesIn(comparison.left(), at, byName);
-        Places right = placesIn(comparison.right(), at, byName);
+        // The clause is the root, as it is where what this clause names is worked out.
+        Arrivals answering = Arrivals.inTheTree(clause);
+        Places left = placesIn(comparison.left(), at, byName, answering);
+        Places right = placesIn(comparison.right(), at, byName, answering);
         Predicate<RuleKey> ordered = place -> carrierAt(place, left, right) != null;
         Map<RuleKey, Coordinate> met = new LinkedHashMap<>();
-        for (Coordinate each : coordinatesIn(comparison, at, byName)) {
+        for (Coordinate each : coordinatesIn(comparison, at, byName, answering)) {
             met.putIfAbsent(each.path(), each);
         }
-        switch (cuts(read, byName)) {
+        switch (cuts(read, byName, answering)) {
             case UnreadComparison.Quantity.Read<RuleKey> quantity -> {
                 BlockReason.RuleWithoutLineReason why =
                         UnreadComparison.ofTheQuantity(quantity, ordered);
@@ -3468,10 +3479,11 @@ public final class InvariantChecker {
      * two accounts and the answer would be inside the thing it is an answer about.
      */
     private UnreadComparison.Quantity<RuleKey> cuts(CanonicalForm form,
-                                                    Map<FactSubject, Coordinate> byName) {
+                                                    Map<FactSubject, Coordinate> byName,
+                                                    Arrivals answering) {
         return switch (form) {
             case CanonicalForm.NotRead it -> new UnreadComparison.Quantity.NotRead<>(
-                    placesIn(it.stoppedAt(), it.under(), byName).origin());
+                    placesIn(it.stoppedAt(), it.under(), byName, answering).origin());
             case CanonicalForm.CutsNothing _ -> new UnreadComparison.Quantity.CutsNothing<>();
             case CanonicalForm.Over it -> it.positions().size() == 1
                     ? new UnreadComparison.Quantity.OverOne<>(it.positions().iterator().next())

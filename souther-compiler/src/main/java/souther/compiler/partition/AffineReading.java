@@ -337,7 +337,7 @@ record AffineReading(LinearForm<NumericTerm> form, BigDecimal cut, ComparisonCla
         }
         for (souther.compiler.inputs.TermPath named
                 : GuardThresholds.mentionedIn(leftSide, reads, ruleSource.symbols(),
-                        souther.compiler.coverage.Arrivals.whereNothingStandsAbove())) {
+                        souther.compiler.coverage.Arrivals.inTheTree(leftSide))) {
             for (NumericTerm atom : left.coefs().keySet()) {
                 if (atom.subjectPath().equals(named)) {
                     return atom;

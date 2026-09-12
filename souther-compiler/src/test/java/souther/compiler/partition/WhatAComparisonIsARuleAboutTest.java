@@ -82,7 +82,8 @@ class WhatAComparisonIsARuleAboutTest {
         return ComparisonAssessment.of("f", comparison.stated(), Citation.of(binary.pos()),
                 inputs.reading(rules),
                 InputReads.ofWhatIsDeclared(roots), rule.value(),
-                souther.compiler.coverage.Arrivals.whereNothingStandsAbove(), false);
+                souther.compiler.coverage.Arrivals.inTheTrees(
+                        comparison.stated().left(), comparison.stated().right()), false);
     }
 
     /** The same over two {@code Int} positions, which is what most of the table is written over. */
