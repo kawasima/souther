@@ -1367,11 +1367,12 @@ public final class TypeOps {
      * told about a declaration they would not find.
      *
      * <p>{@code ordinal} is which of {@code declaredOn}'s own clauses this is, counted where that
-     * declaration writes them and not where this walk happened to reach it. Two spreads of one type
-     * bring one clause in twice, and a caller keeping one answer per clause has to be able to tell
-     * that from two clauses — which the pair says and neither half of it does. Every representation
-     * of a declaration writes its clauses in the order they were written, so the number means the
-     * same thing in each.
+     * declaration writes them and not where this walk happened to reach it. A walk comes back with
+     * the clauses of every declaration a value's spreads reach, and each of those counts its own
+     * from the first — so the number alone says which clause of something, and a caller keeping one
+     * answer per clause would hold the first clause of two declarations as one. Which the pair says
+     * and neither half of it does. Every representation of a declaration writes its clauses in the
+     * order they were written, so the number means the same thing in each.
      */
     public record Declared(TypeSymbol.AtModule declaredOn, int ordinal,
                            Hir.InvariantClause clause, CallsLeftStanding standing,

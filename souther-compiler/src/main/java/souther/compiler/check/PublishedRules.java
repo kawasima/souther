@@ -51,14 +51,24 @@ public record PublishedRules(List<ClauseMeaning> reached, boolean everyRuleReach
      *
      * <p><b>{@code found} is what this walk has already worked out, and it is asked at every step.</b>
      * A declaration reached twice is walked once: what governs it does not turn on which of the
-     * types that spread it was asked, so a second walk of it is the same walk. What that does not do
-     * is make a clause reached twice into one clause — two spreads of one type bring its rules in
-     * twice, and the two answers are put together the way any two are, from one walk instead of two.
+     * types that spread it was asked, so a second walk of it is the same walk. It is asked at every
+     * step rather than only at the top because a reading walks each declaration it is asked about,
+     * and one spread deep in a chain is under many of them.
      *
-     * <p>An entry is written only once the walk under it has come back, so a declaration that
-     * spreads its way round to itself meets no entry of its own and recurses, which is what it did
-     * before there was a table here. Standing an entry in for a walk still running would make what
-     * a type is held to turn on which of the types in the ring was asked for first.
+     * <p>What it is not is a way of counting a clause once. Whether a value can reach one
+     * declaration by two paths at all is the language's to say, and it says no: each path brings
+     * that declaration's fields with it and the second is refused as a field written twice
+     * ({@code TwoSpreadsThatMeetOneDeclarationAreRefusedTest}). So the table is asked twice for one
+     * declaration only down one path, where the answer is the same answer — and a language that let
+     * the paths meet would be one where this has a question to answer, which is what that check is
+     * there to make come back.
+     *
+     * <p>An entry is written only once the walk under it has come back. A declaration that spreads
+     * its way round to itself therefore meets no entry of its own, as it met none before there was a
+     * table here; standing one in for a walk still running would make what a type is held to turn on
+     * which of the types in the ring was asked for first. No reading meets that today — a ring is
+     * refused nowhere and the compile ends in the walk over what a value's fields are, before any
+     * rule of it is read — so what this says is only that the table did not decide it.
      */
     static PublishedRules governing(TypeSymbol.AtModule named, Symbols symbols,
                                     PublishedDeclarations published,
