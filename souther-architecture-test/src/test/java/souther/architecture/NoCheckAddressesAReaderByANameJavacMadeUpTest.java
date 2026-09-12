@@ -71,8 +71,8 @@ class NoCheckAddressesAReaderByANameJavacMadeUpTest {
 
     @Test
     void nothingAddressesAReaderByAnIdentityJavacMadeUp() {
-        Set<String> madeUp = whatJavacNamedTheLambdasHere();
-        assertFalse(madeUp.isEmpty(), "this repository compiled no lambda at all, so the rule is"
+        Set<String> forbidden = whatJavacNamedTheLambdasHere();
+        assertFalse(forbidden.isEmpty(), "this repository compiled no lambda at all, so the rule is"
                 + " asked of nothing and passes by having nothing to forbid");
 
         List<ClassModel> checks = checks();
@@ -84,7 +84,7 @@ class NoCheckAddressesAReaderByANameJavacMadeUpTest {
             for (Map.Entry<String, List<String>> said : WhatACheckSays.of(each).entrySet()) {
                 List<String> named = new ArrayList<>();
                 for (String one : said.getValue()) {
-                    named.addAll(named$inOneText(one, madeUp));
+                    named.addAll(named$inOneText(one, forbidden));
                 }
                 if (!named.isEmpty()) {
                     addressed.put(said.getKey(), named);
@@ -118,13 +118,13 @@ class NoCheckAddressesAReaderByANameJavacMadeUpTest {
                 "the method the lambdas here are written in is not spelled with a $ any more, so"
                         + " this witnesses an ordinary name and the case it exists for is unasked");
 
-        Set<String> mine = lambdasOf(itself);
+        Set<String> mine = new TreeSet<>();
+        lambdasOf(itself, mine);
         assertFalse(mine.isEmpty(), "this class compiled to no lambda of its own, so there is"
                 + " nothing here to have been carried into the population");
 
-        Set<String> madeUp = whatJavacNamedTheLambdasHere();
         Set<String> missing = new TreeSet<>(mine);
-        missing.removeAll(madeUp);
+        missing.removeAll(whatJavacNamedTheLambdasHere());
         assertEquals(Set.of(), missing,
                 "a lambda this class compiled to is not in the population the rule beside this one"
                         + " is held to, so what javac named it was dropped on the way in");
@@ -144,33 +144,44 @@ class NoCheckAddressesAReaderByANameJavacMadeUpTest {
         return identities.stream().filter(each -> said.contains(each)).toList();
     }
 
-    /** Every lambda this repository compiled, under the address a licence writes one down by. */
+    /**
+     * Every lambda this repository compiled, under the address a licence writes one down by.
+     *
+     * <p>Built where it is asked for. The classes behind it are read once for the fork
+     * ({@link CompiledOutputs}), so what a second ask costs is the walk over what that already
+     * holds — measured, and under what a run of this varies by.
+     */
     private static Set<String> whatJavacNamedTheLambdasHere() {
         Set<String> out = new TreeSet<>();
         for (ClassModel each : EVERYTHING.all()) {
-            out.addAll(lambdasOf(each));
+            lambdasOf(each, out);
         }
         return out;
     }
 
     /**
-     * The lambdas of one class, as addresses.
+     * The lambdas of one class, as addresses, into {@code out}.
      *
      * <p>The class it was written in and the name javac gave it, written the way a licence writes a
      * method: the owner with its nesting as the source spells it, and the method after it. A name
      * alone would be an address two classes could share, and the thing forbidden is an identity
      * rather than a spelling that happens to be in use somewhere.
+     *
+     * <p>The owner is put together where one is found, because most classes have no lambda at all
+     * and spelling a name for them is work this asks of every class of every module.
      */
-    private static Set<String> lambdasOf(ClassModel model) {
-        String owner = model.thisClass().asInternalName().replace('/', '.').replace('$', '.');
-        Set<String> out = new TreeSet<>();
+    private static void lambdasOf(ClassModel model, Set<String> out) {
+        String owner = null;
         for (MethodModel method : model.methods()) {
             String name = method.methodName().stringValue();
             if (name.startsWith(A_LAMBDA)) {
+                if (owner == null) {
+                    owner = model.thisClass().asInternalName()
+                            .replace('/', '.').replace('$', '.');
+                }
                 out.add(owner + "." + name);
             }
         }
-        return out;
     }
 
     /** Whether {@code model} still has the method the lambdas here are written in. */
