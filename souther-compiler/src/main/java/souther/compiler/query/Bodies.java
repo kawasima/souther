@@ -644,9 +644,12 @@ public final class Bodies {
                 return Answer.absent();
             }
             Map<String, ContractDischarge> out = new LinkedHashMap<>();
-            stated.value().forEach((behavior, rules) -> out.put(behavior, ContractDischarge.of(
-                    rules, RuleReadingContext.of(reading.value(),
-                            db.ask(new Front.Reading()).value(), db.readings()))));
+            // One world for every behavior of the module, since every rule of every one of them is
+            // read in it.
+            RuleReadingContext ruleReading = RuleReadingContext.of(reading.value(),
+                    db.ask(new Front.Reading()).value(), db.readings());
+            stated.value().forEach((behavior, rules) ->
+                    out.put(behavior, ContractDischarge.of(rules, ruleReading)));
             return Answer.of(Ordered.map(out));
         }
     }
@@ -2081,6 +2084,7 @@ public final class Bodies {
                     || !sigs.present() || !constructs.present()) {
                 return Answer.absent();
             }
+            ReadingPolicy policy = db.ask(new Front.Reading()).value();
             // The invariant-discharge analysis reads its own representation of the body and of the
             // invariants (spec §invariant-discharge). Where the body's is not available the check is
             // skipped rather than run against the emitted tree, whose operations are no longer
@@ -2105,7 +2109,7 @@ public final class Bodies {
                                             Shapes.expandedClauses(db),
                                             Shapes.publishedDeclarations(db),
                                             Shapes.clauseLocations(db)),
-                                    db.ask(new Front.Reading()).value(), db.readings()),
+                                    policy, db.readings()),
                             contracts.present() ? contracts.value() : Map.of())
                     : null;
             List<Diagnostic> warnings = new ArrayList<>();
@@ -2113,7 +2117,7 @@ public final class Bodies {
                 SpecChecker.Checked checked =
                         TypeChecker.checkBehavior(spec.value(), fn.value(),
                         body.value().value().writtenBody(),
-                        db.ask(new Front.Reading()).value(),
+                        policy,
                         dischargeSource, scope.value(), calleeSigs.value(), reqSigs.value(),
                         inliner.value(), sigs.value(), constructs.value(),
                         warnings);
@@ -2199,6 +2203,9 @@ public final class Bodies {
             return Map.of();
         }
         Map<String, souther.compiler.claims.Claims> out = new LinkedHashMap<>();
+        // One world for every behavior of the module, since every walk below reads in it.
+        RuleReadingContext ruleReading =
+                RuleReadingContext.of(reading.value(), policy, db.readings());
         for (Hir.BehaviorDef behavior : settled.behaviors()) {
             Core body = bodies.get(behavior.name());
             // What this compilation worked out about the behavior's boundary, read off the one
@@ -2218,8 +2225,7 @@ public final class Bodies {
                     souther.compiler.claims.UnreachableClaims.of(body, read, scope.value(), plan),
                     souther.compiler.check.PathReachability.of(body,
                             fn == null ? null : SpecImplementation.align(spec, fn),
-                            plan, read,
-                            RuleReadingContext.of(reading.value(), policy, db.readings()))));
+                            plan, read, ruleReading)));
         }
         // In the order the module declares them, which is the order a reader meets the diagnostics
         // these carry. `Map.copyOf` keeps the entries and not the order (see `Ordered`), so a

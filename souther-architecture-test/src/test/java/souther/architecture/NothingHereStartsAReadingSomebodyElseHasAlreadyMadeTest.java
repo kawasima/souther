@@ -239,8 +239,23 @@ class NothingHereStartsAReadingSomebodyElseHasAlreadyMadeTest {
                         + " with nothing lent to it.");
     }
 
-    /** Every edge into a reading nobody else made, said in full at both ends. */
+    /**
+     * Every edge into a reading nobody else made, said in full at both ends.
+     *
+     * <p>Walked once for the class. The two questions below are two readings of one walk over every
+     * method of every compiled class, and asking each of them for its own walk reads the whole
+     * output twice to answer about the same instructions.
+     */
     private static Set<String> everyEdgeIntoAReadingOfOnesOwn() {
+        if (EVERY_EDGE == null) {
+            EVERY_EDGE = walkForEveryEdgeIntoAReadingOfOnesOwn();
+        }
+        return EVERY_EDGE;
+    }
+
+    private static Set<String> EVERY_EDGE;
+
+    private static Set<String> walkForEveryEdgeIntoAReadingOfOnesOwn() {
         Map<String, Set<MethodTypeDesc>> pairs = theShorterOfEachPair();
         Set<Named> waysIn = theWaysInThatSayTheyReadForThemselves(pairs);
         Set<String> reaching = new TreeSet<>();
