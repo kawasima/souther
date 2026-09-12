@@ -36,7 +36,10 @@ import souther.compiler.numeric.Granularity;
 import souther.compiler.numeric.LinearForm;
 import souther.compiler.numeric.NumericDomain;
 import souther.compiler.numeric.Place;
+import souther.compiler.regex.Language;
+import souther.compiler.regex.Meter;
 import souther.compiler.regex.PatternPlan;
+import souther.compiler.regex.PatternSyntax;
 import souther.compiler.types.Type;
 import souther.compiler.types.TypeSymbol;
 import souther.compiler.types.TypeReachName;
@@ -2108,10 +2111,97 @@ public final class Partitions {
      * own, which meant two answers to "what does this pattern accept" and one model where they
      * could differ.
      */
-    private static String writtenFor(souther.compiler.regex.PatternSyntax syntax) {
-        souther.compiler.regex.Language language = souther.compiler.regex.PatternPlan.of(syntax)
-                .compile(souther.compiler.regex.PatternPlan.Budget.OF_A_WITNESS.meter());
+    private static String writtenFor(PatternSyntax syntax) {
+        Language language = languageOf(syntax, PatternPlan.Budget.OF_A_WITNESS.meter());
         return language == null ? null : language.someWritten();
+    }
+
+    /** The strings {@code syntax} accepts, or null where making the machine costs more than
+     *  {@code meter} allows. */
+    private static Language languageOf(PatternSyntax syntax, Meter meter) {
+        return PatternPlan.of(syntax).compile(meter);
+    }
+
+    /**
+     * Up to {@code many} strings the rules on {@code type} admit, written under the names the
+     * position wears, and none of them the same string twice.
+     *
+     * <p>Asked where several values of one type are needed and they have to differ — the elements of
+     * a set, the keys of a map. The counterpart of {@link #numberInside} over the strings, and it is
+     * here for the same reason: a second value stepped off the first by the carrier alone is a value
+     * the type's own rules may refuse, and a collection filled from those comes back as one every
+     * value tried was refused at while the strings the rule admits are as many as anybody could want.
+     *
+     * <p><b>What the whole of the rules admits, which is not what {@link #whatAFormatAsksFor}
+     * offers.</b> That one is a proposal per rule, put to the decoder one at a time, and a value
+     * refused there costs a caller one candidate. These go inside a collection, where a value the
+     * rules refuse takes the whole collection with it and no other element can make up for it — so
+     * the rules are met with each other first and what comes back is from the meet.
+     *
+     * <p>A rule this could not read is left out of the meet rather than stopping it, which widens
+     * what is offered and never narrows it: these are proposals like any other and the decoder
+     * answers them. Empty where no rule about the strings was read at all — there the position has
+     * nothing to say about which strings, and what a value of one more is is the carrier's to step.
+     */
+    static List<FixtureTemplate> admittedStrings(Type type, RuleReadingContext reading, int many) {
+        if (type == null || many <= 0) {
+            return List.of();
+        }
+        RuleReadingSource ruleSource = reading.source();
+        TypeView view = TypeView.of(type, ruleSource.symbols());
+        if (!(view.shape() instanceof Shape.Scalar scalar) || scalar.prim() != Type.Prim.STRING) {
+            return List.of();
+        }
+        // One allowance for the whole of this question, which is what looking for these values may
+        // cost: the meet and every string taken out of it are steps of one search, and a fresh
+        // figure per step would be this spending as much as the number asked for.
+        Meter meter = PatternPlan.Budget.OF_A_WITNESS.meter();
+        Language left = stringsTheRulesAdmit(view, ruleSource, meter);
+        List<FixtureTemplate> out = new ArrayList<>();
+        while (left != null && out.size() < many) {
+            String some = left.someWritten();
+            if (some == null) {
+                break;   // nothing left in it that anybody could paste
+            }
+            FixtureTemplate written =
+                    WornNames.under(view.wrappers(), FixtureTemplate.string(some), ruleSource);
+            if (written == null) {
+                return List.of();   // a name this module cannot write leaves no value to offer
+            }
+            out.add(written);
+            left = left.without(List.of(some), meter);
+        }
+        return List.copyOf(out);
+    }
+
+    /**
+     * The strings every rule about them read on {@code view} admits, or null where none was read or
+     * the machine costs more than {@code meter} allows.
+     *
+     * <p>Every name the position wears, because a value wearing two names is held to the rules
+     * written on either. Met rather than listed: what is wanted is a string the rules admit
+     * together, and a string one of them admits is what {@link #whatAFormatAsksFor} already offers.
+     */
+    private static Language stringsTheRulesAdmit(TypeView view, RuleReadingSource ruleSource,
+                                                 Meter meter) {
+        Language all = null;
+        for (DeclaredClauses.OnAName written : DeclaredClauses.of(view.wrappers(), ruleSource)) {
+            for (DeclaredClauses.Conjunct each : written.conjuncts()) {
+                if (!(StringPredicates.statedByWritten(each.expr(), ruleSource.symbols())
+                        instanceof StringPredicates.Reading.Accepting it)) {
+                    continue;
+                }
+                Language one = languageOf(it.accepts(), meter);
+                if (one == null) {
+                    return null;   // the allowance would not pay for this rule's machine
+                }
+                all = all == null ? one : all.and(one, meter);
+                if (all == null) {
+                    return null;   // nor for putting it together with the rules before it
+                }
+            }
+        }
+        return all;
     }
 
     /** A count the position holds, or null where it holds none. The ends decide it, so nothing here

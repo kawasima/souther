@@ -403,11 +403,19 @@ final class Witnesses {
      *
      * <p>What the type divides into comes first. A {@code Bool} is two values and a sum is its cases,
      * and each of those is a value of the type rather than a proposal about it — a set of two booleans
-     * is built from both of them or from nothing. Then values made by stepping the carrier, which stay
-     * inside the rules the type carries. The type's own proposals come last: each is what one rule
-     * asked for and any of them may be one the whole of the rules refuses, so a collection filled from
-     * them is refused for its elements — which is still better than a collection short of its size,
-     * and is all there is where the carrier neither divides nor steps.
+     * is built from both of them or from nothing. Then the values the rules about the strings admit,
+     * which are values of the type in the same way and are as many as the rules leave. Then values
+     * made by stepping the carrier, which stay inside the rules the type carries. The type's own
+     * proposals come last: each is what one rule asked for and any of them may be one the whole of
+     * the rules refuses, so a collection filled from them is refused for its elements — which is
+     * still better than a collection short of its size, and is all there is where the carrier
+     * neither divides nor steps.
+     *
+     * <p><b>Which is why the rules about the strings are asked before the carrier is stepped.</b> A
+     * string stepped by a character is a value of the carrier and not of the type: what the carrier
+     * answers is how many characters, and a type whose rule says which of them gets a string it
+     * refuses at every element after the first. The rules are what tell the values apart there, the
+     * same as a range does for a number ({@link Partitions#numberInside}).
      */
     private static List<FixtureTemplate> distinctValuesOf(Type type, int many,
                                                           RuleReadingContext reading,
@@ -415,6 +423,14 @@ final class Witnesses {
         Set<String> written = new LinkedHashSet<>();
         List<FixtureTemplate> out = new ArrayList<>();
         for (FixtureTemplate each : dividesInto(type, reading, expanding)) {
+            if (out.size() >= many) {
+                return List.copyOf(out);
+            }
+            if (written.add(each.text())) {
+                out.add(each);
+            }
+        }
+        for (FixtureTemplate each : Partitions.admittedStrings(type, reading, many)) {
             if (out.size() >= many) {
                 return List.copyOf(out);
             }
@@ -466,7 +482,11 @@ final class Witnesses {
      * has no order to step.
      *
      * <p>A string grows by a character from the length its rules ask for, and a whole number steps
-     * through the range they leave. A date or a record has no such step that keeps every rule the
+     * through the range they leave. Which characters is a question the carrier has no answer to, so
+     * a type whose rules say which of them is answered before this is reached
+     * ({@link Partitions#admittedStrings}) and what is left here is the length.
+     *
+     * <p>A date or a record has no such step that keeps every rule the
      * position carries, and inventing one would put a value in a row the type's own chooser had reason
      * not to offer — which is what the values a type divides into are for, above.
      */
