@@ -903,27 +903,52 @@ public sealed interface Carrier extends ValueOrder {
             case ValueSet.Finite it -> it.values().stream().map(this::placeOf)
                     .filter(at -> at != null && held.admits(at) && away(apart, at))
                     .findFirst().orElse(null);
-            case ValueSet.Cofinite it -> firstHeldIn(held, anchorIn(range), it.excluded(), apart);
+            case ValueSet.Cofinite it -> {
+                Place cheap = firstHeldIn(held, anchorIn(range), it.excluded(), apart);
+                // Where the order's own candidates answered, that is the value: they read better in
+                // a row than anything worked out of a machine, and the common case is a position
+                // whose rules say nothing about its values.
+                //
+                // And where they did not, they are not a proof. What they are is a handful, and a run
+                // away from that handful holds values none of them names — so the question goes to
+                // the crossing below, which answers it exactly. Read as an answer, a rule stating a
+                // run of the strings came back as one nothing could write a value in.
+                yield cheap != null || !(this instanceof Text) ? cheap
+                        : writableIn(it, held, apart, meter);
+            }
             // The one shape whose values are not in hand: a language names its strings and does not
             // list them, so what is left of it inside the run and away from the places held apart
             // is a machine — which is the crossing between a set of strings and a run of the order,
             // and the reading of extents is where that is made. A language is a set of strings, so
             // no order but the strings holds one.
-            case ValueSet.Matching it -> {
-                if (!(this instanceof Text)) {
-                    yield null;
-                }
-                Language strings = TextExtents.stringsIn(it, held, meter);
-                // Only the words the run leaves in, which the language answers about for nothing.
-                // A word it does not hold is one the machine built to take it out would be built
-                // to change nothing.
-                Language left = strings == null ? null
-                        : strings.without(textsAt(apart).stream().filter(strings::has).toList(),
-                                meter);
-                String some = left == null ? null : left.someWritten();
-                yield some == null ? null : souther.compiler.numeric.Text.of(some);
-            }
+            case ValueSet.Matching it ->
+                    this instanceof Text ? writableIn(it, held, apart, meter) : null;
         };
+    }
+
+    /**
+     * A string of {@code set} that lies inside {@code held}, stands at none of {@code apart}, and a
+     * source can carry, or null where the crossing names none or ran out.
+     *
+     * <p>Asked of the reading of extents whatever shape the set is in. Which strings a set holds
+     * inside a run of the order is one question, and a set that lists the values it leaves out
+     * answers it the same way a set that names a language does — that one is every string less a
+     * handful, which is a language as much as any other. So the shapes differ in what they cost and
+     * not in what they come to: asked one way for one of them, a rule stating a run of the strings
+     * was answered as a rule nothing could write a value for.
+     *
+     * <p>What comes back is a value a source can carry, which is narrower than what the set holds: a
+     * set whose strings are all control characters has a value to offer and none to write, and a row
+     * nobody can paste is not a row.
+     */
+    private Place writableIn(ValueSet set, OrderedInterval held, List<Place> apart, Meter meter) {
+        Language strings = TextExtents.stringsIn(set, held, meter);
+        // Only the words the run leaves in, which the language answers about for nothing. A word it
+        // does not hold is one the machine built to take it out would be built to change nothing.
+        Language left = strings == null ? null
+                : strings.without(textsAt(apart).stream().filter(strings::has).toList(), meter);
+        String some = left == null ? null : left.someWritten();
+        return some == null ? null : souther.compiler.numeric.Text.of(some);
     }
 
     /**
