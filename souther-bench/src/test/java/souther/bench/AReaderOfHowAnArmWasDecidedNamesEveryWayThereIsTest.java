@@ -61,7 +61,15 @@ class AReaderOfHowAnArmWasDecidedNamesEveryWayThereIsTest {
             "souther.compiler.check.Conditions#settledBy", "what choosing the arm states, as"
                     + " relations",
             "souther.compiler.check.InvariantChecker#opening", "what a walk over paths reads of it:"
-                    + " the node it asks, and where choosing the arm puts the reading"));
+                    + " the node it asks, and where choosing the arm puts the reading",
+            "souther.compiler.check.ValueOrigin#decidedBy", "which expressions a reading of the"
+                    + " choice depends on. Not what choosing an arm binds or settles, and not read"
+                    + " off the fork: the node a value is one of several at says which several, and"
+                    + " what each of them turns on is said per arm",
+            "souther.compiler.inputs.InputReads#choosing", "the same question Terms#chose answers,"
+                    + " in the vocabulary a reading of the inputs speaks. Two readings of one body"
+                    + " name a position in two ways and each owns what a name means to it, as they"
+                    + " do for a let's binding"));
 
     @Test
     void everyReaderOfHowAnArmWasDecidedNamesEveryWayThereIs() throws IOException {

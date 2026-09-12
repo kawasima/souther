@@ -77,6 +77,72 @@ class ARuleAboutTheStringsOfAMadeValueIsNamedWhereItCameFromTest {
                 if String.startsWith("JP", if flag then a else b) then Yes else No
             """;
 
+    private static final String A_CHOICE_DECIDED_BY_A_STRING = """
+            module example.codes
+
+            data Answer = Yes | No
+
+            behavior f : (sel: String, a: String, b: String) -> Answer
+            let f (sel, a, b) =
+                if String.startsWith("JP",
+                        if String.startsWith("X", sel) then a else b) then Yes else No
+            """;
+
+    private static final String A_VALUE_CHOSEN_BY_A_MATCH = """
+            module example.codes
+
+            data Answer = Yes | No
+            data Pick = First | Second
+
+            behavior f : (pick: Pick, a: String, b: String) -> Answer
+            let f (pick, a, b) =
+                if String.startsWith("JP", match pick with
+                        | First -> a
+                        | Second -> b) then Yes else No
+            """;
+
+    private static final String AN_ARM_BINDS_WHAT_IT_MATCHED = """
+            module example.codes
+
+            data Answer = Yes | No
+            data Plain = { code: String }
+            data Special = { code: String }
+            data Item = Plain | Special
+
+            behavior f : (item: Item) -> Answer
+            let f (item) =
+                if String.startsWith("JP", match item with
+                        | Plain as p -> p.code
+                        | Special as s -> s.code) then Yes else No
+            """;
+
+    private static final String ONE_ARM_COMES_TO_NO_VALUE = """
+            module example.codes
+
+            data Answer = Yes | No
+
+            behavior f : (flag: Bool, a: String) -> Answer
+            let f (flag, a) =
+                if (if flag then String.length(String.uppercase(a))
+                    else unreachable "the flag is set wherever this is read") > 10
+                    then Yes else No
+            """;
+
+    private static final String AN_ARM_BUILDS_A_VALUE_OUT_OF_AN_UNREACHABLE = """
+            module example.codes
+
+            data Answer = Yes | No
+            data Count = Int
+            data Boxed = { n: Count }
+
+            behavior f : (flag: Bool, a: String) -> Answer
+                constructs Count, Boxed
+            let f (flag, a) =
+                if (if flag then String.length(String.uppercase(a))
+                    else Boxed { n = Count(unreachable "no number to give") }.n.value) > 10
+                    then Yes else No
+            """;
+
     private static final String AN_ELEMENT_IT_CAME_FROM = """
             module example.codes
 
@@ -130,24 +196,94 @@ class ARuleAboutTheStringsOfAMadeValueIsNamedWhereItCameFromTest {
     }
 
     /**
-     * And a rule about a value chosen between two is said nowhere, for want of a reading that
-     * tells a choice from a composition.
+     * And a rule about a value chosen between two is named where either value came from, and not
+     * where the choice was decided.
      *
-     * <p>Not what such a rule is owed. The value is what {@code a} is or what {@code b} is, and
-     * each of them is a position an author who wrote a rule about it has something to be told
-     * about — but what an expression is made of holds the arms of a choice and what it turns on in
-     * one arm, side by side with everything a value was built out of. Read as where the value came
-     * from, the rule would be filed at {@code flag} as well, which decided which value the subject
-     * is and holds none of the strings the rule is about.
-     *
-     * <p>So this is the reading falling short rather than the model saying nothing, and it is what
-     * the day a choice is told from a composition has to come back to.
+     * <p>The value is what {@code a} is or what {@code b} is, so each of them is a position an
+     * author who wrote a rule about it has something to be told about. What decided which of them
+     * it is holds none of the strings the rule is about, and a reader sent to {@code flag} is sent
+     * to a position the rule says nothing of.
      */
     @Test
-    void aValueChosenBetweenTwoIsNamedNowhereForNow() {
-        assertEquals(List.of(), derived(measured(A_VALUE_CHOSEN_BETWEEN)),
-                () -> "nothing is filed, and least of all what the choice turned on: "
+    void aValueChosenBetweenTwoIsNamedWhereEachAlternativeCameFrom() {
+        assertEquals(List.of("a", "b"), derived(measured(A_VALUE_CHOSEN_BETWEEN)),
+                () -> "said at each value it may be, and not at what decided which: "
                         + measured(A_VALUE_CHOSEN_BETWEEN).notRead());
+    }
+
+    /**
+     * And what decided it is left out for being what decided it, not for being of another kind.
+     *
+     * <p>The one above turns on a {@code Bool}, which is no position a rule about strings could be
+     * filed at anyway. Here the choice turns on a string of its own, read by a rule of the same
+     * shape as the one under test — so the only thing telling {@code sel} from {@code a} and
+     * {@code b} is which side of the choice it stands on.
+     */
+    @Test
+    void whatDecidedTheChoiceIsNotNamedEvenWhereItCouldBe() {
+        assertEquals(List.of("a", "b"), derived(measured(A_CHOICE_DECIDED_BY_A_STRING)),
+                () -> "sel decided which value the subject is and holds none of its strings: "
+                        + measured(A_CHOICE_DECIDED_BY_A_STRING).notRead());
+    }
+
+    /** And a value chosen by a match is named at every arm, the scrutinee being what decided it. */
+    @Test
+    void aValueChosenByAMatchIsNamedAtEveryArm() {
+        assertEquals(List.of("a", "b"), derived(measured(A_VALUE_CHOSEN_BY_A_MATCH)),
+                () -> "said at each arm: " + measured(A_VALUE_CHOSEN_BY_A_MATCH).notRead());
+    }
+
+    /**
+     * And an arm is read where the arm stands, so what it binds is a name with a position.
+     *
+     * <p>What a {@code match} arm binds is the value that was matched read as the case the arm
+     * selects, and that name exists inside the arm and nowhere else. Read where the fork stands,
+     * the arm's own answer is a name standing for nothing and the rule is shown nowhere — which is
+     * the same silence a model with no rule in it gives.
+     */
+    @Test
+    void whatAnArmBindsIsNamedWhereTheArmNarrowedIt() {
+        assertEquals(List.of("item@Plain.code", "item@Special.code"),
+                derived(measured(AN_ARM_BINDS_WHAT_IT_MATCHED)),
+                () -> "said under each case the arms select: "
+                        + measured(AN_ARM_BINDS_WHAT_IT_MATCHED).notRead());
+    }
+
+
+    /**
+     * And an arm that comes to no value is not one of the values the rule is about.
+     *
+     * <p>A departure is not another value the subject may be. Counted among them, the arm with
+     * nothing on it answers for the subject beside the arm that has a value, and the one value this
+     * subject may be — a length an operation took of the strings at a position — comes back as a
+     * form nothing read, which sends an author after a syntax that is not the difficulty.
+     *
+     * <p>A comparison, so both places it names carry the word: which positions it depends on
+     * includes what the choice turned on, and one comparison has one arithmetic. Which of them the
+     * value came from is the other question, and it is the one the tests above ask.
+     */
+    @Test
+    void anArmThatComesToNoValueIsNotOneOfTheValuesTheRuleIsAbout() {
+        assertEquals(List.of("flag", "a"), derived(measured(ONE_ARM_COMES_TO_NO_VALUE)),
+                () -> "the one value the subject may be was made from the strings here: "
+                        + measured(ONE_ARM_COMES_TO_NO_VALUE).notRead());
+    }
+
+    /**
+     * And the arm need not be an {@code unreachable} to be one: it is enough that it has to
+     * evaluate one.
+     *
+     * <p>The case a rule written over the shape of the node gets wrong. There is no fork in this
+     * arm and its outermost node is a field taken of a construction, so an arm counted by what it
+     * is made of is counted here — and the value the expression may be goes back to being one of
+     * two, of which one was made by no operation.
+     */
+    @Test
+    void anArmThatHasToEvaluateAnUnreachableIsNotOneOfTheValuesEither() {
+        assertEquals(List.of("flag", "a"),
+                derived(measured(AN_ARM_BUILDS_A_VALUE_OUT_OF_AN_UNREACHABLE)),
+                () -> "the one value the subject may be was made from the strings here: "
+                        + measured(AN_ARM_BUILDS_A_VALUE_OUT_OF_AN_UNREACHABLE).notRead());
     }
 
     /**
@@ -174,7 +310,8 @@ class ARuleAboutTheStringsOfAMadeValueIsNamedWhereItCameFromTest {
      */
     @Test
     void everyOneOfThemNamesTheRuleAsAQuestionStandingThere() {
-        for (String model : List.of(ONE_POSITION, TWO_POSITIONS, AN_ELEMENT_IT_CAME_FROM)) {
+        for (String model : List.of(ONE_POSITION, TWO_POSITIONS, AN_ELEMENT_IT_CAME_FROM,
+                A_VALUE_CHOSEN_BETWEEN, A_VALUE_CHOSEN_BY_A_MATCH)) {
             PartitionEvidence measured = measured(model);
             assertTrue(measured.notRead().stream()
                             .filter(each -> each.reason()
@@ -208,8 +345,13 @@ class ARuleAboutTheStringsOfAMadeValueIsNamedWhereItCameFromTest {
                 "where the rule the report names is written");
     }
 
-    /** No line is drawn at any of them, since the strings the rule is about are not the ones
-     *  there. */
+    /**
+     * No line is drawn at any of them, since the strings the rule is about are not the ones there.
+     *
+     * <p>The models with a choice in them are not here: a fork's own condition is a rule about the
+     * values at the position it turns on, and the line drawn there is that rule's and not this
+     * one's.
+     */
     @Test
     void noLineIsDrawnAtAnyOfThem() {
         for (String model : List.of(ONE_POSITION, TWO_POSITIONS, AN_ELEMENT_IT_CAME_FROM)) {

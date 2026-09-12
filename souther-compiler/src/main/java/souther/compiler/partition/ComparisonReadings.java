@@ -164,7 +164,8 @@ record ComparisonReadings(List<Reading> comparisons, List<ForkMet> forks,
      * reading is one value for the whole of this walk. Put in it, the reading would be copied at
      * every step and asked of whichever copy a reader happened to hold.
      */
-    private record Body(String behavior, InputReading read) {
+    private record Body(String behavior, InputReading read,
+                        souther.compiler.coverage.Arrivals answering) {
 
         Symbols symbols() {
             return read.symbols();
@@ -198,7 +199,8 @@ record ComparisonReadings(List<Reading> comparisons, List<ForkMet> forks,
         // — a condition inside a helper spliced in from elsewhere is still one this reading met.
         ConditionNumbering numbering =
                 new ConditionNumbering(read.symbols().module(), behavior);
-        walk(body, new Body(behavior, read), reads,
+        walk(body, new Body(behavior, read, souther.compiler.coverage.Arrivals.inTheTree(body)),
+                reads,
                 LiveFlow.of(body), List.of(), true, readings, forks, numbering);
         return new ComparisonReadings(readings, forks, numbering.metAt());
     }
@@ -231,7 +233,7 @@ record ComparisonReadings(List<Reading> comparisons, List<ForkMet> forks,
                     .<BoundaryPolicy.Standing>map(BoundaryPolicy.Standing.Refused::new)
                     .orElseGet(() -> new BoundaryPolicy.Standing.Admitted(
                             ComparisonAssessment.of(in.behavior(), comparison.stated(), where,
-                                    in.read(), reads, null, false)));
+                                    in.read(), reads, null, in.answering(), false)));
             out.add(new Reading(stands, comparison, where, reads, assumed, standing));
         }
         switch (e) {

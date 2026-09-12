@@ -336,7 +336,11 @@ record AffineReading(LinearForm<NumericTerm> form, BigDecimal cut, ComparisonCla
             return null;
         }
         for (souther.compiler.inputs.TermPath named
-                : GuardThresholds.mentionedIn(leftSide, reads, ruleSource.symbols())) {
+                : GuardThresholds.mentionedIn(leftSide, reads, ruleSource.symbols(),
+                        // A side of a comparison and not a clause: what this is handed is the side
+                        // alone, and rooting a reading of arrivals at it would read it as a tree of
+                        // its own and lose whatever bound a name above it.
+                        souther.compiler.coverage.Arrivals.everyArmIsTakenForAValue())) {
             for (NumericTerm atom : left.coefs().keySet()) {
                 if (atom.subjectPath().equals(named)) {
                     return atom;

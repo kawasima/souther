@@ -2,6 +2,7 @@ package souther.compiler.partition;
 
 import souther.compiler.check.AnalysisBody;
 import souther.compiler.check.Carrier;
+import souther.compiler.check.Choice;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.StatedComparison;
 import souther.compiler.check.ComparisonClaim;
@@ -34,6 +35,8 @@ import souther.compiler.check.PathReachability;
 import souther.compiler.coverage.ComparisonEmissionIndex;
 import souther.compiler.coverage.CoverageSites;
 import souther.compiler.coverage.EmittedComparisonState;
+import souther.compiler.coverage.Arrivals;
+import souther.compiler.flow.ValueArrivals;
 import souther.compiler.types.ModelOccurrence;
 import souther.compiler.types.Type;
 
@@ -343,13 +346,22 @@ public final class GuardThresholds {
      */
     record Names(ValueOrigin<TermPath> origin, java.util.Map<TermPath, Type> met) {}
 
-    /** What {@code e} is made of, for a caller that has no use for the types. */
-    static ValueOrigin<TermPath> originOf(Core e, InputReads reads, Symbols symbols) {
-        return namesIn(e, reads, symbols).origin();
+    /**
+     * What {@code e} is made of, for a caller that has no use for the types.
+     *
+     * @param answering whether an expression answers a value, of the tree {@code e} stands in.
+     *                  Handed over rather than made here: it is rooted, and which tree {@code e}
+     *                  stands in is what the caller knows — read as a body of its own, a subtree
+     *                  has every name in it free and a name bound to something that aborts is what
+     *                  makes the difference
+     */
+    static ValueOrigin<TermPath> originOf(Core e, InputReads reads, Symbols symbols,
+                                          Arrivals answering) {
+        return namesIn(e, reads, symbols, answering).origin();
     }
 
     /** The same, with what stood at each position the walk met. */
-    static Names namesIn(Core e, InputReads reads, Symbols symbols) {
+    static Names namesIn(Core e, InputReads reads, Symbols symbols, Arrivals answering) {
         java.util.Map<TermPath, Type> met = new java.util.LinkedHashMap<>();
         return new Names(ValueOrigin.of(e, reads,
                 new ValueOrigin.Reading<TermPath, InputReads>() {
@@ -415,6 +427,28 @@ public final class GuardThresholds {
             public InputReads inside(Core.LetIn li, InputReads at) {
                 return at.and(li.binder(), li.value());
             }
+
+            /** The reading the arm opens, which is the reading's own answer: what a name an arm
+             *  binds stands for is settled once, where every walk that goes inside one asks. */
+            @Override
+            public ValueOrigin.Opened<InputReads> choosing(Choice.Decides decidedBy,
+                                                           InputReads at) {
+                return new ValueOrigin.Opened.Entered<>(at.choosing(decidedBy, symbols));
+            }
+
+            /**
+             * Whether an expression answers a value, of the tree this reading was made for.
+             *
+             * <p>The tree and not the body it stands in, which this reader is not handed. What that
+             * costs is a name bound above the tree to something that aborts, which is read here as
+             * a name like any other; what it does not do is answer about a tree this is no reading
+             * of — {@link ValueArrivals} refuses a node it was not rooted at rather than reading it
+             * as a body of its own.
+             */
+            @Override
+            public boolean answers(Core here, InputReads at) {
+                return answering.at(here);
+            }
         }), met);
     }
 
@@ -436,11 +470,11 @@ public final class GuardThresholds {
     static java.util.SequencedMap<FilingCoordinate, BlockReason.RuleReadingStopped>
             whatEachPlaceIsLeftWith(StatedComparison comparison,
                                     AffineReading.OfAComparison.Stopped stopped,
-                                    InputReading read, InputReads reads) {
+                                    InputReading read, InputReads reads, Arrivals answering) {
         Symbols symbols = read.symbols();
-        Names left = namesIn(comparison.left(), reads, symbols);
-        Names right = namesIn(comparison.right(), reads, symbols);
-        Names here = namesIn(stopped.node(), stopped.at(), symbols);
+        Names left = namesIn(comparison.left(), reads, symbols, answering);
+        Names right = namesIn(comparison.right(), reads, symbols, answering);
+        Names here = namesIn(stopped.node(), stopped.at(), symbols, answering);
         java.util.Map<TermPath, Type> met = new java.util.LinkedHashMap<>(left.met());
         right.met().forEach(met::putIfAbsent);
         here.met().forEach(met::putIfAbsent);
@@ -450,7 +484,7 @@ public final class GuardThresholds {
                 at -> met.containsKey(at) && orderable(met.get(at), symbols);
         java.util.SequencedMap<FilingCoordinate, BlockReason.RuleReadingStopped> out =
                 new java.util.LinkedHashMap<>();
-        for (FilingCoordinate at : filedAt(comparison, read, reads)) {
+        for (FilingCoordinate at : filedAt(comparison, read, reads, answering)) {
             out.putIfAbsent(at,
                     UnreadComparison.whereItStopped(ruleAt(at, left, right), notRead, ordered));
         }
@@ -484,8 +518,9 @@ public final class GuardThresholds {
      * one, a side would be carrying two answers to "which position is this about" and the
      * comparison between them would be settled by whichever the caller looked at.
      */
-    static List<TermPath> mentionedIn(Core e, InputReads reads, Symbols symbols) {
-        return new ArrayList<>(originOf(e, reads, symbols).positions());
+    static List<TermPath> mentionedIn(Core e, InputReads reads, Symbols symbols,
+                                      Arrivals answering) {
+        return new ArrayList<>(originOf(e, reads, symbols, answering).positions());
     }
 
     /**
@@ -505,7 +540,7 @@ public final class GuardThresholds {
      */
     static List<FilingCoordinate> filedAt(StatedComparison comparison,
                                                InputReading read,
-                                               InputReads reads) {
+                                               InputReads reads, Arrivals answering) {
         Symbols symbols = read.symbols();
         List<FilingCoordinate> out = new ArrayList<>();
         for (Core side : List.of(comparison.left(), comparison.right())) {
@@ -520,8 +555,8 @@ public final class GuardThresholds {
         // stands at no position of the input, so what a walk over it meets is what a walk over each
         // side meets.
         List<TermPath> named = new ArrayList<>();
-        mentioned(comparison.left(), reads, symbols, named);
-        mentioned(comparison.right(), reads, symbols, named);
+        mentioned(comparison.left(), reads, symbols, answering, named);
+        mentioned(comparison.right(), reads, symbols, answering, named);
         for (TermPath each : named) {
             if (out.stream().noneMatch(had -> had.path().equals(each))) {
                 add(FilingCoordinate.at(each), out);
@@ -537,8 +572,9 @@ public final class GuardThresholds {
     }
 
     /** The same, added to what a caller has already gathered from beside it. */
-    private static void mentioned(Core e, InputReads reads, Symbols symbols, List<TermPath> out) {
-        for (TermPath each : originOf(e, reads, symbols).positions()) {
+    private static void mentioned(Core e, InputReads reads, Symbols symbols, Arrivals answering,
+                                  List<TermPath> out) {
+        for (TermPath each : originOf(e, reads, symbols, answering).positions()) {
             if (!out.contains(each)) {
                 out.add(each);
             }

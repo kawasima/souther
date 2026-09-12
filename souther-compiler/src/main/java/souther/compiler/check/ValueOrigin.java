@@ -1,12 +1,14 @@
 package souther.compiler.check;
 
 import souther.compiler.core.Core;
+import souther.compiler.coverage.NormalReturn;
 import souther.compiler.types.ValueName;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -37,7 +39,7 @@ public sealed interface ValueOrigin<K> {
     record IsAPosition<K>(K at) implements ValueOrigin<K> {
 
         public IsAPosition {
-            java.util.Objects.requireNonNull(at, "this one names the position it is");
+            Objects.requireNonNull(at, "this one names the position it is");
         }
 
         @Override
@@ -58,7 +60,7 @@ public sealed interface ValueOrigin<K> {
             implements ValueOrigin<K> {
 
         public Applied {
-            java.util.Objects.requireNonNull(operation, "an application names its operation");
+            Objects.requireNonNull(operation, "an application names its operation");
             arguments = List.copyOf(arguments);
         }
 
@@ -93,6 +95,73 @@ public sealed interface ValueOrigin<K> {
         }
     }
 
+    /**
+     * A value that is one of several, and what decided which of them it is.
+     *
+     * <p>Told apart from {@link Composed} because the two are different relations. Everything under
+     * a composition contributed to the value; the alternatives of a choice are what the value may
+     * be, of which one is. A fork read as a composition puts what it turned on beside the values it
+     * chooses between, and a reader asking where the value came from is answered with the position
+     * that decided which value it is.
+     *
+     * <p><b>{@code decidedBy} contributes to dependency positions, but not to value provenance.</b>
+     * Which positions the expression depends on includes what it turned on — a comparison over
+     * {@code if flag then a else b} is one no reading of {@code flag} is outside of. Where its value
+     * came from does not: none of the strings the value is are {@code flag}'s.
+     */
+    record OneOf<K>(List<ValueOrigin<K>> decidedBy, List<ValueOrigin<K>> alternatives)
+            implements ValueOrigin<K> {
+
+        public OneOf {
+            decidedBy = List.copyOf(decidedBy);
+            alternatives = List.copyOf(alternatives);
+            if (alternatives.isEmpty()) {
+                // A choice between nothing is not a choice. An expression that chooses has the
+                // values it chooses between, and one of them is what it comes to.
+                throw new IllegalArgumentException("a choice states what it is between");
+            }
+            for (ValueOrigin<K> each : alternatives) {
+                if (each instanceof NoValue<K>) {
+                    // A path that comes to no value is not one of the values, so it is not one of
+                    // the alternatives either. Held here, it would answer for the value alongside
+                    // the arms that have one, and every reader taking all of them together would
+                    // be answering about a path the value never came down.
+                    throw new IllegalArgumentException(
+                            "a path that comes to no value is not a value this may be");
+                }
+            }
+        }
+
+        @Override
+        public Set<K> positions() {
+            Set<K> out = new LinkedHashSet<>();
+            for (ValueOrigin<K> each : decidedBy) {
+                out.addAll(each.positions());
+            }
+            for (ValueOrigin<K> each : alternatives) {
+                out.addAll(each.positions());
+            }
+            return Collections.unmodifiableSet(out);
+        }
+    }
+
+    /**
+     * No value stands here: the path this is on comes to none.
+     *
+     * <p>Its own arm and not {@link Unnameable}, which is a value this reader has nothing to say
+     * about. An arm departing with {@code unreachable} is not a value the expression may be, and
+     * read as one it takes every reader that asks something of all of them down with it — what the
+     * whole was made from, whether every value it may be was made by an operation. Both of those
+     * are questions about the values, and this is the absence of one.
+     */
+    record NoValue<K>() implements ValueOrigin<K> {
+
+        @Override
+        public Set<K> positions() {
+            return Set.of();
+        }
+    }
+
     /** A value written out where it stands. */
     record Written<K>() implements ValueOrigin<K> {
 
@@ -113,7 +182,7 @@ public sealed interface ValueOrigin<K> {
     record MadeFromAPosition<K>(K at) implements ValueOrigin<K> {
 
         public MadeFromAPosition {
-            java.util.Objects.requireNonNull(at, "this one names where the value came from");
+            Objects.requireNonNull(at, "this one names where the value came from");
         }
 
         @Override
@@ -148,8 +217,26 @@ public sealed interface ValueOrigin<K> {
             case MadeFromAPosition<K> from -> from.at();
             case Applied<K> applied -> firstMadeFrom(applied.arguments());
             case Composed<K> composed -> firstMadeFrom(composed.parts());
-            case IsAPosition<K> _, Written<K> _, Unnameable<K> _ -> null;
+            // Only where every value it could be came from the one position, since the value is
+            // one of them and nothing here says which. What decided it is not asked: a choice made
+            // on what stands at a position is not a value made from it.
+            case OneOf<K> choice -> sameMadeFrom(choice.alternatives());
+            case IsAPosition<K> _, Written<K> _, Unnameable<K> _, NoValue<K> _ -> null;
         };
+    }
+
+    /** The one position everything in {@code of} is made from, or null where they differ or any of
+     *  them is made from none. */
+    private static <K> K sameMadeFrom(List<ValueOrigin<K>> of) {
+        K agreed = null;
+        for (ValueOrigin<K> each : of) {
+            K from = each.madeFrom();
+            if (from == null || (agreed != null && !agreed.equals(from))) {
+                return null;
+            }
+            agreed = from;
+        }
+        return agreed;
     }
 
     private static <K> K firstMadeFrom(List<ValueOrigin<K>> of) {
@@ -191,6 +278,44 @@ public sealed interface ValueOrigin<K> {
 
         /** What {@code li}'s body is read in. */
         E inside(Core.LetIn li, E at);
+
+        /** Where the arm {@code decidedBy} chooses is read, which is {@code at} with whatever
+         *  choosing that arm binds entered — or nowhere this reading goes. */
+        Opened<E> choosing(Choice.Decides decidedBy, E at);
+
+        /**
+         * Whether {@code e}, standing where {@code at} says it stands, can be evaluated to a value.
+         *
+         * <p>{@link NormalReturn}'s question, asked of the caller because the answer is rooted: an
+         * expression read as a body of its own has every name in it free, and a name bound to
+         * something that aborts is what makes the difference. Which body {@code e} stands in is
+         * what the caller knows and this walk does not.
+         */
+        boolean answers(Core e, E at);
+    }
+
+    /**
+     * Where an arm's answer is read.
+     *
+     * <p>Two answers and not one reading. An arm that binds nothing is read where the fork stands,
+     * and so is an arm whose name a reading does not follow — and told apart by the reading they
+     * come back as, the second reads a name that means something else outside the arm as though the
+     * arm had opened it.
+     *
+     * @param <E> what the caller carries as it goes inside a binding
+     */
+    sealed interface Opened<E> {
+
+        /** The reading the arm is read in, with whatever it binds entered. */
+        record Entered<E>(E at) implements Opened<E> {
+
+            public Entered {
+                Objects.requireNonNull(at, "an arm that is entered is read somewhere");
+            }
+        }
+
+        /** This reading does not go inside the arm, so what the arm answers is out of its reach. */
+        record NotEntered<E>() implements Opened<E> {}
     }
 
     /** What {@code e} is made of. */
@@ -224,6 +349,11 @@ public sealed interface ValueOrigin<K> {
         // settled where the arithmetic already settles it. A two-argument call the language has an
         // operator for is not one of these: {@link Terms#asOperator} has already turned it into the
         // arithmetic it stands for, which is what {@link Composed} is.
+        // Asked before the choice below, and the call an operation defines by cases is the one
+        // place the two could both answer. A rule about what such a call answered is one to be
+        // followed back through the operation, which is what an application says and what a reader
+        // of it acts on; which of its arguments the answer is comes from the same table and is a
+        // question about the library rather than about this body.
         ValueName operation = Terms.operationOf(e);
         if (operation != null) {
             return new Applied<>(operation, partsOf(Terms.argsOf(e), at, reading, following));
@@ -240,12 +370,101 @@ public sealed interface ValueOrigin<K> {
         if (e instanceof Core.LetIn li) {
             return of(li.body(), reading.inside(li, at), reading, following);
         }
+        // A value that is one of several, said as the choice it is. Which several and what decides
+        // each is {@link Choice}'s answer and not read off the node here: walked by its children a
+        // fork comes back composed of what it turned on and what it chooses between alike, and the
+        // two are not one relation.
+        Choice choice = Choice.of(e);
+        if (choice != null) {
+            return oneOf(choice, at, reading, following);
+        }
         List<Core> children = new ArrayList<>();
         Core.forEachChild(e, children::add);
         if (children.isEmpty()) {
             return leafOf(e, at, reading);
         }
         return new Composed<>(partsOf(children, at, reading, following));
+    }
+
+    /**
+     * What {@code choice} is made of: every value it may be, read where that value is written, and
+     * what decided which of them it is.
+     *
+     * <p>Each arm in the reading its own arm opens ({@link Reading#choosing}). A {@code match}
+     * arm's name stands for the value that was matched read as the case the arm selects, and an
+     * attempt's name stands for what it built — neither of them is a name outside the arm, so an
+     * arm read in the reading the fork stands in is one whose own answer cannot be looked up. An
+     * arm a reading does not go inside comes to a value it can say nothing about, which is what
+     * such an arm is to it.
+     *
+     * <p>Which arms are values the expression may be is asked of the reading and not read off the
+     * node: an {@code unreachable} standing where a value is built takes the whole expression
+     * around it with it, and an operator that stops as soon as its answer is settled answers a
+     * value on some runs and not others. A choice no arm of which answers one comes to none
+     * itself.
+     */
+    private static <K, E> ValueOrigin<K> oneOf(Choice choice, E at, Reading<K, E> reading,
+                                               Set<souther.compiler.types.BindingId> following) {
+        List<Core> deciding = new ArrayList<>();
+        List<ValueOrigin<K>> values = new ArrayList<>(choice.arms().size());
+        for (Choice.Arm arm : choice.arms()) {
+            for (Core each : decidedBy(arm.decidedBy())) {
+                if (noneIs(deciding, each)) {
+                    deciding.add(each);
+                }
+            }
+            if (!reading.answers(arm.answers(), at)) {
+                continue;
+            }
+            values.add(switch (reading.choosing(arm.decidedBy(), at)) {
+                case Opened.Entered<E>(E inside) -> of(arm.answers(), inside, reading, following);
+                case Opened.NotEntered<E> _ -> new Unnameable<K>();
+            });
+        }
+        return values.isEmpty() ? new NoValue<>()
+                : new OneOf<>(partsOf(deciding, at, reading, following), values);
+    }
+
+    /**
+     * What one arm is chosen by, as the expressions it turns on.
+     *
+     * <p>An arm per way of deciding, so a way added to the language stops here until somebody says
+     * what it turns on. What this answers is which expressions a reading of the choice depends on;
+     * what choosing an arm binds and what it settles are the other two questions about the same
+     * node, and each is answered where its own vocabulary is.
+     */
+    private static List<Core> decidedBy(Choice.Decides decidedBy) {
+        return switch (decidedBy) {
+            case Choice.Decides.ACondition(Core cond, boolean _) -> List.of(cond);
+            case Choice.Decides.ACase(Core.Case _, Core scrutinee) -> List.of(scrutinee);
+            // What the attempt tried to build is what its invariant was tested on, whichever way
+            // the test went.
+            case Choice.Decides.ItWasBuilt(Core.IfConstructed attempt) ->
+                    List.of(attempt.construct());
+            case Choice.Decides.ItDeparted(Core.IfConstructed attempt, Core.ElseArm _) ->
+                    List.of(attempt.construct());
+            // The values the arguments stand between, which is what the library's own definition
+            // reads to say which case it answers in.
+            case Choice.Decides.ByArgumentRelations(List<Choice.ArgumentRelation> relations) -> {
+                List<Core> out = new ArrayList<>(relations.size() * 2);
+                for (Choice.ArgumentRelation each : relations) {
+                    out.add(each.left());
+                    out.add(each.right());
+                }
+                yield out;
+            }
+        };
+    }
+
+    /** Whether {@code of} holds no node that is {@code e}. The same expression decides every arm of
+     *  a fork, and read once it is walked once. */
+    private static boolean noneIs(List<Core> of, Core e) {
+        for (Core each : of) {
+            if (each == e) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static <K, E> List<ValueOrigin<K>> partsOf(List<Core> of, E at, Reading<K, E> reading,

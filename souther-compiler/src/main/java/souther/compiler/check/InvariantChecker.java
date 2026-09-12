@@ -16,6 +16,7 @@ import souther.compiler.numeric.NumericDomain;
 import souther.compiler.core.Core;
 import souther.compiler.semantics.ConditionJoin;
 import souther.compiler.core.Evaluated;
+import souther.compiler.coverage.Arrivals;
 import souther.compiler.diag.CompileException;
 import souther.compiler.diag.Diagnostic;
 import souther.compiler.diag.msg.InvariantMessage;
@@ -2162,6 +2163,11 @@ public final class InvariantChecker {
         // no line and was about no number, while the reading that turns clauses into sets read it
         // perfectly well.
         Core clause = said.of();
+        // Whether an expression answers a value, of the clause this part was read out of. The root
+        // and not the part: a binding is crossed before this, and the part under it is one the
+        // binding is evaluated before — read as a root of its own, the name that binding gave would
+        // be free and an arm depending on it would answer a value the clause never comes to.
+        Arrivals answering = Arrivals.inTheTree(of.clause());
         // What a rule about the strings at a position says about where they stop, which is a rule
         // of this conjunct as much as an ordering written here is. Beside the reading of
         // comparisons and not inside it: what such a rule states is not a comparison and has no
@@ -2191,7 +2197,8 @@ public final class InvariantChecker {
             // to be handed: what is below reads a clause for the end it places on a position and
             // for which declarations narrowed that position, and neither is a thing another shape
             // of rule states.
-            settle(clause, from, of, statement, said.at(), states(clause, at, byName, null, runs),
+            settle(clause, from, of, statement, said.at(),
+                    states(clause, at, byName, null, answering, runs),
                     new InvariantBound.Read.NoEnd(),
                     byName, raised, took, raisedByPart);
             return;
@@ -2218,7 +2225,8 @@ public final class InvariantChecker {
         StatedComparison.Numbered<Coordinate> numbered =
                 comparison.at(each -> byName.get(nameOf(each, at)));
         if (asWritten instanceof ComparisonClaim.Singled named && !named.holdsAtTheValue()) {
-            settle(bin, from, of, statement, said.at(), states(bin, at, byName, read, runs),
+            settle(bin, from, of, statement, said.at(),
+                    states(bin, at, byName, read, answering, runs),
                     new InvariantBound.Read.NoEnd(),
                     byName, raised, took, raisedByPart);
             // And handed on, which is not the same as being reported. A rule that rules one value
@@ -2226,7 +2234,8 @@ public final class InvariantChecker {
             // author to lift and there is a conjunct for the reading that draws lines to make what
             // it can of.
             withoutAnEnd.putIfAbsent(new HandOver(statement),
-                    new FieldDomains.WithoutAnEnd(statement, comparison, said.written().pos()));
+                    new FieldDomains.WithoutAnEnd(statement, comparison, said.written().pos(),
+                            of.clause()));
             return;
         }
         // An end where the other side is a constant, and a relation everywhere else. Which it is
@@ -2246,7 +2255,7 @@ public final class InvariantChecker {
         // What the clause is about, asked of the comparison and not of what `end` came to. A
         // coordinate compared for order against something naming no other coordinate states where
         // the values stop, whether or not the number on the other side is one this could fold.
-        ClauseStates shape = states(bin, at, byName, read, runs);
+        ClauseStates shape = states(bin, at, byName, read, answering, runs);
         // And nothing of this value on the other side. `ARelation` is only what
         // `Relates.twoPositions` recognises, which wants each whole side to be a position — so
         // `width <= height + 1` is not one, and read as a bound it raised a question about where
@@ -2254,7 +2263,7 @@ public final class InvariantChecker {
         // places no end (ADR-0090). The reader already knows: the reason it records for such a
         // comparison is `ComparisonBetweenPositions`.
         if (about != null && numbered.claim() instanceof ComparisonClaim.Cut
-                && coordinatesIn(numbered.other(), at, byName).isEmpty()
+                && coordinatesIn(numbered.other(), at, byName, answering).isEmpty()
                 && shape instanceof ClauseStates.SomethingElse named) {
             Set<RuleKey> names = new LinkedHashSet<>(named.named());
             // The name the bound sits at, which the walk over the comparison writes anyway. Added
@@ -2300,12 +2309,13 @@ public final class InvariantChecker {
             // §example-partition). A position carries more than one statement, and an end read at
             // it says nothing about the rule beside it: kept as what the position was left with,
             // a bound on a field's own type swallowed the record's clause about the same field.
-            noLineDrawn(read, bin, part, at, byName, noLines);
+            noLineDrawn(read, bin, part, at, byName, answering, noLines);
             // The hand-over beside the finding, and not read off it. Both come of this conjunct
             // having no end, and they answer different questions: what an author is owed a word
             // about, and what the next reading is given to read.
             withoutAnEnd.putIfAbsent(new HandOver(statement),
-                    new FieldDomains.WithoutAnEnd(statement, comparison, said.written().pos()));
+                    new FieldDomains.WithoutAnEnd(statement, comparison, said.written().pos(),
+                            of.clause()));
             // The declaration and not the clause. Which declaration took an edge in is what ADR-0090
             // names beside a line, and what a reader is sent to look at is the declaration holding
             // the relation.
@@ -2388,7 +2398,10 @@ public final class InvariantChecker {
                 // The one number the rule is over, which is the same answer the attribution of an
                 // end to a conjunct is put forward on. A rule over several is a line between them
                 // and an end at none, so it puts nothing forward.
-                return switch (lineStatedIn(it.of(), it.positive(), at, byName)) {
+                // The clause this leaf was read out of does not reach here either, and what is
+                // asked is which number the rule is over rather than which arms it may come to.
+                return switch (lineStatedIn(it.of(), it.positive(), at, byName,
+                        Arrivals.everyArmIsTakenForAValue())) {
                     case StatedLines.Statement.OnWhatStandsAtAPosition found ->
                             Set.of(found.number());
                     case StatedLines.Statement.OnADerivedNumber found ->
@@ -2438,7 +2451,11 @@ public final class InvariantChecker {
 
             @Override
             public StatedLines.Statement of(Core leaf, boolean positive, Denotations at) {
-                return lineStatedIn(leaf, positive, at, byName);
+                // One reader over however many clauses reach this value, handed a leaf and not the
+                // clause it was read out of — so there is no tree here to root a reading of
+                // arrivals at, and the part is the one thing it must not be rooted at.
+                return lineStatedIn(leaf, positive, at, byName,
+                        Arrivals.everyArmIsTakenForAValue());
             }
 
             @Override
@@ -2505,7 +2522,8 @@ public final class InvariantChecker {
      * looked for a name spelled as a whole side would call it a rule about nothing.
      */
     private StatedLines.Statement lineStatedIn(Core leaf, boolean positive, Denotations at,
-                                               Map<FactSubject, Coordinate> byName) {
+                                               Map<FactSubject, Coordinate> byName,
+                                               Arrivals answering) {
         if (!(leaf instanceof Core.Binary bin)) {
             return NO_LINE;
         }
@@ -2539,7 +2557,8 @@ public final class InvariantChecker {
             // would say — and every number the leaf writes about is one waiting on that reading,
             // the numbers an operation answers among them.
             case CanonicalForm.NotRead _ -> {
-                Coordinate against = heldAgainstAConstant(bin, at, byName);
+                Coordinate against =
+                        heldAgainstAConstant(bin, at, byName, answering);
                 yield against == null ? ELSEWHERE : statedOn(against);
             }
             // The positions cancelled, and what is left is a number against a number. Asked of the
@@ -2571,13 +2590,16 @@ public final class InvariantChecker {
      * narrower one.
      */
     private Coordinate heldAgainstAConstant(Core.Binary bin, Denotations at,
-                                            Map<FactSubject, Coordinate> byName) {
+                                            Map<FactSubject, Coordinate> byName,
+                                            Arrivals answering) {
         Coordinate left = byName.get(nameOf(bin.left(), at));
         Coordinate right = byName.get(nameOf(bin.right(), at));
-        if (left != null && right == null && coordinatesIn(bin.right(), at, byName).isEmpty()) {
+        if (left != null && right == null
+                && coordinatesIn(bin.right(), at, byName, answering).isEmpty()) {
             return left;
         }
-        if (right != null && left == null && coordinatesIn(bin.left(), at, byName).isEmpty()) {
+        if (right != null && left == null
+                && coordinatesIn(bin.left(), at, byName, answering).isEmpty()) {
             return right;
         }
         return null;
@@ -2620,9 +2642,9 @@ public final class InvariantChecker {
      */
     private ClauseStates states(Core clause, Denotations at,
                                 Map<FactSubject, Coordinate> byName, CanonicalForm read,
-                                RunsRead runs) {
+                                Arrivals answering, RunsRead runs) {
         List<RuleKey> found = new ArrayList<>();
-        namedIn(clause, at, byName, found);
+        namedIn(clause, at, byName, answering, found);
         // What the rule cuts, ahead of what it looks like. Which values a rule restricts is settled
         // by the quantity its canonical form cuts, and that is the rule `UnreadComparison.why` is
         // written around one layer down — asked of what the rule cuts, and of the sides only where
@@ -2651,7 +2673,7 @@ public final class InvariantChecker {
             return new ClauseStates.ARelation();
         }
         SequencedMap<RuleKey, List<BlockReason.RuleReadingStopped>> stopped =
-                stoppedOnTheFormOf(found, read, byName);
+                stoppedOnTheFormOf(found, read, byName, answering);
         // And where whether it states one was not worked out, the question stands with no answer.
         // Left out, a limit of this compiler would come out as a rule that raises no such question,
         // which is what a rule read to the end and stating no bound comes out as.
@@ -2688,7 +2710,8 @@ public final class InvariantChecker {
      * answer about.
      */
     private SequencedMap<RuleKey, List<BlockReason.RuleReadingStopped>> stoppedOnTheFormOf(
-            List<RuleKey> found, CanonicalForm read, Map<FactSubject, Coordinate> byName) {
+            List<RuleKey> found, CanonicalForm read, Map<FactSubject, Coordinate> byName,
+            Arrivals answering) {
         SequencedMap<RuleKey, List<BlockReason.RuleReadingStopped>> out = new LinkedHashMap<>();
         // Only a rule that orders the values. An equality singles one out and puts no end anywhere,
         // which is what it states and not what a reading of it managed — so however little of the
@@ -2703,7 +2726,7 @@ public final class InvariantChecker {
         // here as separate readings of separate comparisons, which is why this is asked per name
         // rather than said once of the clause.
         BlockReason.RuleReadingStopped why = UnreadComparison.notAboutOwnValues(
-                placesIn(stopped.stoppedAt(), stopped.under(), byName).origin());
+                placesIn(stopped.stoppedAt(), stopped.under(), byName, answering).origin());
         found.forEach(each -> out.put(each, List.of(why)));
         return out;
     }
@@ -2717,8 +2740,8 @@ public final class InvariantChecker {
      * it is a coordinate of its own.
      */
     private void namedIn(Core e, Denotations at, Map<FactSubject, Coordinate> byName,
-                         List<RuleKey> out) {
-        for (Coordinate each : coordinatesIn(e, at, byName)) {
+                         Arrivals answering, List<RuleKey> out) {
+        for (Coordinate each : coordinatesIn(e, at, byName, answering)) {
             if (!out.contains(each.path())) {
                 out.add(each.path());
             }
@@ -2734,8 +2757,9 @@ public final class InvariantChecker {
      * its values are ordered on, and a count is ordered as a whole number whatever it counts.
      */
     private List<Coordinate> coordinatesIn(Core e, Denotations at,
-                                           Map<FactSubject, Coordinate> byName) {
-        Places places = placesIn(e, at, byName);
+                                           Map<FactSubject, Coordinate> byName,
+                                           Arrivals answering) {
+        Places places = placesIn(e, at, byName, answering);
         List<Coordinate> out = new ArrayList<>();
         for (RuleKey path : places.origin().positions()) {
             out.add(places.met().get(path));
@@ -2751,9 +2775,11 @@ public final class InvariantChecker {
      * walk reached through a value the readers below have no reason to hold.
      */
     private List<Coordinate> coordinatesIn(StatedComparison comparison, Denotations at,
-                                           Map<FactSubject, Coordinate> byName) {
-        List<Coordinate> out = new ArrayList<>(coordinatesIn(comparison.left(), at, byName));
-        out.addAll(coordinatesIn(comparison.right(), at, byName));
+                                           Map<FactSubject, Coordinate> byName,
+                                           Arrivals answering) {
+        List<Coordinate> out =
+                new ArrayList<>(coordinatesIn(comparison.left(), at, byName, answering));
+        out.addAll(coordinatesIn(comparison.right(), at, byName, answering));
         return out;
     }
 
@@ -2782,7 +2808,8 @@ public final class InvariantChecker {
      * shape are taken apart the same way. What is this reader's own is the lookup: a clause names a
      * coordinate of the value it is written about, where a body names a position of an input.
      */
-    private Places placesIn(Core e, Denotations at, Map<FactSubject, Coordinate> byName) {
+    private Places placesIn(Core e, Denotations at, Map<FactSubject, Coordinate> byName,
+                            Arrivals answering) {
         Map<RuleKey, Coordinate> met = new LinkedHashMap<>();
         ValueOrigin<RuleKey> origin = ValueOrigin.of(e, at,
                 new ValueOrigin.Reading<RuleKey, Denotations>() {
@@ -2821,6 +2848,38 @@ public final class InvariantChecker {
             public Denotations inside(Core.LetIn li, Denotations where) {
                 return terms.inside(li, where);
             }
+
+            /**
+             * And an arm that opened a name is one this reader does not go inside, which it says
+             * rather than reading the arm where the fork stands.
+             *
+             * <p>What a clause is about is one of a pair. The reading of values reads the same
+             * conjunct and says which coordinates it constrained, and a coordinate this names that
+             * the other never reached is a question standing with nothing to account for it
+             * ({@link FieldDomains.AStandingQuestionWithNoAccount}) — which is the two coming
+             * apart, not a fact about the model. That reading does not go inside a name an arm
+             * opened, so neither does this one, and a clause whose arm reads what the arm bound
+             * names one position fewer than it is about.
+             *
+             * <p>Which arms those are is {@link Terms}' answer and not a list kept here. It says
+             * what choosing an arm binds and what that arm opened, and an arm that opened nothing
+             * is read where the fork stands by every reader — a condition settles what it settles
+             * wherever it is read, and a departure was taken where nothing was built.
+             */
+            @Override
+            public ValueOrigin.Opened<Denotations> choosing(Choice.Decides decidedBy,
+                                                            Denotations where) {
+                Terms.Chose chose = terms.chose(decidedBy, where);
+                return chose.opened() == null ? new ValueOrigin.Opened.Entered<>(chose.at())
+                        : new ValueOrigin.Opened.NotEntered<>();
+            }
+
+            /** Whether an expression answers a value, of the tree this reading was made for, as
+             *  for a body's reading next door. */
+            @Override
+            public boolean answers(Core here, Denotations where) {
+                return answering.at(here);
+            }
         });
         return new Places(origin, met);
     }
@@ -2856,19 +2915,20 @@ public final class InvariantChecker {
      */
     private void noLineDrawn(CanonicalForm read, Core clause, PartId<RuleRef.Invariant> part,
                             Denotations at,
-                            Map<FactSubject, Coordinate> byName, List<FieldDomains.NoLine> out) {
+                            Map<FactSubject, Coordinate> byName, Arrivals answering,
+                            List<FieldDomains.NoLine> out) {
         if (!(read.comparison().claim() instanceof ComparisonClaim.Cut)) {
             return;
         }
         StatedComparison comparison = read.comparison();
-        Places left = placesIn(comparison.left(), at, byName);
-        Places right = placesIn(comparison.right(), at, byName);
+        Places left = placesIn(comparison.left(), at, byName, answering);
+        Places right = placesIn(comparison.right(), at, byName, answering);
         Predicate<RuleKey> ordered = place -> carrierAt(place, left, right) != null;
         Map<RuleKey, Coordinate> met = new LinkedHashMap<>();
-        for (Coordinate each : coordinatesIn(comparison, at, byName)) {
+        for (Coordinate each : coordinatesIn(comparison, at, byName, answering)) {
             met.putIfAbsent(each.path(), each);
         }
-        switch (cuts(read, byName)) {
+        switch (cuts(read, byName, answering)) {
             case UnreadComparison.Quantity.Read<RuleKey> quantity -> {
                 BlockReason.RuleWithoutLineReason why =
                         UnreadComparison.ofTheQuantity(quantity, ordered);
@@ -3425,10 +3485,11 @@ public final class InvariantChecker {
      * two accounts and the answer would be inside the thing it is an answer about.
      */
     private UnreadComparison.Quantity<RuleKey> cuts(CanonicalForm form,
-                                                    Map<FactSubject, Coordinate> byName) {
+                                                    Map<FactSubject, Coordinate> byName,
+                                                    Arrivals answering) {
         return switch (form) {
             case CanonicalForm.NotRead it -> new UnreadComparison.Quantity.NotRead<>(
-                    placesIn(it.stoppedAt(), it.under(), byName).origin());
+                    placesIn(it.stoppedAt(), it.under(), byName, answering).origin());
             case CanonicalForm.CutsNothing _ -> new UnreadComparison.Quantity.CutsNothing<>();
             case CanonicalForm.Over it -> it.positions().size() == 1
                     ? new UnreadComparison.Quantity.OverOne<>(it.positions().iterator().next())
