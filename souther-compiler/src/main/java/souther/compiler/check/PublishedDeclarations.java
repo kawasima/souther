@@ -20,4 +20,20 @@ public interface PublishedDeclarations {
 
     /** What {@code declaration} says, or null where nothing declares it. */
     DeclarationMeaning of(TypeKey declaration);
+
+    /** Nothing declared anywhere — for a reading over primitives, which asks of no declaration. */
+    PublishedDeclarations NONE = _ -> null;
+
+    /**
+     * The reading that makes these, which consults none.
+     *
+     * <p>Refused rather than answering nothing. A reading that is working out what a declaration
+     * says cannot also be reading it — asking would be asking for the answer being worked out — and
+     * an answer of nothing would say instead that nothing declares it, which is a different thing
+     * and one every clause of it would then be reported under.
+     */
+    PublishedDeclarations THE_ONE_THAT_MAKES_THEM = declaration -> {
+        throw new IllegalStateException("the reading that works out what `" + declaration
+                + "` says is being asked what it says");
+    };
 }

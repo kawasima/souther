@@ -1367,11 +1367,12 @@ public final class TypeOps {
      * told about a declaration they would not find.
      *
      * <p>{@code ordinal} is which of {@code declaredOn}'s own clauses this is, counted where that
-     * declaration writes them and not where this walk happened to reach it. Two spreads of one type
-     * bring one clause in twice, and a caller keeping one answer per clause has to be able to tell
-     * that from two clauses — which the pair says and neither half of it does. Every representation
-     * of a declaration writes its clauses in the order they were written, so the number means the
-     * same thing in each.
+     * declaration writes them and not where this walk happened to reach it. A walk comes back with
+     * the clauses of every declaration a value's spreads reach, and each of those counts its own
+     * from the first — so the number alone says which clause of something, and a caller keeping one
+     * answer per clause would hold the first clause of two declarations as one. Which the pair says
+     * and neither half of it does. Every representation of a declaration writes its clauses in the
+     * order they were written, so the number means the same thing in each.
      */
     public record Declared(TypeSymbol.AtModule declaredOn, int ordinal,
                            Hir.InvariantClause clause, CallsLeftStanding standing,
@@ -1479,6 +1480,23 @@ public final class TypeOps {
             // above has already had to deal with to have got here.
             case ExpandedClauseResult.NotDeclared _ -> new ExpandedRules(List.of(), true);
         };
+    }
+
+    /**
+     * The clauses {@code named} itself writes, in the representation a reading of rules takes.
+     *
+     * <p>Its own and not the ones it spreads in, which is what tells this from
+     * {@link #expandedInvariants}: that one answers which rules govern a value of the declaration,
+     * and this one answers which rules the declaration wrote. The first is what a reading asks and
+     * the second is what a declaration answering for itself asks — and a walk that reached spreads
+     * would put a rule another declaration wrote into what this one says.
+     *
+     * <p>A declaration whose clauses could not be worked out writes none here. Whether every rule
+     * about a value was reached is the other question's, and nothing that asks this one is asking
+     * it.
+     */
+    static List<Declared> writtenOn(TypeSymbol.AtModule named, ExpandedClauseLookup form) {
+        return rulesOf(named, form.of(named.key())).reached();
     }
 
     /** The type a newtype wraps ({@code data X = Y} gives {@code Y}), or null when {@code name} is not

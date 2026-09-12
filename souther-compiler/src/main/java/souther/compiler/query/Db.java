@@ -174,7 +174,7 @@ public final class Db implements StoreWork {
         if (sources == null) {
             sources = new TheCompilationsSources(this::scopeOf,
                     named -> ask(new Shapes.ClausesExpandedFor(named)).value(),
-                    Shapes.clauseMeanings(this),
+                    Shapes.publishedDeclarations(this),
                     Shapes.clauseLocations(this));
         }
         return sources.of(module);

@@ -55,7 +55,7 @@ public sealed interface DeclarationMeaning {
         // it is not a reading under the one the caller handed over and does not say it is.
         return of(declared, new Clauses(
                 new RuleReadingSource(source.symbols(), source.invariants(),
-                        ClauseMeanings.THE_ONE_THAT_MAKES_THEM, source.written())));
+                        PublishedDeclarations.THE_ONE_THAT_MAKES_THEM, source.written())));
     }
 
     /**
@@ -139,13 +139,10 @@ public sealed interface DeclarationMeaning {
      */
     private static List<ClauseMeaning> clausesOf(TypeSymbol.AtModule named, Clauses reading) {
         List<ClauseMeaning> clauses = new ArrayList<>();
-        for (TypeOps.Declared each : reading.of(named).reached()) {
-            if (!each.declaredOn().equals(named)) {
-                // Written on a declaration this one spreads, and that one publishes it. Carried
-                // here as well, what this declaration says would change when another was given a
-                // rule it says nothing about — which is what asking for one is for.
-                continue;
-            }
+        // Its own clauses and not the ones it spreads in. Carried here as well, what this
+        // declaration says would change when another was given a rule it says nothing about —
+        // which is what asking that one for it is for.
+        for (TypeOps.Declared each : reading.declaredHere(named)) {
             Clause.Ref clause = Clause.Ref.of(each);
             clauses.add(switch (reading.typed(each.asExpanded(), named)) {
                 case TypedClause.Typed typed -> new ClauseMeaning.Stated(clause,

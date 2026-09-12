@@ -115,22 +115,20 @@ class WhatACountIsShortOfIsTheReadingsAndNotTheRunsTest {
                 "which is lent them, rather than reading the clauses a second time");
     }
 
-    /** {@code source}, with {@code declaration}'s clauses ones nobody could work out. */
+    /** {@code source}, with {@code declaration} one nobody could work out. */
     private static RuleReadingSource refusing(TypeKey declaration, RuleReadingSource source) {
-        return new RuleReadingSource(source.symbols(),
-                named -> named.equals(declaration)
-                        ? new ExpandedClauseResult.Unavailable(named)
-                        : source.invariants().of(named),
-                source.states(), source.written());
+        return new RuleReadingSource(source.symbols(), source.invariants(),
+                named -> named.equals(declaration) ? null : source.published().of(named),
+                source.written());
     }
 
-    /** The same source, counting what is asked of its clauses. One source and one origin, so two
-     *  counts reading under it are reading one world. */
+    /** The same source, counting what is asked of its declarations. One source and one origin, so
+     *  two counts reading under it are reading one world. */
     private static RuleReadingSource counting(AtomicInteger asked, RuleReadingSource source) {
-        return new RuleReadingSource(source.symbols(), named -> {
+        return new RuleReadingSource(source.symbols(), source.invariants(), named -> {
             asked.incrementAndGet();
-            return source.invariants().of(named);
-        }, source.states(), source.written());
+            return source.published().of(named);
+        }, source.written());
     }
 
     /** The name {@code module} declares {@code declaration} under, taken from what it wrote. */

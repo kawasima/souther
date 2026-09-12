@@ -81,7 +81,7 @@ public final class InvariantStatements {
             TypeSymbol.AtModule declaration) {
         return read.computeIfAbsent(declaration, named -> {
             Map<PartId<RuleRef.Invariant>, List<InvariantStatement>> out = new LinkedHashMap<>();
-            for (TypeOps.Declared clause : clauses.declared(named)) {
+            for (ClauseMeaning clause : clauses.declared(named)) {
                 Clauses.AsStated stated = clauses.stated(clause);
                 if (stated == null) {
                     continue;

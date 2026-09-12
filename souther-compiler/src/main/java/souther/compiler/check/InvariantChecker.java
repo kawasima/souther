@@ -859,7 +859,7 @@ public final class InvariantChecker {
         // missing from this reading is the position, since a clause of this declaration can
         // name any position of it.
         boolean skipped = false;
-        ExpandedRules rules = c.clauses.of(named);
+        PublishedRules rules = c.clauses.of(named);
         if (!opened && !rules.reached().isEmpty()) {
             gathering.missed(RuleKey.THE_VALUE, new RulesMissed.PositionNotOpened());
         }
@@ -871,14 +871,14 @@ public final class InvariantChecker {
             read = false;
             gathering.missed(RuleKey.THE_VALUE, new RulesMissed.ClausesNotExpanded());
         }
-        for (TypeOps.Declared declared :
-                opened ? c.clauses.declared(named) : List.<TypeOps.Declared>of()) {
+        for (ClauseMeaning declared :
+                opened ? c.clauses.declared(named) : List.<ClauseMeaning>of()) {
             // Where this clause becomes a rule of the model something can be attributed to.
             // Everything below carries the origin as it is: what is written down here is read
             // back by a report, and a reader handed the clause reference instead would have to
             // decide for itself which of the rules that draw a line it was looking at. It is
             // also what says whether this reader asked for the rule at all.
-            RuleRef.Invariant origin = new RuleRef.Invariant(Clause.Ref.of(declared));
+            RuleRef.Invariant origin = new RuleRef.Invariant(declared.ref());
             if (reach.withoutClauses().excludes(origin)) {
                 skipped = true;
                 continue;
