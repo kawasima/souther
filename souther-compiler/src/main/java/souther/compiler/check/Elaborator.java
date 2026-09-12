@@ -15,6 +15,7 @@ import souther.compiler.diag.msg.AttemptMessage;
 import souther.compiler.diag.msg.HelperMessage;
 import souther.compiler.diag.SourcePos;
 import souther.compiler.types.BindingId;
+import souther.compiler.types.ExpansionLineage;
 import souther.compiler.types.Type;
 import souther.compiler.types.TypeSymbol;
 import souther.compiler.types.ApplicationDerivationCause;
@@ -1531,8 +1532,12 @@ public final class Elaborator {
         // derived from the name that was written rather than being an application of a source. The
         // reference is that name's and is carried, not made again.
         return new Core.PreservedCall(settled.declaring(), List.of(),
+                // In no copy, because there is nothing it is a copy of: the application is this
+                // reading's and no author wrote it, so there is no construct of theirs to stand in
+                // one — the same answer {@code ConstructOccurrence.unwritten} gives.
                 new Core.KeptCallPlace(reference, new ApplicationOrigin.Derived(
-                        new ApplicationDerivationCause.NameReadAsAValue(reference), 0)),
+                        new ApplicationDerivationCause.NameReadAsAValue(reference), 0),
+                        ExpansionLineage.ORIGINAL),
                 settled.result(), pos);
     }
 

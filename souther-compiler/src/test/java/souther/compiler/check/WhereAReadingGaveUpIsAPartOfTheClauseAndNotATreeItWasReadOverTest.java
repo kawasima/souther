@@ -2,7 +2,7 @@ package souther.compiler.check;
 
 import org.junit.jupiter.api.Test;
 
-import souther.compiler.diag.SourcePos;
+import souther.compiler.inputs.RuleSite;
 import souther.compiler.query.Compilation;
 import souther.compiler.query.Scopes;
 import souther.compiler.types.TypeKey;
@@ -62,32 +62,31 @@ class WhereAReadingGaveUpIsAPartOfTheClauseAndNotATreeItWasReadOverTest {
     }
 
     /**
-     * And each of them stands where it stood, which the sites above do not say.
+     * And which of the clause's parts each of them is, which is what a place is looked up by.
      *
-     * <p>Said separately because a site is told from another by which part of the clause it is and
-     * by nothing else ({@code AtALeaf.equals}), so comparing sites compares the identities and
-     * leaves what an author is shown unasked. The two halves of a site are two claims and one
-     * comparison would carry only the first.
+     * <p>Said separately because a set says which parts were given up on and not which is which,
+     * so comparing the sets leaves the numbering unasked. The numbering is what every reader
+     * downstream asks the declaration with, so a compile that numbered the parts differently would
+     * send an author somewhere else while the sets went on agreeing.
      */
     @Test
-    void andEachOfThemStandsWhereItStood() {
-        assertEquals(placesIn(TWO_PARTS_NOTHING_READS), placesIn(TWO_PARTS_NOTHING_READS),
-                "where a part was written is the source's answer, and two compiles read one"
-                        + " source");
+    void andEachOfThemIsTheSameOneOfTheClausesParts() {
+        assertEquals(partsIn(TWO_PARTS_NOTHING_READS), partsIn(TWO_PARTS_NOTHING_READS),
+                "which part of a clause a rule is is the clause's answer, and two compiles read"
+                        + " one source");
     }
 
-    /** Where each of them stands, in the order the clause numbers them. */
-    private static List<SourcePos> placesIn(String source) {
+    /** Which of the clause's parts they are, in the order the clause numbers them. */
+    private static List<String> partsIn(String source) {
         return sitesIn(source).stream()
-                .map(RuleShortfall.Site.AtALeaf.class::cast)
-                .sorted(Comparator.comparingInt(each -> each.at().ordinal()))
-                .map(RuleShortfall.Site::writtenAt)
+                .map(Object::toString)
+                .sorted(Comparator.naturalOrder())
                 .toList();
     }
 
-    /** Everywhere the reading of values gave up, of every rule of {@code N}. */
-    private static Set<RuleShortfall.Site> sitesIn(String source) {
-        Set<RuleShortfall.Site> out = new LinkedHashSet<>();
+    /** Everything of a rule of {@code N} the reading of values gave up on. */
+    private static Set<RuleSite> sitesIn(String source) {
+        Set<RuleSite> out = new LinkedHashSet<>();
         read(source).accounting().values().forEach(accounting ->
                 accounting.answers().forEach((_, outcome) -> {
                     if (outcome instanceof RuleAccounting.Outcome.Unaccounted it

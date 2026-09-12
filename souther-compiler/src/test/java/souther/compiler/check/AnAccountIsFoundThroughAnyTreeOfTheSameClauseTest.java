@@ -135,7 +135,7 @@ class AnAccountIsFoundThroughAnyTreeOfTheSameClauseTest {
     }
 
     private static ReadByClauses.OfAPart accounting(String named) {
-        List<RuleShortfall> nothing = new ArrayList<>();
+        List<ReadingShortfall> nothing = new ArrayList<>();
         return new ReadByClauses.OfAPart(Adoption.nothing(), Adoption.nothing(),
                 Set.of(FactSubject.of(new Term.Interner().written(named))),
                 Set.copyOf(nothing), Map.of(), EndsLeftOpen.nothing(), Map.of());

@@ -9,6 +9,7 @@ import souther.compiler.diag.SourcePos;
 import souther.compiler.types.BindingId;
 import souther.compiler.types.BindingOwner;
 import souther.compiler.types.CaseSelector;
+import souther.compiler.types.ConstructOccurrence;
 import souther.compiler.types.ReachName;
 import souther.compiler.types.ResolvedCase;
 import souther.compiler.types.Type;
@@ -235,20 +236,21 @@ class AnArmSaysWhichCaseAValueIsAndDoesNotMakeASecondOneTest {
     private static Core answer() {
         return new Core.Call(new Core.Reached.OfDeclaration(
                 new ReachName.Own(FIND)), List.of(),
-                Type.ref(FOUND), POS);
+                ConstructOccurrence.unwritten(), Type.ref(FOUND), POS);
     }
 
     /** The same call, answering an optional — what an arm naming a present carrier is written over. */
     private static Core optionalAnswer() {
         return new Core.Call(new Core.Reached.OfDeclaration(
                 new ReachName.Own(FIND)), List.of(),
-                Type.option(Type.INT), POS);
+                ConstructOccurrence.unwritten(), Type.option(Type.INT), POS);
     }
 
     /** A call answering {@code Int | Missing}, which an arm may name either case of. */
     private static Core numericAnswer() {
         return new Core.Call(new Core.Reached.OfDeclaration(
                 new ReachName.Own(FIND)), List.of(),
+                ConstructOccurrence.unwritten(),
                 Type.union(new java.util.LinkedHashSet<>(List.of(AN_INT, MISSING))), POS);
     }
 

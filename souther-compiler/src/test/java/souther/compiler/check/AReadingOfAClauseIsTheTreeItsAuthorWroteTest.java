@@ -63,7 +63,7 @@ class AReadingOfAClauseIsTheTreeItsAuthorWroteTest {
         Core choice = ((Core.Binary) BESIDE_THE_BRACKET).left();
         return part(BESIDE_THE_BRACKET, SHAPE,
                 part(BESIDE_THE_BRACKET, SHAPE, new StatedByClauses.Both(
-                        part(choice, CHOICE, new StatedByClauses.Either(new ChoiceId(), choice,
+                        part(choice, CHOICE, new StatedByClauses.Either(CHOICE.at(), choice,
                                 part(A, CHOICE.left(), said()),
                                 part(B, CHOICE.right(), said()))),
                         part(C, SHAPE.right(), said()))));
@@ -77,9 +77,8 @@ class AReadingOfAClauseIsTheTreeItsAuthorWroteTest {
      */
     private static StatedByClauses distributed() {
         Core choice = ((Core.Binary) BESIDE_THE_BRACKET).left();
-        ChoiceId id = new ChoiceId();
         return part(BESIDE_THE_BRACKET, SHAPE, part(BESIDE_THE_BRACKET, SHAPE,
-                new StatedByClauses.Either(id, choice,
+                new StatedByClauses.Either(CHOICE.at(), choice,
                         new StatedByClauses.Both(part(A, CHOICE.left(), said()),
                                 part(C, SHAPE.right(), said())),
                         new StatedByClauses.Both(part(B, CHOICE.right(), said()),
@@ -116,7 +115,7 @@ class AReadingOfAClauseIsTheTreeItsAuthorWroteTest {
                         part(BESIDE_THE_BRACKET, SHAPE, part(BESIDE_THE_BRACKET, SHAPE,
                                 new StatedByClauses.Both(
                                         part(choice, CHOICE, new StatedByClauses.Either(
-                                                new ChoiceId(), choice,
+                                                CHOICE.at(), choice,
                                                 part(C, SHAPE.right(),
                                                         part(A, CHOICE.left(), said())),
                                                 part(C, SHAPE.right(),

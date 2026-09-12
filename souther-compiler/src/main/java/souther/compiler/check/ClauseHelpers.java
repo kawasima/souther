@@ -366,6 +366,30 @@ public final class ClauseHelpers {
         return new AuthoredShape.One(new AuthoredPart(numbered[0]++, e));
     }
 
+    /**
+     * Where each part of {@code clause} is written, in the order the clause numbers them.
+     *
+     * <p>Over the same split every part is numbered by, which is what makes these answers about the
+     * parts a reader is holding rather than about whichever conjuncts a second count landed on. A
+     * reader asking here has a {@link PartId} and no tree, and the tree it would have to be given
+     * is the one before anything was expanded into it — so the split is done here, where that tree
+     * is what the declaration holds.
+     *
+     * <p>All of them and not the one that was asked for. Splitting a clause reads the whole of it
+     * however few of the parts a caller wants, so a question per part splits the clause once per
+     * part and throws the rest away. What tells the parts of one clause apart is the one split, so
+     * answering them together is the same answer and one reading of it.
+     *
+     * @param clause the clause as its author wrote it, before any expansion
+     */
+    public static List<SourcePos> placesOfParts(Hir.Expr clause) {
+        List<SourcePos> out = new ArrayList<>();
+        for (AuthoredPart each : conjunctsOf(clause)) {
+            out.add(beginsAt(each.written()));
+        }
+        return List.copyOf(out);
+    }
+
     /** {@code shape} with each of the parts its author wrote replaced by what {@code onPart} makes
      *  of it, written back into the nodes the author joined them with. */
     private static Hir.Expr expandedOver(AuthoredShape shape, UnaryOperator<Hir.Expr> onPart) {

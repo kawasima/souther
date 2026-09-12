@@ -1,6 +1,7 @@
 package souther.compiler.query;
 
 import souther.compiler.ast.Hir;
+import souther.compiler.check.PartId;
 import souther.compiler.check.Prepared;
 import souther.compiler.check.RuleCitation;
 import souther.compiler.check.RuleRef;
@@ -18,6 +19,7 @@ import souther.compiler.sites.WrittenForks;
 import souther.compiler.types.SourceConstructOrigin;
 import souther.compiler.types.TypeSymbol;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -417,6 +419,78 @@ public final class Sites {
             };
             return at == null ? Answer.absent() : Answer.of(Citation.of(at));
         }
+    }
+
+    /**
+     * Where a report about one construct inside a rule points.
+     *
+     * <p>Asked of the module that wrote the construct, which is what its origin names and is not
+     * always the module the rule is in: a helper spliced into a clause was written where its own
+     * author wrote it, and that is where a reader goes to rewrite it.
+     *
+     * @throws NothingPlacesIt where nothing this compilation holds wrote it
+     */
+    public static Citation placeOf(Db db, SourceConstructOrigin origin) {
+        Answer<Citation> at = wroteIt(db, origin);
+        if (!at.present()) {
+            throw new NothingPlacesIt("a construct inside a rule reported at " + origin);
+        }
+        return at.value();
+    }
+
+    /**
+     * Where a report about one part of a rule points.
+     *
+     * <p>Asked here and not carried in what the reading decided. Which part of which clause it is
+     * follows from the declaration and is the same whichever reading met it; where that part stands
+     * follows from the text of the declaration and from nothing the reading did. Carried along,
+     * every answer holding one would differ whenever a declaration above the clause moved, in every
+     * module that imports it.
+     *
+     * @throws NothingPlacesIt where the clause writes no such part
+     */
+    public static Citation placeOf(Db db, PartId<RuleRef.Invariant> part) {
+        Answer<List<Citation>> written =
+                db.ask(new Shapes.PartLocations(part.rule().clause().id()));
+        if (!written.present() || part.ordinal() >= written.value().size()) {
+            throw new NothingPlacesIt("a part of a rule reported at " + part);
+        }
+        return written.value().get(part.ordinal());
+    }
+
+    /**
+     * Where {@code origin} stands, asked of the table its kind is filed in.
+     *
+     * <p>A switch and not a fallback, for the reason {@link #placeOf(Db, ArmReportAnchor)} is one.
+     * What the writing module files a construct under is settled by what the construct is — a
+     * comparison and a connective are conditions, a call is an application — and a reader that
+     * tried one table and then the other would place a construct by whichever table happened to
+     * hold something for it.
+     */
+    private static Answer<Citation> wroteIt(Db db, SourceConstructOrigin origin) {
+        return switch (origin.kind()) {
+            case BINARY -> db.ask(new WhereAConditionIsWritten(
+                    new WrittenCondition.Construct(origin)));
+            case CALL -> appliedAt(db, origin);
+            // The kinds a reading of a rule never decides about. A fork, a comprehension and a
+            // collection literal are constructs a body writes, and a rule read off one is read off
+            // the comparison inside it rather than off the construct.
+            case IF, GUARD, COMPREHENSION, MATCH, COLLECTION_LITERAL, NOT_WRITTEN ->
+                    Answer.absent();
+        };
+    }
+
+    /** Where the module that wrote {@code origin} says the call stands. */
+    private static Answer<Citation> appliedAt(Db db, SourceConstructOrigin origin) {
+        if (origin.module() == null) {
+            return Answer.absent();
+        }
+        Answer<WrittenApplications> written = db.ask(new ApplicationsWrittenIn(origin.module()));
+        if (!written.present()) {
+            return Answer.absent();
+        }
+        SourcePos at = written.value().at(origin);
+        return at == null ? Answer.absent() : Answer.of(Citation.of(at));
     }
 
     /**

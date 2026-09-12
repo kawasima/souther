@@ -16,7 +16,10 @@ import souther.compiler.diag.msg.BehaviorMessage;
 import souther.compiler.diag.msg.TypeMessage;
 import souther.compiler.diag.Localizable;
 import souther.compiler.diag.SourcePos;
+import souther.compiler.types.ApplicationOrigin;
+import souther.compiler.types.ConstructOccurrence;
 import souther.compiler.types.ReachName;
+import souther.compiler.types.SourceConstructOrigin;
 import souther.compiler.types.Type;
 import souther.compiler.types.ValueName;
 
@@ -122,8 +125,11 @@ public final class CallElaborator {
         Type declared = entry.signature().result();
         Map<String, Type> bindings = new HashMap<>();
         BottomInfer.pinResultTypeVars(declared, expected, bindings, ctx.symbols());
+        // A name written where a value goes, and no call written anywhere: reading a value's name
+        // is running its body, so the call is this compiler's and there is none to send anybody to.
         return new Core.Call(reached(new ReachName.OfLibrary(lib), ctx),
-                List.of(), TypeOps.toBottom(TypeOps.substitute(declared, bindings)), v.pos());
+                List.of(), ConstructOccurrence.unwritten(),
+                TypeOps.toBottom(TypeOps.substitute(declared, bindings)), v.pos());
     }
 
     /**
@@ -215,7 +221,25 @@ public final class CallElaborator {
             throw new IllegalStateException("`" + call.written() + "` was elaborated as a call and"
                     + " reaches " + reaches + ", which no method is emitted for");
         }
-        return new Core.Call(reached(declaration, ctx), ca.cores(), result, call.pos());
+        return new Core.Call(reached(declaration, ctx), ca.cores(), wroteIt(call, ctx), result,
+                call.pos());
+    }
+
+    /**
+     * Which call of the model this is, in the copy of the body being elaborated.
+     *
+     * <p>Read off what the application says it is here for, which is the one answer to that: a call
+     * an author wrote is a construct their text counted, and it is that construct in every copy an
+     * expansion makes of the body around it. Minted here instead, two copies of one call would be
+     * two calls of the model.
+     *
+     * <p>Nothing for an application no author wrote. A composed call, an eta-expansion and a
+     * derived one are this compiler's, so there is no call for a reader to be sent to — and a
+     * construct invented for one would point at something nobody can edit.
+     */
+    private static ConstructOccurrence wroteIt(Hir.Apply call, CheckContext ctx) {
+        return call.application() instanceof ApplicationOrigin.Written(SourceConstructOrigin wrote)
+                ? ctx.occurrenceOf(wrote) : ConstructOccurrence.unwritten();
     }
 
     /**
@@ -270,7 +294,8 @@ public final class CallElaborator {
         // a call kept for a reader to quote is not always one an author wrote, a library operation
         // used as a value being expanded into a block whose application is kept the same way.
         return new Core.PreservedCall(kept.declaring(), ca.cores(),
-                new Core.KeptCallPlace(call.answered().origin(), call.application()),
+                new Core.KeptCallPlace(call.answered().origin(), call.application(),
+                        ctx.lineage()),
                 TypeOps.substitute(kept.result(), bind), call.pos());
     }
 

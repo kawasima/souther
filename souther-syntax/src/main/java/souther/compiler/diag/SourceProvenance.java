@@ -31,6 +31,26 @@ import java.util.Objects;
  */
 public sealed interface SourceProvenance {
 
+    /**
+     * Where this stands among these, for a reader putting some of them in a steady order.
+     *
+     * <p>Beside the members, so that whoever adds one places it. What the numbers mean is nothing
+     * beyond which comes first: they are read only against each other, and only by a reader that
+     * has to write the same thing twice over one source and has nothing an author wrote to go on.
+     */
+    static java.util.Comparator<SourceProvenance> inASteadyOrder() {
+        return java.util.Comparator.<SourceProvenance>comparingInt(SourceProvenance::rank)
+                .thenComparing(SourceProvenance::module, java.util.Comparator.naturalOrder())
+                .thenComparing(SourceProvenance::reachedBy, java.util.Comparator.naturalOrder());
+    }
+
+    private static int rank(SourceProvenance provenance) {
+        return switch (provenance) {
+            case APublishedModule _ -> 0;
+            case TheStandardLibrary _ -> 1;
+        };
+    }
+
     /** The module the code is written in. */
     String module();
 

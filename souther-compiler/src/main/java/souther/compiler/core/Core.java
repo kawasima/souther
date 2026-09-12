@@ -4,6 +4,7 @@ import souther.compiler.types.BinOp;
 import souther.compiler.types.BindingId;
 import souther.compiler.types.CaseSelector;
 import souther.compiler.types.ConstructOccurrence;
+import souther.compiler.types.ExpansionLineage;
 import souther.compiler.types.ApplicationOrigin;
 import souther.compiler.types.ReferenceOrigin;
 import souther.compiler.types.SourceConstructOrigin;
@@ -175,12 +176,14 @@ public sealed interface Core {
      * so it wants both. One of them alone is half a call, which is a state no producer means and
      * the first reader to meet one would be reporting somebody else's mistake.
      */
-    record KeptCallPlace(ReferenceOrigin reference, ApplicationOrigin application) {
+    record KeptCallPlace(ReferenceOrigin reference, ApplicationOrigin application,
+                         ExpansionLineage lineage) {
 
         public KeptCallPlace {
-            if (reference == null || application == null) {
-                throw new IllegalArgumentException("a call carries what it applies and why it is"
-                        + " here together: " + reference + " and " + application);
+            if (reference == null || application == null || lineage == null) {
+                throw new IllegalArgumentException("a call carries what it applies, why it is"
+                        + " here and which copy it stands in: " + reference + " and "
+                        + application);
             }
         }
     }
@@ -464,13 +467,29 @@ public sealed interface Core {
      * the callee turned out to be a kernel of the standard library, the call says which one
      * ({@link Reached.OfKernel}), so an output emitting it asks the call rather than this compiler.
      */
-    record Call(CallTarget fn, List<Core> args, Type type, SourcePos pos) implements Core {
+    record Call(CallTarget fn, List<Core> args, ConstructOccurrence occurrence, Type type,
+                SourcePos pos) implements Core {
+
+        public Call {
+            // A call is some call of the model, in some copy of the body that wrote it — or one no
+            // source wrote, which says so. A call that is neither is one no reader can file, and a
+            // reader that meets it has nothing to send an author to.
+            if (occurrence == null) {
+                throw new IllegalArgumentException(
+                        "a call is some call of the model: " + fn.rendered());
+            }
+        }
 
         /** The callee as it renders — the reach name for a call to one, the operation's own
          * spelling for one this compiler emits. What a method name is built from and what a report
          * quotes; never what a source wrote. */
         public String name() {
             return fn.rendered();
+        }
+
+        /** What the source wrote, for a reader whose question is about the construct alone. */
+        public SourceConstructOrigin origin() {
+            return occurrence.origin();
         }
     }
 
@@ -515,6 +534,25 @@ public sealed interface Core {
         /** Why this application is here. */
         public ApplicationOrigin application() {
             return place.application();
+        }
+
+        /**
+         * Which call of the model this is, in the copy of the body that wrote it.
+         *
+         * <p>Read off the two halves already here rather than held beside them: which construct it
+         * is, is what the application says where an author wrote one, and which copy it stands in
+         * is the place's. Held as a third component, the construct would be written down twice and
+         * the two could come apart.
+         *
+         * <p>Nothing for an application no author wrote — a name read as a value, a size a pass
+         * composed — which is what {@link ConstructOccurrence#unwritten()} says. A reader sent to
+         * one of those would be pointed at something nobody can edit.
+         */
+        public ConstructOccurrence occurrence() {
+            return place.application()
+                    instanceof ApplicationOrigin.Written(SourceConstructOrigin wrote)
+                    ? new ConstructOccurrence(wrote, place.lineage())
+                    : ConstructOccurrence.unwritten();
         }
 
         public PreservedCall {
@@ -952,7 +990,8 @@ public sealed interface Core {
             }
             case Call c -> {
                 List<Core> args = each(c.args(), atExpr);
-                yield args == c.args() ? c : new Call(c.fn(), args, c.type(), c.pos());
+                yield args == c.args() ? c
+                        : new Call(c.fn(), args, c.occurrence(), c.type(), c.pos());
             }
             // Its arguments are children like any other, so a pass that asks what a body reads
             // reaches them without knowing what was kept standing over them.

@@ -3,7 +3,7 @@ package souther.compiler.partition;
 import souther.compiler.inputs.AuthoredOrder;
 import souther.compiler.inputs.BlockReason;
 import souther.compiler.inputs.RuleReasons;
-import souther.compiler.inputs.WhereInTheRule;
+import souther.compiler.inputs.RuleSite;
 import souther.compiler.publish.SourceOrdered;
 
 import java.util.ArrayList;
@@ -55,36 +55,64 @@ public final class ReportedReason {
      * @param sentTo where inside the rule a reader goes about it — the rule itself for a reason
      *               about the whole of it
      */
-    public record Stop(UndividedPosition.Reason reason, WhereInTheRule sentTo) {
+    public record Stop(UndividedPosition.Reason reason, RuleSite about, RuleSite sentTo) {
 
         public Stop {
-            if (reason == null || sentTo == null) {
+            if (reason == null || about == null || sentTo == null) {
                 throw new IllegalArgumentException(
-                        "a question stands on some reason, somewhere in its rule");
+                        "a question stands on some reason, about something, somewhere in its rule");
             }
         }
     }
 
     private static Stop stop(RuleReasons.Said said) {
-        return new Stop(of(said.reason()), said.sentTo());
+        return new Stop(of(said.reason()), said.about(), said.sentTo());
     }
 
     /**
-     * The same words, with whichever claim about their order the reading was able to make.
+     * The same words, each once, and in no order anybody wrote.
      *
-     * <p>Two arms because there are two answers and a document is owed the right one. Reasons of one
-     * text stand in the order that text puts them in; reasons of two texts stand in no order
-     * anybody wrote, and a reader shown one anyway would be reading which text this compiler
-     * compared first. Nothing here decides which: {@link RuleReasons} decided it where the places
-     * were still in hand, and this carries the decision across.
+     * <p>Nothing here claims an order. Which of two reasons an author wrote first is a fact about
+     * where they wrote them, and nothing that reaches here holds a place — so the claim is made at
+     * the one boundary that can ask, out of what it resolved the places to. Made here instead, it
+     * would be read off the numbers a construct is identified by, and those are a function of the
+     * owner's syntax rather than the order it is written in.
      */
-    public static Published wordsFor(RuleReasons stopped) {
-        return switch (stopped) {
-            case RuleReasons.AsWritten it ->
-                    new Published.AsTheAuthorWroteThem(asWritten(it.order()));
-            case RuleReasons.NoSingleAuthoredOrder it -> new Published.InNoAuthoredOrder(
-                    distinct(it.said()));
-        };
+    public static List<Stop> wordsFor(RuleReasons stopped) {
+        return distinct(stopped.said());
+    }
+
+    /**
+     * The words alone, each once, for a reader that has no use for where to go about them.
+     *
+     * <p>Bounded by the vocabulary rather than by what an author wrote, which is why the scan of
+     * what is already held is kept here and not where the places are: throwing the places away is
+     * what makes two entries one word.
+     */
+    public static List<UndividedPosition.Reason> words(List<Stop> these) {
+        List<UndividedPosition.Reason> out = new ArrayList<>();
+        for (Stop each : these) {
+            if (!out.contains(each.reason())) {
+                out.add(each.reason());
+            }
+        }
+        return List.copyOf(out);
+    }
+
+    /**
+     * These, carrying the claim that they are in the order their author wrote them.
+     *
+     * <p>Carried and not made. What settles whether a sequence of reasons is in the author's order
+     * is where each of them stands, and this holds words; the boundary that resolved the places
+     * says it, and this brings the answer across.
+     */
+    public static Published asTheAuthorWroteThem(AuthoredOrder<Stop> these) {
+        return new Published.AsTheAuthorWroteThem(SourceOrdered.carrying(these));
+    }
+
+    /** And these, said to be in no order anybody wrote. */
+    public static Published inNoAuthoredOrder(List<Stop> these) {
+        return new Published.InNoAuthoredOrder(List.copyOf(these));
     }
 
     /**

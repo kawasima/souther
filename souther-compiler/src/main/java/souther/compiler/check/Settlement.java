@@ -41,10 +41,9 @@ import java.util.function.Function;
  *
  * @param confinement the whole reading worked out — what every position may hold and where its
  *                    order stops — with what could not be built beside it
- * @param outcomes    the fate of both branches of every written choice, by its id
+ * @param outcomes    the fate of both branches of every written choice of every rule
  */
-record Settlement(Confinement.Worked<FactSubject> confinement,
-                  Map<ChoiceId, OfAChoice> outcomes) {
+record Settlement(Confinement.Worked<FactSubject> confinement, ChoicesDecided outcomes) {
 
     /** The values worked out, for a reader that asks what a position came to. */
     Realized<FactSubject> made() {

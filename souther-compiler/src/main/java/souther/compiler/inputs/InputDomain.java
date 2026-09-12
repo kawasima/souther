@@ -17,7 +17,6 @@ import souther.compiler.check.ReadableFields;
 import souther.compiler.check.ReadingPolicy;
 import souther.compiler.check.Shape;
 import souther.compiler.check.TypeView;
-import souther.compiler.diag.Citation;
 import souther.compiler.numeric.NumericDomain;
 import souther.compiler.types.BindingId;
 import souther.compiler.types.Type;
@@ -1832,12 +1831,13 @@ public final class InputDomain {
             if (each.byChoice() == null) {
                 continue;
             }
-            // With the choice, which is where a reader goes: the clause at the position reads
-            // perfectly well and what they act on is the `||`. Two of them in one clause agree
-            // about everything else, so this is the whole of what keeps them two entries.
+            // With the part the choice is written in, which is where a reader goes: the parts
+            // beside it read perfectly well and what they act on is inside this one. Two parts of
+            // one clause agree about everything else, so this is the whole of what keeps them two
+            // entries.
             out.add(new RuleCitation.Named(each.rule()),
                     filedAt(path, each.at(), type, source),
-                    WhereInTheRule.at(Citation.of(each.byChoice().writtenAt())),
+                    each.byChoice().sentTo(),
                     new BlockReason.EndLeftOpenByAChoice());
         }
     }

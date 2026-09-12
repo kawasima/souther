@@ -56,13 +56,14 @@ record EndsLeftOpen(Map<FactSubject, EndsLeftOpen.Behind> byNumber) {
     /**
      * What stands between one end nothing worked out and the walk that raises a rule's questions.
      *
-     * @param named        the choices to send an author to, empty where none can be named
+     * @param named        the choices that stand between, as this reading met them, and empty where
+     *                     none can be named
      * @param underAChoice whether a choice an author wrote stands between. False is what says the
      *                     walk reached the part that left this end open, so the questions it raises
      *                     are already telling a reader — and a second sentence about it would be one
      *                     stop said twice
      */
-    record Behind(Set<ChoiceSite> named, boolean underAChoice) {
+    record Behind(Set<ChoiceMet> named, boolean underAChoice) {
 
         /** What a leaf leaves: an end nothing has been read past yet, and every leaf leaves it. */
         private static final Behind A_LEAF = new Behind(Set.of(), false);
@@ -86,13 +87,13 @@ record EndsLeftOpen(Map<FactSubject, EndsLeftOpen.Behind> byNumber) {
 
         /** The same end reached two ways, which is what a conjunction of them comes to. */
         Behind and(Behind other) {
-            Set<ChoiceSite> both = new LinkedHashSet<>(named);
+            Set<ChoiceMet> both = new LinkedHashSet<>(named);
             both.addAll(other.named);
             return new Behind(both, underAChoice || other.underAChoice);
         }
 
         /** The same end under {@code choice}, which names itself where nothing else has. */
-        Behind under(ChoiceSite choice) {
+        Behind under(ChoiceMet choice) {
             return named.isEmpty() ? new Behind(Set.of(choice), true) : new Behind(named, true);
         }
 
@@ -180,7 +181,8 @@ record EndsLeftOpen(Map<FactSubject, EndsLeftOpen.Behind> byNumber) {
      * <p>So this is a filter and never a source. What comes out is contained in what the two
      * branches brought, which is what keeps a choice from inventing a rule nobody could read.
      */
-    EndsLeftOpen either(ChoiceSite choice, WhatTheAlternativesLeave narrowed, EndsLeftOpen other) {
+    EndsLeftOpen either(ChoiceMet choice, WhatTheAlternativesLeave narrowed,
+                        EndsLeftOpen other) {
         if (byNumber.isEmpty() && other.byNumber.isEmpty()) {
             return NOTHING;
         }
@@ -226,7 +228,7 @@ record EndsLeftOpen(Map<FactSubject, EndsLeftOpen.Behind> byNumber) {
      * again a bracket further out, and a pair of bounds covering the order reads as a branch that
      * holds the position down.
      */
-    private static void keptUnder(ChoiceSite choice, FactSubject position, Behind behind,
+    private static void keptUnder(ChoiceMet choice, FactSubject position, Behind behind,
                                   EndsLeftOpen beside, boolean besideLeavesEveryValue,
                                   Map<FactSubject, Behind> out) {
         if (besideLeavesEveryValue && !beside.byNumber.containsKey(position)) {

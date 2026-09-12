@@ -13,6 +13,19 @@ package souther.compiler.check;
  * denied number their occurrences alike — and an answer filed about one is an answer about the
  * other.
  *
+ * <p><b>Of the tree the reading was built over, and not of the clause its author wrote.</b> A
+ * clause is read at each place a walk opens a value, with that construction's fields put in for the
+ * reads, and what a construction gives a field is an expression of its own: give one a conjunction
+ * and the tree has a connective the clause's author did not write. It is numbered like any other
+ * and everything after it takes the next number along, so two constructions of one declaration put
+ * the part written in one place at two numbers
+ * ({@code AnOccurrenceIsACoordinateOfTheTreeAReadingWasBuiltOverTest}).
+ *
+ * <p>So this names a part among the parts of one reading, and no answer crossing out of a reading
+ * may be keyed by it. What survives a construction is what the author wrote there — the construct
+ * their text counted and the copy of it this is ({@link ConstructOccurrence}) — which is the same
+ * whichever tree a substitution built.
+ *
  * <p>Which occurrences a clause has is decided where the clause is read into its shape
  * ({@link ClauseExpr}) and nowhere else: a reader that numbered them for itself would be a second
  * answer to how many there are, and two answers to that is what reading the connectives twice came

@@ -5,11 +5,14 @@ import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
+import souther.compiler.check.Clause;
+import souther.compiler.check.PartId;
 import souther.compiler.check.RuleCitation;
 import souther.compiler.check.RuleReportAnchor;
+import souther.compiler.types.TypeKey;
+import souther.compiler.types.TypeSymbols;
 import souther.compiler.types.WrittenOwner;
 import souther.compiler.check.RuleRef;
-import souther.compiler.diag.SourcePos;
 import souther.compiler.observe.RunSensitivity;
 import souther.compiler.partition.ReportedReason;
 import souther.compiler.partition.UndividedPosition;
@@ -647,18 +650,16 @@ class WhatEachWayOfDrawingNoLineLeavesIsWrittenDownOnceTest {
     void whatAQuestionStandsOnIsSaidAsTheTwoOrdersThatAnswerForIt() {
         WhatAQuestionStandsOn said = new WhatAQuestionStandsOn(
                 RuleReasons.from(List.of(
-                        new RuleReasons.Placed(new SourcePos(1, 1),
-                                WhereInTheRule.theRuleItself(),
+                        new RuleReasons.Said(RuleSite.at(aPart(0)), RuleSite.theRuleItself(),
                                 new BlockReason.UnreadComparisonDomain()),
-                        new RuleReasons.Placed(new SourcePos(1, 9),
-                                WhereInTheRule.theRuleItself(),
+                        new RuleReasons.Said(RuleSite.at(aPart(1)), RuleSite.theRuleItself(),
                                 new BlockReason.UnreadValueRule()))),
                 Optional.of(new BlockReason.ExactValuesTooCostly()));
 
         assertEquals(List.of(UndividedPosition.Reason.UNSUPPORTED_DOMAIN,
                         UndividedPosition.Reason.UNSUPPORTED_SYNTAX),
-                ReportedReason.wordsFor(said.itsRuleLeft()).words(),
-                "the parts of the rule, in the order they were written");
+                ReportedReason.words(ReportedReason.wordsFor(said.itsRuleLeft())),
+                "the parts of the rule, each said once");
         assertEquals(Optional.of(UndividedPosition.Reason.EXACT_VALUES_TOO_COSTLY),
                 said.itsPositionWasShortOf().map(ReportedReason::of),
                 "and what the position's answer was short of, on its own");
@@ -729,6 +730,13 @@ class WhatEachWayOfDrawingNoLineLeavesIsWrittenDownOnceTest {
                 .filter(each -> out.stream().noneMatch(had -> had.getClass() == each.getClass()))
                 .forEach(out::add);
         return out;
+    }
+
+    /** One part of one clause, which is what a reason about a rule is about. */
+    private static PartId<RuleRef.Invariant> aPart(int ordinal) {
+        return new PartId<>(new RuleRef.Invariant(new Clause.Ref(
+                new Clause.Id(TypeSymbols.declared(new TypeKey("demo", "N")), 0),
+                Optional.empty())), ordinal);
     }
 
     /** And those of them that name a position and no rule. */

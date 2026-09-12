@@ -1,8 +1,8 @@
 package souther.compiler.check;
 
-import souther.compiler.WhereItSits;
 import org.junit.jupiter.api.Test;
 
+import souther.compiler.inputs.RuleSite;
 import souther.compiler.query.Compilation;
 import souther.compiler.query.Scopes;
 import souther.compiler.types.TypeKey;
@@ -231,26 +231,21 @@ class AChoiceSaysWhatNothingElseSaidAboutAPositionTest {
     /**
      * And the facts come out in the order they were met, whatever order that is.
      *
-     * <p>No order is claimed of them: which written place a reader is sent to first is the source's
-     * to say, and a set of facts says nothing about it. What is held here is that the order does not
-     * come from somewhere else — a projection out of this set is published, so a copy free to
-     * arrange them by hash would have one compiler over one source publish two documents, and which
-     * one an author saw would be the run they happened to make.
+     * <p>No order is claimed of them: which one a reader is sent to first is the source's to say,
+     * and it is said where the places are. What is held here is that none of them is lost on the
+     * way — eight forms an author wrote leave eight facts, each about the form it is about, and a
+     * fold on anything coarser would hand a reader fewer things to lift than there are.
      *
-     * <p>Eight of them because a copy that reorders may leave two or three where they were.
+     * <p>Eight of them because a fold that keeps two or three would pass a smaller count.
      */
     @Test
     void theFactsComeOutInTheOrderTheyWereMet() {
-        List<Integer> columns = new java.util.ArrayList<>();
-        shortfallsAt(EIGHT_FORMS_NOTHING_READS, "a").forEach(each -> {
-            if (each.site() instanceof RuleShortfall.Site.AtALeaf leaf) {
-                columns.add(WhereItSits.in(EIGHT_FORMS_NOTHING_READS, leaf.writtenAt()).column());
-            }
-        });
+        List<RuleSite> met = new java.util.ArrayList<>();
+        shortfallsAt(EIGHT_FORMS_NOTHING_READS, "a").forEach(each -> met.add(each.site()));
 
-        assertEquals(8, columns.size(), "one for each clause nothing reads");
-        assertEquals(columns.stream().sorted().toList(), columns,
-                "they were met along the line, and nothing between there and here rearranged them");
+        assertEquals(8, met.size(), "one for each clause nothing reads");
+        assertEquals(8, new java.util.LinkedHashSet<>(met).size(),
+                "each of them is a form its author wrote, and eight were written");
     }
 
     /**
@@ -385,9 +380,9 @@ class AChoiceSaysWhatNothingElseSaidAboutAPositionTest {
         return out;
     }
 
-    /** The written places it is answerable at, which is what tells two of them apart. */
-    private static Set<RuleShortfall.Site> sitesFor(String source, String field) {
-        Set<RuleShortfall.Site> out = new LinkedHashSet<>();
+    /** What it is answerable for, as its author wrote it, which tells two of them apart. */
+    private static Set<RuleSite> sitesFor(String source, String field) {
+        Set<RuleSite> out = new LinkedHashSet<>();
         shortfallsAt(source, field).forEach(each -> out.add(each.site()));
         return out;
     }

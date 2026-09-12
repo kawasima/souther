@@ -810,6 +810,49 @@ public final class Shapes {
     }
 
     /**
+     * Where each part of one clause is written, in the order the clause numbers them.
+     *
+     * <p>Beside {@link ClauseLocation} for the reason that one is beside {@link ClausesExpandedFor}:
+     * what a clause states is what every reading of the model is built on, and where its parts are
+     * written is what one sentence puts a caret under.
+     *
+     * <p><b>The clause and not one part of it.</b> Splitting a clause reads the whole of it however
+     * few of the parts a caller wants, so a question per part splits the clause once per part and
+     * throws the rest away. Nothing is bought by the finer grain either: both depend on the
+     * declaration that wrote the clause, so what re-reads when an edit moves it is the same set
+     * — the finer question only does the same work more often.
+     *
+     * <p>Split over the declaration as resolution left it, which is the tree its author wrote. A
+     * tree an expansion has been over holds conjunctions no author wrote, so the parts of that one
+     * are not the parts anybody is holding the name of.
+     *
+     * <p>Absent where the declaration writes no such clause — nothing declares the name, its kind
+     * has no {@code invariant} to write, or it writes fewer clauses than this. Those are one answer
+     * because they are one fact for a reader: there is no such clause to be pointed at.
+     */
+    public record PartLocations(souther.compiler.check.Clause.Id clause)
+            implements Key<List<Citation>> {
+        @Override
+        public String module() {
+            return clause.declaredOn().key().module();
+        }
+
+        @Override
+        public Answer<List<Citation>> compute(Db db) {
+            Hir.Def declared =
+                    ClausesExpandedFor.declarationOf(db, clause.declaredOn().key());
+            if (!(declared instanceof Hir.Data data)
+                    || clause.ordinal() < 0 || clause.ordinal() >= data.invariants().size()) {
+                return Answer.absent();
+            }
+            List<Citation> out = new ArrayList<>();
+            ClauseHelpers.placesOfParts(data.invariants().get(clause.ordinal()).expr())
+                    .forEach(at -> out.add(Citation.of(at)));
+            return Answer.of(List.copyOf(out));
+        }
+    }
+
+    /**
      * Where one declaration is written.
      *
      * <p>Beside {@link MeaningOf} and not inside it, the way {@link ClauseLocation} is beside the

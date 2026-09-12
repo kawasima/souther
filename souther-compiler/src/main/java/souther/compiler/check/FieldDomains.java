@@ -4,6 +4,7 @@ import souther.compiler.semantics.ConditionJoin;
 import souther.compiler.ast.Hir;
 import souther.compiler.core.Core;
 import souther.compiler.diag.SourcePos;
+import souther.compiler.inputs.ChoiceToLift;
 import souther.compiler.numeric.Endpoint;
 import souther.compiler.numeric.LinearForm;
 import souther.compiler.numeric.NumericDomain;
@@ -115,7 +116,7 @@ public final class FieldDomains {
     /** What the reading answered for each boundary question it raised and left standing. */
     private final Map<BoundaryQuestion, BoundaryStanding> standing;
     /** Where a choice of a rule left an end of it open — see {@link #endsLeftOpenAt}. */
-    private final Map<RuleRef.Invariant, EndsLeftOpen> endsLeftOpen;
+    private final Map<RuleRef.Invariant, Map<FactSubject, Set<ChoiceToLift>>> endsLeftOpen;
     /**
      * Where the rules leave the numbers this value's operations answer, with every choice settled.
      *
@@ -143,7 +144,7 @@ public final class FieldDomains {
     private final SettledOrderEnvelope settledOrder;
     /** Which choice an author is sent to for a line on one of those numbers that nothing placed —
      *  see {@link #endsLeftOpenAt}. */
-    private final Map<RuleRef.Invariant, Map<OpenEnd, EndsLeftOpen.Behind>> boundsLeftOpen;
+    private final Map<RuleRef.Invariant, Map<OpenEnd, Set<ChoiceToLift>>> boundsLeftOpen;
     /** Which readings took each clause in, as each of them said so. */
     private final ReadingEvidence took;
     /** The accounting, worked out once. Every name of a value asks the same question of it. */
@@ -263,9 +264,8 @@ public final class FieldDomains {
                          List<InvariantChecker.Written> readings,
                          Map<FactSubject, souther.compiler.numeric.Granularity> spacing,
                          StringFacts stringMachines, KnownExtents known,
-                         Map<RuleRef.Invariant, EndsLeftOpen> endsLeftOpen,
-                         Map<RuleRef.Invariant, Map<OpenEnd, EndsLeftOpen.Behind>>
-                                 boundsLeftOpen,
+                         Map<RuleRef.Invariant, Map<FactSubject, Set<ChoiceToLift>>> endsLeftOpen,
+                         Map<RuleRef.Invariant, Map<OpenEnd, Set<ChoiceToLift>>> boundsLeftOpen,
                          BoundaryState derived, SettledOrderEnvelope settledOrder) {
         this.endsLeftOpen = endsLeftOpen;
         this.boundsLeftOpen = boundsLeftOpen;
@@ -1528,37 +1528,38 @@ public final class FieldDomains {
      */
     public List<EndLeftOpen> endsLeftOpenAt(RuleKey path) {
         List<EndLeftOpen> out = new ArrayList<>();
-        endsLeftOpen.forEach((rule, open) -> open.byNumber().forEach((position, behind) -> {
-            // Only the ends nothing else reaches. An end left open with no choice between it and
-            // the walk that raises a rule's questions is one those questions already leave
-            // standing, and a second account of it is one stop said twice.
-            if (!path.equals(namedBy.get(position)) || !behind.underAChoice()) {
+        endsLeftOpen.forEach((rule, open) -> open.forEach((position, sites) -> {
+            // Only the ends of this name. Which of them a choice is answerable for was settled
+            // where the reading was filed: an end left open with no choice between it and the walk
+            // that raises a rule's questions is one those questions already leave standing, and a
+            // second account of it is one stop said twice, so it never crossed.
+            if (!path.equals(namedBy.get(position))) {
                 return;
             }
-            said(numberOf(path, position), rule, behind, out);
+            said(numberOf(path, position), rule, sites, out);
         }));
         // And the lines on the numbers this value's operations answer that nothing placed, which
         // is the other reading's answer arriving by the same road. Where the choice left one open
         // is that reading's ({@link BoundaryState}); which choice to send an author to is what the
         // account of the rule kept, and the two are met before either reaches here.
-        boundsLeftOpen.forEach((rule, open) -> open.forEach((end, behind) -> {
-            if (!path.equals(end.number().position()) || !behind.underAChoice()) {
+        boundsLeftOpen.forEach((rule, open) -> open.forEach((end, sites) -> {
+            if (!path.equals(end.number().position())) {
                 return;
             }
-            said(end.number().asNumber(), rule, behind, out);
+            said(end.number().asNumber(), rule, sites, out);
         }));
         return List.copyOf(out);
     }
 
-    /** One end left open, said once per choice an author can be sent to and once where none can
+    /** One end left open, said once per part an author can be sent to and once where none can
      *  be named. */
     private static void said(NumberAt<RuleKey> at, RuleRef.Invariant rule,
-                             EndsLeftOpen.Behind behind, List<EndLeftOpen> out) {
-        if (behind.named().isEmpty()) {
+                             Set<ChoiceToLift> choices, List<EndLeftOpen> out) {
+        if (choices.isEmpty()) {
             out.add(new EndLeftOpen(at, rule, null));
             return;
         }
-        behind.named().forEach(each -> out.add(new EndLeftOpen(at, rule, each)));
+        choices.forEach(each -> out.add(new EndLeftOpen(at, rule, each)));
     }
 
     /**
@@ -1576,14 +1577,14 @@ public final class FieldDomains {
      * ({@code ClosureGap.LineNotDerived}). Filed as one entry per end, the count an author acts on
      * would be a fact about which choice the walk met first.
      *
-     * @param byChoice the choice to send an author to, or null where none is answerable — the end
-     *                 was left open under a conjunction, or beside an alternative nobody can be in,
+     * @param byChoice where inside the rule to send an author about the choice, or null where none
+     *                 is answerable — the end was left open beside an alternative nobody can be in,
      *                 and there is no branch for an author to look at. Not a reason to say nothing:
      *                 the line at the position was still not derived, and that is the measure's
      *                 business rather than the author's
      */
     public record EndLeftOpen(NumberAt<RuleKey> at, RuleRef.Invariant rule,
-                              ChoiceSite byChoice) {}
+                              ChoiceToLift byChoice) {}
 
     /** Which of {@code path}'s numbers {@code position} is, as this reading named them. */
     private NumberAt<RuleKey> numberOf(RuleKey path, FactSubject position) {

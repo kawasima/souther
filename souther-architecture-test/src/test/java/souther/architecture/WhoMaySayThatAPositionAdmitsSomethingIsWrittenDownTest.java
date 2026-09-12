@@ -336,7 +336,9 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
             "souther/compiler/check/ChoicesRead$Tally#choiceCame"
                     + "(Lsouther/compiler/values/Emptiness$Alternatives;)V",
             "souther/compiler/check/StatedByClauses$Reading#chosen"
-                    + "(Lsouther/compiler/check/StatedByClauses$Either;Ljava/util/Map;)"
+                    + "(Lsouther/compiler/check/RuleRef$Invariant;"
+                    + "Lsouther/compiler/check/StatedByClauses$Either;"
+                    + "Lsouther/compiler/check/ChoicesDecided;)"
                     + "Lsouther/compiler/check/StatedTogether;",
             "souther/compiler/check/StatedByClauses$Reading#decided"
                     + "(Lsouther/compiler/check/StatedTogether$Said;"

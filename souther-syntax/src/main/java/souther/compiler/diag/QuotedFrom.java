@@ -67,4 +67,49 @@ public sealed interface QuotedFrom {
      */
     record TextItCannotName() implements QuotedFrom {
     }
+
+    /**
+     * Where this stands among these, for a reader putting some of them in a steady order.
+     *
+     * <p>Beside the members, so that whoever adds one places it. What the numbers mean is nothing
+     * beyond which comes first, and nothing may be read off the result: a text this compile holds
+     * coming before one it cannot show says nothing about either.
+     */
+    static java.util.Comparator<QuotedFrom> inASteadyOrder() {
+        return java.util.Comparator.<QuotedFrom>comparingInt(QuotedFrom::rank)
+                .thenComparing(QuotedFrom::named, java.util.Comparator.naturalOrder())
+                .thenComparing(QuotedFrom::publishedBy,
+                        java.util.Comparator.nullsFirst(SourceProvenance.inASteadyOrder()));
+    }
+
+    private static int rank(QuotedFrom from) {
+        return switch (from) {
+            case ASourceThisCompileHolds _ -> 0;
+            case TextItCannotShow _ -> 1;
+            case TextItCannotName _ -> 2;
+        };
+    }
+
+    /** What a source of this compile is called, which is what tells two of those apart. */
+    private static String named(QuotedFrom from) {
+        return switch (from) {
+            case ASourceThisCompileHolds it -> it.source().value();
+            case TextItCannotShow _, TextItCannotName _ -> "";
+        };
+    }
+
+    /**
+     * And where a text out of sight was published, compared as what it is.
+     *
+     * <p>Through its own order and not through the words it renders as. Two provenances rendering
+     * alike are two provenances — a module this compile was handed and one the compiler ships are
+     * told apart by which they are and not by the names they carry — and an order that compared the
+     * rendering would leave them wherever the walk put them.
+     */
+    private static SourceProvenance publishedBy(QuotedFrom from) {
+        return switch (from) {
+            case ASourceThisCompileHolds _, TextItCannotName _ -> null;
+            case TextItCannotShow it -> it.publishedBy();
+        };
+    }
 }

@@ -1,15 +1,14 @@
 package souther.compiler.inputs;
 
-import souther.compiler.diag.Placement;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.check.Clause;
 import souther.compiler.check.ClauseName;
+import souther.compiler.check.PartId;
 import souther.compiler.check.RuleCitation;
 import souther.compiler.check.RuleReportAnchor;
 import souther.compiler.types.WrittenOwner;
 import souther.compiler.check.RuleRef;
-import souther.compiler.source.SourceId;
 import souther.compiler.types.SourceConstruct;
 import souther.compiler.types.SourceConstructOrigin;
 import souther.compiler.types.TypeKey;
@@ -111,14 +110,14 @@ class OneIdentityIsFoldedOnceAndKeepsEveryHandleTest {
         assertThrows(IllegalArgumentException.class,
                 () -> new RuleWithoutALine(
                         new RuleWithoutALine.Fact(comparison(), at("x"),
-                                WhereInTheRule.theRuleItself(),
+                                RuleSite.theRuleItself(),
                                 new BlockReason.ComparisonBetweenPositions()),
                         Set.of()),
                 "a comparison nothing places is one nobody can be sent to look at");
         assertThrows(IllegalArgumentException.class,
                 () -> new RuleWithoutALine(
                         new RuleWithoutALine.Fact(invariant(), at("x"),
-                                WhereInTheRule.theRuleItself(),
+                                RuleSite.theRuleItself(),
                                 new BlockReason.ComparisonBetweenPositions()),
                         Set.of(new RuleReportAnchor.ByTheModuleThatWroteIt())),
                 "and a question about where a rule the author named is written is a second way to"
@@ -278,13 +277,12 @@ class OneIdentityIsFoldedOnceAndKeepsEveryHandleTest {
                 Optional.of(new BlockReason.ExactValuesTooCostly()));
     }
 
-    /** One question short in as many ways as somebody wrote, in the order they wrote them. */
+    /** One question short in as many ways as somebody wrote. */
     private static WhatAQuestionStandsOn standingOn(BlockReason.RuleReadingStopped... these) {
-        List<RuleReasons.Placed> written = new ArrayList<>();
+        List<RuleReasons.Said> written = new ArrayList<>();
         for (int i = 0; i < these.length; i++) {
-            written.add(new RuleReasons.Placed(
-                    Placement.aFileOfThisCompile(new SourceId("one")).at(1, i + 1),
-                    WhereInTheRule.theRuleItself(), these[i]));
+            written.add(new RuleReasons.Said(RuleSite.at(new PartId<>(invariant(), i)),
+                    RuleSite.theRuleItself(), these[i]));
         }
         return new WhatAQuestionStandsOn(RuleReasons.from(written), Optional.empty());
     }

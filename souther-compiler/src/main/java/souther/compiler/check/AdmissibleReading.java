@@ -4,6 +4,7 @@ import souther.compiler.core.Core;
 import souther.compiler.regex.PatternPlan;
 import souther.compiler.inputs.BlockReason;
 import souther.compiler.regex.PatternRead;
+import souther.compiler.types.ConstructOccurrence;
 import souther.compiler.types.Type;
 import souther.compiler.values.AdmittedPlan;
 import souther.compiler.values.Allowance;
@@ -79,7 +80,7 @@ final class AdmissibleReading {
      * decisions are made, so that what a rule is answerable for is never worked out afterwards from
      * what a position was left holding.
      */
-    private final Map<Core, List<RuleShortfall>> shortfalls = new IdentityHashMap<>();
+    private final Map<Core, List<ReadingShortfall>> shortfalls = new IdentityHashMap<>();
     /** What each clause asked a machine for, against the clause, and by the same rule again. */
     private final Map<Core, Set<AskedAt>> asked = new IdentityHashMap<>();
     /**
@@ -333,10 +334,15 @@ final class AdmissibleReading {
         // know: had it been read, the alternative holding it might have turned out one nobody can
         // be in, and then the choice would have been the other branch.
         gaveUp.add(e);
-        List<RuleShortfall> mine = shortfalls.computeIfAbsent(e, _ -> new ArrayList<>());
-        RuleShortfall.Site site = siteOf(part);
+        List<ReadingShortfall> mine = shortfalls.computeIfAbsent(e, _ -> new ArrayList<>());
         named.forEach(each -> {
-            RuleShortfall one = new RuleShortfall(each, why, site);
+            // Told apart by what its author wrote, which is not the part around it. Two forms
+            // nothing reads are written as the two alternatives of one choice and are two parts of
+            // nothing — the split is at the conjunctions — so an author with two of them to rewrite
+            // was shown one. Where a reader goes about it is another question and is the whole rule
+            // either way ({@code RuleAccounting.Why}); this is what tells two of them apart.
+            ReadingShortfall one = new ReadingShortfall(part.at(), wroteIt(part.of()),
+                    RuleShortfall.Kind.LEAF, why, each);
             if (!mine.contains(one)) {
                 mine.add(one);
             }
@@ -355,19 +361,24 @@ final class AdmissibleReading {
     private PlannedValues<FactSubject> asking(ClauseExpr.Part part, FactSubject position,
                                               AdmittedPlan.Pattern plan) {
         asked.computeIfAbsent(part.of(), _ -> new LinkedHashSet<>())
-                .add(new AskedAt(position, plan.plan(), siteOf(part)));
+                .add(new AskedAt(position, plan.plan(), part.at(), wroteIt(part.of())));
         return PlannedValues.at(position, plan);
     }
 
     /**
-     * Where in its clause {@code part} stands, and where an author wrote it.
+     * What the author wrote at {@code e}, where they wrote anything.
      *
-     * <p>Made where the leaf is read and nowhere after. What is decided later about this clause is
-     * filed at the site it was handed, so a copy a conjunction distributed over a choice carries
-     * the one an author wrote rather than a second of the same shape.
+     * <p>The construct and not the copy an expansion made of it: what an author rewrites is the one
+     * they wrote, and rewriting it answers every copy. Nothing for a shape no author wrote, which a
+     * substitution puts in the tree when it gives a field an expression of its own.
      */
-    private static RuleShortfall.Site siteOf(ClauseExpr.Part part) {
-        return new RuleShortfall.Site.AtALeaf(part.at(), part.of().pos());
+    private static ConstructOccurrence wroteIt(Core e) {
+        return switch (e) {
+            case Core.Binary it -> it.occurrence();
+            case Core.Call it -> it.occurrence();
+            case Core.PreservedCall it -> it.occurrence();
+            default -> ConstructOccurrence.unwritten();
+        };
     }
 
     /**
@@ -391,15 +402,16 @@ final class AdmissibleReading {
      * answerable at. Two clauses writing one pattern about one position ask for one machine and are
      * two of these, which is two rules answerable for one refusal.
      *
-     * <p>The place is held as the site it will be filed under, so that what makes two of these one
-     * is what makes two facts one. Held as the node instead, the record would compare it as a
-     * value — two clauses of one shape at one source position are equal nodes — and the pair of
-     * them would arrive here as one, while the site they file under tells them apart.
+     * <p>The clause is held as where in this reading's tree it stands, so that what makes two of
+     * these one is what makes two facts one. Held as the node instead, the record would compare it
+     * as a value — two clauses of one shape at one source position are equal nodes — and the pair
+     * of them would arrive here as one, while the coordinate they file under tells them apart.
      */
-    record AskedAt(FactSubject position, PatternPlan plan, RuleShortfall.Site site) {
+    record AskedAt(FactSubject position, PatternPlan plan, ClauseOccurrence at,
+                   ConstructOccurrence writtenAs) {
 
         AskedAt {
-            if (position == null || plan == null || site == null) {
+            if (position == null || plan == null || at == null || writtenAs == null) {
                 throw new IllegalArgumentException(
                         "a machine is asked for by a clause, for a position");
             }
@@ -413,7 +425,7 @@ final class AdmissibleReading {
      * decision was made. Empty where the reading took the clause in, which is what a leaf nothing
      * was short of says.
      */
-    List<RuleShortfall> shortfallsAt(Core e) {
+    List<ReadingShortfall> shortfallsAt(Core e) {
         return List.copyOf(shortfalls.getOrDefault(e, List.of()));
     }
 

@@ -89,11 +89,11 @@ class WhoMaySayWhatARuleHandleReadsAsTest {
                     + "#obligations(DocumentArray, List, Map, DocumentSources,"
                     + " PublishedRuleHandle$WhereARuleIs)",
             "souther/compiler/report/AdequacyReport#partition lambda taking (DocumentArray,"
-                    + " PublishedRuleHandle$WhereARuleIs, DocumentSources,"
+                    + " PublishedRuleHandle$WhereARuleIs, DocumentSources, WhereAPartIs,"
                     + " PartitionEvidence$NotRead)",
             "souther/compiler/report/AdequacyReport#partition(ObjectNode, PartitionEvidence,"
                     + " Measure, List, ClaimAnnotations, DocumentSources,"
-                    + " PublishedRuleHandle$WhereARuleIs)");
+                    + " PublishedRuleHandle$WhereARuleIs, WhereAPartIs)");
 
     @Test
     void everyClassThatTurnsARuleHandleIntoWordsIsWrittenDown() {

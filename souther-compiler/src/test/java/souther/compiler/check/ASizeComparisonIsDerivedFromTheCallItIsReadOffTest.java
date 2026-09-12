@@ -7,6 +7,7 @@ import souther.compiler.types.ApplicationOrigin;
 import souther.compiler.types.SourceConstruct;
 import souther.compiler.types.SourceConstructOrigin;
 import souther.compiler.types.SourceReferenceOrigin;
+import souther.compiler.types.ExpansionLineage;
 import souther.compiler.types.Type;
 import souther.compiler.types.ValueName;
 import souther.compiler.types.WrittenOwner;
@@ -48,7 +49,8 @@ class ASizeComparisonIsDerivedFromTheCallItIsReadOffTest {
                 new Core.KeptCallPlace(
                         new SourceReferenceOrigin(new WrittenOwner.Body("demo", "b"), 0),
                         new ApplicationOrigin.Written(SourceConstructOrigin.written(
-                                new WrittenOwner.Body("demo", "b"), 0, SourceConstruct.CALL))),
+                                new WrittenOwner.Body("demo", "b"), 0, SourceConstruct.CALL)),
+                        ExpansionLineage.ORIGINAL),
                 kept.type(), kept.pos());
     }
 

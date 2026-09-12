@@ -13,10 +13,9 @@ import java.util.Map;
  * neighbouring rule must not answer it. This type has no account to contaminate, and the account's
  * type has no way to take another rule's reading in — the separation is the two types.
  *
- * <p>What the two share is the choices. A {@link Choice} here carries the {@link ChoiceId} of the
- * written {@code ||} it came from, and settling this tree is what decides, for every id, whether
- * anybody can be in each of its branches ({@link Settlement}). The account reads that decision; it
- * never makes one.
+ * <p>What the two share is the choices. A {@link Choice} here says which written {@code ||} it came
+ * from, and settling this tree is what decides, for every one of them, whether anybody can be in
+ * each of its branches ({@link Settlement}). The account reads that decision; it never makes one.
  */
 sealed interface StatedTogether {
 
@@ -30,15 +29,20 @@ sealed interface StatedTogether {
     record Said(Confinement.Planned<FactSubject> confinement) implements StatedTogether {}
 
     /**
-     * A choice whose branches are not settled yet, standing for the written {@code ||} named by
-     * {@code id} — one of however many places distribution put it.
+     * A choice whose branches are not settled yet, standing for the {@code ||} written at
+     * {@code at} of {@code rule}'s clause — one of however many places distribution put it.
+     *
+     * <p>Both halves, because this tree is met out of the trees of every rule and an occurrence is
+     * a coordinate of one clause: two rules each write a choice at their own occurrence nought.
      */
-    record Choice(ChoiceId id, StatedTogether left, StatedTogether right)
+    record Choice(RuleRef.Invariant rule, ClauseOccurrence at,
+                  StatedTogether left, StatedTogether right)
             implements StatedTogether {
 
         public Choice {
-            if (id == null || left == null || right == null) {
-                throw new IllegalArgumentException("a choice is between two named readings");
+            if (rule == null || at == null || left == null || right == null) {
+                throw new IllegalArgumentException(
+                        "a choice is between two readings, written at some occurrence of a clause");
             }
         }
     }
@@ -51,16 +55,16 @@ sealed interface StatedTogether {
     /**
      * Both holding at once, distributed over every choice still open.
      *
-     * <p>A conjunction of a choice is the choice between the conjunctions, and the id goes with
-     * each copy: what is multiplied is where the branch stands, never which written choice it is a
-     * branch of.
+     * <p>A conjunction of a choice is the choice between the conjunctions, and which written choice
+     * it is goes with each copy: what is multiplied is where the branch stands, never which choice
+     * it is a branch of.
      */
     default StatedTogether meet(StatedTogether other) {
         if (this instanceof Choice it) {
-            return new Choice(it.id(), it.left().meet(other), it.right().meet(other));
+            return new Choice(it.rule(), it.at(), it.left().meet(other), it.right().meet(other));
         }
         if (other instanceof Choice it) {
-            return new Choice(it.id(), meet(it.left()), meet(it.right()));
+            return new Choice(it.rule(), it.at(), meet(it.left()), meet(it.right()));
         }
         Said here = (Said) this;
         Said there = (Said) other;
