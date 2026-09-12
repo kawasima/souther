@@ -35,6 +35,7 @@ import souther.compiler.partition.OnTheWay;
 import souther.compiler.partition.ReachabilityGap;
 import souther.compiler.partition.ReportedReason;
 import souther.compiler.partition.RoleAnswer;
+import souther.compiler.partition.RuleEvidenceOrigin;
 import souther.compiler.partition.UndividedPosition;
 import souther.compiler.diag.Citation;
 import souther.compiler.diag.SourcePos;
@@ -1129,6 +1130,25 @@ public record AdequacyReport(int schemaVersion, String compilerVersion,
         return places;
     }
 
+    /**
+     * The handles each rule that composed a position's classes offers, one entry per rule.
+     *
+     * <p>Grouped by the rule and not by the reading. What tells two readings apart is which of them
+     * divided what, and that is a fact about the readings; what a reader is sent to is the rule the
+     * author wrote, and a sentence per reading of it is the same rule said as many times as this
+     * compiler happened to meet it.
+     *
+     * <p>In the order the rules were read, which is the order the axis holds them in. An order of
+     * this method's own would be a second answer to a question the reading already settled.
+     */
+    private static List<Set<RuleCitation>> dividedBy(PartitionEvidence.AxisCoverage axis) {
+        Map<RuleRef, Set<RuleCitation>> byRule = new LinkedHashMap<>();
+        for (RuleEvidenceOrigin origin : axis.divides()) {
+            byRule.computeIfAbsent(origin.rule(), _ -> new LinkedHashSet<>()).add(origin.cited());
+        }
+        return List.copyOf(byRule.values());
+    }
+
     /** The lines one behavior met, or none where the measure could not be made. */
     private static List<BorderAssessment> linesOf(Measure<List<BorderAssessment>> read) {
         return read == null ? List.of() : read.made().orElse(List.of());
@@ -2043,6 +2063,18 @@ public record AdequacyReport(int schemaVersion, String compilerVersion,
                     out.append(String.format("      · %s holds %d classes and this behavior's rules"
                                     + " compose %d of them%n",
                             axis.name(), axis.classes().size(), axis.divides().size()));
+                }
+                // Which rule composed the classes, for a reader told that no row is in one of them.
+                // The lines above name the class; this names what made it, so that a reader sent
+                // after a row has somewhere to open rather than a name of the model's.
+                //
+                // One line per rule and not per reading. A helper is expanded at each call, so one
+                // rule the author wrote is read at several places; what those offer is several
+                // handles onto one rule, and which of them a document writes is settled where that
+                // choice is made.
+                for (Set<RuleCitation> rule : dividedBy(axis)) {
+                    out.append(String.format("      · %s is divided by %s%n",
+                            axis.name(), cited(rule, rendering, declaredIn, places)));
                 }
                 for (ClaimAnnotations.Said said : behavior.claimed().at(axis.path())) {
                     // A case out of the denominator says what the author wrote about it; one still
