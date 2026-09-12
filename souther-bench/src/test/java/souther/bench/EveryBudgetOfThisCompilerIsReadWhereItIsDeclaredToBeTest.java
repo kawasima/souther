@@ -73,7 +73,7 @@ class EveryBudgetOfThisCompilerIsReadWhereItIsDeclaredToBeTest {
             Map.entry("souther.compiler.partition.Witnesses#<clinit>()V",
                     "how many elements and characters a proposal holds, and how many pairings"),
             Map.entry("souther.compiler.partition.Witnesses#sized("
-                            + "Lsouther/compiler/check/Shape;I"
+                            + "Lsouther/compiler/check/TypeView;I"
                             + "Lsouther/compiler/check/RuleReadingContext;Ljava/util/Set;)"
                             + "Lsouther/compiler/partition/Witnesses$Built;",
                     "stops at the elements and the characters, and says which"),
@@ -115,7 +115,8 @@ class EveryBudgetOfThisCompilerIsReadWhereItIsDeclaredToBeTest {
                             + " assignment the narrowing would have and skips none of them"),
             Map.entry("souther.compiler.partition.LevelRealizer#ofTwo("
                             + "Lsouther/compiler/partition/Standing$OfTwoOnOneCarrier;"
-                            + "Lsouther/compiler/inputs/SearchRegion;)"
+                            + "Lsouther/compiler/inputs/SearchRegion;"
+                            + "Lsouther/compiler/partition/WitnessSearch;)"
                             + "Lsouther/compiler/partition/Realization;",
                     "stops walking a line at the places it tries and says which figure"),
             Map.entry("souther.compiler.partition.LevelRealizer#ofAForm("

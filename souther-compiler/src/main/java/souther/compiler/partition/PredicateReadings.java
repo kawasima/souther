@@ -54,7 +54,8 @@ import java.util.Set;
  * value of the model is ever on either side of. So a reading is made only where what is computed is
  * read on the way to the answer, which is the one thing carried down this walk.
  */
-record PredicateReadings(List<Reading> predicates, Set<Core> statedAt) {
+record PredicateReadings(List<Reading> predicates, Set<Core> statedAt,
+                         souther.compiler.coverage.Arrivals arrivals) {
 
     PredicateReadings {
         predicates = List.copyOf(predicates);
@@ -182,7 +183,11 @@ record PredicateReadings(List<Reading> predicates, Set<Core> statedAt) {
                 }
             }
         }
-        return new PredicateReadings(predicates, statedAt);
+        // Whether an expression answers a value, of this body. Rooted there and not at whatever a
+        // reader happens to hand over: a subtree read as a body of its own has every name in it
+        // free, and a name bound to something that aborts is what makes the difference.
+        return new PredicateReadings(predicates, statedAt, souther.compiler.coverage.Arrivals
+                .inTheTree(body == null ? null : body.core()));
     }
 
     /**

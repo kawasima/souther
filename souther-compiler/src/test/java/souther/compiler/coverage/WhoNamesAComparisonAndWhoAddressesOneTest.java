@@ -95,9 +95,9 @@ class WhoNamesAComparisonAndWhoAddressesOneTest {
                             + " leaves and is a pair of nothing with nobody"));
 
     private static final List<Licence> MAY_CATALOGUE = List.of(
-            new Licence("souther.compiler.coverage.ComparisonCatalog.lambda$walk$0", 1,
-                    "the one walk that recognises a comparison, names it and says where it is"
-                            + " written, all from the node it is standing at"));
+            new Licence("souther.compiler.coverage.ComparisonCatalog.catalogue", 1,
+                    "where the one walk that recognises a comparison puts what it recognised beside"
+                            + " the name and the place, all read off the node it is standing at"));
 
     private static final List<Licence> MAY_READ = List.of(
             new Licence("souther.compiler.partition.GuardThresholds.originOf", 1,

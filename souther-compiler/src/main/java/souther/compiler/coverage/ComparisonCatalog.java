@@ -141,13 +141,26 @@ public final class ComparisonCatalog {
             // one answer. Gathered as nodes and recognised again where the entry is made, this
             // would be the same question asked twice about one binary, with a case to answer for
             // the second answer being different.
-            Comparison.of(binary).ifPresent(comparison -> {
-                filed(binary, behavior, met);
-                byOccurrence.put(binary.occurrence(), new Catalogued(binary.occurrence(),
-                        comparison, Citation.of(binary.pos()), binary.origin()));
-            });
+            Comparison.of(binary).ifPresent(comparison ->
+                    catalogue(binary, comparison, behavior, byOccurrence, met));
         }
         Core.forEachChild(e, child -> walk(child, behavior, byOccurrence, met));
+    }
+
+    /**
+     * The entry one recognised comparison becomes, under the occurrence the node it was recognised
+     * from carries.
+     *
+     * <p>A name, a recognition and a place put together, which is what makes this the one place they
+     * are paired: each of the three is read off the node in hand, so none of them is a caller's to
+     * supply.
+     */
+    private static void catalogue(Core.Binary binary, Comparison comparison, String behavior,
+                                  Map<ConstructOccurrence, Catalogued> byOccurrence,
+                                  Map<ConstructOccurrence, Met> met) {
+        filed(binary, behavior, met);
+        byOccurrence.put(binary.occurrence(), new Catalogued(binary.occurrence(),
+                comparison, Citation.of(binary.pos()), binary.origin()));
     }
 
     /**

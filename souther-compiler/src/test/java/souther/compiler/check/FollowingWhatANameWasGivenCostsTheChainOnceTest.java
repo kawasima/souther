@@ -51,9 +51,10 @@ class FollowingWhatANameWasGivenCostsTheChainOnceTest {
      * link is a name for the one before it and the first is arithmetic. */
     private static long followedOver(int links) {
         PathEngine engine = new PathEngine(
-                RuleReadings.ofNoClauseFiled(Symbols.none(DefaultStdlib.get())),
-                Terms.Of.THE_DISCHARGE_TREE,
-                souther.compiler.query.ReadAs.THE_COMPILATION_DOES);
+                RuleReadingContext.unshared(
+                        RuleReadings.ofNoClauseFiled(Symbols.none(DefaultStdlib.get())),
+                        souther.compiler.query.ReadAs.THE_COMPILATION_DOES),
+                Terms.Of.THE_DISCHARGE_TREE);
         Hir.Binders binders = new Hir.Binders(OWNER);
         Core.Binder first = CoreBinders.of(binders.binder("x0", POS));
         Denotations at = engine.enter(Terms.read(CoreBinders.of(binders.binder("a", POS)), Type.INT, POS),

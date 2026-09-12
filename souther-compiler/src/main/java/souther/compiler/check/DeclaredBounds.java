@@ -225,8 +225,7 @@ public final class DeclaredBounds {
         NumberAt.OfWhatNumber kind = measure == null
                 ? new NumberAt.OfWhatNumber.OfItsOwnValue()
                 : new NumberAt.OfWhatNumber.OfWhatAnOperationAnswers(measure);
-        FieldDomains own = FieldDomains.of(outermost, reading.source(), reading.policy(),
-                reading.readings());
+        FieldDomains own = FieldDomains.of(outermost, reading);
         Bounds bounds = placed(own.placedAt(RuleKey.THE_VALUE), kind, carrier);
         return bounds == null ? everything : bounds.range();
     }

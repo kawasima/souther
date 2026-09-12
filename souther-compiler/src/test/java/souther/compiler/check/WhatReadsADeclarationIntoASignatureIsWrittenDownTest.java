@@ -101,7 +101,7 @@ class WhatReadsADeclarationIntoASignatureIsWrittenDownTest {
      * say that a name has been read against what declares it.
      */
     private static final List<Licence> MAY_ASSEMBLE = List.of(
-            new Licence("souther.compiler.check.Preserved.lambda$readTheLibrary$0",
+            new Licence("souther.compiler.check.Preserved.readTheLibrary",
                     "reads the library's own declarations, which state both halves"),
             new Licence("souther.compiler.check.OperationFactBinder.declaredSignature",
                     "the same declarations, read where a fact about an operation is held to them"),

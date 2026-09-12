@@ -20,6 +20,7 @@ import souther.compiler.core.Core;
 import souther.compiler.core.Kernel;
 import souther.compiler.core.KernelSignature;
 import souther.compiler.core.GrowingFold;
+import souther.compiler.coverage.ComparisonEmissionSite;
 
 import souther.compiler.core.EnsuresEnforcement;
 import souther.compiler.jvm.GeneratedClass;
@@ -600,12 +601,21 @@ final class BodyGen {
             if (!armsAreCounted || !ctx.measuring()) {
                 return;
             }
-            ctx.comparisonSiteOf(bin).ifPresent(site -> {
-                ctx.emitted(site.raw());
-                code.dup();
-                code.loadConstant(site.raw());
-                code.invokestatic(CD_Probe, "compared", MTD_Probe_compared);
-            });
+            ctx.comparisonSiteOf(bin).ifPresent(this::comparisonProbeAt);
+        }
+
+        /**
+         * The call itself, written for the place a run through this comparison is recorded at.
+         *
+         * <p>The number is asked of the place twice for the one act: the emitter records that it
+         * wrote this number, and writes it into the instruction. What the instruction carries is a
+         * number and nothing else — a probed class has no numbering to ask what it addresses.
+         */
+        private void comparisonProbeAt(ComparisonEmissionSite site) {
+            ctx.emitted(site.raw());
+            code.dup();
+            code.loadConstant(site.raw());
+            code.invokestatic(CD_Probe, "compared", MTD_Probe_compared);
         }
 
         /**
@@ -1786,13 +1796,19 @@ final class BodyGen {
                     // between two lists ({@code WhatAnOperatorPlacesIsOneAnswerTest}). Asked for
                     // rather than assumed all the same, so that a comparison this arm names and
                     // that law stops holding for is said rather than emitted against.
-                    Comparison comparison = Comparison.of(bin).orElseThrow(
-                            () -> new IllegalStateException(
-                                    "an operator that compares placed nothing: " + bin.op()));
+                    Comparison comparison =
+                            Comparison.of(bin).orElseThrow(() -> placedNothing(bin));
                     emitComparison(comparison);
                     yield comparison;
                 }
             };
+        }
+
+        /** That an operator this arm names as one that compares placed nothing, which is the law
+         *  above having stopped holding for it. */
+        private static IllegalStateException placedNothing(Core.Binary bin) {
+            return new IllegalStateException(
+                    "an operator that compares placed nothing: " + bin.op());
         }
 
         /** What the operator computes of two numbers, through the runtime that owns the arithmetic

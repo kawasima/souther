@@ -379,16 +379,33 @@ public final class FieldDomains {
         return of(named, source, policy, Map.of(), machines);
     }
 
+    /**
+     * The same, read in the world a walk carries.
+     *
+     * <p>What a reader under a walk asks, and the shape that leaves it nothing to choose. Handed
+     * the three apart, a reader picks a lender for the reading it is about to make; handed the
+     * world it was given, it reads in the one its caller read in and hands the same one on.
+     */
+    public static FieldDomains of(TypeSymbol.AtModule named, RuleReadingContext reading) {
+        return of(named, reading, Map.of());
+    }
+
+    /** The same, with some fields already settled at a value. */
+    public static FieldDomains of(TypeSymbol.AtModule named, RuleReadingContext reading,
+                                  Map<RuleKey, Count> settled) {
+        return of(named, reading.source(), reading.policy(), settled, reading.readings());
+    }
+
     /** The same, reading for itself. */
     public static FieldDomains of(TypeSymbol.AtModule named, RuleReadingSource source,
                                   ReadingPolicy policy) {
-        return unshared(named, source, policy, Map.of());
+        return of(named, source, policy, Map.of(), DeclarationReadings.NONE);
     }
 
     /** The same, with some fields already settled at a value and reading for itself. */
     public static FieldDomains of(TypeSymbol.AtModule named, RuleReadingSource source,
                                   ReadingPolicy policy, Map<RuleKey, Count> settled) {
-        return unshared(named, source, policy, settled);
+        return of(named, source, policy, settled, DeclarationReadings.NONE);
     }
 
     /**
@@ -410,24 +427,6 @@ public final class FieldDomains {
                 ? of(named, data, source, policy, atValues(settled),
                         InvariantChecker.Reach.EVERYTHING, machines)
                 : NONE;
-    }
-
-    /**
-     * The same, read without borrowing anything anybody else has made of the declaration.
-     *
-     * <p><b>For a caller that genuinely has nowhere to borrow from.</b> Not for one that has
-     * somewhere and did not carry it: the composing of a value takes the world it reads in
-     * ({@link RuleReadingContext}) and hands the same one down, so a reading reached from several
-     * positions of one row is made once. A caller here is saying there is no store to lend from at
-     * all, which is a different thing from a caller that was handed one and read past it.
-     *
-     * <p>Named for that, and separate from {@link DeclarationReadings#NONE}, which is what a reader
-     * with no store says. Which callers are entitled to it is checked rather than described: the
-     * ways into a reading nobody else made are written down, and a new one is a finding.
-     */
-    public static FieldDomains unshared(TypeSymbol.AtModule named, RuleReadingSource source,
-                                        ReadingPolicy policy, Map<RuleKey, Count> settled) {
-        return of(named, source, policy, settled, DeclarationReadings.NONE);
     }
 
     /** Settlings written as names, read as what stands at each. What a caller naming a place means
@@ -604,14 +603,20 @@ public final class FieldDomains {
      * @param wrote     where the author wrote it, for whoever reports about the clause. A position
      *                  and not the expression, so there is nothing here to read a meaning off a
      *                  second time
+     * @param root      the clause this conjunct was read out of. Carried because a reader below
+     *                  asks whether an expression answers a value, which is rooted: the sides of
+     *                  the comparison are what a binding above them is evaluated before, and read
+     *                  as trees of their own they have that name free. Not a meaning to read off a
+     *                  second time — nothing here reads the tree, and whoever asks the rooted
+     *                  question needs to be able to name it
      */
     public record WithoutAnEnd(InvariantStatementId statement, StatedComparison states,
-                               SourcePos wrote) {
+                               SourcePos wrote, Core root) {
 
         public WithoutAnEnd {
-            if (statement == null || states == null || wrote == null) {
-                throw new IllegalArgumentException(
-                        "a conjunct handed on is some clause's comparison, written somewhere");
+            if (statement == null || states == null || wrote == null || root == null) {
+                throw new IllegalArgumentException("a conjunct handed on is some clause's"
+                        + " comparison, written somewhere, read out of that clause");
             }
         }
 

@@ -100,6 +100,31 @@ class ACandidateIsProposedFromTheRuleAndNotTheCarrierAloneTest {
         return filled.rows().stream().map(row -> row.inputs().get(0).text()).toList();
     }
 
+    // --- two rules about one position --------------------------------------------------------------
+
+    /**
+     * Two rules about the strings of a position, and a value that clears both.
+     *
+     * <p>A proposal per rule is a proposal each of the others may refuse. Offered only those, a
+     * position carrying two rules about its strings has no value at all — each is what one rule
+     * asked for and the next one refuses it — and the behavior it sits in comes back with no row
+     * anywhere.
+     *
+     * <p>Held at the row, because that is the size of what it costs. A reading of the proposals
+     * alone would have shown two values where one was wanted and said nothing about the model
+     * losing every row it has.
+     */
+    @Test
+    void aPositionCarryingTwoRulesIsOfferedAValueClearingBoth() {
+        String row = generatedRow(model("""
+                data Code = String
+                    invariant begins = String.startsWith("X", value)
+                    invariant ends = String.endsWith("Z", value)
+                """, "code: Code", "code = Code(\"XZ\")"));
+
+        assertEquals("T { kind = Overseas, code = Code(\"XZ\") }", row);
+    }
+
     // --- a collection the rules say is not empty ---------------------------------------------------
 
     @Test
@@ -495,6 +520,12 @@ class ACandidateIsProposedFromTheRuleAndNotTheCarrierAloneTest {
      * is what makes this about the count rather than about the rules. Written as eight lengths no
      * string has at once, the values reading follows them and shows the declaration admits nothing,
      * and a model refused before a search is asked for is not one this can say anything about.
+     *
+     * <p>What no pair clears is the ninth rule, which this compiler cannot take apart. Strings
+     * clearing all nine exist — a run of b's of even length is one — so the declaration is not an
+     * empty one, and what stops a row is that nothing here derives a value from a rule it could not
+     * read. Held that way because the rules it can read it meets with each other: eight formats that
+     * hold together are eight a proposal clears at once, and a pair built from them is a row.
      */
     @Test
     void moreParingsThanAreBuiltIsSaidAsASearchThatStopped() {
@@ -503,6 +534,7 @@ class ACandidateIsProposedFromTheRuleAndNotTheCarrierAloneTest {
             formats += "    invariant p%d = String.matches(\"[a-h]{%d,}\", value)\n"
                     .formatted(i, i);
         }
+        formats += "    invariant twice = String.matches(\"(b+)\\\\1\", value)\n";
         souther.compiler.partition.FillResult filled = generated("""
                 module nd.gen
 
@@ -544,6 +576,10 @@ class ACandidateIsProposedFromTheRuleAndNotTheCarrierAloneTest {
      * no minimum was read, the position offered the empty map, and it was refused. The distinction
      * still matters — a reader told a search stopped would go looking for the pairing it stopped
      * short of — but a map the rules will not let be empty is no longer an example of it.
+     *
+     * <p>The ninth rule is one this compiler cannot take apart, which is what leaves the parts
+     * unfound: the rules it can read are met with each other and a value clearing all of them is
+     * proposed, so eight formats that hold together are eight a single proposal clears.
      */
     @Test
     void aMapWhoseSearchStoppedSaysSoRatherThanCallingItARefusal() {
@@ -552,6 +588,7 @@ class ACandidateIsProposedFromTheRuleAndNotTheCarrierAloneTest {
             formats += "    invariant p%d = String.matches(\"[a-h]{%d,}\", value)\n"
                     .formatted(i, i);
         }
+        formats += "    invariant twice = String.matches(\"(b+)\\\\1\", value)\n";
         souther.compiler.partition.FillResult filled = generated("""
                 module nd.gen
 

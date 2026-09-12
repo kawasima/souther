@@ -1,5 +1,6 @@
 package souther.compiler.inputs;
 
+import souther.compiler.check.Choice;
 import souther.compiler.check.Symbols;
 import souther.compiler.core.Core;
 import souther.compiler.types.BindingId;
@@ -180,6 +181,19 @@ public final class InputReads {
      * left, which is what the set says and the arm does not.
      */
     public InputReads insideArm(Core.Match match, Core.Case arm, Symbols symbols) {
+        return insideArmOn(match.scrutinee(), arm, symbols);
+    }
+
+    /**
+     * The same, where the value the arm matched is what the caller holds rather than the node that
+     * matched it.
+     *
+     * <p>Named apart from the one above and not written as its wider signature. What an arm narrows
+     * is the scrutinee, and a walk that has the {@code match} in hand would be passing the node it
+     * is standing on into a slot that takes any expression — which every caller compiles and one of
+     * them gets wrong.
+     */
+    public InputReads insideArmOn(Core scrutinee, Core.Case arm, Symbols symbols) {
         if (arm.binder() == null || arm.binder().binding() == null) {
             return this;
         }
@@ -188,11 +202,11 @@ public final class InputReads {
         // sum narrows to several of the position's distinctions and so to no one of them.
         Refinement narrowing = arm.selectedCase().map(Refinement::of).orElse(null);
         if (narrowing == null) {
-            return admitting(match, arm, symbols);
+            return admitting(scrutinee, arm, symbols);
         }
         // What the arm narrows is a position of the input, and a scrutinee that stands at none
         // narrows nothing.
-        TermPath scrutinee = switch (pathOf(match.scrutinee(), symbols)) {
+        TermPath standing = switch (pathOf(scrutinee, symbols)) {
             case PathResolution.At(var at) -> at;
             case PathResolution.NotAPosition _ -> null;
             // A scrutinee that only may stand at a position narrows nothing here either. What an
@@ -200,10 +214,10 @@ public final class InputReads {
             // value under this arm is a case of every one of them at once.
             case PathResolution.MayStandAt _ -> null;
         };
-        if (scrutinee == null) {
-            return admitting(match, arm, symbols);
+        if (standing == null) {
+            return admitting(scrutinee, arm, symbols);
         }
-        TermPath narrowed = scrutinee.refine(narrowing);
+        TermPath narrowed = standing.refine(narrowing);
         // And nothing is asked of the reading. What this answers is which location the arm's name
         // stands for, which the arm and the scrutinee's path settle between them: the value that was
         // matched, read as the case the arm selects. Whether a row is ever written there — whether
@@ -241,8 +255,8 @@ public final class InputReads {
      * an arm no value reaches, so the name inside it stands for nothing — which is what a name with
      * no meaning here already says, and is not a set of no members.
      */
-    private InputReads admitting(Core.Match match, Core.Case arm, Symbols symbols) {
-        ReadMeaning.OneOf one = pluralityOf(match.scrutinee(), symbols);
+    private InputReads admitting(Core scrutinee, Core.Case arm, Symbols symbols) {
+        ReadMeaning.OneOf one = pluralityOf(scrutinee, symbols);
         if (one == null) {
             return this;
         }
@@ -300,6 +314,32 @@ public final class InputReads {
             case Core.Construct nd -> nd.typeName();
             case Core.UnitValue unit -> unit.data();
             default -> null;
+        };
+    }
+
+    /**
+     * The reading an arm's answer is read in: this, with what choosing that arm binds entered.
+     *
+     * <p>Asked of {@link Choice.Decides} rather than of the node an arm stands in, so that a way of
+     * deciding added to the language stops here until somebody says what choosing it binds. Written
+     * in this vocabulary and not shared with the one next door: what a name means to a reading of
+     * the inputs is this class's answer throughout, and {@link souther.compiler.check.Terms} gives
+     * the same sum the answer its own readers speak.
+     */
+    public InputReads choosing(Choice.Decides decidedBy, Symbols symbols) {
+        return switch (decidedBy) {
+            // A condition binds nothing. Which way it went is settled where the arm is read.
+            case Choice.Decides.ACondition _ -> this;
+            case Choice.Decides.ACase(Core.Case arm, Core scrutinee) ->
+                    insideArmOn(scrutinee, arm, symbols);
+            // The invariant held, so the name the attempt writes stands for what was built.
+            case Choice.Decides.ItWasBuilt(Core.IfConstructed attempt) ->
+                    and(attempt.binder(), attempt.construct());
+            // A departure is taken where nothing was built, so it has nothing to enter.
+            case Choice.Decides.ItDeparted _ -> this;
+            // An operation defined by cases answers a value the call was already given. It
+            // introduces no name.
+            case Choice.Decides.ByArgumentRelations _ -> this;
         };
     }
 

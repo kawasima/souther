@@ -326,9 +326,26 @@ public final class UnreadComparison {
             // position, which is the same rule about a value made from one with a layer of
             // arithmetic over it.
             case ValueOrigin.Composed<K> composed -> composed.madeFrom() != null;
+            // Every value it could be, and not any of them. The word this picks promises the
+            // position was found and only following the operation back is missing; where one arm of
+            // a choice is a position's own values or a literal, that promise is false and what an
+            // author is owed is the other word. What decided the choice is not asked: an operation
+            // over the test made none of the values the rule is about.
+            case ValueOrigin.OneOf<K> choice -> everyOneMadeByAnOperation(choice.alternatives());
             case ValueOrigin.IsAPosition<K> _, ValueOrigin.Written<K> _,
-                 ValueOrigin.Unnameable<K> _ -> false;
+                 ValueOrigin.Unnameable<K> _, ValueOrigin.NoValue<K> _ -> false;
         };
+    }
+
+    /** Whether every value in {@code of} is one an operation made of a position. Stops at the
+     *  first that is not, each answer being a walk of whatever stands under it. */
+    private static <K> boolean everyOneMadeByAnOperation(List<ValueOrigin<K>> of) {
+        for (ValueOrigin<K> each : of) {
+            if (!madeByAnOperation(each)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private UnreadComparison() {}

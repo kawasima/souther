@@ -40,13 +40,14 @@ import souther.compiler.types.TypeSymbol;
  *                 clause under a name names no position at all
  */
 public record ClauseWithoutAnEnd(InvariantStatementId statement, StatedComparison states,
-                                 SourcePos wrote, TermPath at, TypeSymbol.AtModule readUnder) {
+                                 SourcePos wrote, souther.compiler.core.Core readOutOf,
+                                 TermPath at, TypeSymbol.AtModule readUnder) {
 
     public ClauseWithoutAnEnd {
-        if (statement == null || states == null || wrote == null || at == null
-                || readUnder == null) {
-            throw new IllegalArgumentException(
-                    "a clause is one of a declaration's, is written, and is about a value somewhere");
+        if (statement == null || states == null || wrote == null || readOutOf == null
+                || at == null || readUnder == null) {
+            throw new IllegalArgumentException("a clause is one of a declaration's, is written, is"
+                    + " read out of a clause, and is about a value somewhere");
         }
     }
 

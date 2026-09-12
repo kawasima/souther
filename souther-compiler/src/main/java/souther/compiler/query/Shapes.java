@@ -14,6 +14,7 @@ import souther.compiler.stdlib.Stdlib;
 import souther.compiler.check.ExpandedClauseLookup;
 import souther.compiler.check.ExpandedClauseResult;
 import souther.compiler.check.ExpandedClauses;
+import souther.compiler.check.RuleReadingContext;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.InvariantSettled;
 import souther.compiler.check.Lower;
@@ -541,6 +542,10 @@ public final class Shapes {
                 ClausesForDischarge declaring =
                         ClausesForDischarge.of(expandable.value(), scope.value(),
                                 publishedDeclarations(db), declarationKinds(db), published);
+                // One world for every conjunct below, since every one of them is read in it. Made
+                // per conjunct, this asked the store what a reading may spend once for each.
+                RuleReadingContext ruleReading = RuleReadingContext.of(reading.value(),
+                        db.ask(new Front.Reading()).value(), db.readings());
                 Map<TypeSymbol, List<ClauseDischarge>> out = new LinkedHashMap<>();
                 for (Hir.Data data : declaring.declarationsThatState()) {
                     List<ClauseDischarge> clauses = new ArrayList<>();
@@ -551,9 +556,8 @@ public final class Shapes {
                     for (Hir.InvariantClause declared : data.invariants()) {
                         for (ClausesForDischarge.ClauseReading written
                                 : declaring.conjunctsOf(declared.expr(), new BindingOwner.OfData(named))) {
-                            clauses.add(InvariantChecker.capabilityOf(written, named,
-                                    reading.value(),
-                                    db.ask(new Front.Reading()).value()).named(declared.name()));
+                            clauses.add(InvariantChecker.capabilityOf(written, named, ruleReading)
+                                    .named(declared.name()));
                         }
                     }
                     out.put(named, List.copyOf(clauses));

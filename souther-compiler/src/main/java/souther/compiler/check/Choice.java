@@ -56,12 +56,12 @@ import java.util.List;
  * {@link Decides} by the reader that opens splits, which has an arm per way of deciding and stops at
  * the ways it does not open.
  */
-record Choice(Kind kind, List<Arm> arms) {
+public record Choice(Kind kind, List<Arm> arms) {
 
     /** What is being chosen between, for a reader whose answer differs by which it is. Named after
      * what decides the choice rather than after the syntax, since that is what a reader wanting more
      * than the values is asking about. */
-    enum Kind {
+    public enum Kind {
 
         /** A condition decides, and the values are its two branches. */
         A_CONDITION,
@@ -79,13 +79,13 @@ record Choice(Kind kind, List<Arm> arms) {
     }
 
     /** One value a choice may answer, and the node that decides it is the one. */
-    record Arm(Core answers, Decides decidedBy) {}
+    public record Arm(Core answers, Decides decidedBy) {}
 
     /** Two values standing in a relation, as the values themselves. What a case of a library
      * definition is reached under, lowered out of the table's own way of naming an argument: a
      * reader below this asks what the relation says of two values, and not which position of which
      * call they arrived at. */
-    record ArgumentRelation(Core left, Rel rel, Core right) {}
+    public record ArgumentRelation(Core left, Rel rel, Core right) {}
 
     /**
      * What decides one arm, as the node that decides it.
@@ -94,7 +94,7 @@ record Choice(Kind kind, List<Arm> arms) {
      * that held and an attempt that departed are decided by different things and settle different
      * things, so a reader treating them alike would have to tell them apart again.
      */
-    sealed interface Decides {
+    public sealed interface Decides {
 
         /** The condition held, or it did not. */
         record ACondition(Core cond, boolean holding) implements Decides {}
@@ -128,7 +128,7 @@ record Choice(Kind kind, List<Arm> arms) {
         }
     }
 
-    Choice {
+    public Choice {
         arms = List.copyOf(arms);
         if (arms.isEmpty()) {
             throw new IllegalArgumentException(kind + " is a value that is one of several and it was"
@@ -147,7 +147,7 @@ record Choice(Kind kind, List<Arm> arms) {
      * {@code if} has in common is being one of two; what a call answers depends on the operation,
      * and for all but a few of them it is one value.
      */
-    static Choice of(Core e) {
+    public static Choice of(Core e) {
         return switch (e) {
             case Core.If iff -> new Choice(Kind.A_CONDITION, List.of(
                     new Arm(iff.then(), new Decides.ACondition(iff.cond(), true)),

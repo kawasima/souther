@@ -9,6 +9,7 @@ import souther.compiler.query.Adequacy;
 import souther.compiler.partition.FixtureTemplate;
 import souther.compiler.query.BorderAssessment;
 import souther.compiler.query.Compilation;
+import souther.compiler.query.ItemAssessment;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -16,6 +17,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -298,39 +300,66 @@ class ABorderSaysWhyItOwesNoRowAtAPointTest {
     /**
      * A row on the line is not a row at a point past it, whatever the search had to start from.
      *
-     * <p>An order with no numbers has one level — where the two are equal — and every value past it
-     * is a run with no first value. So a search for a row in that run has nowhere to start but the
-     * line, and the line is the one place in reach the run does not hold. Read as a level the item
-     * accepts, a pair standing equal came back for a point that lies strictly past them, and the
-     * report went on saying no row was at it.
+     * <p>An order with no numbers has one level — where the two are equal — and a point past it is a
+     * run the level is not in. Read as a level the item accepts, a pair standing equal came back for
+     * a point that lies strictly past them.
+     *
+     * <p><b>Of every row offered at such a point, and not of one pair.</b> Which pair a search
+     * happens to compose is its own answer and moves when it learns to reach further; that a row
+     * offered for a strict side stands on the line is wrong whichever pair it is. Written as one
+     * literal, the check went on passing the day the search composed a different equal pair.
+     *
+     * <p>And nothing here says a row has to be found. Whether the search reaches one is a question
+     * about how far it can look, and a point it reaches none at is reported as such — so what is
+     * counted below is the points examined, which is what keeps this from passing because there was
+     * nothing to look at.
      */
     @Test
     void aRowOnTheLineIsNotOfferedForAPointPastIt() {
-        String rows = souther.compiler.report.GeneratedRows.of(
-                compiled("""
-                        module example.strings
+        Compilation compiled = compiled("""
+                module example.strings
 
-                        data No = { why: Int }
-                        data Yes = { v: Int }
-                        data Result = No | Yes
+                data No = { why: Int }
+                data Yes = { v: Int }
+                data Result = No | Yes
 
-                        behavior cmp : (a: String, b: String) -> Result
-                            constructs Yes, No
+                behavior cmp : (a: String, b: String) -> Result
+                    constructs Yes, No
 
-                        let cmp (a, b) = {
-                            guard a > b else No { why = 0 }
-                            Yes { v = 1 }
-                        }
+                let cmp (a, b) = {
+                    guard a > b else No { why = 0 }
+                    Yes { v = 1 }
+                }
 
-                        example cmp
-                            | "same" : ("b", "b") -> No { why = 0 }
-                        """),
-                "example.strings", "cmp", souther.compiler.diag.SourceRendering.namedByIdentity(SourceLayouts.NONE)).text();
+                example cmp
+                    | "same" : ("b", "b") -> No { why = 0 }
+                """);
+        Map<String, List<BorderAssessment>> lines =
+                Adequacy.searchedBoundariesOf(compiled.db(), "example.strings");
+        assertNotNull(lines, "the model under test compiles");
 
-        assertFalse(rows.contains("cmp(\"\", \"\")"),
-                "a pair standing equal is the line itself and is at neither side of it:\n" + rows);
-        assertTrue(rows.contains("no row for `b < a`"),
-                "and what there is to say is that nothing could build one:\n" + rows);
+        List<String> sides = new ArrayList<>();
+        lines.values().forEach(each -> each.forEach(line -> {
+            for (BorderAssessment.Point point : line.points()) {
+                if (point.role().againstTheLine() || point.owed() == null) {
+                    continue;   // the line itself, and the points nothing is owed at
+                }
+                sides.add(point.role() + " " + point.against());
+                for (ItemAssessment.Attempt attempt : point.owed().searches().each()) {
+                    if (!(attempt instanceof ItemAssessment.Attempt.Built built)) {
+                        continue;
+                    }
+                    List<String> wrote = built.row().inputs().stream()
+                            .map(FixtureTemplate::text).toList();
+                    assertNotEquals(wrote.get(0), wrote.get(1),
+                            () -> "a pair standing equal is the line itself and is at neither side"
+                                    + " of it, and this one is offered for " + point.against()
+                                    + ": " + wrote);
+                }
+            }
+        }));
+        assertFalse(sides.isEmpty(),
+                "the sides of the line this reads, which are what the rows above are offered for");
     }
 
     /**

@@ -7,11 +7,16 @@ import souther.compiler.numeric.Count;
 import souther.compiler.numeric.Endpoint;
 import souther.compiler.numeric.LinearForm;
 import souther.compiler.numeric.NumericDomain;
+import souther.compiler.numeric.OrderedInterval;
 import souther.compiler.numeric.Place;
+import souther.compiler.regex.Meter;
+import souther.compiler.values.ValueSet;
 
+import java.math.BigDecimal;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 
 /**
  * Where each position has to stand for a row to be at one coverage item.
@@ -44,24 +49,36 @@ public final class LevelRealizer {
      *               leave and never narrower than what reaches the item, which is what makes an
      *               exhausted walk of it a proof
      */
-    public Realization realize(Standing standing, souther.compiler.inputs.SearchRegion within) {
+    public Realization realize(Standing standing, souther.compiler.inputs.SearchRegion within,
+                               WitnessSearch looking) {
         if (within == null) {
             throw new IllegalArgumentException(
                     "a search looks inside a region, and there is always one: an item nothing on the"
                             + " way to it narrows is searched for in what the declarations leave,"
                             + " which is an answer and not an absence");
         }
+        // The other vocabulary a position is read in, and it is not optional either. A search that
+        // may be handed none is a search that composes without asking what the position holds,
+        // which is how a boundary came to be offered a value the declarations refuse.
+        if (looking == null) {
+            throw new IllegalArgumentException(
+                    "a value is composed at a position, and what that position admits is an answer"
+                            + " the reading already has: a search that may be handed none is one"
+                            + " that composes without asking");
+        }
         return switch (standing) {
-            case Standing.OfOneCoordinate one -> ofOne(one, within);
-            case Standing.OfTwoOnOneCarrier two -> ofTwo(two, within);
+            case Standing.OfOneCoordinate one -> ofOne(one, within, looking);
+            case Standing.OfTwoOnOneCarrier two -> ofTwo(two, within, looking);
             case Standing.OfAForm over -> ofAForm(over, within);
         };
     }
 
     /** One position at a place of its own carrier that the item accepts. */
     private Realization ofOne(Standing.OfOneCoordinate one,
-                              souther.compiler.inputs.SearchRegion within) {
-        Place at = placeMeeting(one.where(), one.of(), bounds(within, one.term()));
+                              souther.compiler.inputs.SearchRegion within,
+                              WitnessSearch looking) {
+        Place at = placeMeeting(one.where(), one.term(), one.of(), bounds(within, one.term()),
+                looking);
         return at == null ? Realization.Unknown.nothingComposedOne()
                 : found(Map.of(new RealizationTarget.AtOnePosition(one.term()), at), within);
     }
@@ -78,7 +95,8 @@ public final class LevelRealizer {
      * fact about the ranges and the pair may be refused or admitted by a rule neither range holds.
      */
     private Realization ofTwo(Standing.OfTwoOnOneCarrier two,
-                              souther.compiler.inputs.SearchRegion within) {
+                              souther.compiler.inputs.SearchRegion within,
+                              WitnessSearch looking) {
         NumericDomain.Bounds on = bounds(within, two.on());
         NumericDomain.Bounds together = commonRange(on, bounds(within, two.against()), two.of(),
                 two.where().anchor().asACount());
@@ -93,7 +111,8 @@ public final class LevelRealizer {
             // the other position stands at — read on, an item with no level in it was handed to a
             // reader that asks where its level falls.
             Criterion here = relativeTo(two.where(), common, two.of());
-            Place at = here == null ? null : placeMeeting(here, two.of(), on);
+            Place at = here == null ? null
+                    : placeMeeting(here, two.on(), two.of(), on, looking);
             if (at == null) {
                 continue;
             }
@@ -467,7 +486,7 @@ public final class LevelRealizer {
                             carriers[i].spacing()),
                     left);
             return switch (may) {
-                case CandidateDomain.None ignored -> Reached.EXHAUSTED;
+                case CandidateDomain.None _ -> Reached.EXHAUSTED;
                 case CandidateDomain.One only -> trying(i, only.at().at(), owed, coef, here);
                 // One value out of a coset whose values fill. There is no next one to step to, so
                 // what this walked was never the whole of it however the value turned out.
@@ -794,17 +813,22 @@ public final class LevelRealizer {
      * a row offered for a side that is really at the point against the line is a row an author pastes
      * and re-measures to find the item still uncovered.
      */
-    private static Place placeMeeting(Criterion where, Carrier carrier,
-                                      NumericDomain.Bounds bounds) {
+    private static Place placeMeeting(Criterion where, NumericTerm.FromOnePosition term,
+                                      Carrier carrier, NumericDomain.Bounds bounds,
+                                      WitnessSearch looking) {
         Place offered = switch (where) {
+            // The level itself, and the set is not asked. A point on a line stands where the rule
+            // wrote it; held to what the declarations admit, a line drawn at a value they refuse
+            // would stop being an item rather than being reported as one nothing can stand at.
             case Criterion.AtTheLevel at -> placeOf(at.at());
-            // From the end the line is at, which is what makes the row one beside the boundary
-            // rather than one at the far side of the partition. The point carries which end that is
-            // and is not asked for it again: handed it a second time, a caller could ask for a run
-            // to be read from the end it is not named for, which is the shape of one decision given
-            // from two places.
+            // Nothing composed where nothing worked out what the position holds. Which is this
+            // compiler's own limit and is reported in the word it has for one: a run searched against
+            // a set nobody established would offer a row at a position whose rules were never read.
             case Criterion.Within within ->
-                    within.somewhereInside(carrier, bounds.min(), bounds.max());
+                    whatTheValuesAre(term, looking.admitted())
+                            instanceof AdmittedValues.Admitted.Values(ValueSet admits)
+                            ? someValueIn(within, carrier, bounds, admits, looking::meter)
+                            : null;
         };
         if (offered == null) {
             return null;
@@ -814,6 +838,96 @@ public final class LevelRealizer {
         // one of them, which is the carrier's question rather than the item's.
         Place onTheGrid = carrier.onTheGrid(offered);
         return onTheGrid != null && accepts(where, carrier, onTheGrid) ? onTheGrid : null;
+    }
+
+    /**
+     * What the position admits, where the place being composed is a value of it.
+     *
+     * <p>Asked of the location the number is read from rather than of the number, because one location
+     * is measured at as many numbers as the rules name of it and admits one set of values — a rule
+     * about one of those numbers is what leaves the others short, which is the whole reason this set
+     * is here.
+     *
+     * <p><b>And every value there is where the number is one taken of the position rather than its
+     * own.</b> {@code String.length(code)} counts a string and the place composed for it is a count;
+     * the set holds the strings. Put to it, every count would be refused for not being one of them,
+     * and a boundary on a length would stop being offered a row at all. What a value carrying that
+     * count looks like is asked where such a value is written ({@link Witnesses}) and the set reaches
+     * it there.
+     */
+    private static AdmittedValues.Admitted whatTheValuesAre(NumericTerm.FromOnePosition term,
+                                                            AdmittedValues admitted) {
+        return term instanceof NumericTerm.ValueOf ? admitted.at(term.position())
+                : new AdmittedValues.Admitted.Values(ValueSet.ANY);
+    }
+
+    /**
+     * A place inside the run this item is, that the position's values take in.
+     *
+     * <p>The end the item is named for is tried first, in each run in turn. That is what makes the
+     * row one beside the boundary rather than one at the far side of the partition, and the item
+     * carries which end it is: asked for a second time by a caller, a run could be read from the end
+     * it is not named for, which is one decision given from two places.
+     *
+     * <p>And the values themselves once every one of those ends is refused. Which is the same
+     * arrangement {@link Carrier#somethingOtherThan} is under, reached for the same reason: the ends
+     * read better in a row than anything worked out of a set, and they are not exhaustive — a run
+     * bounded by a rule about one number of the position starts at the one value a rule about another
+     * refuses, and nothing about the run says so. The set is crossed with the run rather than asked
+     * on its own, so a value it holds inside the run is not lost to whichever value it names first.
+     *
+     * <p><b>An allowance per crossing, which is why what arrives is the way to get one.</b> An item
+     * is a region and a region is as many runs as the rules leave it, so this crosses the set with
+     * each of them in turn — and a meter spends down. Shared between the runs, what the first
+     * crossing cost would be taken off what the second may spend, and whether a run is answered
+     * would follow from where it came in the order they are looked at. Which order that is is a
+     * searching policy and no answer about the values ({@link LevelRegion}).
+     */
+    private static Place someValueIn(Criterion.Within within, Carrier carrier,
+                                     NumericDomain.Bounds bounds, ValueSet admits,
+                                     Supplier<Meter> allowance) {
+        LevelSpace space = LevelSpace.onACarrier(carrier);
+        List<LevelInterval> runs = within.runsInside(carrier, bounds.min(), bounds.max());
+        for (LevelInterval look : runs) {
+            if (space.witness(look, within.away()).level() instanceof Level.OnACarrier on
+                    && carrier.admitted(admits, on.at())) {
+                return on.at();
+            }
+        }
+        for (LevelInterval look : runs) {
+            OrderedInterval run = runOf(look, carrier);
+            Place held = run == null ? null
+                    : carrier.somewhereIn(admits, run, List.of(), allowance.get());
+            if (held != null) {
+                return held;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * One run of the levels as a run of the carrier's own places, or null where its ends are not
+     * places of the position.
+     *
+     * <p>Null where an end says how much of the quantity a rule wrote rather than a value of it. Such
+     * a run is in the written form's units, and a set of the position's values has nothing to say
+     * about a number in them — put to one, the set would be answering about a value nobody holds.
+     */
+    private static OrderedInterval runOf(LevelInterval look, Carrier carrier) {
+        Endpoint low = endOf(look.low(), carrier);
+        Endpoint high = endOf(look.high(), carrier);
+        boolean lost = (look.low() != null && low == null)
+                || (look.high() != null && high == null);
+        return lost ? null : new OrderedInterval(low, high);
+    }
+
+    /** One end of such a run, or null where it is not a place of the position. */
+    private static Endpoint endOf(Bound end, Carrier carrier) {
+        if (end == null || end.at().per().compareTo(BigDecimal.ONE) != 0) {
+            return null;
+        }
+        return end.at().written() instanceof Level.OnACarrier on && on.of().equals(carrier)
+                ? new Endpoint(on.at(), end.inclusive()) : null;
     }
 
     /**

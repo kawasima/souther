@@ -32,10 +32,24 @@ import souther.compiler.flow.ValueArrivals;
  */
 public final class NormalReturn {
 
-    private final ValueArrivals<AnonymousPath> reading;
+    private final java.util.function.Supplier<ValueArrivals<AnonymousPath>> of;
+
+    private ValueArrivals<AnonymousPath> reading;
 
     private NormalReturn(ValueArrivals<AnonymousPath> reading) {
         this.reading = reading;
+        this.of = null;
+    }
+
+    private NormalReturn(java.util.function.Supplier<ValueArrivals<AnonymousPath>> of) {
+        this.of = of;
+    }
+
+    private ValueArrivals<AnonymousPath> reading() {
+        if (reading == null) {
+            reading = of.get();
+        }
+        return reading;
     }
 
     /**
@@ -50,9 +64,35 @@ public final class NormalReturn {
         return new NormalReturn(ValueArrivals.ofBody(body, Anonymous.NAMING));
     }
 
+    /**
+     * The same, of a tree the language's own operations stand in.
+     *
+     * <p>Which kind of tree this is, is the caller's to say and this class's to spend. A call kept
+     * standing is a defect in a tree the operations were expanded in and the model naming an
+     * operation in one they stand in, and a reader that answered it for itself would be deciding
+     * what a tree is from the outside of the reading that walks it.
+     */
+    public static NormalReturn ofBodyWhereTheOperationsStand(Core body) {
+        return new NormalReturn(
+                ValueArrivals.ofBodyWhereTheOperationsStand(body, Anonymous.NAMING));
+    }
+
+    /**
+     * The same, read when something first asks.
+     *
+     * <p>For a caller that holds a body every reading of it may want this about and most do not:
+     * whether an expression answers a value is asked about the arms of a fork, and a body with no
+     * fork in it is never asked at all. The reading is one body's, so building it once when the
+     * first question comes is the same answer as building it with the body.
+     */
+    public static NormalReturn lazilyWhereTheOperationsStand(Core body) {
+        return new NormalReturn(
+                () -> ValueArrivals.ofBodyWhereTheOperationsStand(body, Anonymous.NAMING));
+    }
+
     /** Whether {@code e}, standing where it stands in this body, can be evaluated to a value. */
     public boolean at(Core e) {
-        return reading.arrivesAt(e);
+        return reading().arrivesAt(e);
     }
 
     /**
@@ -70,7 +110,7 @@ public final class NormalReturn {
      * thing was made — neither is a truth this reading has anything to say about.
      */
     public boolean mayEnter(Core fork, int part) {
-        return !(fork instanceof Core.If iff) || reading.comesAt(iff.cond()).mayCome(part == 0);
+        return !(fork instanceof Core.If iff) || reading().comesAt(iff.cond()).mayCome(part == 0);
     }
 
     /**

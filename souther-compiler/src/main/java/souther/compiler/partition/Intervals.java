@@ -210,13 +210,15 @@ final class Intervals {
             // — so it held every value, and two such classes each held everything the other did.
             Recognition is = new Recognition.OfACount(of, orders,
                     new Recognition.CountIs.InARun(run));
-            if (inside == null) {
-                classes.add(PartitionClass.ungeneratable(id, label, is,
-                        "no value this position can hold lies inside this range"));
-                continue;
-            }
-            List<FixtureTemplate> values =
-                    standingIn(of, inside, type, carrier, ruleReading);
+            // Nothing composed here says what this compiler did not manage, and says nothing about
+            // what the run holds. Above a string a rule stops short of, the order declines to name
+            // a value on purpose — every string with that one as a prefix is greater, and choosing
+            // between them puts a character nobody wrote into a row somebody reads. So the sentence
+            // both empty answers carry is about composing: it is true of a run that holds nothing
+            // as much as of one the order would not choose in, and it is the only one of the two
+            // claims this compiler is in a position to make (ADR-0091).
+            List<FixtureTemplate> values = inside == null ? List.of()
+                    : standingIn(of, inside, type, carrier, ruleReading);
             classes.add(values.isEmpty()
                     ? PartitionClass.ungeneratable(id, label, is,
                             "nothing here writes a value whose " + measureOf(of) + " is in this range")
@@ -240,8 +242,16 @@ final class Intervals {
     }
 
     /**
-     * A value inside a range, or null where it holds none. Asked of the ends, which is where whether
-     * the range holds the value it stops at is written down.
+     * A value inside a range, or null where nothing composed one. Asked of the ends, which is where
+     * whether the range holds the value it stops at is written down.
+     *
+     * <p>Null says what came back and not what the range holds. Which values are in it is
+     * {@link LevelSpace#inspect}'s answer; this asks the other question, and a caller that read the
+     * two as one would put the order's own restraint into a sentence about the model.
+     *
+     * <p>Nothing on this path asks the first question of a run that gets here. So an empty answer
+     * is a run the order would not choose in, and a run it has nothing in at all, and the caller is
+     * owed a sentence true of both.
      *
      * <p>How the values step is the carrier's to say and is asked of it. Carried as "is it a decimal"
      * it was a second spelling of the same fact, and a carrier that is dense without being the
@@ -292,7 +302,7 @@ final class Intervals {
         }
         List<FixtureTemplate> out = new ArrayList<>();
         for (FixtureTemplate each
-                : Witnesses.ofSize(view.shape(), size, reading, Set.of()).values()) {
+                : Witnesses.ofSize(view, size, reading, Set.of()).values()) {
             out.add(RepresentativeSource.under(worn.names(), each));
         }
         return List.copyOf(out);

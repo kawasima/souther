@@ -1,6 +1,7 @@
 package souther.compiler.regex;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.BitSet;
 import java.util.HashMap;
 import java.util.List;
@@ -564,31 +565,78 @@ final class Automaton {
      * symbols lead: two states in one block that step into different blocks are two states, and
      * asking that over and over until nothing moves is what leaves the blocks a string could tell
      * apart and no others.
+     *
+     * <p>What a round asks of a state is a row — the block it is in, and then the block each symbol
+     * leads to — and what it groups is the states whose rows are equal. A row is as wide as the runs
+     * the labels cut, and two rows are equal exactly when their cells are, so the grouping is an
+     * open table read off those cells: the hash below is the cells, and a collision is settled by
+     * comparing them.
+     *
+     * <p>What is kept is a row per block and not a row per state. Every row a state is compared
+     * against is the first row of some block, so a row per state would be holding what the grouping
+     * has already brought together — as many rows as the machine has states, each as wide as its
+     * alphabet. A state's row is written where the next block's would begin and stays there only if
+     * it opened one, which is why nothing is copied to keep it. The table of slots is the one thing
+     * sized for the states there are, because a round can put that many rows in it, and it never
+     * grows.
+     *
+     * <p>Blocks are numbered in the order a row is first seen; which numbers they get is nothing
+     * {@link #numbered} reads, since it renames them by walking the machine.
      */
     private static int[] smallest(List<int[]> table, BitSet accepting) {
-        int[] block = new int[table.size()];
-        for (int state = 0; state < block.length; state++) {
+        int states = table.size();
+        int width = 1 + table.get(0).length;
+        int[] block = new int[states];
+        for (int state = 0; state < states; state++) {
             block[state] = accepting.get(state) ? 1 : 0;
         }
+        int[] shown = new int[width];
+        int[] next = new int[states];
+        // A power of two, so a hash is brought into range by masking, and twice the rows a round
+        // can have, so the slots a probe walks past stay few.
+        int slots = 4;
+        while (slots < states * 2) {
+            slots <<= 1;
+        }
+        int[] seen = new int[slots];
         for (int blocks = 2, was = 0; blocks != was;) {
             was = blocks;
-            java.util.Map<List<Integer>, Integer> found = new java.util.LinkedHashMap<>();
-            int[] next = new int[block.length];
-            for (int state = 0; state < block.length; state++) {
-                List<Integer> tells = new ArrayList<>();
-                tells.add(block[state]);
-                for (int to : table.get(state)) {
-                    tells.add(block[to]);
+            Arrays.fill(seen, 0);
+            int found = 0;
+            for (int state = 0; state < states; state++) {
+                if (shown.length < (found + 1) * width) {
+                    shown = Arrays.copyOf(shown, shown.length * 2);
                 }
-                Integer had = found.get(tells);
-                if (had == null) {
-                    had = found.size();
-                    found.put(tells, had);
+                int at = found * width;
+                shown[at] = block[state];
+                int[] out = table.get(state);
+                for (int over = 0; over < out.length; over++) {
+                    shown[at + 1 + over] = block[out[over]];
                 }
-                next[state] = had;
+                int hash = 1;
+                for (int cell = at; cell < at + width; cell++) {
+                    hash = 31 * hash + shown[cell];
+                }
+                int probe = (hash ^ (hash >>> 16)) & (slots - 1);
+                while (true) {
+                    // A slot holds the block whose first row is there, counted from one so that
+                    // nought is a slot nothing has been put in.
+                    int held = seen[probe];
+                    if (held == 0) {
+                        seen[probe] = found + 1;
+                        next[state] = found++;
+                        break;
+                    }
+                    if (Arrays.equals(shown, (held - 1) * width, held * width,
+                            shown, at, at + width)) {
+                        next[state] = held - 1;
+                        break;
+                    }
+                    probe = (probe + 1) & (slots - 1);
+                }
             }
-            block = next;
-            blocks = found.size();
+            System.arraycopy(next, 0, block, 0, states);
+            blocks = found;
         }
         return block;
     }

@@ -1,9 +1,8 @@
 package souther.compiler.inputs;
 
 import souther.compiler.check.DefaultBoundOperationFacts;
-import souther.compiler.check.ReadingPolicy;
+import souther.compiler.check.RuleReadingContext;
 import souther.compiler.check.RuleKey;
-import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.ValueGuarantees;
 import souther.compiler.numeric.Count;
 import souther.compiler.numeric.Endpoint;
@@ -95,11 +94,10 @@ final class RunReach {
      * @param typeAt what stands where a path names
      */
     static NumericDomain.Bounds of(NumericTerm.TakenOver over, TermOrders orders,
-                                   Function<TermPath, Type> typeAt, RuleReadingSource rules,
-                                   ReadingPolicy policy) {
+                                   Function<TermPath, Type> typeAt, RuleReadingContext reading) {
         orders.areOf(over);
         Accumulation walk = DefaultBoundOperationFacts.get().accumulation(over.operation());
-        NumericDomain.Bounds element = ofTheValuesWalked(over.source(), typeAt, rules, policy);
+        NumericDomain.Bounds element = ofTheValuesWalked(over.source(), typeAt, reading);
         Granularity answeredOn = spacingOf(orders.answered());
         Granularity observedOn = spacingOf(orders.observed());
         if (walk == null || element == null || answeredOn == null || observedOn == null) {
@@ -140,11 +138,10 @@ final class RunReach {
      */
     private static NumericDomain.Bounds ofTheValuesWalked(RunSource source,
                                                           Function<TermPath, Type> typeAt,
-                                                          RuleReadingSource rules,
-                                                          ReadingPolicy policy) {
+                                                          RuleReadingContext reading) {
         Type walked = typeAt.apply(source.subjectPath());
         return walked == null ? null
-                : ValueGuarantees.of(walked, rules, policy).get(RuleKey.THE_VALUE);
+                : ValueGuarantees.of(walked, reading).get(RuleKey.THE_VALUE);
     }
 
     /** The value the walk starts from, as a range, or null where this reading has no number for it.

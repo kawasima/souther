@@ -173,7 +173,22 @@ public sealed interface PatternSyntax {
      * text somebody looked for is any string at all, newlines included.
      */
     static PatternSyntax anything() {
-        return new Repeated(new Symbols(CodePoints.EVERYTHING), 0, Repeated.NO_CEILING);
+        return ofAnySymbols(0, Repeated.NO_CEILING);
+    }
+
+    /**
+     * Every string of between {@code least} and {@code most} symbols.
+     *
+     * <p>What a rule counting a string's characters leaves, said in the one vocabulary a language is
+     * written in. A rule about how many there are and a rule about which they are reach one position
+     * and are read by different things, and a value has to clear both — so whoever holds the count
+     * puts it here and meets the two.
+     *
+     * <p>{@link Repeated#NO_CEILING} for a count nothing caps, which is the bound nothing reaches
+     * rather than a large one.
+     */
+    static PatternSyntax ofAnySymbols(int least, int most) {
+        return new Repeated(new Symbols(CodePoints.EVERYTHING), least, most);
     }
 }
 

@@ -72,9 +72,8 @@ record UniversalElementFacts(Map<RuleKey, Bounds> byPath) {
      * not the other would answer them differently, which is the shape this class was written to
      * stop, seen inside it.
      */
-    static UniversalElementFacts of(Core written, Denotations at, Terms terms,
-                                    RuleReadingSource rules, ReadingPolicy policy) {
-        Symbols symbols = rules.symbols();
+    static UniversalElementFacts of(Core written, Denotations at, Terms terms) {
+        Symbols symbols = terms.symbols();
         if (written == null) {
             return NONE;
         }
@@ -82,10 +81,10 @@ record UniversalElementFacts(Map<RuleKey, Bounds> byPath) {
         Core container = given.value();
         Map<RuleKey, Bounds> held = new LinkedHashMap<>();
         Type element = Terms.elementType(container.type());
-        ValueGuarantees.of(element, rules, policy)
+        ValueGuarantees.of(element, terms.ruleReading())
                 .forEach((path, bounds) -> holds(held, path, bounds));
         writtenOut(container, element, symbols, held);
-        transferred(container, given.at(), terms, rules, policy, held);
+        transferred(container, given.at(), terms, held);
         return held.isEmpty() ? NONE : new UniversalElementFacts(held);
     }
 
@@ -153,8 +152,7 @@ record UniversalElementFacts(Map<RuleKey, Bounds> byPath) {
      * span of what each keeps.
      */
     private static void transferred(Core container, Denotations at, Terms terms,
-                                    RuleReadingSource rules,
-                                    ReadingPolicy policy, Map<RuleKey, Bounds> held) {
+                                    Map<RuleKey, Bounds> held) {
         if (!(container instanceof Core.PreservedCall call)) {
             return;
         }
@@ -162,26 +160,25 @@ record UniversalElementFacts(Map<RuleKey, Bounds> byPath) {
         if (kept == null || kept.container() == null) {
             return;
         }
-        keptBy(kept.lineage(), call, kept.container(), at, terms, rules, policy)
+        keptBy(kept.lineage(), call, kept.container(), at, terms)
                 .forEach((path, bounds) -> holds(held, path, bounds));
     }
 
     /** What one lineage keeps of {@code source}, by the path under an element. */
     private static Map<RuleKey, Bounds> keptBy(ElementLineage<DeclaredArgument> lineage,
                                               Core.PreservedCall call,
-                                              Core source, Denotations at, Terms terms,
-                                              RuleReadingSource rules, ReadingPolicy policy) {
+                                              Core source, Denotations at, Terms terms) {
         return switch (lineage) {
             case ElementLineage.SameAs<DeclaredArgument> _ ->
-                    of(source, at, terms, rules, policy).byPath();
+                    of(source, at, terms).byPath();
             case ElementLineage.ClosureResult<DeclaredArgument> _ ->
-                    throughTheClosure(call, source, at, terms, rules, policy);
+                    throughTheClosure(call, source, at, terms);
             case ElementLineage.InsideClosureResult<DeclaredArgument> _ -> Map.of();
             case ElementLineage.OneOf<DeclaredArgument> one -> {
                 Map<RuleKey, Bounds> both = null;
                 for (ElementLineage<DeclaredArgument> alternative : one.alternatives()) {
                     Map<RuleKey, Bounds> keeps =
-                            keptBy(alternative, call, source, at, terms, rules, policy);
+                            keptBy(alternative, call, source, at, terms);
                     both = both == null ? keeps : spanning(both, keeps);
                 }
                 yield both == null ? Map.of() : both;
@@ -220,13 +217,12 @@ record UniversalElementFacts(Map<RuleKey, Bounds> byPath) {
      * map was written, which is what this class is for.
      */
     private static Map<RuleKey, Bounds> throughTheClosure(Core.PreservedCall call, Core source,
-                                                         Denotations at, Terms terms,
-                                                         RuleReadingSource rules, ReadingPolicy policy) {
+                                                         Denotations at, Terms terms) {
         Combinators.Handed handed = Combinators.handedTo(call, at);
         if (handed == null) {
             return Map.of();
         }
-        UniversalElementFacts kept = of(source, at, terms, rules, policy);
+        UniversalElementFacts kept = of(source, at, terms);
         BindingId element = handed.element().binding();
         FactSubject root = terms.placeSubject(element);
         Denotations reading = at.location(element, root, terms.placeTerm(element));

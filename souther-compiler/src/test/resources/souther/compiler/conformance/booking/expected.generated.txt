@@ -14,8 +14,6 @@ example redeem
     | "party=4 < x <= 8"  : (Voucher("spring"), Party(5)) -> <?>
     | (Voucher("x"), Party(2))                            -> <?>
     | (Voucher("x"), Party(8))                            -> <?>
-// no row for `voucher < spring` in `redeem`: every value tried was refused at construction, which does not make the combination impossible
-// no row for `spring < voucher` in `redeem`: nothing here could build a representative for it, which does not make one unwritable
 // no row for `party = 4` in `redeem`: no row composed for it was seen reaching it, which does not make it unreachable
 // no row for `party = 5` in `redeem`: no row composed for it was seen reaching it, which does not make it unreachable
 // no row for `1 <= party < 4` in `redeem`: no row composed for it was seen reaching it, which does not make it unreachable

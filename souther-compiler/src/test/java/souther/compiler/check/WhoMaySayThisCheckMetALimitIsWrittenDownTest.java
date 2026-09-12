@@ -118,7 +118,10 @@ class WhoMaySayThisCheckMetALimitIsWrittenDownTest {
                     "asks the expansion and the reading's own scope about every call it cannot"
                             + " name"),
             new Licence("souther.compiler.check.PathReachability"
-                    + ".lambda$of$0(Ljava/lang/String;)",
+                    + ".of(Lsouther/compiler/core/Core;Lsouther/compiler/check/Scope;"
+                    + "Lsouther/compiler/coverage/CoverageSites$Plan;"
+                    + "Lsouther/compiler/inputs/InputDomain;"
+                    + "Lsouther/compiler/check/RuleReadingContext;)",
                     "reads which of a plan's comparisons the walk settled nothing about"));
 
     @Test

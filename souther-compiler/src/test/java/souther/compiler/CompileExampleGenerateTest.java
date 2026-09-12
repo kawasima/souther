@@ -591,10 +591,12 @@ class CompileExampleGenerateTest {
      * the ones not reached were not refused — nothing was written and nothing built — and calling them
      * refused tells an author their model rules out a combination it does not.
      *
-     * <p>What refuses every value here is a pattern the record states about one field, which nothing
-     * derives a value from: the field's own type says its values are x's, and the record wants y's.
-     * A rule counting the field would not do — a floor is read now, and the value built for it is
-     * one this model would accept.
+     * <p>What refuses every value here is a rule this compiler cannot take apart, which nothing
+     * derives a value from. Strings clearing both rules of a field exist — a run of y's of even
+     * length is one — so what stops a row is the search rather than the model. A second format
+     * would not do: the formats a reading can take in are met with each other, and a value clearing
+     * all of them is proposed. Nor would a rule counting the field — a floor is read too, and the
+     * value built for it is one this model would accept.
      */
     @Test
     void whatTheSearchDidNotReachIsNotReportedAsRefused() {
@@ -604,7 +606,7 @@ class CompileExampleGenerateTest {
             declarations.append("""
                     data V%1$s = String
                         invariant String.matches("[a-z]+", value)
-                        invariant String.matches("x+", value)
+                        invariant String.matches("(y+)\\\\1", value)
 
                     """.formatted(Character.toUpperCase(c)));
             fields.append(c).append(": V").append(Character.toUpperCase(c)).append(", ");
@@ -1151,6 +1153,11 @@ class CompileExampleGenerateTest {
      * A model with a gap at every point of a border, and a search that composes a row for none of
      * them: the string the rules admit is one the generator's candidates never spell.
      *
+     * <p>A rule this compiler cannot read is what leaves it there. Rules it can read are met with
+     * each other and a value clearing all of them is composed, so a position whose rules are all
+     * readable is one a row is offered at — what is left unspelled is what a reading stopped short
+     * of, and the candidates are then the other rules' alone.
+     *
      * <p>What it is for is the note beside a withheld row. A run asking for no edges withholds the
      * rows at them, so a line saying why one could not be composed is a line about work that run did
      * not ask for — and an author reads it as a report on the rows above it.
@@ -1164,14 +1171,14 @@ class CompileExampleGenerateTest {
             data Tag = Big | Small
 
             data C = String
-                invariant String.length(value) >= 2 && String.matches("[0-9]+", value)
+                invariant String.length(value) >= 2 && String.matches("(a+)\\\\1", value)
 
             behavior label : (c: C, s: Size) -> Tag
 
             let label (c, s) = if s.value >= 5 then Big else Small
 
             example label
-                | "digits" : (C("123"), Size(9)) -> Big
+                | "doubled" : (C("aa"), Size(9)) -> Big
             """;
 
     /**

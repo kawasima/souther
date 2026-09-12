@@ -71,13 +71,13 @@ final class PathEngine {
     /** What each behavior a body may call states about its answer, by the name it is called under. */
     private final Map<ValueName.Behavior, AssumedContract> contracts;
 
-    PathEngine(RuleReadingSource source, ReadingPolicy policy) {
-        this(source, Map.of(), Terms.Of.THE_DISCHARGE_TREE, policy);
+    PathEngine(RuleReadingContext reading) {
+        this(reading, Map.of(), Terms.Of.THE_DISCHARGE_TREE);
     }
 
-    PathEngine(RuleReadingSource source,
-               Map<ValueName.Behavior, AssumedContract> contracts, ReadingPolicy policy) {
-        this(source, contracts, Terms.Of.THE_DISCHARGE_TREE, policy);
+    PathEngine(RuleReadingContext reading,
+               Map<ValueName.Behavior, AssumedContract> contracts) {
+        this(reading, contracts, Terms.Of.THE_DISCHARGE_TREE);
     }
 
     /**
@@ -88,17 +88,16 @@ final class PathEngine {
      * recorded the fold as a shape this compiler has no term for would be answering about the
      * representation under the name of a gap.
      */
-    PathEngine(RuleReadingSource source, Terms.Of reading,
-               ReadingPolicy policy) {
-        this(source, Map.of(), reading, policy);
+    PathEngine(RuleReadingContext ruleReading, Terms.Of reading) {
+        this(ruleReading, Map.of(), reading);
     }
 
-    PathEngine(RuleReadingSource source,
+    PathEngine(RuleReadingContext ruleReading,
                Map<ValueName.Behavior, AssumedContract> contracts,
-               Terms.Of reading, ReadingPolicy policy) {
-        this.symbols = source.symbols();
-        this.clauses = new Clauses(source);
-        this.terms = new Terms(reading, policy, clauses);
+               Terms.Of reading) {
+        this.symbols = ruleReading.source().symbols();
+        this.terms = new Terms(reading, ruleReading);
+        this.clauses = terms.clauses();
         this.predicates = terms.predicates();
         this.guarantees = terms.guarantees();
         this.walk = terms.walk();
