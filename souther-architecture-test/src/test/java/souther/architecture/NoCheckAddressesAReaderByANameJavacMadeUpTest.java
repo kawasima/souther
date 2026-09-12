@@ -76,6 +76,9 @@ class NoCheckAddressesAReaderByANameJavacMadeUpTest {
     /** The method here that is named the way javac names a lambda and is not one. */
     private static final String THE_DECOY = "lambda$thisClass$0";
 
+    /** The method of {@link ReadsOne} a bridge below carries the name of. */
+    private static final String THE_BRIDGED = "lambda$readsOne$0";
+
     @Test
     void nothingAddressesAReaderByAnIdentityJavacMadeUp() {
         Set<String> forbidden = whatJavacNamedTheLambdasHere();
@@ -162,6 +165,34 @@ class NoCheckAddressesAReaderByANameJavacMadeUpTest {
     }
 
     /**
+     * And that a bridge carrying such a name is not in it either.
+     *
+     * <p>The case between the two above. A bridge is written by the compiler and is flagged the way
+     * a lambda's method is, and the name it carries is the name of the method it bridges to — so
+     * where somebody declares one of these names, what the compiler writes beside it carries a name
+     * the source states. Answering by the name would forbid that reader; what answers is the flag
+     * saying which methods are bridges.
+     */
+    @Test
+    void andABridgeCarryingSuchANameIsNotInThatPopulation() {
+        ReadsOne<String> reader = new ReadsWhatItIsGiven();
+        assertEquals(THE_BRIDGED, reader.lambda$readsOne$0(THE_BRIDGED),
+                "the reader the bridge below is written for does not answer with what it was"
+                        + " given, so what this class holds is not what this case reads");
+
+        ClassModel written = EVERYTHING.read(
+                ReadsWhatItIsGiven.class.getName().replace('.', '/'));
+        assertTrue(bridges(written, THE_BRIDGED),
+                "the compiler wrote no bridge of that name here, so there is nothing in this"
+                        + " artifact to have been told from a lambda and the case is unasked");
+
+        assertFalse(whatJavacNamedTheLambdasHere().contains(
+                        ReadsWhatItIsGiven.class.getName().replace('$', '.') + "." + THE_BRIDGED),
+                "a bridge is in the population of what javac made up, so the rule forbids the name"
+                        + " of the method it bridges to — which is a name the source states");
+    }
+
+    /**
      * This class, as the outputs name it.
      *
      * <p>Declared under a name javac would give a lambda, on purpose and as the subject of the case
@@ -213,9 +244,17 @@ class NoCheckAddressesAReaderByANameJavacMadeUpTest {
      * <p><b>Written by javac, which the class file says and the name does not.</b> {@code $} is a
      * letter to Java, so a method the source declares may be called anything a lambda's is called;
      * what makes one a lambda's is that the compiler wrote it, and that is what the synthetic flag
-     * is. The name is asked as well, because the compiler writes other methods nobody declared — a
-     * bridge, an enum's own members — and those are not what a licence would be addressing a reader
-     * by.
+     * is.
+     *
+     * <p><b>And not a bridge, which the flag beside it says.</b> A bridge is written by the
+     * compiler and takes the name of the method it bridges to, so where the source declares one of
+     * these names the bridge carries it too — a name the source states, arriving under the same
+     * flag as a lambda's. The name cannot tell the two apart, because a bridge's name is not the
+     * bridge's; what tells them apart is that the class file says which methods are bridges.
+     *
+     * <p>The name is asked as well, and for what it can answer: which family of what the compiler
+     * writes this is about. An enum's own members and an accessor are named by the compiler too and
+     * are not what a licence would address a reader by.
      *
      * <p>The owner is put together where one is found, because most classes have no lambda at all
      * and spelling a name for them is work this asks of every class of every module.
@@ -224,13 +263,46 @@ class NoCheckAddressesAReaderByANameJavacMadeUpTest {
         String owner = null;
         for (MethodModel method : model.methods()) {
             String name = method.methodName().stringValue();
-            if (name.startsWith(A_LAMBDA) && method.flags().has(AccessFlag.SYNTHETIC)) {
+            if (name.startsWith(A_LAMBDA) && method.flags().has(AccessFlag.SYNTHETIC)
+                    && !method.flags().has(AccessFlag.BRIDGE)) {
                 if (owner == null) {
                     owner = model.thisClass().asInternalName()
                             .replace('/', '.').replace('$', '.');
                 }
                 out.add(owner + "." + name);
             }
+        }
+    }
+
+    /** Whether javac wrote a bridge named {@code named} into {@code model}. */
+    private static boolean bridges(ClassModel model, String named) {
+        for (MethodModel method : model.methods()) {
+            if (method.methodName().stringValue().equals(named)
+                    && method.flags().has(AccessFlag.SYNTHETIC)
+                    && method.flags().has(AccessFlag.BRIDGE)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * A reader named the way javac names a lambda, declared over what it reads.
+     *
+     * <p>Declared here as the subject of the case above, and implemented for one type just below:
+     * what the compiler writes into an implementation of this is a second method of the same name,
+     * taking what the parameter erases to. Nobody wrote that one, and the name it carries is the
+     * name of the one somebody did.
+     */
+    private interface ReadsOne<T> {
+        T lambda$readsOne$0(T said);
+    }
+
+    /** The implementation the bridge is written into. */
+    private static final class ReadsWhatItIsGiven implements ReadsOne<String> {
+        @Override
+        public String lambda$readsOne$0(String said) {
+            return said;
         }
     }
 
