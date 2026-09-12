@@ -17,7 +17,6 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Two restrictions coming to the same values are one question, whichever of them was written down.
@@ -52,9 +51,6 @@ class OneEffectiveDomainIsOneAnswerHoweverItWasRestrictedTest {
     /** The strings strictly between `JP` and `JQ`, said as a run of the order. */
     private static final OrderedInterval BETWEEN = new OrderedInterval(
             Endpoint.exclusive(Text.of("JP")), Endpoint.exclusive(Text.of("JQ")));
-
-    /** The whole of the order, said as a run. */
-    private static final OrderedInterval EVERYTHING = new OrderedInterval(null, null);
 
     /** The strings `JP` starts, said as a set. */
     private static final ValueSet STARTING_WITH_JP = matching("JP[\\s\\S]*");
@@ -95,28 +91,34 @@ class OneEffectiveDomainIsOneAnswerHoweverItWasRestrictedTest {
     }
 
     /**
-     * The two ways of saying it reach the same strings, which is what makes them one question.
+     * The two ways of saying it hold the same strings, which is what makes them one question.
      *
-     * <p>Measured rather than argued. A test whose two cases turned out to be about two sets of
-     * values would be asking for the same answer to two questions.
+     * <p>Membership compared against membership, and not the two sides put together and refused. The
+     * run stops short of `JP` and the language holds it, so a test asking only that no string is in
+     * both would pass on the strength of `JP` being in one — which is what a domain differing looks
+     * like, said as though it were the domains agreeing.
+     *
+     * <p>The comparison is between the run alone and the run met with the language, which is how the
+     * two arrive: a rule written as an ordering comparison leaves the position every string and stops
+     * them on the ordered side, and one written as a prefix leaves the strings and is stopped there
+     * too. The run lies inside the language, so the two come to one set.
      */
     @Test
-    void theTwoRestrictionsReachTheSameStrings() {
-        for (String each : List.of("JPa", "JP0", "JPzzz")) {
-            assertTrue(BETWEEN.admits(Text.of(each)) && STARTING_WITH_JP.has(new Value.Text(each)),
-                    () -> each + " is in both");
-        }
-        for (String each : List.of("JP", "JQ", "JR", "J", "")) {
-            assertTrue(!(BETWEEN.admits(Text.of(each))
-                            && STARTING_WITH_JP.has(new Value.Text(each))),
-                    () -> each + " is in neither, once each side is met with the other");
+    void theTwoRestrictionsHoldTheSameStrings() {
+        for (String each : List.of("JPa", "JP0", "JPzzz", "JP", "JQ", "JR", "J", "", "A")) {
+            boolean fromTheRun = BETWEEN.admits(Text.of(each));
+            boolean fromTheLanguage = BETWEEN.admits(Text.of(each))
+                    && STARTING_WITH_JP.has(new Value.Text(each));
+
+            assertEquals(fromTheRun, fromTheLanguage,
+                    () -> "`" + each + "` is in one domain exactly when it is in the other");
         }
     }
 
-    /** A set naming a language, met with the whole order: a string is written out. */
+    /** A set naming a language, met with that run: a string is written out. */
     @Test
     void aSetThatNamesTheStringsIsAskedAndAnswers() {
-        assertInstanceOf(Answer.Wrote.class, asked(STARTING_WITH_JP, EVERYTHING),
+        assertInstanceOf(Answer.Wrote.class, asked(STARTING_WITH_JP, BETWEEN),
                 "the language holds strings a source can carry, and one of them is written out");
     }
 
