@@ -326,6 +326,12 @@ public final class UnreadComparison {
             // position, which is the same rule about a value made from one with a layer of
             // arithmetic over it.
             case ValueOrigin.Composed<K> composed -> composed.madeFrom() != null;
+            // A construction is not an operation, whatever it was given. The word this decides is
+            // about a value a closure of an operation made of what stands at a position, which is
+            // followed back by reading that operation backwards; a reader that cannot take a
+            // construction as a quantity has not got that to do. Reading what it was built with is
+            // a separate ability, and the side that has it is what a rule is filed from.
+            case ValueOrigin.Constructed<K> _ -> false;
             // Every value it could be, and not any of them. The word this picks promises the
             // position was found and only following the operation back is missing; where one arm of
             // a choice is a position's own values or a literal, that promise is false and what an

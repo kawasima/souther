@@ -26,6 +26,7 @@ import souther.compiler.values.Sameness;
 import souther.compiler.types.BindingId;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -438,12 +439,16 @@ public final class BehaviorSetStatements {
             // from none this can name, and a path that comes to no value came from nowhere at all.
             case ValueOrigin.Written<TermPath> _, ValueOrigin.Unnameable<TermPath> _,
                  ValueOrigin.NoValue<TermPath> _ -> Set.of();
+            // A constructed value was made out of everything the construction was given, each of
+            // them. A field taken back out of one is that field's own value and reaches here as
+            // whatever it was given, so this arm answers about the construction itself.
+            case ValueOrigin.Constructed<TermPath> it -> across(it.fields().values());
             case ValueOrigin.Composed<TermPath> _ -> Set.of();
         };
     }
 
     /** The positions everything in {@code of} came from, in the order they were met. */
-    private static Set<TermPath> across(List<ValueOrigin<TermPath>> of) {
+    private static Set<TermPath> across(Collection<ValueOrigin<TermPath>> of) {
         Set<TermPath> out = new LinkedHashSet<>();
         for (ValueOrigin<TermPath> each : of) {
             out.addAll(positionsItCameFrom(each));
