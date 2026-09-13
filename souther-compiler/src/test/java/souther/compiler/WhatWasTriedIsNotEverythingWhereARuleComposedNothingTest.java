@@ -129,6 +129,82 @@ class WhatWasTriedIsNotEverythingWhereARuleComposedNothingTest {
     }
 
     /**
+     * A figure being reached does not answer for a rule that composed nothing, so a search short
+     * both ways says both.
+     *
+     * <p>The two are reached by different mechanisms and an author acts on each: one raises a
+     * figure, the other reads a rule. Reported as the figure alone, they raise it and meet a block
+     * whose values still come from the rules beside the one that gave none.
+     */
+    @Test
+    void aFigureReachedBesideARuleThatComposedNothingSaysBoth() {
+        String model = """
+                module example.offer
+
+                data Code = String
+                    invariant shape = %s
+
+                data Long = String
+                    invariant huge = String.length(value) >= 5000
+
+                data Flag = Yes | No
+
+                data T = { flag: Flag, code: Code, long: Long }
+
+                data Ok
+
+                behavior look : (t: T) -> Ok
+
+                let look (t) = Ok
+                """.formatted(OUTSIDE_THE_SUBSET);
+        Compilation compilation = Compilation.ofSource(model, "Main");
+        compilation.measure(Adequacy.Asked.fullReport());
+        compilation.answerEverything();
+        String block = GeneratedRows.of(compilation, "example.offer", "look",
+                SourceRendering.namedByIdentity(compilation.texts())).text();
+
+        // The row whose search met the figure at one position and the unread rule at another. What
+        // it may not do is name the figure and go quiet about the rule.
+        assertTrue(block.contains("`t.code` holds a rule this compiler could not read"),
+                () -> "a figure at `t.long` does not answer for the rule at `t.code`:\n" + block);
+    }
+
+    /**
+     * And a point of a border is told the same thing, because it is the same block and the same
+     * author reading it.
+     */
+    @Test
+    void aPointOfABorderSaysItToo() {
+        String model = """
+                module example.offer
+
+                data Amount = Int
+                    invariant range = value >= 0 && value <= 100
+
+                data Code = String
+                    invariant shape = %s
+
+                data P = { amount: Amount, code: Code }
+
+                data Ok
+
+                behavior place : (p: P) -> Ok
+
+                let place (p) = Ok
+                """.formatted(OUTSIDE_THE_SUBSET);
+        Compilation compilation = Compilation.ofSource(model, "Main");
+        compilation.measure(Adequacy.Asked.fullReport());
+        compilation.answerEverything();
+        String block = GeneratedRows.of(compilation, "example.offer", "place",
+                SourceRendering.namedByIdentity(compilation.texts())).text();
+
+        assertTrue(block.contains("no row for `p.amount = 0`"), block);
+        assertTrue(block.contains("`p.code` holds a rule this compiler could not read"), block);
+        assertFalse(block.contains("every value tried was refused at construction, which does not"
+                + " make the combination impossible"), block);
+    }
+
+    /**
      * And a rule that composed nothing is not news where a row was written all the same: the rules
      * beside it composed a value, and the decoder — which reads every rule, including the one this
      * compiler did not — took it.
