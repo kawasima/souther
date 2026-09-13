@@ -35,12 +35,13 @@ class WhatWasTriedIsNotEverythingWhereARuleComposedNothingTest {
     /**
      * One it enters and cannot build a machine for within what composing a value may spend.
      *
-     * <p>A pattern whose machine is large rather than one whose building is long: what is being
-     * held here is the sentence a run gets when the allowance refuses it, and a fixture that spends
-     * the whole allowance to arrive at the same sentence costs every run of this suite the spending.
+     * <p>A pattern that says its size before anything is built, rather than one that has to be
+     * built to find out. What is being held here is the sentence a run gets when the allowance
+     * refuses a machine, and a fixture that spends the allowance to arrive at it charges every run
+     * of this suite the spending.
      */
     private static final String MORE_THAN_A_WITNESS_MAY_SPEND =
-            "String.matches(\".*a.{20}\", value)";
+            "String.matches(\"a{60000}\", value)";
 
     private static String blockFor(String rule) {
         String model = """

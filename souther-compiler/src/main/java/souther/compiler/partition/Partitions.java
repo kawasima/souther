@@ -2284,8 +2284,15 @@ public final class Partitions {
     private static CandidateStrings stringsTheRulesReadAdmit(TypeView view,
                                                              RuleReadingContext reading,
                                                              Meter meter) {
-        return admittedBy(patternsStatedOn(view, reading.source()),
-                DeclaredBounds.countsHeld(view, reading, null), meter);
+        PatternsStated stated = patternsStatedOn(view, reading.source());
+        // The count narrows what was said about the strings and is not read where nothing was said:
+        // there is nothing for it to narrow, and what one more value of such a position is is a
+        // character on the end of the last. Read before the patterns are looked at, every position
+        // whose rules say nothing about its strings pays for a reading of its counts.
+        if (stated.read().isEmpty()) {
+            return new CandidateStrings(null, new StringOfferShortfall(stated.unread(), List.of()));
+        }
+        return admittedBy(stated, DeclaredBounds.countsHeld(view, reading, null), meter);
     }
 
     /**
