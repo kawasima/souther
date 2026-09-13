@@ -218,7 +218,8 @@ class APlanSaysWhichNarrowingADemandUnderASumIsOwedTest {
         TermPath bag = TermPath.of("query").then("item").then("bag");
 
         ConstructionPlan.Result asked = ConstructionPlan.of(typeOf(BESIDE_A_LIST),
-                TermPath.of("query"), symbolsOf(BESIDE_A_LIST),
+                TermPath.of("query"), ScopedDeclarations.wrapsOf(symbolsOf(BESIDE_A_LIST)),
+                symbolsOf(BESIDE_A_LIST),
                 ScopedDeclarations.of(symbolsOf(BESIDE_A_LIST)),
                 Set.of(TermPath.of("query").then("item").then("method").then("amount"),
                         bag.element()),
@@ -243,7 +244,8 @@ class APlanSaysWhichNarrowingADemandUnderASumIsOwedTest {
     @Test
     void aNarrowingOwedIsWhatComesBackWhereNothingIsRefused() {
         ConstructionPlan.Result asked = ConstructionPlan.of(typeOf(BESIDE_A_LIST),
-                TermPath.of("query"), symbolsOf(BESIDE_A_LIST),
+                TermPath.of("query"), ScopedDeclarations.wrapsOf(symbolsOf(BESIDE_A_LIST)),
+                symbolsOf(BESIDE_A_LIST),
                 ScopedDeclarations.of(symbolsOf(BESIDE_A_LIST)),
                 Set.of(TermPath.of("query").then("item").then("method").then("amount"),
                         TermPath.of("query").then("item").then("bag").element()),
@@ -267,7 +269,8 @@ class APlanSaysWhichNarrowingADemandUnderASumIsOwedTest {
     }
 
     private static ConstructionPlan.Result planningOf(String source, Set<TermPath> decided) {
-        return ConstructionPlan.of(typeOf(source), TermPath.of("query"), symbolsOf(source),
+        return ConstructionPlan.of(typeOf(source), TermPath.of("query"),
+                ScopedDeclarations.wrapsOf(symbolsOf(source)), symbolsOf(source),
                 ScopedDeclarations.of(symbolsOf(source)), decided, Requirements.NONE, ANY);
     }
 

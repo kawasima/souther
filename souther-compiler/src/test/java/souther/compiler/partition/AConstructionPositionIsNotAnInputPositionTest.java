@@ -97,7 +97,7 @@ class AConstructionPositionIsNotAnInputPositionTest {
      *  requirements. */
     private static ConstructionPlan plan(Read read, Requirements required) {
         ConstructionPlan.Result planned = ConstructionPlan.of(read.only().type(),
-                TermPath.of(read.only().name()), read.rules().symbols(),
+                TermPath.of(read.only().name()), read.rules().inners(), read.rules().symbols(),
                 read.rules().published(), Set.of(),
                 required,
                 ANY);

@@ -552,15 +552,6 @@ final class ConstructionPlan {
         }
     }
 
-    /** The same, for a caller that has not been handed what the declarations wrap — read off
-     *  {@code symbols} instead. */
-    static Result of(Type declared, TermPath at, Symbols symbols,
-                     PublishedDeclarations published, Set<TermPath> decided,
-                     Requirements additional, HowManyItHolds howMany) {
-        return of(declared, at, NewtypeInners.asWritten(symbols), symbols, published, decided,
-                additional, howMany);
-    }
-
     private static NodeResult node(Type declared, TermPath at, NewtypeInners inners,
                                    Symbols symbols,
                                    PublishedDeclarations published, int depth,

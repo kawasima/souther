@@ -159,6 +159,7 @@ class EveryBudgetOfThisCompilerIsReadWhereItIsDeclaredToBeTest {
             Map.entry("souther.compiler.partition.ConstructionPlan#node("
                             + "Lsouther/compiler/types/Type;"
                             + "Lsouther/compiler/inputs/TermPath;"
+                            + "Lsouther/compiler/check/NewtypeInners;"
                             + "Lsouther/compiler/check/Symbols;"
                             + "Lsouther/compiler/check/PublishedDeclarations;I"
                             + "Ljava/util/Set;"

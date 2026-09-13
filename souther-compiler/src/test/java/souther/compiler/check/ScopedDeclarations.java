@@ -31,6 +31,13 @@ public final class ScopedDeclarations {
         };
     }
 
+    /** What each of {@code symbols}'s declarations wears one of, read off the same scope. A
+     *  compilation answers this from the declaration once its names resolve; a test holding a scope
+     *  of its own answers it from the declaration there. */
+    public static NewtypeInners wrapsOf(Symbols symbols) {
+        return NewtypeInners.asWritten(symbols);
+    }
+
     /** What {@code symbols} declares, as the readers of a published declaration ask for it. */
     public static PublishedDeclarations of(Symbols symbols) {
         RuleReadingSource source = RuleReadings.ofNoClauseFiled(symbols);
