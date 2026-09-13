@@ -404,12 +404,28 @@ public final class Shapes {
     }
 
     /**
-     * What each field a declaration reaches holds, its spreads walked through.
+     * What each field a declaration reaches holds: the name of a field to the type it holds, its
+     * spreads walked through.
      *
-     * <p>What a value of the type is made of, and nothing about the declarations the walk passed
-     * through: no position, no spelling, and no report about either. A reader asking this depends
-     * on what those declarations hold and on nothing else about them, so a declaration moved and
-     * not otherwise touched leaves this answer equal and nothing that read it is looked at again.
+     * <p>A mapping and not a sequence. <b>The order this iterates in is the walk's and is no part
+     * of the answer</b>, so nothing may read it as the order a value lays its fields out in or as
+     * the order a declaration writes them. What decides that is not a matter of taste: two answers
+     * of this that hold the same names for the same types are equal, so a declaration whose fields
+     * are written in another order and changed in no other way leaves this answer equal and wakes
+     * nothing that read it. A reader taking the order off it would be reading something the store
+     * does not watch, and would go stale with nothing to say so.
+     *
+     * <p>A reader that needs the order asks something that answers it. {@link #FieldBindingsOf}
+     * numbers a declaration's own fields as it writes them, and what a value is laid out as is
+     * {@code ValueShape}'s — which reads the order off the walk that builds it and is not this.
+     *
+     * <p>Which is what keeps this answer as narrow as the question it is for. What type a field
+     * holds and what order the fields come in move at different times: put together, every reader
+     * that only wanted the first would be worked out again by an edit that only changed the second.
+     *
+     * <p>Nothing else about the declarations the walk passed through, either: no position, no
+     * spelling, and no report about any of it. So a declaration moved and not otherwise touched
+     * leaves this equal.
      *
      * <p>Absent where nothing declares the name, and empty where what it declares reaches no field
      * — a sum, a unit data, or a spread of something that is not a product. The difference between
@@ -431,7 +447,8 @@ public final class Shapes {
             if (declared instanceof Hir.Data data) {
                 walk(db, data, types);
             }
-            // In the order a value lays its fields out, which is what the walk reaches them in.
+            // Kept in a map that iterates, because the walk fills one — and not because the order
+            // it iterates in says anything. What this answers is which type stands at each name.
             return Answer.of(Collections.unmodifiableMap(types));
         }
 
@@ -439,9 +456,10 @@ public final class Shapes {
          * What {@code data} spreads, then its own fields — the walk {@code TypeOps.fieldTypes}
          * makes, reading each declaration it reaches off the store.
          *
-         * <p>Carried over as it stands: which field a name holds where two of them carry one
-         * spelling is decided by the order this goes in, and an edit to that order here would
-         * change what a field means under cover of a change to where the answer comes from.
+         * <p>Carried over as it stands. Which order the walk goes in decides which type a name
+         * holds where two fields carry one spelling, and that is content: an edit to the order
+         * here would change what a field means under cover of a change to where the answer comes
+         * from. It is not the order the answer iterates in, which nothing may read.
          */
         private static void walk(Db db, Hir.Data data, Map<String, Type> out) {
             for (Hir.Name include : data.includes()) {

@@ -7,12 +7,18 @@ import souther.compiler.types.TypeSymbol;
 import java.util.Map;
 
 /**
- * What each field a declaration reaches holds — its own fields and the ones its spreads bring in,
- * in the order a value lays them out.
+ * What each field a declaration reaches holds — the name of a field to the type it holds, over its
+ * own fields and the ones its spreads bring in.
  *
  * <p>The closure and not one declaration's fields. A spread brings a field in with the type it was
  * written with, and a reader working that out for itself would be walking the spread declarations
  * again; so the walk is made once and what it came to is the answer.
+ *
+ * <p><b>A mapping and not a sequence.</b> The order this iterates in is the walk's and is no part
+ * of what it answers, so nothing may take it as the order a value lays its fields out in or as the
+ * order a declaration writes them. A reader that needs the order asks something that answers it —
+ * {@link FieldBindings} numbers a declaration's own fields as it writes them, and how a value is
+ * laid out is what builds its shape.
  *
  * <p><b>Types and nothing else.</b> Not where a field is written, not which declaration supplied
  * it, not whether two of them collided. Those are questions about the text of the declarations the
@@ -35,6 +41,8 @@ public interface EffectiveFieldTypes {
      *
      * <p>Asked of the declaration as the reader reached it, which is the name its own clauses were
      * written under.
+     *
+     * <p>Read by name. What comes back iterates, and in what order it does is not answered here.
      */
     Map<String, Type> of(TypeSymbol.AtModule declared);
 

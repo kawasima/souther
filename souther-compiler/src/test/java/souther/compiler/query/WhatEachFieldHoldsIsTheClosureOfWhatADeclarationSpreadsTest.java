@@ -1,6 +1,7 @@
 package souther.compiler.query;
 
 import souther.compiler.meta.ModulePath;
+import souther.compiler.types.BindingId;
 import souther.compiler.types.Type;
 import souther.compiler.types.TypeKey;
 
@@ -8,7 +9,6 @@ import org.junit.jupiter.api.Test;
 
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -28,6 +28,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * <p>What is held beside the closure itself is what it is read off. A field's type moves this and a
  * declaration's place does not, which is the whole of why a module that reads another's fields is
  * left alone by an edit that only moves them.
+ *
+ * <p>And what it answers is a name to a type, not a sequence of fields. Nothing here holds the
+ * order the answer iterates in, because the answer does not state one: two of these that hold the
+ * same names for the same types are equal, so a reader that took the order off one would be
+ * reading what no edit to that order will ever wake it about. Held below as the edit that does not
+ * reach a reader rather than left unsaid, so the day somebody wants the order they find out here
+ * that this is not where it is answered.
  */
 class WhatEachFieldHoldsIsTheClosureOfWhatADeclarationSpreadsTest {
 
@@ -36,6 +43,20 @@ class WhatEachFieldHoldsIsTheClosureOfWhatADeclarationSpreadsTest {
     private static final TypeKey CENTS = new TypeKey("shop.prices", "Cents");
     private static final TypeKey PICKED = new TypeKey("shop.prices", "Picked");
     private static final TypeKey NOWHERE = new TypeKey("shop.prices", "Nowhere");
+    private static final TypeKey PAIR = new TypeKey("shop.prices", "Pair");
+
+    /** Two fields of one declaration, and the same two written the other way round. */
+    private static final String TWO_OF_ITS_OWN = """
+            module shop.prices exposing ( Pair )
+
+            data Pair = { qty: Int, note: String }
+            """;
+
+    private static final String TWO_OF_ITS_OWN_SWAPPED = """
+            module shop.prices exposing ( Pair )
+
+            data Pair = { note: String, qty: Int }
+            """;
 
     private static final String SPREADING = """
             module shop.prices exposing ( Line )
@@ -86,15 +107,37 @@ class WhatEachFieldHoldsIsTheClosureOfWhatADeclarationSpreadsTest {
                 "together with everything reached on the way and the declaration's own");
     }
 
-    /** Listed in the order a value lays them out: what the spreads brought in, then its own. */
+    /**
+     * The order the answer iterates in is no part of it, and writing the fields in another order
+     * reaches nothing that read it.
+     *
+     * <p>What this answers is which type stands at each name. Two answers holding the same names
+     * for the same types are equal, so a declaration whose fields are written the other way round
+     * and changed in no other way leaves every reader of this alone.
+     *
+     * <p>Held because the answer is carried in something that iterates, which invites a reader to
+     * take the order off it. Such a reader would be reading what the store does not watch: the
+     * edit below would go unnoticed by it, with nothing to say so. The order a value is laid out
+     * in is a different question and is asked where it is answered.
+     */
     @Test
-    void theyAreListedInTheOrderAValueLaysThemOut() {
-        Compilation c = compiling(SPREADING);
+    void writingTheFieldsInAnotherOrderIsNotAChangeToWhatTheyHold() {
+        Compilation c = compiling(TWO_OF_ITS_OWN);
+        Map<String, Type> before = fields(c, PAIR);
+        assertEquals(Set.of("qty", "note"), before.keySet(), "the names it answers about");
+        Map<String, BindingId> bound = bindings(c, PAIR);
 
-        assertEquals(List.of("amount", "currency", "qty"),
-                List.copyOf(fields(c, LINE).keySet()),
-                "the deepest spread first and the declaration's own last, which is the order the"
-                        + " walk reaches them in and what a reader of the list is handed");
+        edit(c, TWO_OF_ITS_OWN_SWAPPED);
+
+        // The control, and the reason this is not an edit that failed to arrive: the same two
+        // fields written the other way round are numbered the other way round, which the answer
+        // about bindings says because a field's number is what that answer is made of.
+        assertNotEquals(bound, bindings(c, PAIR),
+                "the edit reached the declaration: which field of its owner each one is moved");
+
+        assertEquals(before, fields(c, PAIR),
+                "the same names hold the same types, so this is the same answer — and an edit that"
+                        + " only moves a field among its siblings wakes nothing that read it");
     }
 
     /** Retyping a field the spread brings in is what moves this. */
@@ -120,8 +163,6 @@ class WhatEachFieldHoldsIsTheClosureOfWhatADeclarationSpreadsTest {
 
         assertEquals(before, fields(c, LINE),
                 "where a declaration stands is not what its fields hold");
-        assertEquals(List.copyOf(before.keySet()), List.copyOf(fields(c, LINE).keySet()),
-                "nor what order they are listed in");
     }
 
     /** A declaration that reaches no field answers with none, and a name nothing declares answers
@@ -171,6 +212,13 @@ class WhatEachFieldHoldsIsTheClosureOfWhatADeclarationSpreadsTest {
                 c.db().dependenciesOf(new Shapes.EffectiveFieldTypesOf(CENTS)).stream()
                         .map(Object::toString)
                         .collect(Collectors.toCollection(LinkedHashSet::new)));
+    }
+
+    /** Which binding each field of {@code named} is — the answer beside this one, which a field's
+     *  order does move. */
+    private static Map<String, BindingId> bindings(Compilation c, TypeKey named) {
+        Answer<Map<String, BindingId>> answer = c.db().ask(new Shapes.FieldBindingsOf(named));
+        return answer.present() ? answer.value() : Map.of();
     }
 
     private static Map<String, Type> fields(Compilation c, TypeKey named) {
