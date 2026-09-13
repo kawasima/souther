@@ -537,7 +537,10 @@ public sealed interface Type permits Type.Leaf, Type.Compound {
                     : showAs(o.element(), naming, true) + "?";
             case MapOf m -> "Map<" + showAs(m.key(), naming, true) + ", "
                     + showAs(m.value(), naming, true) + ">";
-            case Union u -> u.members().stream().map(naming)
+            // A set, so what is shown is settled here and not by whoever built it: two writings of
+            // one union are one value, and a renderer walking the members would be showing which
+            // container the value was made in.
+            case Union u -> CanonicalNameOrder.shown(u.members()).stream().map(naming)
                     .collect(java.util.stream.Collectors.joining(" | "));
             case TupleOf tu -> tu.elements().stream().map(e -> showAs(e, naming, true))
                     .collect(java.util.stream.Collectors.joining(", ", "(", ")"));

@@ -143,7 +143,9 @@ class AJoinFailureNamesTheOperandItRefusedTest {
         Diagnostic report = only(source);
 
         assertEquals("1", underlined(source, report));
-        assertTrue(values(report).contains("Red | Blue"), values(report).toString());
+        // The join is a type, and a union is a set of names: the arms it was gathered over are not
+        // on it, so what is named is the members in the order names are shown in.
+        assertTrue(values(report).contains("Blue | Red"), values(report).toString());
     }
 
     /**
@@ -188,7 +190,9 @@ class AJoinFailureNamesTheOperandItRefusedTest {
 
         assertEquals("| Guest -> 1", line(source, report).trim());
         assertEquals(List.of(), report.secondary());
-        assertTrue(values(report).contains("Red | Blue"), values(report).toString());
+        // The join is a type, and a union is a set of names: the arms it was gathered over are not
+        // on it, so what is named is the members in the order names are shown in.
+        assertTrue(values(report).contains("Blue | Red"), values(report).toString());
     }
 
     private static final String BOUNDED = """
