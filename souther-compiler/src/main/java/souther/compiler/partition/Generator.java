@@ -654,6 +654,11 @@ public final class Generator {
 
         public UnresolvedCombination {
             classes = List.copyOf(classes);
+            // Copied like the classes beside it, and for the reason a record copies anything: two
+            // of these are equal by what they hold, so a caller keeping the map it handed in is a
+            // caller who can change what one of them is after it was made.
+            alsoShort = java.util.Collections.unmodifiableSequencedMap(
+                    new LinkedHashMap<>(alsoShort));
             said = said == null ? Optional.empty() : said;
         }
 

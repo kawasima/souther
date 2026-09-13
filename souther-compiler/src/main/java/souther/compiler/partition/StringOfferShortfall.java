@@ -63,30 +63,78 @@ public record StringOfferShortfall(List<NotOffered> these) {
     /**
      * One thing that gave the offer no value, and what stopped it.
      *
-     * <p>{@code part} is the rule it was, or nothing where what gave nothing was the meeting of the
-     * rules rather than any one of them. Nobody wrote that meeting, so an author sent to a rule for
-     * it would be sent to one that reads perfectly.
+     * <p><b>The subject is what the fact is about and not what was in hand when it happened.</b>
+     * A machine larger than a machine may be is about whatever was being built; an allowance
+     * already spent is about everything this question has built, and the construction that met the
+     * end of it is the one that happened to be next. Named for that one, an author is sent to a
+     * rule which — asked first — would have been built, and which the offer may already carry a
+     * value from.
+     *
+     * <p>Which is a rule of the pairing and not of a caller's care, so it is kept here: a subject
+     * naming a rule or their meeting cannot be built beside an allowance that ran out.
      */
-    public record NotOffered(PartId<RuleRef.Invariant> part, Why why) {
+    public record NotOffered(Subject of, Why why) {
 
         public NotOffered {
-            if (why == null) {
-                throw new IllegalArgumentException("something that gave nothing says what stopped");
+            if (of == null || why == null) {
+                throw new IllegalArgumentException("something that gave nothing is something, and"
+                        + " says what stopped it");
+            }
+            if (why instanceof Why.TooCostly it && it.stopped() == Meter.Stopped.THE_ANSWER
+                    && !(of instanceof Subject.ComposingAValue)) {
+                throw new IllegalArgumentException("an allowance spent is what composing a value"
+                        + " came to and not what one rule of it is: " + of);
             }
         }
 
-        /** One about a rule the author wrote. */
-        static NotOffered ofARule(PartId<RuleRef.Invariant> part, Why why) {
-            if (part == null) {
-                throw new IllegalArgumentException("a rule that gave nothing is some rule");
-            }
-            return new NotOffered(part, why);
+        /**
+         * One where {@code building} was being made and {@code meter} refused it.
+         *
+         * <p>The one place the subject is chosen, because the choice is the rule above: read at
+         * each construction, the two limits would be told apart wherever somebody remembered to.
+         */
+        static NotOffered whileMaking(Subject building, Meter meter) {
+            Meter.Stopped stopped = meter.stoppedBy();
+            Why why = new Why.TooCostly(stopped);
+            return stopped == Meter.Stopped.THE_ANSWER
+                    ? new NotOffered(new Subject.ComposingAValue(), why)
+                    : new NotOffered(building, why);
         }
 
-        /** One about what the rules come to together, which is nobody's rule. */
-        static NotOffered ofTheirMeeting(Why why) {
-            return new NotOffered(null, why);
+        /** One about a rule this compiler did not read, which is that rule's own answer. */
+        static NotOffered ofARuleNotRead(PartId<RuleRef.Invariant> part,
+                                         souther.compiler.inputs.BlockReason.RuleReadingStopped
+                                                 why) {
+            return new NotOffered(new Subject.ARule(part), new Why.NotRead(why));
         }
+    }
+
+    /**
+     * What gave the offer no value.
+     *
+     * <p>Three, and an author does something different about each. A rule is theirs to rewrite;
+     * what two rules come to between them is nobody's to rewrite and is a size this compiler chose
+     * not to build; and the allowance for composing a value is a figure, about the whole question
+     * and about no rule of it.
+     */
+    public sealed interface Subject {
+
+        /** A rule the author wrote, by the identity a report names rules with. */
+        record ARule(PartId<RuleRef.Invariant> part) implements Subject {
+
+            public ARule {
+                if (part == null) {
+                    throw new IllegalArgumentException("a rule that gave nothing is some rule");
+                }
+            }
+        }
+
+        /** What the rules about the strings come to met with each other, which nobody wrote. */
+        record WhatTheyLeaveTogether() implements Subject {}
+
+        /** Working out a value to write into a row, which is the whole of what the allowance is
+         *  granted for. */
+        record ComposingAValue() implements Subject {}
     }
 
     /**

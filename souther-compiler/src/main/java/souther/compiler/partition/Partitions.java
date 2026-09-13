@@ -2355,15 +2355,13 @@ public final class Partitions {
                     case StringPredicates.Reading.Accepting it ->
                             read.add(new Stated(each.part(), it.accepts()));
                     case StringPredicates.Reading.PatternNotRead it ->
-                            unread.add(StringOfferShortfall.NotOffered.ofARule(each.part(),
-                                    new StringOfferShortfall.Why.NotRead(
-                                            BlockReason.forAPatternNotRead(it.why()))));
+                            unread.add(StringOfferShortfall.NotOffered.ofARuleNotRead(
+                                    each.part(), BlockReason.forAPatternNotRead(it.why())));
                     // A rule whose text this compiler did not work out is a rule it did not read,
                     // the same as one written in a construct the subset does not hold.
                     case StringPredicates.Reading.WrittenArgumentNotKnown _ ->
-                            unread.add(StringOfferShortfall.NotOffered.ofARule(each.part(),
-                                    new StringOfferShortfall.Why.NotRead(
-                                            new BlockReason.UnreadValueRule())));
+                            unread.add(StringOfferShortfall.NotOffered.ofARuleNotRead(
+                                    each.part(), new BlockReason.UnreadValueRule()));
                     // No predicate over strings at all, which is nothing about this question.
                     case null -> { }
                 }
@@ -2437,14 +2435,16 @@ public final class Partitions {
             Language one = languageOf(each.accepts(), meter);
             if (one == null) {
                 return new CandidateStrings(null, shortfall.and(StringOfferShortfall.of(
-                        StringOfferShortfall.NotOffered.ofARule(each.part(), whatItSpent(meter)))));
+                        StringOfferShortfall.NotOffered.whileMaking(
+                                new StringOfferShortfall.Subject.ARule(each.part()), meter))));
             }
             // And what it comes to with the rules before it, which is nobody's rule: an author sent
             // to either of them would be sent to one this compiler read from end to end.
             Language both = all == null ? one : all.and(one, meter);
             if (both == null) {
                 return new CandidateStrings(null, shortfall.and(StringOfferShortfall.of(
-                        StringOfferShortfall.NotOffered.ofTheirMeeting(whatItSpent(meter)))));
+                        StringOfferShortfall.NotOffered.whileMaking(
+                                new StringOfferShortfall.Subject.WhatTheyLeaveTogether(), meter))));
             }
             all = both;
         }
@@ -2483,7 +2483,8 @@ public final class Partitions {
         // The count met with the strings, which is again nobody's one rule.
         return within == null
                 ? new CandidateStrings(null, shortfall.and(StringOfferShortfall.of(
-                        StringOfferShortfall.NotOffered.ofTheirMeeting(whatItSpent(meter)))))
+                        StringOfferShortfall.NotOffered.whileMaking(
+                                new StringOfferShortfall.Subject.WhatTheyLeaveTogether(), meter))))
                 : new CandidateStrings(within, shortfall);
     }
 

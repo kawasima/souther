@@ -802,14 +802,20 @@ public final class GeneratedRows {
     private static String gaveNothing(StringOfferShortfall.NotOffered each, TermPath at,
                                       SourceRendering rendering,
                                       PublishedRuleHandle.WhereARuleIs places) {
-        String subject = each.part() == null
-                ? "what the rules about `" + at + "` leave between them"
-                : RuleHandleProse.said(PublishedRuleHandle.of(
-                        new RuleCitation.Named(each.part().rule()), places), rendering, null)
-                        + " at `" + at + "`";
-        // Named by the rule and never by the position alone: a position carrying two rules about
-        // its strings, one of them this compiler cannot read, is one an author fixes by rewriting
-        // that one.
+        // Named by the rule where a rule is what it was about, and never by the position alone: a
+        // position carrying two rules about its strings, one of them this compiler cannot read, is
+        // one an author fixes by rewriting that one. And never by a rule where what it was about is
+        // not one, which is what sends an author to a rule that would have built.
+        String subject = switch (each.of()) {
+            case StringOfferShortfall.Subject.ARule it ->
+                    RuleHandleProse.said(PublishedRuleHandle.of(
+                            new RuleCitation.Named(it.part().rule()), places), rendering, null)
+                            + " at `" + at + "`";
+            case StringOfferShortfall.Subject.WhatTheyLeaveTogether _ ->
+                    "what the rules about `" + at + "` leave between them";
+            case StringOfferShortfall.Subject.ComposingAValue _ ->
+                    "composing a value for `" + at + "`";
+        };
         return subject + " " + becauseOf(each.why());
     }
 
