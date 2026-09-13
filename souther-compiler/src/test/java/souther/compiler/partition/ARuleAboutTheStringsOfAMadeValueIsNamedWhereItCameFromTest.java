@@ -559,17 +559,19 @@ class ARuleAboutTheStringsOfAMadeValueIsNamedWhereItCameFromTest {
      */
     @Test
     void aPredicateOverAProjectedConstructionIsMeasuredAtItsSourcePosition() {
-        assertEquals(List.of("a"), measured(A_CONSTRUCTION_AND_NOTHING_ELSE).axes().stream()
-                        .map(PartitionEvidence.AxisCoverage::path).toList(),
+        PartitionEvidence alone = measured(A_CONSTRUCTION_AND_NOTHING_ELSE);
+        PartitionEvidence oneOfTwo = measured(ONE_FIELD_OF_TWO);
+
+        assertEquals(List.of("a"),
+                alone.axes().stream().map(PartitionEvidence.AxisCoverage::path).toList(),
                 () -> "a line falls where the construction was given the string: "
-                        + measured(A_CONSTRUCTION_AND_NOTHING_ELSE).notRead());
-        assertEquals(List.of("a"), measured(ONE_FIELD_OF_TWO).axes().stream()
-                        .map(PartitionEvidence.AxisCoverage::path).toList(),
+                        + alone.notRead());
+        assertEquals(List.of("a"),
+                oneOfTwo.axes().stream().map(PartitionEvidence.AxisCoverage::path).toList(),
                 "and at the position the field the rule reads was given, and no other");
-        for (String model : List.of(A_CONSTRUCTION_AND_NOTHING_ELSE, ONE_FIELD_OF_TWO)) {
-            assertEquals(List.of(), derived(measured(model)),
-                    () -> "and nothing about it is a value an operation made: "
-                            + measured(model).notRead());
+        for (PartitionEvidence each : List.of(alone, oneOfTwo)) {
+            assertEquals(List.of(), derived(each),
+                    () -> "and nothing about it is a value an operation made: " + each.notRead());
         }
     }
 
@@ -583,10 +585,11 @@ class ARuleAboutTheStringsOfAMadeValueIsNamedWhereItCameFromTest {
      */
     @Test
     void aNewtypesValueInsideTheInputIsThePositionItStandsUnder() {
-        assertEquals(List.of("request.code"), measured(A_PATH_THROUGH_THE_INPUT).axes().stream()
-                        .map(PartitionEvidence.AxisCoverage::path).toList(),
-                () -> "the position the newtype stands at: "
-                        + measured(A_PATH_THROUGH_THE_INPUT).notRead());
+        PartitionEvidence measured = measured(A_PATH_THROUGH_THE_INPUT);
+
+        assertEquals(List.of("request.code"),
+                measured.axes().stream().map(PartitionEvidence.AxisCoverage::path).toList(),
+                () -> "the position the newtype stands at: " + measured.notRead());
     }
 
     /**
