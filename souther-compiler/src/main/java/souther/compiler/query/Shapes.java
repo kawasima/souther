@@ -415,7 +415,7 @@ public final class Shapes {
      * nothing that read it. A reader taking the order off it would be reading something the store
      * does not watch, and would go stale with nothing to say so.
      *
-     * <p>A reader that needs the order asks something that answers it. {@link #FieldBindingsOf}
+     * <p>A reader that needs the order asks something that answers it. {@link FieldBindingsOf}
      * numbers a declaration's own fields as it writes them, and what a value is laid out as is
      * {@code ValueShape}'s — which reads the order off the walk that builds it and is not this.
      *
