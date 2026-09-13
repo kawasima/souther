@@ -160,7 +160,7 @@ at.coverage().made().orElseThrow());
         // the rule on `code` is a lookahead, so no value of that position was composed from it and
         // the ones tried came from the rest. The point of this test is that the block says
         // something at all, and what it says is the sentence the search can stand behind.
-        assertTrue(block.contains("`code` holds a rule this compiler could not read"), block);
+        assertTrue(block.contains("invariant Code #1 at `code` gave none of them"), block);
     }
 
     /**

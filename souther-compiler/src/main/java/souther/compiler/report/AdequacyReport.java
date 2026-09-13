@@ -2327,7 +2327,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion,
      * phrase travelled inside the finding, which is how a value that was never words came to be
      * printed by whoever called {@code String.valueOf} on it.
      */
-    private static String whyUnread(UndividedPosition.Reason reason) {
+    static String whyUnread(UndividedPosition.Reason reason) {
         return switch (reason) {
             // The three a rule reaches, written about the rule: the line these appear on names it,
             // so a sentence saying "a rule about it" would name the rule and then not say so.
@@ -3207,8 +3207,8 @@ public record AdequacyReport(int schemaVersion, String compilerVersion,
             // what was tried came from the rules beside it — and an author told the line above
             // would go looking for the rule that refuses those values, which is not what happened.
             case NOT_ALL_CANDIDATES_COULD_BE_OFFERED ->
-                    "every value tried at " + at + " was refused, and a rule about it composed"
-                            + " none of them";
+                    "every value tried at " + at + " was refused, and what was tried was not"
+                            + " everything the rules leave";
             // What the row is short of, and not what the model is short of. A row that stands
             // nothing in for a dependency its target requires is one nothing applies, so it is
             // held back rather than handed over to be pasted and refused.

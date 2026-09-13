@@ -100,9 +100,11 @@ class AReportSaysWhatRegionARowWasLookedForInTest {
         //
         // What the search came to is not that every value there was was refused: `p.tag` carries a
         // back reference, which is outside what this compiler reads, so no value of that position
-        // was composed from it and the ones tried came from the rest.
-        assertTrue(line.contains("nothing composed one: `p.tag` holds a rule this compiler could"
-                + " not read"), line);
+        // was composed from it and the ones tried came from the rest. Which rule it was is not
+        // repeated here — this section already lists the rules a position went unread on, and the
+        // block is the surface that has nowhere else to say it.
+        assertTrue(line.contains("nothing composed one: every value tried at p.low = 11 was"
+                + " refused, and what was tried was not everything the rules leave"), line);
     }
 
     /**

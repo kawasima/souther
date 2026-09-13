@@ -7,6 +7,8 @@ import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.Carrier;
 import souther.compiler.check.RuleKey;
 import souther.compiler.check.DeclaredBounds;
+import souther.compiler.check.PartId;
+import souther.compiler.check.RuleRef;
 import souther.compiler.check.StringPredicates;
 import souther.compiler.check.DeclaredClauses;
 import souther.compiler.inputs.Distinctions;
@@ -1548,7 +1550,7 @@ public final class Partitions {
         List<FixtureTemplate> bare = new ArrayList<>();
         bare.addAll(whatEveryRuleAdmits(stated, characters));
         bare.addAll(whereTheRulesLeaveTheValue(view, reading, within));
-        bare.addAll(whatAFormatAsksFor(stated.read()));
+        bare.addAll(whatAFormatAsksFor(stated.patterns()));
         // What the rules say the value holds, before the value that would hold nothing.
         bare.addAll(Witnesses.holding(view, characters.least(), reading, inside));
         List<FixtureTemplate> ofTheShape =
@@ -2290,7 +2292,7 @@ public final class Partitions {
         // character on the end of the last. Read before the patterns are looked at, every position
         // whose rules say nothing about its strings pays for a reading of its counts.
         if (stated.read().isEmpty()) {
-            return new CandidateStrings(null, new StringOfferShortfall(stated.unread(), List.of()));
+            return new CandidateStrings(null, stated.unread());
         }
         return admittedBy(stated, DeclaredBounds.countsHeld(view, reading, null), meter);
     }
@@ -2345,24 +2347,29 @@ public final class Partitions {
             return PatternsStated.NONE;
         }
         List<DeclaredClauses.OnAName> written = DeclaredClauses.of(view.wrappers(), ruleSource);
-        List<PatternSyntax> read = new ArrayList<>();
-        List<BlockReason.RuleReadingStopped> unread = new ArrayList<>();
+        List<Stated> read = new ArrayList<>();
+        List<StringOfferShortfall.NotOffered> unread = new ArrayList<>();
         for (int name = written.size() - 1; name >= 0; name--) {
             for (DeclaredClauses.Conjunct each : written.get(name).conjuncts()) {
                 switch (StringPredicates.statedByWritten(each.expr(), ruleSource.symbols())) {
-                    case StringPredicates.Reading.Accepting it -> read.add(it.accepts());
+                    case StringPredicates.Reading.Accepting it ->
+                            read.add(new Stated(each.part(), it.accepts()));
                     case StringPredicates.Reading.PatternNotRead it ->
-                            unread.add(BlockReason.forAPatternNotRead(it.why()));
+                            unread.add(StringOfferShortfall.NotOffered.ofARule(each.part(),
+                                    new StringOfferShortfall.Why.NotRead(
+                                            BlockReason.forAPatternNotRead(it.why()))));
                     // A rule whose text this compiler did not work out is a rule it did not read,
                     // the same as one written in a construct the subset does not hold.
                     case StringPredicates.Reading.WrittenArgumentNotKnown _ ->
-                            unread.add(new BlockReason.UnreadValueRule());
+                            unread.add(StringOfferShortfall.NotOffered.ofARule(each.part(),
+                                    new StringOfferShortfall.Why.NotRead(
+                                            new BlockReason.UnreadValueRule())));
                     // No predicate over strings at all, which is nothing about this question.
                     case null -> { }
                 }
             }
         }
-        return new PatternsStated(read, unread);
+        return new PatternsStated(read, new StringOfferShortfall(unread));
     }
 
     /**
@@ -2375,19 +2382,33 @@ public final class Partitions {
      * never had the whole of what the position states. Held as the patterns alone, that caller has
      * nothing to say but that the model refused everything.
      *
-     * @param read   what each rule this compiler read accepts, innermost name first
-     * @param unread one reason for each rule about the strings this compiler did not read
+     * @param read   what each rule this compiler read accepts, under the rule it was written as,
+     *               innermost name first
+     * @param unread the rules about the strings this compiler did not read, each under itself
      */
-    private record PatternsStated(List<PatternSyntax> read,
-                                  List<BlockReason.RuleReadingStopped> unread) {
+    private record PatternsStated(List<Stated> read, StringOfferShortfall unread) {
 
-        private static final PatternsStated NONE = new PatternsStated(List.of(), List.of());
+        private static final PatternsStated NONE =
+                new PatternsStated(List.of(), StringOfferShortfall.NONE);
 
         private PatternsStated {
             read = List.copyOf(read);
-            unread = List.copyOf(unread);
+        }
+
+        /** Just the patterns, for a caller that offers a value per rule and names none of them. */
+        private List<PatternSyntax> patterns() {
+            return read.stream().map(Stated::accepts).toList();
         }
     }
+
+    /**
+     * One rule about the strings at a position, as the rule it was written as and what it accepts.
+     *
+     * <p>Carried together because a rule whose machine cannot be afforded is named to an author by
+     * the rule and not by the pattern: two rules of one declaration state two patterns, and a
+     * sentence about "the pattern here" leaves them to guess which.
+     */
+    private record Stated(PartId<RuleRef.Invariant> part, PatternSyntax accepts) {}
 
     /** Whether a rule counts the characters, which leaves out every string of another length and
      *  is a thing to be met with the patterns like any other. */
@@ -2406,17 +2427,24 @@ public final class Partitions {
      */
     private static CandidateStrings admittedBy(PatternsStated stated,
                                                DeclaredBounds.CountRange characters, Meter meter) {
-        StringOfferShortfall shortfall =
-                new StringOfferShortfall(stated.unread(), List.of());
+        StringOfferShortfall shortfall = stated.unread();
         Language all = null;
-        for (PatternSyntax each : stated.read()) {
-            Language one = languageOf(each, meter);
+        for (Stated each : stated.read()) {
+            // The rule whose machine this is, so that a run that cannot afford it names the rule
+            // rather than the position. Read where the build came back with nothing and not
+            // afterwards: a meter is the whole question's, and the next construction on it says
+            // which limit refused that one.
+            Language one = languageOf(each.accepts(), meter);
             if (one == null) {
-                return new CandidateStrings(null, shortfall.and(whatItSpent(meter)));
+                return new CandidateStrings(null, shortfall.and(StringOfferShortfall.of(
+                        StringOfferShortfall.NotOffered.ofARule(each.part(), whatItSpent(meter)))));
             }
+            // And what it comes to with the rules before it, which is nobody's rule: an author sent
+            // to either of them would be sent to one this compiler read from end to end.
             Language both = all == null ? one : all.and(one, meter);
             if (both == null) {
-                return new CandidateStrings(null, shortfall.and(whatItSpent(meter)));
+                return new CandidateStrings(null, shortfall.and(StringOfferShortfall.of(
+                        StringOfferShortfall.NotOffered.ofTheirMeeting(whatItSpent(meter)))));
             }
             all = both;
         }
@@ -2452,7 +2480,10 @@ public final class Partitions {
                 characters.most() == Integer.MAX_VALUE
                         ? PatternSyntax.Repeated.NO_CEILING : characters.most()), meter);
         Language within = counted == null ? null : strings.and(counted, meter);
-        return within == null ? new CandidateStrings(null, shortfall.and(whatItSpent(meter)))
+        // The count met with the strings, which is again nobody's one rule.
+        return within == null
+                ? new CandidateStrings(null, shortfall.and(StringOfferShortfall.of(
+                        StringOfferShortfall.NotOffered.ofTheirMeeting(whatItSpent(meter)))))
                 : new CandidateStrings(within, shortfall);
     }
 
@@ -2464,9 +2495,8 @@ public final class Partitions {
      * the next construction on it says which limit refused that one, so an answer taken afterwards
      * is about whatever was built last.
      */
-    private static StringOfferShortfall whatItSpent(Meter meter) {
-        return new StringOfferShortfall(List.of(),
-                List.of(new StringOfferShortfall.WitnessOfferStopped(meter.stoppedBy())));
+    private static StringOfferShortfall.Why whatItSpent(Meter meter) {
+        return new StringOfferShortfall.Why.TooCostly(meter.stoppedBy());
     }
 
     /** A count the position holds, or null where it holds none. The ends decide it, so nothing here

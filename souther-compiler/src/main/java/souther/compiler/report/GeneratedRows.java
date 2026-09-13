@@ -9,6 +9,10 @@ import souther.compiler.fmt.Formatter;
 import souther.compiler.publish.PublishedIncompleteness;
 import souther.compiler.publish.PublishedRuleHandle;
 import souther.compiler.check.Requirements;
+import souther.compiler.check.RuleCitation;
+import souther.compiler.inputs.TermPath;
+import souther.compiler.partition.ReportedReason;
+import souther.compiler.partition.StringOfferShortfall;
 import souther.compiler.publish.RuleHandleProse;
 import souther.compiler.query.Sites;
 import souther.compiler.partition.BorderObligationPoint;
@@ -147,7 +151,9 @@ public final class GeneratedRows {
      * is said once, under the declaration that drew the line, and cannot be written from evidence
      * that does not support it.
      */
-    private static void declarations(StringBuilder out, Offering offering) {
+    private static void declarations(StringBuilder out, Offering offering,
+                                     SourceRendering rendering,
+                                     PublishedRuleHandle.WhereARuleIs places) {
         BorderAccount account = offering.account();
         Set<String> said = new LinkedHashSet<>();
         for (Map.Entry<BorderObligationPoint, BorderAccount.Unmet> each
@@ -173,7 +179,7 @@ public final class GeneratedRows {
                         came.forEach(at -> say(out, said, switch (at) {
                             case BorderAccount.At.Searched(var reading, var why) -> String.format(
                                     "// no row for `%s` in `%s`: %s%n", why.subject(),
-                                    reading.behavior(), saidOf(why));
+                                    reading.behavior(), saidOf(why, rendering, places));
                             // Said, because a reading that was asked about and could not be
                             // searched is a thing that happened to this run. Left out, a reader
                             // sees the readings that answered and no sign that another was asked.
@@ -227,7 +233,7 @@ public final class GeneratedRows {
         // holds, and the one that forgot would print rows with nothing said about the work beside
         // them.
         if (account != null) {
-            declarations(out, offering);
+            declarations(out, offering, rendering, places);
         }
         // The count leaves with the text. It was worked out here and thrown away, and the one
         // caller that needed it read the text instead.
@@ -572,7 +578,7 @@ public final class GeneratedRows {
         left.addAll(filling.boundaries().unresolved());
         for (Generator.UnresolvedCombination each : left) {
             say(out, said, String.format("// no row for `%s` in `%s`: %s%n",
-                    each.subject(), behavior, saidOf(each)));
+                    each.subject(), behavior, saidOf(each, rendering, places)));
         }
         // Every finding a row could answer, and not only the ones a strategy took. One printed in
         // the report and left out of this block is one an author is told nothing about, while the
@@ -591,7 +597,7 @@ public final class GeneratedRows {
                         say(out, said, String.format("// no row for `%s` in `%s`: %s%n",
                                 each.finding().about() instanceof About.AnArmNoRowGoesThrough
                                         ? about(each.finding(), rendering, places) : why.subject(),
-                                behavior, saidOf(why))));
+                                behavior, saidOf(why, rendering, places))));
                 // Told apart from the one above it in its own words. A strategy that tried and
                 // composed nothing and a finding nothing takes are different pieces of news: the
                 // first says what the attempt came to, and whether a row can be written at all is
@@ -756,9 +762,77 @@ public final class GeneratedRows {
      * <p>The category is what a reader acts on and the sentence is which case of it this was. A
      * class that recorded why nothing was composed for it knows something the category does not,
      * and printing the category over it loses the one part an author can do anything with.
+     *
+     * <p><b>And what else was true of the search, after it rather than instead of it.</b> A rule
+     * that gave the offer no value is not another way of saying the category — a search stopped at
+     * a figure was stopped whether or not a rule beside it gave nothing, and an author acts on
+     * both. So the two are joined here, and the one carrier that replaces the category is the one
+     * whose whole job is to say which case of it this was.
      */
-    private static String saidOf(Generator.UnresolvedCombination left) {
-        return left.said().orElseGet(() -> why(left.reason()));
+    private static String saidOf(Generator.UnresolvedCombination left, SourceRendering rendering,
+                                 PublishedRuleHandle.WhereARuleIs places) {
+        String category = left.said().orElseGet(() -> why(left.reason()));
+        String also = alsoShort(left.alsoShort(), rendering, places);
+        return also.isEmpty() ? category : category + ", and " + also;
+    }
+
+    /**
+     * What the rules about a position's strings left out of the values offered there, or nothing
+     * where they left out none of them.
+     *
+     * <p>Each rule by the name a report calls rules by, and each reason in the words the document
+     * already has for it. Spelled here rather than carried as a sentence: what an author is sent to
+     * do turns on which reason it was, and a producer that wrote the words would be a second
+     * vocabulary for reasons this one already spells — one that goes stale the first time a reason
+     * is added to the other.
+     */
+    private static String alsoShort(
+            java.util.SequencedMap<TermPath, StringOfferShortfall> shortfall,
+            SourceRendering rendering, PublishedRuleHandle.WhereARuleIs places) {
+        List<String> ways = new ArrayList<>();
+        for (Map.Entry<TermPath, StringOfferShortfall> at : shortfall.entrySet()) {
+            for (StringOfferShortfall.NotOffered each : at.getValue().these()) {
+                ways.add(gaveNothing(each, at.getKey(), rendering, places));
+            }
+        }
+        return String.join("; ", ways);
+    }
+
+    /** One thing that gave the offer no value, said as what it was and what stopped it. */
+    private static String gaveNothing(StringOfferShortfall.NotOffered each, TermPath at,
+                                      SourceRendering rendering,
+                                      PublishedRuleHandle.WhereARuleIs places) {
+        String subject = each.part() == null
+                ? "what the rules about `" + at + "` leave between them"
+                : RuleHandleProse.said(PublishedRuleHandle.of(
+                        new RuleCitation.Named(each.part().rule()), places), rendering, null)
+                        + " at `" + at + "`";
+        // Named by the rule and never by the position alone: a position carrying two rules about
+        // its strings, one of them this compiler cannot read, is one an author fixes by rewriting
+        // that one.
+        return subject + " " + becauseOf(each.why());
+    }
+
+    /**
+     * Why it gave nothing, in the words this document has for it.
+     *
+     * <p>A reading that stopped is said in the vocabulary a document already publishes for such a
+     * reading ({@link ReportedReason}), so that a rule reported unread here and the same rule
+     * reported unread in the account are one piece of news. What ran out of allowance is not one of
+     * those: no rule went unread, and the sentence says what was being done rather than what the
+     * rule is.
+     */
+    static String becauseOf(StringOfferShortfall.Why why) {
+        return switch (why) {
+            case StringOfferShortfall.Why.NotRead it ->
+                    "gave none of them: " + AdequacyReport.whyUnread(ReportedReason.of(it.why()));
+            case StringOfferShortfall.Why.TooCostly it -> switch (it.stopped()) {
+                case ONE_MACHINE -> "gave none of them: working a value out of it asks for a larger"
+                        + " machine than one may be";
+                case THE_ANSWER -> "gave none of them: working the values out spent what composing"
+                        + " one for a row may spend";
+            };
+        };
     }
 
     private static String why(Generator.UnresolvedCombination.Reason reason) {
@@ -771,12 +845,11 @@ public final class GeneratedRows {
                             + " combination impossible";
             // The same refusals, and one fewer thing they show. The values tried came from the
             // rules this compiler read, so a reader is told they were refused and told not to read
-            // that as the rules refusing them. Which rule composed none of them is said beside
-            // this, where the class says what it knows about itself.
+            // that as the rules refusing them. Which rule gave none of them follows this, said as
+            // the rule it was.
             case NOT_ALL_CANDIDATES_COULD_BE_OFFERED ->
-                    "every value tried was refused at construction, and a rule about the values"
-                            + " here composed none of them, so what was tried was not all there"
-                            + " was to try";
+                    "every value tried was refused at construction, and what was tried was not"
+                            + " everything the rules leave";
             // What is missing is the stand-in and not the row's values, so an author reading this
             // is being told what to write beside the row rather than that no row exists.
             case NOTHING_STANDS_IN_FOR_A_DEPENDENCY ->

@@ -75,7 +75,11 @@ class WhatWasTriedIsNotEverythingWhereARuleComposedNothingTest {
     void aRuleThisCompilerCannotReadIsNotEveryValueRefused() {
         String block = blockFor(OUTSIDE_THE_SUBSET);
 
-        assertTrue(block.contains("`t.code` holds a rule this compiler could not read"), block);
+        // The rule by the name a report calls rules by, and the reason in the words the document
+        // already has for it. An author holding two rules about one position and told only that
+        // something here could not be read has both to look at.
+        assertTrue(block.contains("invariant Code (shape) at `t.code` gave none of them:"
+                + " written in a form this compiler does not read"), block);
         assertFalse(block.contains("every value tried was refused at construction, which does not"
                 + " make the combination impossible"),
                 () -> "the values tried came from the rules beside the one that composed"
@@ -90,8 +94,9 @@ class WhatWasTriedIsNotEverythingWhereARuleComposedNothingTest {
     void anAllowanceRunDownSaysWhichFigureItWas() {
         String block = blockFor(MORE_THAN_A_WITNESS_MAY_SPEND);
 
-        assertTrue(block.contains("working a value out of a rule on `t.code`"), block);
-        assertFalse(block.contains("could not read"),
+        assertTrue(block.contains("invariant Code (shape) at `t.code` gave none of them: working a"
+                + " value out of it asks for a larger machine than one may be"), block);
+        assertFalse(block.contains("does not read"),
                 () -> "this rule was read from end to end, and an author sent after its form would"
                         + " find nothing the matter with it:\n" + block);
     }
@@ -126,7 +131,7 @@ class WhatWasTriedIsNotEverythingWhereARuleComposedNothingTest {
 
         assertTrue(block.contains("every value tried was refused at construction"), block);
         assertFalse(block.contains("was not all there was to try"), block);
-        assertFalse(block.contains("could not read"), block);
+        assertFalse(block.contains("gave none of them"), block);
     }
 
     /**
@@ -164,10 +169,55 @@ class WhatWasTriedIsNotEverythingWhereARuleComposedNothingTest {
         String block = GeneratedRows.of(compilation, "example.offer", "look",
                 SourceRendering.namedByIdentity(compilation.texts())).text();
 
-        // The row whose search met the figure at one position and the unread rule at another. What
-        // it may not do is name the figure and go quiet about the rule.
-        assertTrue(block.contains("`t.code` holds a rule this compiler could not read"),
-                () -> "a figure at `t.long` does not answer for the rule at `t.code`:\n" + block);
+        // The row whose search met the figure at one position and the unread rule at another. Both
+        // are printed: naming the figure and going quiet about the rule sends an author to raise a
+        // number, and naming the rule and going quiet about the figure hides that the search
+        // stopped. The line for `t.flag` is the one whose search met both.
+        String both = block.lines()
+                .filter(each -> each.contains("no row for `t.flag=Yes`"))
+                .findFirst().orElseThrow(() -> new AssertionError(block));
+
+        assertTrue(both.contains("nothing here could build a representative for it"),
+                () -> "the figure that stopped the search:\n" + both);
+        assertTrue(both.contains("invariant Code (shape) at `t.code` gave none of them"),
+                () -> "and the rule that gave the offer no value:\n" + both);
+    }
+
+    /**
+     * Which rule it was, where the position carries one this compiler reads beside one it does not.
+     *
+     * <p>The whole of what naming it is for. Told that a rule about the values here could not be
+     * read, an author holding two rules has both to look at — and one of them reads perfectly.
+     */
+    @Test
+    void theRuleNamedIsTheOneThatGaveNothing() {
+        String model = """
+                module example.offer
+
+                data Code = String
+                    invariant unreadable = %s
+                    invariant readable = String.matches("q[0-9]", value)
+
+                data Flag = Yes | No
+
+                data T = { flag: Flag, code: Code }
+
+                data Ok
+
+                behavior look : (t: T) -> Ok
+
+                let look (t) = Ok
+                """.formatted(OUTSIDE_THE_SUBSET);
+        Compilation compilation = Compilation.ofSource(model, "Main");
+        compilation.measure(Adequacy.Asked.fullReport());
+        compilation.answerEverything();
+        String block = GeneratedRows.of(compilation, "example.offer", "look",
+                SourceRendering.namedByIdentity(compilation.texts())).text();
+
+        assertTrue(block.contains("invariant Code (unreadable) at `t.code` gave none of them"),
+                block);
+        assertFalse(block.contains("invariant Code (readable)"),
+                () -> "the rule this compiler read composed a value like any other:\n" + block);
     }
 
     /**
@@ -200,7 +250,7 @@ class WhatWasTriedIsNotEverythingWhereARuleComposedNothingTest {
                 SourceRendering.namedByIdentity(compilation.texts())).text();
 
         assertTrue(block.contains("no row for `p.amount = 0`"), block);
-        assertTrue(block.contains("`p.code` holds a rule this compiler could not read"), block);
+        assertTrue(block.contains("invariant Code (shape) at `p.code` gave none of them"), block);
         assertFalse(block.contains("every value tried was refused at construction, which does not"
                 + " make the combination impossible"), block);
     }
@@ -217,6 +267,6 @@ class WhatWasTriedIsNotEverythingWhereARuleComposedNothingTest {
         assertTrue(block.contains("Code(\"aaaa\")"),
                 () -> "the readable rule still composes, and `aaaa` clears the unreadable one"
                         + " too:\n" + block);
-        assertFalse(block.contains("could not read"), block);
+        assertFalse(block.contains("gave none of them"), block);
     }
 }
