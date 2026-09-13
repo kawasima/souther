@@ -46,7 +46,7 @@ record ValuesCarryingANumber(TermPath fixed, FixtureTemplate value, RuleReadingC
 
     @Override
     public SequencedMap<String, FixtureTemplate> under(ConstructionPlan.Built built,
-                                              PlanComposer.Under under) {
+                                                       PlanComposer.Under under) {
         Map.Entry<String, ConstructionPlan.Node> down = fieldTowards(built);
         FixtureTemplate inner = down == null ? null : under.of(down.getValue());
         // A record this module composes is one a module declares. A constructor this cannot name is

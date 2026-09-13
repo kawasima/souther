@@ -18,6 +18,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.SequencedMap;
 import java.util.SequencedSet;
 import java.util.Set;
 import java.util.function.IntFunction;
@@ -146,14 +147,14 @@ public final class Stdlib {
     public record Intrinsic(Kernel kernel, KernelSignature signature) {
     }
 
-    private final Map<ValueName.Stdlib.Operation, Entry> entries;
+    private final SequencedMap<ValueName.Stdlib.Operation, Entry> entries;
     private final Set<ValueName.Stdlib.Operation> privateNames;
     /** Which operation each spelling reaches — the one table here a written name is the key of, and
      *  the only way into the rest. What the library publishes an operation as is the library's, so
      *  a reader holding a spelling asks here for the operation and asks everything else with that;
      *  a reader holding an operation never comes through. */
     private final Map<String, ValueName.Stdlib.Operation> operations;
-    private final Map<ValueName.Stdlib.Operation, Rewrite> sugars;
+    private final SequencedMap<ValueName.Stdlib.Operation, Rewrite> sugars;
     private final Map<TypeKey, Hir.Def> language;
     /** And the same declarations by the library module that writes them, worked out once with
      *  everything else rather than gathered on each ask. */
@@ -173,10 +174,10 @@ public final class Stdlib {
      *  ask would be the same answer allocated again for every module of every compilation. */
     private final LibraryNames names;
 
-    private Stdlib(Map<ValueName.Stdlib.Operation, Entry> entries,
+    private Stdlib(SequencedMap<ValueName.Stdlib.Operation, Entry> entries,
                    Set<ValueName.Stdlib.Operation> privateNames,
                    Map<String, ValueName.Stdlib.Operation> operations,
-                   Map<ValueName.Stdlib.Operation, Rewrite> sugars,
+                   SequencedMap<ValueName.Stdlib.Operation, Rewrite> sugars,
                    Map<TypeKey, Hir.Def> language, Map<Kernel, Intrinsic> intrinsics,
                    Map<ValueName.Stdlib.Operation, Intrinsic> kernelOperations,
                    Map<ValueName.Stdlib.Operation, Hir.FnDef> helpers,
@@ -222,8 +223,10 @@ public final class Stdlib {
     }
 
     /** Every entry, by the operation it declares, in declaration order — private ones included,
-     *  because a checker and a backend still have to type and emit what they are behind. */
-    public Map<ValueName.Stdlib.Operation, Entry> entries() {
+     *  because a checker and a backend still have to type and emit what they are behind. Declaration
+     *  order is what the surface a reader is shown is gathered by, so it is what is handed over and
+     *  not something a reader of this has to know to keep. */
+    public SequencedMap<ValueName.Stdlib.Operation, Entry> entries() {
         return entries;
     }
 
@@ -268,8 +271,8 @@ public final class Stdlib {
         return sugars.get(operation);
     }
 
-    /** Every sugared operation, by what it rewrites to. */
-    public Map<ValueName.Stdlib.Operation, Rewrite> rewrites() {
+    /** Every sugared operation, by what it rewrites to, in the order the sugars are written. */
+    public SequencedMap<ValueName.Stdlib.Operation, Rewrite> rewrites() {
         return sugars;
     }
 
@@ -464,7 +467,8 @@ public final class Stdlib {
      */
     public static final class Builder {
 
-        private final Map<ValueName.Stdlib.Operation, Entry> entries = new LinkedHashMap<>();
+        private final SequencedMap<ValueName.Stdlib.Operation, Entry> entries =
+                new LinkedHashMap<>();
         private final Set<ValueName.Stdlib.Operation> privateNames = new LinkedHashSet<>();
         private final Map<String, ValueName.Stdlib.Operation> operations = new LinkedHashMap<>();
         private final Map<TypeKey, Hir.Def> language = new LinkedHashMap<>();
@@ -522,7 +526,7 @@ public final class Stdlib {
 
         /** The finished library. */
         public Stdlib freeze() {
-            Map<ValueName.Stdlib.Operation, Rewrite> sugars = sugars();
+            SequencedMap<ValueName.Stdlib.Operation, Rewrite> sugars = sugars();
             Map<String, Kernel> byKey = kernelsByKey();
             Map<Kernel, Intrinsic> intrinsics = new EnumMap<>(Kernel.class);
             Map<ValueName.Stdlib.Operation, Intrinsic> kernelOperations = new LinkedHashMap<>();
@@ -560,7 +564,7 @@ public final class Stdlib {
             // name a reader may write, so it belongs there.
             Map<String, ValueName.Stdlib.Operation> named = new LinkedHashMap<>(operations);
             SUGARED.forEach(sugar -> named.put(sugar.written().qualified(), sugar.written()));
-            SequencedSet<String> published = published(sugars.keySet());
+            SequencedSet<String> published = published(sugars.sequencedKeySet());
             for (ValueName.Stdlib.Operation ascribed
                     : List.of(THE_WALK, THE_DISTINCTNESS_PREDICATE)) {
                 if (!helpers.containsKey(ascribed)) {
@@ -569,10 +573,10 @@ public final class Stdlib {
                 }
             }
             return new Stdlib(
-                    Collections.unmodifiableMap(new LinkedHashMap<>(entries)),
+                    Collections.unmodifiableSequencedMap(new LinkedHashMap<>(entries)),
                     Collections.unmodifiableSet(new LinkedHashSet<>(privateNames)),
                     Collections.unmodifiableMap(named),
-                    Collections.unmodifiableMap(sugars),
+                    Collections.unmodifiableSequencedMap(sugars),
                     Collections.unmodifiableMap(new LinkedHashMap<>(language)),
                     Collections.unmodifiableMap(intrinsics),
                     Collections.unmodifiableMap(kernelOperations),
@@ -618,8 +622,8 @@ public final class Stdlib {
         /** Each sugar with what it keeps in place: the target's own parameter count, less what the
          *  rewrite supplies. A sugar naming a target the library does not declare is refused —
          *  nothing downstream would report it, because everything downstream reads this. */
-        private Map<ValueName.Stdlib.Operation, Rewrite> sugars() {
-            Map<ValueName.Stdlib.Operation, Rewrite> sugars = new LinkedHashMap<>();
+        private SequencedMap<ValueName.Stdlib.Operation, Rewrite> sugars() {
+            SequencedMap<ValueName.Stdlib.Operation, Rewrite> sugars = new LinkedHashMap<>();
             for (Sugar sugar : SUGARED) {
                 Entry declared = entries.get(sugar.target());
                 if (declared == null) {
@@ -638,8 +642,8 @@ public final class Stdlib {
          *  be ordered by, so it is placed among the module it belongs to — a reader of this list is
          *  reading one module's vocabulary at a time, and a name that reads as {@code List}'s belongs
          *  among them. */
-        private SequencedSet<String> published(Set<ValueName.Stdlib.Operation> sugared) {
-            Set<ValueName.Stdlib.Operation> named = new LinkedHashSet<>();
+        private SequencedSet<String> published(SequencedSet<ValueName.Stdlib.Operation> sugared) {
+            SequencedSet<ValueName.Stdlib.Operation> named = new LinkedHashSet<>();
             for (ValueName.Stdlib.Operation operation : entries.keySet()) {
                 if (!privateNames.contains(operation)) {
                     named.add(operation);
