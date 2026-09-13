@@ -1780,7 +1780,7 @@ public final class TypeOps {
      * A newtype's value is what its comparison and equality read.
      */
     public static Type base(Type t, Symbols symbols) {
-        return newtypeSpine(t, symbols).terminal();
+        return newtypeSpineAsWritten(t, symbols).terminal();
     }
 
     /**
@@ -1795,20 +1795,33 @@ public final class TypeOps {
      * <p>Stops on a name already worn, so a declaration reachable from itself ends the walk rather
      * than repeating it, and stops where a newtype's {@code value} is not declared.
      */
-    public static NewtypeSpine newtypeSpine(Type t, Symbols symbols) {
+    public static NewtypeSpine newtypeSpine(Type t, NewtypeInners inners) {
         List<Layer> layers = new ArrayList<>();
         Set<TypeSymbol> worn = new LinkedHashSet<>();
         Type at = t;
-        while (isSingleValueNewtype(at, symbols) && worn.add(((Type.Ref) at).name())) {
-            Hir.Data data = (Hir.Data) symbols.declaredNode(((Type.Ref) at).name());
-            layers.add(new Layer(((Type.Ref) at).name()));
-            Type inner = fieldTypes(data, symbols).get("value");
+        while (at instanceof Type.Ref ref && worn.add(ref.name())) {
+            // What the name wraps, asked once. A name that wraps nothing is where the walk stops,
+            // and it is one answer whether the name wears no one value or wears one whose written
+            // type denotes nothing — the walk has nowhere further to go either way.
+            Type inner = inners.under(at);
             if (inner == null) {
                 break;
             }
+            layers.add(new Layer(ref.name()));
             at = inner;
         }
         return new NewtypeSpine(List.copyOf(layers), at);
+    }
+
+    /**
+     * The same, for a walk that holds the declarations rather than the compilation's answer.
+     *
+     * <p>Asked here so that the declaration is read where the walk is owned, for the reason
+     * {@link NewtypeInners#asWritten} gives. Every caller of this is a reader that has not been
+     * handed the compilation's answer, and a test counts them.
+     */
+    public static NewtypeSpine newtypeSpineAsWritten(Type t, Symbols symbols) {
+        return newtypeSpine(t, NewtypeInners.asWritten(symbols));
     }
 
     /** The names a value wears, and the type underneath them. */
@@ -1838,7 +1851,7 @@ public final class TypeOps {
      * than repeating it. A type that is not a newtype has one layer or none.
      */
     public static List<Layer> newtypeChain(Type t, Symbols symbols) {
-        return newtypeSpine(t, symbols).layers();
+        return newtypeSpineAsWritten(t, symbols).layers();
     }
 
     /**
@@ -1850,7 +1863,7 @@ public final class TypeOps {
      * {@link #directNumericNewtypeBase} and stops at one layer, which the language means.
      */
     public static Type numericBase(Type t, Symbols symbols) {
-        Type carried = newtypeSpine(t, symbols).terminal();
+        Type carried = newtypeSpineAsWritten(t, symbols).terminal();
         return carried == Type.INT || carried == Type.DECIMAL ? carried : null;
     }
 

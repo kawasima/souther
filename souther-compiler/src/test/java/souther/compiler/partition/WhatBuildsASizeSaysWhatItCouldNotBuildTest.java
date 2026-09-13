@@ -38,7 +38,7 @@ class WhatBuildsASizeSaysWhatItCouldNotBuildTest {
     /** The position of this type as the builder is asked about it: what it is, and what the rules
      *  every name it wears carries say of it. */
     private static TypeView position(Type type) {
-        return TypeView.of(type, NONE.symbols(), NONE.published());
+        return TypeView.asWritten(type, NONE.symbols(), NONE.published());
     }
 
     @Test

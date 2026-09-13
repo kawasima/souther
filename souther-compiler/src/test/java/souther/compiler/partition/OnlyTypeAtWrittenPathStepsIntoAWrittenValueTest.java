@@ -148,6 +148,7 @@ class OnlyTypeAtWrittenPathStepsIntoAWrittenValueTest {
         }
 
         assertEquals(Set.of("(Lsouther/compiler/inputs/TermPath$Step;Lsouther/compiler/types/Type;"
+                        + "Lsouther/compiler/check/NewtypeInners;"
                         + "Lsouther/compiler/check/Symbols;"
                         + "Lsouther/compiler/check/PublishedDeclarations;"
                         + ")Lsouther/compiler/types/Type;"),

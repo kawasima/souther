@@ -982,7 +982,7 @@ public final class DataChecker {
     private static Map<String, Type> spreadOfSum(String name, Hir.SumData sum, Type bound,
                                                  SourcePos pos, CheckContext ctx) {
         Map<String, Type> shared =
-                TypeView.of(Type.ref(sum.declares()), ctx.symbols(), ctx.published()).shape()
+                TypeView.asWritten(Type.ref(sum.declares()), ctx.symbols(), ctx.published()).shape()
                         instanceof Shape.Sum s
                         ? ReadableFields.of(s).declaredFields() : Map.of();
         if (shared.isEmpty()) {

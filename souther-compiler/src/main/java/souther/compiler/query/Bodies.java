@@ -905,6 +905,7 @@ public final class Bodies {
                                 Shapes.publishedDeclarations(db), Shapes.declarationKinds(db));
                         out.put(each.getKey(), StatedContract.of(contract, declaring, scope.value(),
                                 Shapes.publishedDeclarations(db), Shapes.declarationKinds(db),
+                                Shapes.newtypeInners(db),
                                 helpers.value()));
                     } catch (Unanswerable | CompileException _) {
                         // The declaration could not be read, which is said where it is held to its
@@ -2120,6 +2121,7 @@ public final class Bodies {
                                             Shapes.publishedDeclarations(db),
                                             Shapes.declarationKinds(db),
                                             Shapes.declarationNewtypes(db),
+                                            Shapes.newtypeInners(db),
                                             Shapes.clauseLocations(db)),
                                     policy, db.readings()),
                             contracts.present() ? contracts.value() : Map.of())
@@ -2131,7 +2133,7 @@ public final class Bodies {
                         body.value().value().writtenBody(),
                         policy,
                         dischargeSource, scope.value(), Shapes.publishedDeclarations(db),
-                        Shapes.declarationKinds(db),
+                        Shapes.declarationKinds(db), Shapes.newtypeInners(db),
                         calleeSigs.value(), reqSigs.value(),
                         inliner.value(), sigs.value(), constructs.value(),
                         warnings);
@@ -2340,6 +2342,7 @@ public final class Bodies {
                 }
                 reported = TypeChecker.checkModule(lowering.value().settled(), scope.value(),
                         Shapes.publishedDeclarations(db), Shapes.declarationKinds(db),
+                        Shapes.newtypeInners(db),
                         withNoValue.value(), Shapes.declarationLocations(db),
                         db.ask(new Front.Reading()).value(),
                         signatures.present() ? signatures.value() : null,

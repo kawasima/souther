@@ -438,7 +438,8 @@ final class HelperParams {
             this.symbols = symbols;
             this.published = published;
             this.kinds = kinds;
-            this.ctx = new CheckContext(symbols, published, kinds, null, reqSigs);
+            this.ctx = new CheckContext(symbols, published, kinds,
+                    NewtypeInners.asWritten(symbols), null, reqSigs);
             this.reqSigs = reqSigs;
             this.recursiveHelperFns = recursiveHelperFns;
         }

@@ -701,7 +701,7 @@ record PlacedRules(TermPath root, TypeSymbol value, Rules rules, Reaching alsoRe
      *  {@code Slot}'s. */
     private static TypeSymbol recordIn(Type type, Symbols symbols,
                                        PublishedDeclarations published) {
-        return TypeView.of(type, symbols, published).shape() instanceof Shape.Product product
+        return TypeView.asWritten(type, symbols, published).shape() instanceof Shape.Product product
                 ? product.name() : null;
     }
 

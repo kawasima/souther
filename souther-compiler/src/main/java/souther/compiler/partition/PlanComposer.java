@@ -100,7 +100,8 @@ final class PlanComposer {
         // admit. What may stand beside it is the carrier's business — a list may hold the same
         // value again and a set may not — so the collection is asked for whole rather than padded
         // here.
-        if (!(TypeView.of(plan.type(), ruleSource.symbols(), ruleSource.published()).shape()
+        if (!(TypeView.of(plan.type(), ruleSource.inners(), ruleSource.symbols(),
+                ruleSource.published()).shape()
                 instanceof Shape.Sequence carrier)) {
             return null;
         }

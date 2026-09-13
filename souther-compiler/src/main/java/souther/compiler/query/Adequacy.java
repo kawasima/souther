@@ -4259,6 +4259,7 @@ public final class Adequacy {
                     new souther.compiler.check.DeclaredTypeReading(
                             new souther.compiler.check.DeclarationFacts(
                                     new souther.compiler.check.FieldRead(symbols, published, kinds,
+                                            souther.compiler.check.NewtypeInners.asWritten(symbols),
                                             fields,
                                             souther.compiler.check.FieldRead.Unreadable.REFUSED)),
                             values, behaviors);

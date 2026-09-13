@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import souther.compiler.ast.Hir;
 import souther.compiler.check.ConstructionDescent;
+import souther.compiler.check.NewtypeInners;
 import souther.compiler.check.PublishedDeclarations;
 import souther.compiler.check.ReadableFields;
 import souther.compiler.check.ResolvedFieldTypes;
@@ -116,7 +117,7 @@ class WhatIsReadableAndWhatIsBuiltAgreeAtARecordAndPartAtASumTest {
         assertInstanceOf(StructuralInspection.Retained.class, inspected(sum),
                 "the sum stands as a position rather than being given up for its shared names");
         assertNull(BehaviorInputs.stepWrittenValue(new TermPath.Step.Field("deadline"), sum,
-                        symbols(), said()),
+                        wraps(), symbols(), said()),
                 "and a row writes one of the cases, so nothing is written at the shared name");
     }
 
@@ -133,20 +134,21 @@ class WhatIsReadableAndWhatIsBuiltAgreeAtARecordAndPartAtASumTest {
     @Test
     void whereTheStepsBesideAFieldLandForAWrittenValue() {
         assertEquals(Type.INT, BehaviorInputs.stepWrittenValue(new TermPath.Step.Element(),
-                        new Type.ListOf(Type.INT), symbols(), said()),
+                        new Type.ListOf(Type.INT), wraps(), symbols(), said()),
                 "a sequence puts what it holds under an element");
         assertEquals(typeOf("p"), BehaviorInputs.stepWrittenValue(
-                        new TermPath.Step.Refine(caseOf("P")), typeOf("r"), symbols(), said()),
+                        new TermPath.Step.Refine(caseOf("P")), typeOf("r"), wraps(), symbols(),
+                        said()),
                 "and a narrowing to a case is that case at the same position");
         assertNull(BehaviorInputs.stepWrittenValue(new TermPath.Step.Element(), typeOf("r"),
-                        symbols(), said()),
+                        wraps(), symbols(), said()),
                 "and a sum holds nothing under an element");
     }
 
     /** The narrowing to {@code leaf}, taken from what the sum's type divides into. */
     private static Refinement caseOf(String leaf) {
         TypeSymbol wanted = TypeSymbols.declared(new TypeKey(module(), leaf));
-        for (Case one : Distinctions.ofType(TypeView.of(typeOf("r"), symbols(), said()),
+        for (Case one : Distinctions.ofType(TypeView.asWritten(typeOf("r"), symbols(), said()),
                 symbols(), said())) {
             if (one instanceof Case.SumCase found && found.leaf().equals(wanted)) {
                 return Refinement.of(one);
@@ -263,7 +265,7 @@ class WhatIsReadableAndWhatIsBuiltAgreeAtARecordAndPartAtASumTest {
     }
 
     private static StructuralInspection inspected(Type type) {
-        TypeView view = TypeView.of(type, symbols(), said());
+        TypeView view = TypeView.asWritten(type, symbols(), said());
         Shape.ReadablePositionShape shape = assertInstanceOf(
                 Shape.ReadablePositionShape.class, view.shape(),
                 "the model under test declares a shape a position can have");
@@ -276,7 +278,7 @@ class WhatIsReadableAndWhatIsBuiltAgreeAtARecordAndPartAtASumTest {
         for (String name : names.keySet()) {
             Type there =
                     BehaviorInputs.stepWrittenValue(new TermPath.Step.Field(name), type,
-                            symbols(), said());
+                            wraps(), symbols(), said());
             assertNotNull(there, () -> "a value written here puts one at " + name);
             out.put(name, there);
         }
@@ -284,7 +286,7 @@ class WhatIsReadableAndWhatIsBuiltAgreeAtARecordAndPartAtASumTest {
     }
 
     private static Shape shapeOf(Type type) {
-        return TypeView.of(type, symbols(), said()).shape();
+        return TypeView.asWritten(type, symbols(), said()).shape();
     }
 
     /** What the behavior's parameter {@code named} is declared to be. */
@@ -319,6 +321,11 @@ class WhatIsReadableAndWhatIsBuiltAgreeAtARecordAndPartAtASumTest {
 
     private static PublishedDeclarations said() {
         return Shapes.publishedDeclarations(COMPILATION.db());
+    }
+
+    /** What the declarations this reads wear one of, as the compilation answers it. */
+    private static NewtypeInners wraps() {
+        return Shapes.newtypeInners(COMPILATION.db());
     }
 
     private static Hir.SpecBehavior spec() {

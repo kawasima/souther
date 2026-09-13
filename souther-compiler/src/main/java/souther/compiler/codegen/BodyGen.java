@@ -225,7 +225,7 @@ final class BodyGen {
          * as the Core the checker made (issue #1080).
          */
         CheckContext context() {
-            return new CheckContext(symbols, ctx.published, ctx.kinds, data, reqSigs());
+            return new CheckContext(symbols, ctx.published, ctx.kinds, ctx.inners, data, reqSigs());
         }
 
         /**

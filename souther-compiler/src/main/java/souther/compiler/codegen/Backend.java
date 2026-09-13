@@ -262,7 +262,8 @@ public final class Backend {
                 recHelpers.put(fn.name(), fn);
             }
         }
-        CodegenContext ctx = new CodegenContext(module.name(), symbols, published, kinds, kernels,
+        CodegenContext ctx = new CodegenContext(module.name(), symbols, published, kinds,
+                souther.compiler.check.NewtypeInners.asWritten(symbols), kernels,
                 caseToSums, typePackage,
                 module.exposing().isEmpty(), exposed, standingCalls, layouts,
                 module.pos().quotedFrom());

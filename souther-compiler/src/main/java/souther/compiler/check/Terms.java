@@ -94,6 +94,11 @@ final class Terms {
         return ruleReading.source().newtypes();
     }
 
+    /** What each of them wears one of, for the readings below that go through the name. */
+    NewtypeInners newtypeInners() {
+        return ruleReading.source().inners();
+    }
+
     /**
      * What a clause states, read through this very reading.
      *
@@ -2869,7 +2874,7 @@ final class Terms {
      * readable there. What a value has of its own is the one reading's answer, so a field every case
      * of a sum spreads is read off the sum here exactly as it is where a body reads one. */
     Type fieldType(Type owner, String field) {
-        return ValueReading.of(owner, symbols, published()).named().get(field);
+        return ValueReading.of(owner, newtypeInners(), symbols, published()).named().get(field);
     }
 
     /** What a container hands its closure: a list's or set's element, a map's value (the key is the

@@ -143,9 +143,9 @@ public record StatedContract(ValueName.Behavior behavior, List<Param> params, Ty
      */
     public static StatedContract of(BehaviorContract contract, ClausesForDischarge declaring,
                                     Symbols symbols, PublishedDeclarations published,
-                                    DeclarationKinds kinds,
+                                    DeclarationKinds kinds, NewtypeInners inners,
                                     Map<String, Type> helpers) {
-        CheckContext ctx = CheckContext.of(symbols, published, kinds).forDischarge();
+        CheckContext ctx = CheckContext.of(symbols, published, kinds, inners).forDischarge();
         List<StatedRule> rules = new ArrayList<>();
         for (BehaviorContract.Clause clause : contract.clauses()) {
             for (Rule rule : clause.rules()) {

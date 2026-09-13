@@ -55,12 +55,12 @@ class OneReadingSaysWhatAPositionIsAndHowItIsWrittenTest {
     }
 
     private TypeView view(String name) {
-        return TypeView.of(Type.ref(TypeSymbols.declared(new TypeKey(symbols.module(), name))),
+        return TypeView.asWritten(Type.ref(TypeSymbols.declared(new TypeKey(symbols.module(), name))),
                 symbols, ScopedDeclarations.of(symbols));
     }
 
     private TypeView view(Type type) {
-        return TypeView.of(type, symbols, ScopedDeclarations.of(symbols));
+        return TypeView.asWritten(type, symbols, ScopedDeclarations.of(symbols));
     }
 
     // --- a name is never a shape ----------------------------------------------------------------

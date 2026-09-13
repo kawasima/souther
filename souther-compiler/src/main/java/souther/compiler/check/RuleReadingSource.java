@@ -47,6 +47,10 @@ package souther.compiler.check;
  *                   {@code kinds} and not a fourth value of it: a product written over again as a
  *                   sum changes form and is no more a newtype than it was, so a reader asking only
  *                   this keeps its answer through that edit
+ * @param inners     what each declaration that wears one value wraps. Beside {@code newtypes} and
+ *                   not inside it, because the two are answerable at different times: whether a
+ *                   declaration wears one value was settled when the module was indexed, and what it
+ *                   wraps is not settled until the names in it resolve
  * @param written    where a clause of a declaration is written, for the sentences this reading
  *                   produces that point at one. Beside {@code invariants} and not inside it: what a
  *                   clause states is what the reading is built on, and where it is written is what
@@ -56,12 +60,12 @@ package souther.compiler.check;
  */
 public record RuleReadingSource(Symbols symbols, ExpandedClauseLookup invariants,
                                 PublishedDeclarations published, DeclarationKinds kinds,
-                                DeclarationNewtypes newtypes, ClauseLocations written,
-                                Origin origin) {
+                                DeclarationNewtypes newtypes, NewtypeInners inners,
+                                ClauseLocations written, Origin origin) {
 
     public RuleReadingSource {
         if (symbols == null || invariants == null || published == null || kinds == null
-                || newtypes == null || written == null || origin == null) {
+                || newtypes == null || inners == null || written == null || origin == null) {
             throw new IllegalArgumentException(
                     "reading a declaration's rules takes a scope, somewhere to read clauses from,"
                             + " somewhere to read what a declaration says, somewhere to read where"
@@ -69,11 +73,27 @@ public record RuleReadingSource(Symbols symbols, ExpandedClauseLookup invariants
         }
     }
 
-    /** A source made for a reading of its own, which nobody else can name. */
+    /**
+     * A source whose reader has not been handed what the declarations wrap.
+     *
+     * <p>The inners are read off {@code symbols} instead, which is what a reading built out of a
+     * scope alone can answer from. Every caller of this is a reading that has not crossed the cut,
+     * and a test counts them.
+     */
     public RuleReadingSource(Symbols symbols, ExpandedClauseLookup invariants,
                              PublishedDeclarations published, DeclarationKinds kinds,
                              DeclarationNewtypes newtypes, ClauseLocations written) {
-        this(symbols, invariants, published, kinds, newtypes, written, AReadingOfItsOwn.next());
+        this(symbols, invariants, published, kinds, newtypes, NewtypeInners.asWritten(symbols),
+                written);
+    }
+
+    /** A source made for a reading of its own, which nobody else can name. */
+    public RuleReadingSource(Symbols symbols, ExpandedClauseLookup invariants,
+                             PublishedDeclarations published, DeclarationKinds kinds,
+                             DeclarationNewtypes newtypes, NewtypeInners inners,
+                             ClauseLocations written) {
+        this(symbols, invariants, published, kinds, newtypes, inners, written,
+                AReadingOfItsOwn.next());
     }
 
     /**

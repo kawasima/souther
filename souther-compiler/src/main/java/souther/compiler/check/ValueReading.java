@@ -106,8 +106,9 @@ sealed interface ValueReading {
     }
 
     /** What the model writes where a value of {@code type} stands. */
-    static ValueReading of(Type type, Symbols symbols, PublishedDeclarations published) {
-        TypeView view = TypeView.of(type, symbols, published);
+    static ValueReading of(Type type, NewtypeInners inners, Symbols symbols,
+                           PublishedDeclarations published) {
+        TypeView view = TypeView.of(type, inners, symbols, published);
         if (view.isWrapped() && symbols.declaredNode(view.wrappers().getFirst())
                 instanceof Hir.Data worn) {
             // The outermost name is the reading's, and what is readable under it is written on that

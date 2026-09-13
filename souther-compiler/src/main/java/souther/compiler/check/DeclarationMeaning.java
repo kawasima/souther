@@ -56,7 +56,8 @@ public sealed interface DeclarationMeaning {
         return of(declared, new Clauses(
                 new RuleReadingSource(source.symbols(), source.invariants(),
                         besidesItself(declared.declares().key(), source.published()),
-                        source.kinds(), source.newtypes(), source.written())));
+                        source.kinds(), source.newtypes(), source.inners(),
+                        source.written())));
     }
 
     /**

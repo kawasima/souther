@@ -33,7 +33,8 @@ final class PartitionClasses {
     static List<PartitionClass> of(Type type, RuleReadingContext reading,
                                    java.util.Set<TypeSymbol> expanding) {
         RuleReadingSource ruleSource = reading.source();
-        TypeView view = TypeView.of(type, ruleSource.symbols(), ruleSource.published());
+        TypeView view = TypeView.of(type, ruleSource.inners(), ruleSource.symbols(),
+                ruleSource.published());
         return of(Distinctions.ofType(view, ruleSource.symbols(), ruleSource.published()),
                 view, reading, expanding);
     }
@@ -230,7 +231,8 @@ final class PartitionClasses {
         if (!(leaf instanceof TypeSymbol.AtModule declared)) {
             return namingItBuildsIt(leaf, is, writes, names);
         }
-        TypeView held = TypeView.of(Type.ref(declared), ruleSource.symbols(), ruleSource.published());
+        TypeView held = TypeView.of(Type.ref(declared), ruleSource.inners(), ruleSource.symbols(),
+                ruleSource.published());
         if (!held.isWrapped() && !(held.shape() instanceof Shape.Product)) {
             return namingItBuildsIt(leaf, is, writes, names);
         }

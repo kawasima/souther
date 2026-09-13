@@ -235,7 +235,7 @@ final class ValueClassGen {
             cb.with(PermittedSubclassesAttribute.ofSymbols(caseCds));
             // A field every case spreads is readable on the sum (issue #160): declared here, and
             // implemented by each case record's accessor of the same name and descriptor.
-            if (TypeView.of(Type.ref(sum.declares()), symbols, ctx.published).shape()
+            if (TypeView.asWritten(Type.ref(sum.declares()), symbols, ctx.published).shape()
                     instanceof Shape.Sum shape) {
                 for (Map.Entry<String, Type> e : ReadableFields.of(shape).declaredFields().entrySet()) {
                     cb.withMethod(e.getKey(), MethodTypeDesc.of(jvmType(e.getValue())),

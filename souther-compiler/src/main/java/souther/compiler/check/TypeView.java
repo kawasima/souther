@@ -59,10 +59,23 @@ public record TypeView(Type declared, List<TypeSymbol> wrappers, Shape shape) {
      * ({@link TypeOps#newtypeSpine}), so this cannot disagree with the carrier or the range about
      * where a value's base is.
      */
-    public static TypeView of(Type type, Symbols symbols, PublishedDeclarations published) {
-        TypeOps.NewtypeSpine spine = TypeOps.newtypeSpine(type, symbols);
+    public static TypeView of(Type type, NewtypeInners inners, Symbols symbols,
+                              PublishedDeclarations published) {
+        TypeOps.NewtypeSpine spine = TypeOps.newtypeSpine(type, inners);
         return new TypeView(type, spine.layers().stream().map(TypeOps.Layer::named).toList(),
                 shapeOf(spine.terminal(), symbols, published));
+    }
+
+    /**
+     * The same, for a reader that holds the declarations rather than the compilation's answer.
+     *
+     * <p>What a position is, is read off the declarations either way — the shape under the names
+     * comes from them. What differs is how far the names come off: asked of the compilation, that
+     * answer is kept when a declaration only moves, and read off the tree it is worked out again.
+     * Every caller of this is a reader that has not been handed the first, and a test counts them.
+     */
+    public static TypeView asWritten(Type type, Symbols symbols, PublishedDeclarations published) {
+        return of(type, NewtypeInners.asWritten(symbols), symbols, published);
     }
 
     /** Whether any name is worn over the shape — which is a fact about how the value is written,

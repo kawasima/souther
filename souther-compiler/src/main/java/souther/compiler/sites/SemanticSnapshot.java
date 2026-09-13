@@ -364,6 +364,7 @@ public final class SemanticSnapshot {
     private FieldRead fieldRead() {
         return new FieldRead(symbols, souther.compiler.query.Shapes.publishedDeclarations(db),
                 souther.compiler.query.Shapes.declarationKinds(db),
+                souther.compiler.query.Shapes.newtypeInners(db),
                 fields(), FieldRead.Unreadable.MAKES_NOTHING_READABLE);
     }
 

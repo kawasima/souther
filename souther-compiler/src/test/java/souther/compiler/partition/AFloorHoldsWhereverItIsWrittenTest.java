@@ -52,13 +52,13 @@ class AFloorHoldsWhereverItIsWrittenTest {
         /** The floor of a position of {@code type}, read as this model's rules leave it. */
         int floorOf(Type type) {
             return Partitions.leastHeld(
-                    TypeView.of(type, rules.symbols(), rules.published()), reading());
+                    TypeView.asWritten(type, rules.symbols(), rules.published()), reading());
         }
 
         /** The same, where the record the position sits in has a rule about it too. */
         int floorOf(Type type, FieldDomains.Held held) {
             return Partitions.leastHeld(
-                    TypeView.of(type, rules.symbols(), rules.published()), reading(), held);
+                    TypeView.asWritten(type, rules.symbols(), rules.published()), reading(), held);
         }
     }
 

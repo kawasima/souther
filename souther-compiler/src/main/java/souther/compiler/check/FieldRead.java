@@ -36,8 +36,16 @@ import java.util.Map;
  * @param unreadable what this reading does where the declarations at a position do not read
  */
 public record FieldRead(Symbols symbols, PublishedDeclarations published, DeclarationKinds kinds,
+                        NewtypeInners inners,
                         FieldTypes world,
                         Unreadable unreadable) {
+
+    /** A reading that has not been handed what the declarations wrap, which reads it off
+     *  {@code symbols} instead. Every caller of this is one that has not crossed the cut. */
+    public FieldRead(Symbols symbols, PublishedDeclarations published, DeclarationKinds kinds,
+                     FieldTypes world, Unreadable unreadable) {
+        this(symbols, published, kinds, NewtypeInners.asWritten(symbols), world, unreadable);
+    }
 
     /**
      * What a reading does where reading a position refuses.
@@ -159,7 +167,7 @@ public record FieldRead(Symbols symbols, PublishedDeclarations published, Declar
     private Surface surfaceOf(Type position) {
         TypeView view;
         try {
-            view = TypeView.of(position, symbols, published);
+            view = TypeView.of(position, inners, symbols, published);
         } catch (CompileException doesNotRead) {
             if (unreadable == Unreadable.REFUSED) {
                 throw doesNotRead;

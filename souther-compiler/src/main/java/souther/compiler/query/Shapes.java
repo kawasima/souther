@@ -9,6 +9,7 @@ import souther.compiler.check.DeclarationKinds;
 import souther.compiler.check.DeclarationLocations;
 import souther.compiler.check.DeclarationMeaning;
 import souther.compiler.check.DeclarationNewtypes;
+import souther.compiler.check.NewtypeInners;
 import souther.compiler.check.Normalized;
 import souther.compiler.check.PublishedDeclarations;
 import souther.compiler.stdlib.Stdlib;
@@ -34,6 +35,7 @@ import souther.compiler.diag.CompileException;
 import souther.compiler.diag.DiagnosticPlace;
 import souther.compiler.diag.Region;
 import souther.compiler.types.BindingOwner;
+import souther.compiler.types.Type;
 import souther.compiler.types.TypeKey;
 import souther.compiler.types.TypeSymbol;
 
@@ -257,6 +259,67 @@ public final class Shapes {
             souther.compiler.check.Normalized.Def def = defs.value().get(named.name());
             return def == null ? Answer.absent() : Answer.of(def);
         }
+    }
+
+    /**
+     * What a declaration that wears one value wraps, or nothing where it wears none.
+     *
+     * <p>Read off the declaration with its names resolved, which is the lowest rung that can answer:
+     * what the one value is, is a written type denoting something, and denoting is what resolution
+     * decides. Nothing above it is asked — what the declaration says is worked out further up and
+     * takes its clauses with it, and a reader wanting what a name wraps does not mean any of that.
+     *
+     * <p><b>Whether it wears one is asked first, and is asked of the index.</b> A declaration that
+     * wears none is answered without the resolved declaration being read at all, so the readers that
+     * ask this of ordinary products — which is most of the asking — depend on nothing that moves
+     * when a declaration does.
+     *
+     * <p>Its own {@code value} field and not the fields it reaches. A newtype is written as one type
+     * under a name, so the one value is the field its own declaration carries; read through what a
+     * spread brings in, this would answer for a product whose fields happened to include one called
+     * {@code value}.
+     */
+    public record NewtypeInnerOf(TypeKey named) implements Key<Type> {
+        @Override
+        public String module() {
+            return named.module();
+        }
+
+        @Override
+        public Answer<Type> compute(Db db) {
+            Answer<Boolean> wearsOne = db.ask(new Names.DeclarationIsNewtype(named));
+            if (!wearsOne.present() || !wearsOne.value()) {
+                return Answer.absent();
+            }
+            Answer<Hir.Def> declared = db.ask(new Names.ResolvedDeclaration(named));
+            if (!declared.present() || !(declared.value() instanceof Hir.Data data)) {
+                return Answer.absent();
+            }
+            // Written as a newtype and with nothing to wrap: the name its one value was written as
+            // denotes nothing. Reported where it is written, and answered here as no inner rather
+            // than as a type nothing said.
+            Type inner = NewtypeInners.innerOf(data);
+            return inner == null ? Answer.absent() : Answer.of(inner);
+        }
+    }
+
+    /**
+     * What any declaration that wears one value wraps, for a reader working out how far a name goes.
+     *
+     * <p>One of these for the whole compilation, for the reason {@link #expandedClauses} gives. A
+     * reader taking one depends on what the declarations it asks about wrap and on nothing else they
+     * say — so a line moving above one, or a clause of one being rewritten, reaches no reader of
+     * this.
+     *
+     * <p>What the language declares is not answered here and does not have to be: the library
+     * declares sums and units and no product at all, which is what {@code DeclarationMeaning}
+     * refuses to publish half of and what a test of this holds it to.
+     */
+    public static NewtypeInners newtypeInners(Db db) {
+        return declaration -> {
+            Answer<Type> inner = db.ask(new NewtypeInnerOf(declaration));
+            return inner.present() ? inner.value() : null;
+        };
     }
 
     /**
@@ -1089,6 +1152,7 @@ public final class Shapes {
                     shapes.put(data.declares(),
                             ExecutableInvariants.of(data, scope.value(),
                                     publishedDeclarations(db), declarationKinds(db),
+                                    newtypeInners(db),
                                     helpers.value()));
                 } catch (Unanswerable _) {
                     // Rests on something already reported where it went wrong.

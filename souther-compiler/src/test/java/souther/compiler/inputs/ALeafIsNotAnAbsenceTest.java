@@ -54,7 +54,7 @@ class ALeafIsNotAnAbsenceTest {
     }
 
     private StructuralInspection under(Type type) {
-        TypeView view = TypeView.of(type, symbols, ScopedDeclarations.of(symbols));
+        TypeView view = TypeView.asWritten(type, symbols, ScopedDeclarations.of(symbols));
         return StructuralInspection.of(ReadablePosition.of(view).shape(),
                 Distinctions.ofType(view, symbols, ScopedDeclarations.of(symbols)));
     }
@@ -92,7 +92,7 @@ class ALeafIsNotAnAbsenceTest {
                 under(named("Stage")));
 
         assertFalse(Distinctions.ofType(
-                TypeView.of(named("Stage"), symbols, ScopedDeclarations.of(symbols)),
+                TypeView.asWritten(named("Stage"), symbols, ScopedDeclarations.of(symbols)),
                 symbols, ScopedDeclarations.of(symbols)).isEmpty(),
                 "the same position divides two ways, which the answer above did not deny");
     }

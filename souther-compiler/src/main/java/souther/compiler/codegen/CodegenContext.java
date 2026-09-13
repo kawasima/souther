@@ -11,6 +11,7 @@ import souther.compiler.core.KernelSignatures;
 import souther.compiler.core.ValueShape;
 import souther.compiler.check.DerivedSymbols;
 import souther.compiler.check.DeclarationKinds;
+import souther.compiler.check.NewtypeInners;
 import souther.compiler.check.PublishedDeclarations;
 import souther.compiler.ast.Hir;
 import souther.compiler.diag.PhysicalPos;
@@ -55,6 +56,10 @@ final class CodegenContext {
     /** Which form each declaration was written in, for the emissions that only have to tell a sum
      *  from anything else. */
     final DeclarationKinds kinds;
+
+    /** What each declaration that wears one value wraps, for the readings that go through the
+     *  name. */
+    final NewtypeInners inners;
 
     /**
      * What the language declares of its kernels: what each takes and answers, as the compilation
@@ -444,8 +449,21 @@ final class CodegenContext {
         return r != null ? r.descriptorString() : null;
     }
 
+    /** The same, for an emitter that has not been handed what the declarations wrap — read off the
+     *  scope it is emitting against instead. */
     CodegenContext(String pkg, DerivedSymbols symbols, PublishedDeclarations published,
                    DeclarationKinds kinds,
+                   KernelSignatures kernels,
+                   Map<String, List<GeneratedClass>> caseToSums,
+                   Map<String, String> typePackage, boolean exposeAll, Set<String> exposed,
+                   Map<String, Type> standingCalls, SourceLayouts layouts, QuotedFrom home) {
+        this(pkg, symbols, published, kinds, NewtypeInners.asWritten(symbols), kernels, caseToSums,
+                typePackage, exposeAll, exposed, standingCalls, layouts, home);
+    }
+
+    CodegenContext(String pkg, DerivedSymbols symbols, PublishedDeclarations published,
+                   DeclarationKinds kinds,
+                   NewtypeInners inners,
                    KernelSignatures kernels,
                    Map<String, List<GeneratedClass>> caseToSums,
                    Map<String, String> typePackage, boolean exposeAll, Set<String> exposed,
@@ -456,6 +474,7 @@ final class CodegenContext {
         this.symbols = symbols;
         this.published = published;
         this.kinds = kinds;
+        this.inners = inners;
         this.kernels = kernels;
         this.caseToSums = caseToSums;
         this.typePackage = typePackage;

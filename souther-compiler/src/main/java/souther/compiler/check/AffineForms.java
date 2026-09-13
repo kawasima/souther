@@ -639,7 +639,8 @@ public final class AffineForms {
             // one rule: that one asks what a written value counts as and stops where nothing is
             // written, and this one asks what the arithmetic under the name comes to.
             case Core.Construct nd when !nd.values().isEmpty()
-                    && TypeView.of(Type.ref(nd.typeName()), reading.symbols(), reading.published())
+                    && TypeView.asWritten(Type.ref(nd.typeName()), reading.symbols(),
+                            reading.published())
                             .isWrapped() ->
                     formOf(nd.values().get(0).value(), at, reading, following, stopped);
             // One arm, holding two proofs that this projection is the value it reads. The

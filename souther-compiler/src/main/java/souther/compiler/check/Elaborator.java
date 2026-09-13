@@ -541,7 +541,7 @@ public final class Elaborator {
      *  has resolved them, which is what a check settling them has to go on — and refusing where one
      *  of them does not read, which a check is what reports. */
     private static FieldRead fieldRead(CheckContext ctx) {
-        return new FieldRead(ctx.symbols(), ctx.published(), ctx.kinds(),
+        return new FieldRead(ctx.symbols(), ctx.published(), ctx.kinds(), ctx.inners(),
                 new ResolvedFieldTypes(ctx.symbols()), FieldRead.Unreadable.REFUSED);
     }
 

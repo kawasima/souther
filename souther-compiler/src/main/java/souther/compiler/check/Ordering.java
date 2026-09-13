@@ -84,7 +84,7 @@ public sealed interface Ordering {
      */
     static Ordering of(Type type, Symbols symbols, DeclarationKinds kinds,
                        PublishedDeclarations published) {
-        TypeOps.NewtypeSpine spine = TypeOps.newtypeSpine(type, symbols);
+        TypeOps.NewtypeSpine spine = TypeOps.newtypeSpineAsWritten(type, symbols);
         Ordering terminal = ofTerminal(spine.terminal(), symbols, kinds, published);
         if (terminal == null) {
             return null;

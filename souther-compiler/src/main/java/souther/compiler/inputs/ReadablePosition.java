@@ -40,7 +40,7 @@ record ReadablePosition(TypeView view, Shape.ReadablePositionShape shape) {
      * compiling rather than arriving somewhere further down as a position nothing divides.
      */
     static ReadablePosition of(Type type, Symbols symbols, PublishedDeclarations published) {
-        return of(TypeView.of(type, symbols, published));
+        return of(TypeView.asWritten(type, symbols, published));
     }
 
     /** The same, of a position already read. The reading is the expensive half and the walk has one

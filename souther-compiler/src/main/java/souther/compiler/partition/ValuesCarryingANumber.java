@@ -38,7 +38,9 @@ record ValuesCarryingANumber(TermPath fixed, FixtureTemplate value, RuleReadingC
         // plan's `worn` is what a value already wearing those is still missing, which is what a
         // value chosen at a slot by a search is.
         return slot.at().equals(fixed)
-                ? WornNames.under(TypeView.of(slot.type(), reading.source().symbols(), reading.source().published()).wrappers(),
+                ? WornNames.under(TypeView.of(slot.type(), reading.source().inners(),
+                                reading.source().symbols(),
+                                reading.source().published()).wrappers(),
                         value, reading.source())
                 : null;
     }
