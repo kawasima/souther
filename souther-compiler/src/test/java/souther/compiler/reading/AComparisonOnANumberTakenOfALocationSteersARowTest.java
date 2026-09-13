@@ -324,7 +324,9 @@ class AComparisonOnANumberTakenOfALocationSteersARowTest {
 
         NumericTerm lengthAt(TermPath at) {
             NumericTerm.TakenOf taken = NumericTerm.TakenOf.of(
-                    NumericMeasures.takenOf(Type.STRING, symbols), at, Type.STRING, symbols);
+                    NumericMeasures.takenOf(Type.STRING, souther.compiler.check.ScopedDeclarations.wrapsOf(symbols)),
+                at, Type.STRING, souther.compiler.check.ScopedDeclarations.wrapsOf(symbols),
+                symbols);
             assertNotNull(taken, "the length of a string is a number this compiler names");
             return taken;
         }

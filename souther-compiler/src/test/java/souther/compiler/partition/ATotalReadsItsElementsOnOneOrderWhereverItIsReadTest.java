@@ -83,12 +83,14 @@ class ATotalReadsItsElementsOnOneOrderWhereverItIsReadTest {
     /** {@code List.sum} of what a place holds. */
     private static final NumericTerm.FromOnePosition AT_A_POSITION = NumericTerm.TakenOf.of(
             ValueName.Stdlib.operation("List", "sum"), TermPath.of("ns"),
-            new Type.ListOf(Type.INT), Symbols.none(souther.compiler.DefaultStdlib.get()));
+            new Type.ListOf(Type.INT), souther.compiler.check.NewtypeInners.NONE,
+            Symbols.none(souther.compiler.DefaultStdlib.get()));
 
     /** And of the values a walk answered, which is the same operation over a run. */
     private static final NumericTerm.TakenOver OVER_A_RUN = NumericTerm.TakenOver.of(
             ValueName.Stdlib.operation("List", "sum"),
             RunSource.overTheOccurrencesAt(TermPath.of("ns").element()), Type.INT,
+            souther.compiler.check.NewtypeInners.NONE,
             Symbols.none(souther.compiler.DefaultStdlib.get()));
 
     /** A container is on no order of its own, and the total it answers is counted by one. */

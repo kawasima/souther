@@ -119,7 +119,7 @@ class WhatACountIsShortOfIsTheReadingsAndNotTheRunsTest {
     private static RuleReadingSource refusing(TypeKey declaration, RuleReadingSource source) {
         return new RuleReadingSource(source.symbols(), source.invariants(),
                 named -> named.equals(declaration) ? null : source.published().of(named),
-                source.written());
+                source.kinds(), source.newtypes(), source.written());
     }
 
     /** The same source, counting what is asked of its declarations. One source and one origin, so
@@ -128,7 +128,7 @@ class WhatACountIsShortOfIsTheReadingsAndNotTheRunsTest {
         return new RuleReadingSource(source.symbols(), source.invariants(), named -> {
             asked.incrementAndGet();
             return source.published().of(named);
-        }, source.written());
+        }, source.kinds(), source.newtypes(), source.written());
     }
 
     /** The name {@code module} declares {@code declaration} under, taken from what it wrote. */

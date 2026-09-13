@@ -766,7 +766,7 @@ public final class InputDomain {
      * rather than a fourth quiet absence.
      */
     private static Type under(Type type, TermPath.Step step, RuleReadingSource source) {
-        TypeView view = TypeView.of(type, source.symbols());
+        TypeView view = TypeView.of(type, source.inners(), source.symbols(), source.published());
         // Asked of the shape rather than through the proof a position is made with. What is under a
         // type is a question about the type, and a type nothing can be read at answers nothing here
         // rather than being refused as a position this compiler disagrees with itself about.
@@ -774,7 +774,8 @@ public final class InputDomain {
             return null;
         }
         StructuralInspection under =
-                StructuralInspection.of(shape, Distinctions.ofType(view, source.symbols()));
+                StructuralInspection.of(shape,
+                        Distinctions.ofType(view, source.symbols(), source.published()));
         return switch (step) {
             // A field of a record, or a name a sum's cases all spread. The second is readable on a
             // value of the sum without opening a case, so the model does put something at it, and a
@@ -1013,11 +1014,13 @@ public final class InputDomain {
         // The proof first, and before anything is read off the position. A shape a reading is not
         // made of is this compiler disagreeing with itself about what may stand at a position, and
         // it is refused here rather than arriving further down as a position nothing divides.
-        ReadablePosition input = ReadablePosition.of(TypeView.of(type, source.symbols()));
+        ReadablePosition input = ReadablePosition.of(
+                TypeView.of(type, source.inners(), source.symbols(), source.published()));
         // What the position's type states, read once and handed to both readings of it. What a sum's
         // cases are decides which classes the position has and which branches stand under it, and a
         // second reading of that here would be the two disagreeing about which cases there are.
-        List<Case> declared = Distinctions.ofType(input.view(), source.symbols());
+        List<Case> declared =
+                Distinctions.ofType(input.view(), source.symbols(), source.published());
         // Asked of the occurrence and answered before anything under it is opened, never before the
         // occurrence itself is read. What stands here is read whichever time round it is — the
         // classes of a sum, the ends its rules put on it — and what is refused is unfolding the
@@ -1389,8 +1392,10 @@ public final class InputDomain {
                                  List<Case> declared) {
         TypeView view = input.view();
         Type type = view.declared();
-        Carrier carried = Carrier.ofValue(type, source.symbols());
-        ValueName.Stdlib taken = NumericMeasures.takenOf(type, source.symbols());
+        Carrier carried =
+                Carrier.ofValue(type, source.inners(), source.symbols(), source.kinds(),
+                        source.published());
+        ValueName.Stdlib taken = NumericMeasures.takenOf(type, source.inners());
         // The ends the value this sits in places on this position, which its own type says nothing
         // about. Read beside the type's own rules and not after them: a clause naming one coordinate
         // and a constant places an end wherever it is written, so where the rule was written is not
@@ -1422,7 +1427,7 @@ public final class InputDomain {
         // position holds without stating where they stop, and one that states where they stop
         // without naming any of them.
         AdmissibleSet admitted =
-                placed.admits(path, souther.compiler.check.TypeOps.base(type, source.symbols()));
+                placed.admits(path, souther.compiler.check.TypeOps.base(type, source.inners()));
         List<PositionBounds> bounds = new ArrayList<>();
         for (NumberAt.OfWhatNumber kind : kinds) {
             bounds.add(boundsOn(kind, path, type, taken, source, carried, placed,
@@ -1505,14 +1510,16 @@ public final class InputDomain {
         }
         BlockReason.RuleReadingStopped here = found.aReadingThatStopped();
         if (!declared.isEmpty()) {
-            return Crossing.of(declared, view, admissible, admitted, source.symbols(), here);
+            return Crossing.of(declared, view, admissible, admitted, source.inners(),
+                    source.symbols(),
+                    source.kinds(), source.published(), here);
         }
         // The values a rule named, where the type states no division. Not crossed with anything:
         // the reading that named them is the reading of the rules, and a value the rules single out
         // is one they admit. Nothing is read for a value whose own rules contradict — there is no
         // value of it for a rule to have named.
         List<Case> named = nothingExists ? List.of()
-                : Distinctions.ofValues(admitted.approximation(), type, source.symbols());
+                : Distinctions.ofValues(admitted.approximation(), type, source.inners());
         BlockReason.ReadingStopReason why = admitted.whyPartial() != null
                 ? Crossing.stopped(admitted.whyPartial()) : here;
         if (why != null) {
@@ -1585,7 +1592,7 @@ public final class InputDomain {
         NumericTerm.FromOnePosition term = switch (kind) {
             case NumberAt.OfWhatNumber.OfItsOwnValue _ -> new NumericTerm.ValueOf(path);
             case NumberAt.OfWhatNumber.OfWhatAnOperationAnswers _ ->
-                    NumericTerm.TakenOf.of(taken, path, type, source.symbols());
+                    NumericTerm.TakenOf.of(taken, path, type, source.inners(), source.symbols());
         };
         if (term == null) {
             throw new IllegalStateException(
@@ -1725,7 +1732,8 @@ public final class InputDomain {
             throw new IllegalStateException("a clause of `" + path + "` was read as a rule about `"
                     + by + "`, which is not an operation a number is taken by");
         }
-        NumericTerm.TakenOf taken = NumericTerm.TakenOf.of(operation, path, type, source.symbols());
+        NumericTerm.TakenOf taken =
+                NumericTerm.TakenOf.of(operation, path, type, source.inners(), source.symbols());
         if (taken == null) {
             throw new IllegalStateException("a clause of `" + path + "` was read as a rule about `"
                     + by + "`, and that takes no number of what stands there");

@@ -225,7 +225,7 @@ final class BodyGen {
          * as the Core the checker made (issue #1080).
          */
         CheckContext context() {
-            return new CheckContext(symbols, data, reqSigs());
+            return new CheckContext(symbols, ctx.published, ctx.kinds, ctx.inners, data, reqSigs());
         }
 
         /**
@@ -1856,7 +1856,9 @@ final class BodyGen {
             // Whether the two may be compared at all was settled by BinaryElaborator against the
             // types as written; this reads what they open to.
             Ordering how = Ordering.ofComparison(
-                    comparison.left().type(), comparison.right().type(), symbols);
+                    comparison.left().type(), comparison.right().type(), ctx.inners, symbols,
+                    ctx.kinds,
+                    ctx.published);
             if (how == null) {
                 throw new IllegalStateException("a comparison the checker admitted has no order: "
                         + comparison.left().type() + " " + cut.statedRelation() + " "
@@ -1947,7 +1949,7 @@ final class BodyGen {
          * natural order", so an order added to {@link Ordering} has to say which of the two it is
          * instead of inheriting the answer that happens to be right for these three. */
         private TypeSymbol sumOrdering(Type t) {
-            Ordering how = Ordering.of(t, symbols);
+            Ordering how = Ordering.of(t, ctx.inners, symbols, ctx.kinds, ctx.published);
             if (how == null) {
                 return null;
             }

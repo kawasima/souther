@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import souther.compiler.ast.Hir;
 import souther.compiler.check.DeclaredBounds;
 import souther.compiler.check.Prepared;
+import souther.compiler.check.ScopedDeclarations;
 import souther.compiler.check.Sig;
 import souther.compiler.check.Symbols;
 import souther.compiler.inputs.Refinement;
@@ -217,7 +218,9 @@ class APlanSaysWhichNarrowingADemandUnderASumIsOwedTest {
         TermPath bag = TermPath.of("query").then("item").then("bag");
 
         ConstructionPlan.Result asked = ConstructionPlan.of(typeOf(BESIDE_A_LIST),
-                TermPath.of("query"), symbolsOf(BESIDE_A_LIST),
+                TermPath.of("query"), ScopedDeclarations.wrapsOf(symbolsOf(BESIDE_A_LIST)),
+                symbolsOf(BESIDE_A_LIST),
+                ScopedDeclarations.of(symbolsOf(BESIDE_A_LIST)),
                 Set.of(TermPath.of("query").then("item").then("method").then("amount"),
                         bag.element()),
                 Requirements.NONE,
@@ -241,7 +244,9 @@ class APlanSaysWhichNarrowingADemandUnderASumIsOwedTest {
     @Test
     void aNarrowingOwedIsWhatComesBackWhereNothingIsRefused() {
         ConstructionPlan.Result asked = ConstructionPlan.of(typeOf(BESIDE_A_LIST),
-                TermPath.of("query"), symbolsOf(BESIDE_A_LIST),
+                TermPath.of("query"), ScopedDeclarations.wrapsOf(symbolsOf(BESIDE_A_LIST)),
+                symbolsOf(BESIDE_A_LIST),
+                ScopedDeclarations.of(symbolsOf(BESIDE_A_LIST)),
                 Set.of(TermPath.of("query").then("item").then("method").then("amount"),
                         TermPath.of("query").then("item").then("bag").element()),
                 Requirements.NONE, ANY);
@@ -264,8 +269,9 @@ class APlanSaysWhichNarrowingADemandUnderASumIsOwedTest {
     }
 
     private static ConstructionPlan.Result planningOf(String source, Set<TermPath> decided) {
-        return ConstructionPlan.of(typeOf(source), TermPath.of("query"), symbolsOf(source),
-                decided, Requirements.NONE, ANY);
+        return ConstructionPlan.of(typeOf(source), TermPath.of("query"),
+                ScopedDeclarations.wrapsOf(symbolsOf(source)), symbolsOf(source),
+                ScopedDeclarations.of(symbolsOf(source)), decided, Requirements.NONE, ANY);
     }
 
     private static Type typeOf(String source) {

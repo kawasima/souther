@@ -190,9 +190,16 @@ public final class Declarations<D> {
         return def != null ? def : language.declaration(address);
     }
 
-    /** Whether anything declares {@code name} — this compilation or the language. */
+    /**
+     * Whether anything declares {@code name} — this compilation or the language.
+     *
+     * <p>Asked of each source as the question it is, rather than by reaching for a declaration and
+     * seeing whether one came back. A reader wanting to know whether something is declared does not
+     * mean anything by the declaration, and handed it would be told every time the declaration was
+     * written over or written somewhere else in its text.
+     */
     public boolean contains(TypeKey address) {
-        return declaration(address) != null;
+        return registry.declares(address) || language.declaration(address) != null;
     }
 
     /**
@@ -218,7 +225,7 @@ public final class Declarations<D> {
 
     /** The same, of an address. */
     public boolean declaredByCompilation(TypeKey address) {
-        return registry.declaration(address) != null;
+        return registry.declares(address);
     }
 
     /**

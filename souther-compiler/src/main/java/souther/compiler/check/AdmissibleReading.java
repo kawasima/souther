@@ -56,6 +56,9 @@ final class AdmissibleReading {
      * values an integer has, and the reading that asked the carrier had no word for the first. */
     private final Map<FactSubject, Type> byName;
     private final Symbols symbols;
+    /** What the declarations a position names say about themselves. Beside {@link #symbols} and not
+     *  read off it: what a declaration states is not what this module's world holds. */
+    private final PublishedDeclarations published;
     /**
      * What puts two sets together, and what it is allowed to build doing it.
      *
@@ -92,10 +95,12 @@ final class AdmissibleReading {
      */
     private final Set<Core> gaveUp = Collections.newSetFromMap(new IdentityHashMap<>());
     private AdmissibleReading(Terms terms, Map<FactSubject, Type> byName,
-                              Symbols symbols, Allowance<FactSubject> allowed) {
+                              Symbols symbols, PublishedDeclarations published,
+                              Allowance<FactSubject> allowed) {
         this.terms = terms;
         this.byName = byName;
         this.symbols = symbols;
+        this.published = published;
         this.allowed = allowed;
     }
 
@@ -105,8 +110,9 @@ final class AdmissibleReading {
      *  reading holding the environment the clause began in would read a rule under a binding at
      *  names that mean nothing there, and every such rule came out as a form nothing reads. */
     static AdmissibleReading of(Terms terms, Map<FactSubject, Type> byName,
-                                Symbols symbols, Allowance<FactSubject> allowed) {
-        return new AdmissibleReading(terms, byName, symbols, allowed);
+                                Symbols symbols, PublishedDeclarations published,
+                                Allowance<FactSubject> allowed) {
+        return new AdmissibleReading(terms, byName, symbols, published, allowed);
     }
 
     /** What this reading is spending, for whoever meets its answer with the next rule's. */
@@ -534,7 +540,8 @@ final class AdmissibleReading {
         if (states) {
             return ValueSet.just(value);
         }
-        List<Value> every = ValueUniverse.of(type, symbols);
+        List<Value> every =
+                ValueUniverse.of(type, terms.newtypeInners(), terms.kinds(), published);
         if (every == null) {
             return ValueSet.allBut(value);
         }

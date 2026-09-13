@@ -2,6 +2,8 @@ package souther.compiler.inputs;
 
 import souther.compiler.ast.Hir;
 import souther.compiler.check.AtomSpace;
+import souther.compiler.check.NewtypeInners;
+import souther.compiler.check.PublishedDeclarations;
 import souther.compiler.check.Shape;
 import souther.compiler.check.Symbols;
 import souther.compiler.check.TypeOps;
@@ -43,7 +45,8 @@ public final class Distinctions {
      * <p>Nothing about the rules on the position. What its type declares and what its rules leave
      * it able to hold are two facts, and this is the first of them.
      */
-    public static List<Case> ofType(TypeView view, Symbols symbols) {
+    public static List<Case> ofType(TypeView view, Symbols symbols,
+                                    PublishedDeclarations published) {
         return switch (view.shape()) {
             // A `Bool` is two values. No other primitive has distinctions to read off its type:
             // what a number's rules leave is a range with edges — everything outside a newtype's
@@ -52,8 +55,8 @@ public final class Distinctions {
             // here.
             case Shape.Scalar scalar -> scalar.prim() == Type.Prim.BOOL
                     ? List.of(new Case.Truth(true), new Case.Truth(false)) : List.of();
-            case Shape.Sum sum -> casesOf(Type.ref(sum.name()), symbols);
-            case Shape.Cases cases -> casesOf(Type.union(cases.members()), symbols);
+            case Shape.Sum sum -> casesOf(Type.ref(sum.name()), symbols, published);
+            case Shape.Cases cases -> casesOf(Type.union(cases.members()), symbols, published);
             case Shape.Optional _ ->
                     List.of(new Case.Presence(false), new Case.Presence(true));
             // Shapes whose types state no division of their own. A record is made of positions and
@@ -78,9 +81,10 @@ public final class Distinctions {
 
     /** A sum's cases as distinctions, folded to their leaves and in the order they are declared —
      *  which is the order a report names them in. */
-    private static List<Case> casesOf(Type sum, Symbols symbols) {
+    private static List<Case> casesOf(Type sum, Symbols symbols,
+                                      PublishedDeclarations published) {
         List<Case> out = new ArrayList<>();
-        for (TypeSymbol leaf : AtomSpace.subjectAtoms(sum, symbols)) {
+        for (TypeSymbol leaf : AtomSpace.subjectAtoms(sum, published)) {
             out.add(new Case.SumCase(leaf, oneValue(leaf, symbols)));
         }
         return List.copyOf(out);
@@ -116,13 +120,13 @@ public final class Distinctions {
      * something the position does not hold, and a division this can only half describe is one it
      * does not make.
      */
-    static List<Case> ofValues(ValueSet admitted, Type type, Symbols symbols) {
+    static List<Case> ofValues(ValueSet admitted, Type type, NewtypeInners inners) {
         if (!(admitted instanceof ValueSet.Finite finite) || finite.values().isEmpty()) {
             return List.of();
         }
         List<Case> out = new ArrayList<>();
         for (Value value : finite.values()) {
-            if (!standsAt(value, type, symbols)) {
+            if (!standsAt(value, type, inners)) {
                 return List.of();
             }
             out.add(new Case.Named(value));
@@ -141,10 +145,10 @@ public final class Distinctions {
      * <p>A number an {@code Int} cannot hold is not one either. A rule naming one admits nothing,
      * which is a refusal of the declaration rather than a distinction here.
      */
-    private static boolean standsAt(Value value, Type type, Symbols symbols) {
+    private static boolean standsAt(Value value, Type type, NewtypeInners inners) {
         return switch (value) {
             case Value.Text _, Value.Truth _ -> true;
-            case Value.Number number -> TypeOps.numericBase(type, symbols) == Type.DECIMAL
+            case Value.Number number -> TypeOps.numericBase(type, inners) == Type.DECIMAL
                     || whole(number.value());
             case Value.Case _ -> false;
         };

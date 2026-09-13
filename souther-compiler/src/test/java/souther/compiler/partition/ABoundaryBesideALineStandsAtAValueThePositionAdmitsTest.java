@@ -224,6 +224,7 @@ class ABoundaryBesideALineStandsAtAValueThePositionAdmitsTest {
         NumericTerm.FromOnePosition length = NumericTerm.TakenOf.of(
                 ValueName.Stdlib.operation("String", "length"), CODE,
                 souther.compiler.types.Type.Prim.STRING,
+                souther.compiler.check.NewtypeInners.NONE,
                 souther.compiler.check.Symbols.none(souther.compiler.DefaultStdlib.get()));
 
         assertEquals(CODE, length.position(),

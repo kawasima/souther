@@ -26,20 +26,38 @@ import java.util.Map;
  * about. It denotes something — a function type denotes a function — but what it denotes is not a
  * place a value crosses a boundary at, and a declaration writing one is refused before it is ever
  * accepted.
+ *
+ * <p><b>What a name written over one value holds is asked and not walked.</b> This world answers it
+ * like any other name at any other declaration, so a reader of a field crossing a {@code .} still
+ * reads the world it was handed; what changed is where this world gets the answer. A newtype has
+ * nothing the walk below is for — no spread to follow and no second field — so walking it read a
+ * declaration to be told what {@link NewtypeInners} already says.
  */
 public final class ResolvedFieldTypes implements FieldTypes {
 
     private final Symbols symbols;
 
-    public ResolvedFieldTypes(Symbols symbols) {
-        if (symbols == null) {
-            throw new IllegalArgumentException("what a declaration denotes is read against a world");
+    private final NewtypeInners inners;
+
+    public ResolvedFieldTypes(Symbols symbols, NewtypeInners inners) {
+        if (symbols == null || inners == null) {
+            throw new IllegalArgumentException("what a declaration denotes is read against a world,"
+                    + " and what a name wraps is read where that was settled");
         }
         this.symbols = symbols;
+        this.inners = inners;
     }
 
     @Override
     public Map<String, Type> of(TypeSymbol owner) {
+        // A name written over one value holds that value under `value`, and what it holds is what it
+        // wraps — asked where that is settled rather than walked out of the declaration here. The
+        // walk below is the machinery a product's fields need, and a newtype has none of it: nothing
+        // to spread in, and one field the author did not write.
+        Type wraps = owner instanceof TypeSymbol.AtModule at ? inners.of(at.key()) : null;
+        if (wraps != null) {
+            return Map.of(NewtypeInners.THE_ONE_VALUE, wraps);
+        }
         Map<String, Type> out = new LinkedHashMap<>();
         written(owner, symbols).forEach((field, declared) -> {
             Type is = declared.denotes();

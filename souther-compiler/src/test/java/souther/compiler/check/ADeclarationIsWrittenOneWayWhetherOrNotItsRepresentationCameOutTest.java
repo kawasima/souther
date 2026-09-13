@@ -52,7 +52,9 @@ class ADeclarationIsWrittenOneWayWhetherOrNotItsRepresentationCameOutTest {
     void aDeclarationThatDerivedIsTheNormalisedDeclaration() {
         Normalized.Def amount = normalizedNamed("Amount");
 
-        Derived.Def derived = Derived.Def.derive(amount, scope);
+        Derived.Def derived =
+                Derived.Def.derive(amount, scope, ScopedDeclarations.kindsOf(scope),
+                        ScopedDeclarations.of(scope));
 
         assertNotNull(derived, "`Amount` has a representation to derive");
         assertEquals(amount, derived.declaration(),
@@ -70,7 +72,7 @@ class ADeclarationIsWrittenOneWayWhetherOrNotItsRepresentationCameOutTest {
     void aDeclarationThatDidNotDeriveIsStillNormalised() {
         Normalized.Def broken = normalizedNamed("Broken");
 
-        assertNull(Derived.Def.derive(broken, scope),
+        assertNull(Derived.Def.derive(broken, scope, ScopedDeclarations.kindsOf(scope), ScopedDeclarations.of(scope)),
                 "nothing could be derived for a field whose type names nothing");
         assertNotNull(broken.node(),
                 "and the declaration is still written in the form the stage below reads");
@@ -88,7 +90,8 @@ class ADeclarationIsWrittenOneWayWhetherOrNotItsRepresentationCameOutTest {
     void everyDeclarationIsNormalisedByTheOneOperation() {
         for (InvariantSettled.Def def : settled.defs()) {
             Normalized.Def normalised = Normalized.Def.of(def, scope);
-            Derived.Def derived = Derived.Def.derive(normalised, scope);
+            Derived.Def derived =
+                    Derived.Def.derive(normalised, scope, ScopedDeclarations.kindsOf(scope), ScopedDeclarations.of(scope));
             if (derived != null) {
                 assertSame(normalised, derived.declaration(),
                         "`" + def.name() + "` reached the derivation already written this way");
@@ -124,7 +127,8 @@ class ADeclarationIsWrittenOneWayWhetherOrNotItsRepresentationCameOutTest {
 
     private InvariantSettled settle() {
         return InvariantSettled.settle(
-                Expandable.check(resolved(), Map.of(), DefaultStdlib.get()), scope, Map.of());
+                Expandable.check(resolved(), Map.of(), DefaultStdlib.get()), scope,
+                ScopedDeclarations.kindsOf(scope), Map.of());
     }
 
     private static Hir.Module resolved() {

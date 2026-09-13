@@ -126,15 +126,16 @@ public final class NumericAnswers {
      * says and what the binding of that fact already holds — read again here as a third statement,
      * the day one of them moved would be the day they disagreed.
      */
-    public static Type typeOf(ValueName operation, Type source, Symbols symbols) {
+    public static Type typeOf(ValueName operation, Type source, NewtypeInners inners,
+                              Symbols symbols) {
         if (DefaultBoundOperationFacts.get().accumulation(operation) == null) {
             return typeOf(operation, symbols.library());
         }
         Type element = source == null ? null
-                : Type.elementOfAContainer(TypeOps.base(source, symbols));
+                : Type.elementOfAContainer(TypeOps.base(source, inners));
         // Through the names the element is written under, as everywhere a number is looked for: a
         // name wrapped round a whole number is a whole number, and a total of them is one too.
-        return element == null ? null : in(TypeOps.base(element, symbols));
+        return element == null ? null : in(TypeOps.base(element, inners));
     }
 
     /**

@@ -657,7 +657,8 @@ sealed interface StatedByClauses {
                              Symbols symbols, Alternatives alternatives,
                              Allowance<FactSubject> allowed, StringMachineAnswers machines,
                              StatedLines lines, BoundaryReading boundaries) {
-        return new Reading(AdmissibleReading.of(terms, byName, symbols, allowed),
+        return new Reading(
+                AdmissibleReading.of(terms, byName, symbols, terms.published(), allowed),
                 OrderedReading.of(terms, byName, symbols), terms, byName, alternatives,
                 machines, lines, boundaries);
     }

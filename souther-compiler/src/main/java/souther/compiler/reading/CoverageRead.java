@@ -159,9 +159,11 @@ public final class CoverageRead {
         // each reading it for itself is how they came to be about different numbers.
         souther.compiler.inputs.ComparedNumbers numbers =
                 souther.compiler.inputs.ComparedNumbers.of(inputs.reading(source));
-        CoverageNaming naming = new CoverageNaming(plan, symbols, reads, numbers);
+        CoverageNaming naming =
+                new CoverageNaming(plan, symbols, source.newtypes(), reads, numbers);
         ValueArrivals<Outcome> reading = ValueArrivals.ofBody(body, naming,
-                new NumberWays(numbers, numbers.reading().quantities(), reads, symbols));
+                new NumberWays(numbers, numbers.reading().quantities(), reads, symbols,
+                        source.newtypes()));
         Meetings meetings = new Meetings(plan, reading);
         Arms arms = new Arms(plan);
         new CoverageRead(reading, meetings, arms)
@@ -282,15 +284,15 @@ public final class CoverageRead {
                 walk(let.value(), naming, reach, observed);
                 walk(let.body(), naming.under(let.binder(), let.value()), reach, observed);
             }
-            case Core.Int ignored -> { }
-            case Core.Decimal ignored -> { }
-            case Core.Str ignored -> { }
-            case Core.Bool ignored -> { }
-            case Core.Temporal ignored -> { }
-            case Core.Read ignored -> { }
-            case Core.UnitValue ignored -> { }
-            case Core.OptionNone ignored -> { }
-            case Core.Unreachable ignored -> { }
+            case Core.Int _ -> { }
+            case Core.Decimal _ -> { }
+            case Core.Str _ -> { }
+            case Core.Bool _ -> { }
+            case Core.Temporal _ -> { }
+            case Core.Read _ -> { }
+            case Core.UnitValue _ -> { }
+            case Core.OptionNone _ -> { }
+            case Core.Unreachable _ -> { }
             // Everything the node is made of is evaluated, and under what the node itself was.
             case Core.Neg neg -> walkAll(some(neg.operand()), naming, reach, observed);
             case Core.FieldAccess access -> walkAll(some(access.target()), naming, reach, observed);
@@ -431,10 +433,10 @@ public final class CoverageRead {
         if (held.isEmpty()) {
             return new Reach.Nothing(PathAccess.Unreachable.Why.CONTRADICTS_WHAT_ALREADY_HELD);
         }
-        if (above instanceof Reach.Coarse(var ignored, var why)) {
+        if (above instanceof Reach.Coarse(var _, var why)) {
             return new Reach.Coarse(held, why);
         }
-        if (step instanceof Reach.Coarse(var ignored, var why)) {
+        if (step instanceof Reach.Coarse(var _, var why)) {
             return new Reach.Coarse(held, why);
         }
         return new Reach.Ways(held);

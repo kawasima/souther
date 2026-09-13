@@ -39,8 +39,8 @@ class WhatAPositionIsOfferedDoesNotTurnOnHowTheRuleWasSpeltTest {
     private record Model(RuleReadingSource rules, String module) {
 
         TypeView view(String type) {
-            return TypeView.of(new Type.Ref(TypeSymbols.declared(new TypeKey(module, type))),
-                    rules.symbols());
+            return TypeView.asWritten(new Type.Ref(TypeSymbols.declared(new TypeKey(module, type))),
+                    rules.symbols(), rules.published());
         }
 
         /** The world these readings are made in, with nothing to borrow from. */

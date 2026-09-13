@@ -791,7 +791,7 @@ public final class InvariantChecker {
         // A newtype's value is the same location as the newtype, so it is at no name of its own and
         // its fields are the first step there is. Read from the world rather than off a node handed
         // in, and turned into a name here, where the names a rule may write are decided.
-        boolean atTheValue = DeclarationFacts.isNewtype(named, symbols);
+        boolean atTheValue = DeclarationFacts.isNewtype(named, c.terms.newtypes());
         Map<String, Type> fields = c.clauses.fieldsOf(named);
         Map<String, BindingId> bindings = c.clauses.bindingsOf(named);
         Denotations at = Denotations.none()
@@ -1326,7 +1326,7 @@ public final class InvariantChecker {
         // operation — the one that counts what the position's type holds. A coordinate that recorded
         // only "not the value" brought a count and a number some other operation answers of the same
         // location to one name (#1027).
-        ValueName countsIt = NumericMeasures.takenOf(type, symbols);
+        ValueName countsIt = NumericMeasures.takenOf(type, terms.newtypeInners());
         FactSubject counted = countsIt == null ? null : terms.takenAtomOf(value, type, at);
         if (counted != null) {
             held.put(path, new FieldDomains.Counted(counted, countsIt));
@@ -1337,8 +1337,8 @@ public final class InvariantChecker {
         // ends that walk, and a copy of it here is a place the two could come to disagree.
         Core inner = value;
         Type worn = type;
-        for (TypeOps.Layer layer : TypeOps.newtypeChain(type, symbols)) {
-            Type under = TypeOps.newtypeInner(layer.named(), symbols);
+        for (TypeOps.Layer layer : TypeOps.newtypeChain(type, terms.newtypeInners())) {
+            Type under = terms.newtypeInners().under(Type.ref(layer.named()));
             if (under == null) {
                 break;
             }
@@ -1357,7 +1357,8 @@ public final class InvariantChecker {
         // A name still worn here is one the walk above could not take off, which is a declaration
         // that returns to itself. Its `value` is this very value, so following it names the same
         // thing again a step deeper than anything asks about.
-        Map<String, Type> under = switch (ValueReading.of(worn, symbols)) {
+        Map<String, Type> under = switch (ValueReading.of(
+                worn, terms.newtypeInners(), terms.kinds(), symbols, terms.published())) {
             case ValueReading.AtAValue read -> read.named();
             // Every name that comes off has come off above, so a name still worn is a declaration
             // that returns to itself: what it wraps is the value already being read, and reading it
@@ -1959,7 +1960,9 @@ public final class InvariantChecker {
                                                        Map<RuleKey, Type> typeAt) {
         Map<FactSubject, Coordinate> byName = new LinkedHashMap<>();
         keys.forEach((path, key) -> {
-            Carrier carrier = Carrier.ofValue(typeAt.get(path), symbols);
+            Carrier carrier =
+                    Carrier.ofValue(typeAt.get(path), terms.newtypeInners(), symbols,
+                            terms.kinds(), terms.published());
             byName.put(key, new Coordinate(NumberAt.valueOf(path), carrier));
             FactSubject atom = atoms.get(path);
             if (atom != null) {

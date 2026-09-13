@@ -55,8 +55,13 @@ public final class ClauseHelpers {
      * bodies below, and says the same thing both times.
      */
     static Expansion<Hir.Module> withSettledInvariants(Hir.Module m, Symbols symbols,
+                                                       DeclarationKinds kinds,
                                                        Map<String, Hir.FnDef> published) {
-        Hir.Module settled = settled(m, symbols);
+        // Settling runs while what these declarations say is still being worked out, so what is read
+        // here is which form each one is — settled when the module was indexed — and asking what one
+        // says is refused rather than answered with nothing.
+        Hir.Module settled = settled(m, symbols, PublishedDeclarations.THE_ONE_THAT_MAKES_THEM,
+                kinds);
         HelperInliner inliner = HelperInliner.forModule(settled, published, symbols.library());
         // What these expansions could not remove comes back with what they produced. A clause is the
         // one place a module writes an expression that is not a definition, so a recursion reached
@@ -87,9 +92,10 @@ public final class ClauseHelpers {
      * expansion having produced none.
      */
     public static Map<TypeKey, ExpandedClauses> expandedClausesOf(
-            Expandable expandable, Symbols symbols, Map<String, Hir.FnDef> published) {
+            Expandable expandable, Symbols symbols, PublishedDeclarations declarations,
+            DeclarationKinds kinds, Map<String, Hir.FnDef> published) {
         Hir.Module m = expandable.module();
-        Hir.Module settled = settled(m, symbols);
+        Hir.Module settled = settled(m, symbols, declarations, kinds);
         HelperInliner inliner = HelperInliner.forHelpers(m.name(), HelperInliner.helpersOf(settled),
                 published, InliningPolicy.DISCHARGE, symbols.library());
         Map<TypeKey, ExpandedClauses> out = new LinkedHashMap<>();
@@ -149,8 +155,10 @@ public final class ClauseHelpers {
     /** {@code m} with its helper parameter types settled and the names in its invariants written
      * qualified — what both representations are expanded from, so neither reads a table the other
      * would key differently. */
-    static Hir.Module settled(Hir.Module m, Symbols symbols) {
-        return HelperNames.withQualifiedInvariants(HelperParams.settle(m, symbols, Map.of()));
+    static Hir.Module settled(Hir.Module m, Symbols symbols, PublishedDeclarations published,
+                              DeclarationKinds kinds) {
+        return HelperNames.withQualifiedInvariants(
+                HelperParams.settle(m, symbols, published, kinds, Map.of()));
     }
 
     /**

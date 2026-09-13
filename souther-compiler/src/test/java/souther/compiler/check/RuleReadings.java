@@ -43,6 +43,7 @@ public final class RuleReadings {
      *  declares one rather than the tree the declaration happens to carry. */
     public static RuleReadingSource ofNoClauseFiled(Symbols symbols) {
         return new RuleReadingSource(symbols, noClauseFiled(), PublishedDeclarations.NONE,
+                ScopedDeclarations.kindsOf(symbols), DeclarationNewtypes.asWritten(symbols),
                 ClauseLocations.NONE);
     }
 

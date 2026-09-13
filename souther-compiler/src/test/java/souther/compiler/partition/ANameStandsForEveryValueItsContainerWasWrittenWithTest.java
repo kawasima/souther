@@ -154,7 +154,7 @@ class ANameStandsForEveryValueItsContainerWasWrittenWithTest {
             if (!(side instanceof Core.Read name)) {
                 return "not a name: " + side.getClass().getSimpleName();
             }
-            ReadMeaning meaning = at.meaningOf(name, symbols);
+            ReadMeaning meaning = at.meaningOf(name, symbols, read.rules().newtypes());
             if (!(meaning instanceof ReadMeaning.Through through)) {
                 return said(meaning);
             }

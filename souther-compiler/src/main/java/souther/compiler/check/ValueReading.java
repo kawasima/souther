@@ -1,6 +1,5 @@
 package souther.compiler.check;
 
-import souther.compiler.ast.Hir;
 import souther.compiler.types.Type;
 import souther.compiler.types.TypeSymbol;
 
@@ -106,18 +105,17 @@ sealed interface ValueReading {
     }
 
     /** What the model writes where a value of {@code type} stands. */
-    static ValueReading of(Type type, Symbols symbols) {
-        TypeView view = TypeView.of(type, symbols);
-        if (view.isWrapped() && symbols.declaredNode(view.wrappers().getFirst())
-                instanceof Hir.Data worn) {
-            // The outermost name is the reading's, and what is readable under it is written on that
-            // name's own declaration — so the name comes from the reading and the body is fetched
-            // here, where reading a declaration is the question. Walked again for the body instead,
-            // this would decide how far a newtype reaches a second time in a method that has
+    static ValueReading of(Type type, NewtypeInners inners, DeclarationKinds kinds, Symbols symbols,
+                           PublishedDeclarations published) {
+        TypeView view = TypeView.of(type, inners, symbols, published);
+        if (view.isWrapped() && view.wrappers().getFirst() instanceof TypeSymbol.AtModule worn) {
+            // The one name a value written under a name makes readable, which is what that name
+            // wraps. A name is worn here only because the walk that took the names off found
+            // something under it, so there is something to write down; reading the declaration for
+            // it would be deciding how far a newtype reaches a second time in a method that has
             // already been told.
-            TypeSymbol name = view.wrappers().getFirst();
-            return new UnderAName(name, owning(name, symbols),
-                    TypeOps.fieldTypes(worn, symbols));
+            return new UnderAName(worn, owning(worn, kinds),
+                    Map.of(NewtypeInners.THE_ONE_VALUE, inners.of(worn.key())));
         }
         // What a field access may write here is one question with one owner, asked once for every
         // shape. What is left for the switch is which declarations state something of every value
@@ -125,14 +123,14 @@ sealed interface ValueReading {
         ReadableFields readable = ReadableFields.of(view.shape());
         return switch (view.shape()) {
             case Shape.Product product ->
-                    new AtAValue(product.name(), owning(readable.declaredBy(), symbols), readable,
+                    new AtAValue(product.name(), owning(readable.declaredBy(), kinds), readable,
                             List.of());
             // A sum is a common product times a choice of case. What the cases share is stated of
             // every value standing here and is readable on one; what one case declares is under that
             // case, and a reading of it is opened where a match opens the case.
             case Shape.Sum sum ->
-                    new AtAValue(sum.name(), owning(readable.declaredBy(), symbols), readable,
-                            cases(sum.name(), symbols));
+                    new AtAValue(sum.name(), owning(readable.declaredBy(), kinds), readable,
+                            cases(sum.name(), published));
             // A unit data holds nothing and may write no rule about it (spec §unit-data), and a
             // primitive is written under no declaration of its own.
             case Shape.Unit unit -> new AtAValue(unit.name(), List.of(), readable, List.of());
@@ -148,15 +146,15 @@ sealed interface ValueReading {
         };
     }
 
-    private static List<Owner> owning(TypeSymbol name, Symbols symbols) {
-        return owning(List.of(name), symbols);
+    private static List<Owner> owning(TypeSymbol name, DeclarationKinds kinds) {
+        return owning(List.of(name), kinds);
     }
 
     /** The declarations these names denote, leaving out any that denotes none. */
-    private static List<Owner> owning(List<TypeSymbol> names, Symbols symbols) {
+    private static List<Owner> owning(List<TypeSymbol> names, DeclarationKinds kinds) {
         List<Owner> out = new ArrayList<>();
         for (TypeSymbol name : names) {
-            Owner owner = TypeOps.writingFields(name, symbols);
+            Owner owner = TypeOps.writingFields(name, kinds);
             if (owner != null) {
                 out.add(owner);
             }
@@ -165,9 +163,9 @@ sealed interface ValueReading {
     }
 
     /** A sum's cases, as the one closure over them answers. */
-    private static List<Type> cases(TypeSymbol sum, Symbols symbols) {
+    private static List<Type> cases(TypeSymbol sum, PublishedDeclarations published) {
         List<Type> out = new ArrayList<>();
-        for (TypeSymbol leaf : AtomSpace.subjectAtoms(Type.ref(sum), symbols)) {
+        for (TypeSymbol leaf : AtomSpace.subjectAtoms(Type.ref(sum), published)) {
             out.add(Type.ref(leaf));
         }
         return out;

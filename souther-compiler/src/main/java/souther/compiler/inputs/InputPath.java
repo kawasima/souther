@@ -2,9 +2,9 @@ package souther.compiler.inputs;
 
 import souther.compiler.check.CallArguments;
 import souther.compiler.check.DeclaredArgument;
+import souther.compiler.check.DeclarationNewtypes;
 import souther.compiler.check.DefaultBoundOperationFacts;
 import souther.compiler.check.Location;
-import souther.compiler.check.Symbols;
 import souther.compiler.core.ConstructionProjection;
 import souther.compiler.core.Core;
 import souther.compiler.semantics.BuiltFrom;
@@ -64,12 +64,12 @@ import java.util.List;
  */
 final class InputPath {
 
-    private final Symbols symbols;
+    private final DeclarationNewtypes newtypes;
     private final ElementQuestion asked;
     private final BindingTrail trail = new BindingTrail();
 
-    private InputPath(Symbols symbols, ElementQuestion asked) {
-        this.symbols = symbols;
+    private InputPath(DeclarationNewtypes newtypes, ElementQuestion asked) {
+        this.newtypes = newtypes;
         this.asked = asked;
     }
 
@@ -92,8 +92,8 @@ final class InputPath {
      * only the outermost name would leave every claim inside an expanded helper about a position
      * nothing here can name.
      */
-    static PathResolution of(Core e, BindingEnvironment names, Symbols symbols) {
-        return new InputPath(symbols, ElementQuestion.NAMED_POSITION).named(e, names);
+    static PathResolution of(Core e, BindingEnvironment names, DeclarationNewtypes newtypes) {
+        return new InputPath(newtypes, ElementQuestion.NAMED_POSITION).named(e, names);
     }
 
     /**
@@ -111,8 +111,9 @@ final class InputPath {
      * nothing at all — which reads as a model with no rule there rather than a rule this could not
      * follow.
      */
-    static PathResolution cameFrom(Core e, BindingEnvironment names, Symbols symbols) {
-        return new InputPath(symbols, ElementQuestion.VALUE_ORIGIN).named(e, names);
+    static PathResolution cameFrom(Core e, BindingEnvironment names,
+                                   DeclarationNewtypes newtypes) {
+        return new InputPath(newtypes, ElementQuestion.VALUE_ORIGIN).named(e, names);
     }
 
     /**
@@ -124,8 +125,8 @@ final class InputPath {
      * handed to the next names no position of its own, and the elements are the same elements.
      */
     static PathResolution elementAt(BindingId binding, BindingEnvironment names,
-                                    Symbols symbols) {
-        return new InputPath(symbols, ElementQuestion.NAMED_POSITION).elementOf(binding, names);
+                                    DeclarationNewtypes newtypes) {
+        return new InputPath(newtypes, ElementQuestion.NAMED_POSITION).elementOf(binding, names);
     }
 
     private PathResolution named(Core e, BindingEnvironment names) {
@@ -162,7 +163,11 @@ final class InputPath {
             // field is not a step of a path — a newtype's own value is the value under it — the
             // place is the target's, which is the step this takes there.
             case Core.FieldAccess fa -> named(fa.target(), names).deeper(
-                    Location.isStep(fa.target().type(), fa.field(), symbols)
+                    // Asked of {@link Location}, which owns the rule, from the answer this walk was
+                    // handed. Whether a name wears one value was settled when the module was
+                    // indexed, so a path through a field does not turn on what the declaration
+                    // says or on where it is written.
+                    Location.isStep(fa.target().type(), fa.field(), newtypes)
                             ? base -> base.then(fa.field()) : base -> base);
             // What an expression that binds a name comes to is what its body comes to, under that
             // name. Whether the name may stand for the position its value names is not asked here

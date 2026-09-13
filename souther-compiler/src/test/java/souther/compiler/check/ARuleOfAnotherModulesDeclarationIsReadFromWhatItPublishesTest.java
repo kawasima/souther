@@ -149,6 +149,7 @@ class ARuleOfAnotherModulesDeclarationIsReadFromWhatItPublishesTest {
                                                 PublishedDeclarations said) {
         Clauses reading = new Clauses(new RuleReadingSource(
                 Scopes.resolved(c.db(), "shop.cart").value(), noTreeIsOnOffer(), said,
+                Shapes.declarationKinds(c.db()), Shapes.declarationNewtypes(c.db()),
                 ClauseLocations.NONE));
         Map<BindingId, Core> given = new LinkedHashMap<>();
         reading.bindingsOf(named).values()

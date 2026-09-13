@@ -55,7 +55,8 @@ class ALanguageOperationKeptStandingTypesFromWhatItDeclaresTest {
                 POS, null);
 
         Core typed = Elaborator.elaborate(call, Scope.NONE,
-                CheckContext.of(Symbols.none(DefaultStdlib.get())).preserving(KEPT));
+                CheckContext.of(Symbols.none(DefaultStdlib.get()), PublishedDeclarations.NONE,
+                DeclarationKinds.NONE).preserving(KEPT));
 
         Core.PreservedCall kept = assertInstanceOf(Core.PreservedCall.class, typed);
         assertEquals(ValueName.Stdlib.operation("List", "length"), kept.operation());
@@ -78,7 +79,8 @@ class ALanguageOperationKeptStandingTypesFromWhatItDeclaresTest {
                 POS, null);
 
         Core typed = Elaborator.elaborate(call, Scope.NONE,
-                CheckContext.of(Symbols.none(DefaultStdlib.get())).preserving(KEPT));
+                CheckContext.of(Symbols.none(DefaultStdlib.get()), PublishedDeclarations.NONE,
+                DeclarationKinds.NONE).preserving(KEPT));
 
         assertEquals(Type.list(Type.INT), typed.type());
     }
@@ -111,6 +113,7 @@ class ALanguageOperationKeptStandingTypesFromWhatItDeclaresTest {
                 null);
 
         assertThrows(RuntimeException.class, () -> Elaborator.elaborate(call, Scope.NONE,
-                CheckContext.of(Symbols.none(DefaultStdlib.get())).preserving(KEPT)));
+                CheckContext.of(Symbols.none(DefaultStdlib.get()), PublishedDeclarations.NONE,
+                DeclarationKinds.NONE).preserving(KEPT)));
     }
 }

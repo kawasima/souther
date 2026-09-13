@@ -77,6 +77,28 @@ final class Terms {
         return symbols;
     }
 
+    /** What the declarations this reading was made against say, for the readings below that ask
+     *  which of them is a sum and what its cases are. */
+    PublishedDeclarations published() {
+        return ruleReading.source().published();
+    }
+
+    /** Which form each declaration this reading was made against was written in. */
+    DeclarationKinds kinds() {
+        return ruleReading.source().kinds();
+    }
+
+    /** Which of the declarations this reading was made against wear one value, for the readings
+     *  below that ask where reading a field goes. */
+    DeclarationNewtypes newtypes() {
+        return ruleReading.source().newtypes();
+    }
+
+    /** What each of them wears one of, for the readings below that go through the name. */
+    NewtypeInners newtypeInners() {
+        return ruleReading.source().inners();
+    }
+
     /**
      * What a clause states, read through this very reading.
      *
@@ -348,7 +370,7 @@ final class Terms {
         this.clauses = new Clauses(ruleReading.source());
         this.predicates = new Predicates(this);
         this.guarantees = new TypeGuarantees(symbols, clauses, predicates);
-        this.walk = new GuaranteeWalk(guarantees, symbols);
+        this.walk = new GuaranteeWalk(guarantees, newtypes());
     }
 
     /** The clauses this reading is over, for a reader beside it that asks what a declaration
@@ -491,6 +513,21 @@ final class Terms {
             }
 
             @Override
+            public PublishedDeclarations published() {
+                return Terms.this.published();
+            }
+
+            @Override
+            public DeclarationKinds kinds() {
+                return Terms.this.kinds();
+            }
+
+            @Override
+            public NewtypeInners inners() {
+                return Terms.this.newtypeInners();
+            }
+
+            @Override
             public LinearForm<FactSubject> leafOf(Core e, Denotations where) {
                 LinearForm<FactSubject> named = affineReading.leafOf(e, where);
                 return named == null || named.coefs().keySet().stream().allMatch(names)
@@ -539,6 +576,21 @@ final class Terms {
                 }
 
                 @Override
+                public PublishedDeclarations published() {
+                    return Terms.this.published();
+                }
+
+                @Override
+                public DeclarationKinds kinds() {
+                    return Terms.this.kinds();
+                }
+
+                @Override
+                public NewtypeInners inners() {
+                    return Terms.this.newtypeInners();
+                }
+
+                @Override
                 public LinearForm<FactSubject> leafOf(Core e, Denotations at) {
                     return Terms.this.leafOf(e, at);
                 }
@@ -576,7 +628,7 @@ final class Terms {
                     // a computed value too. Without it `f(x).value` is one value where the same call
                     // given a name is the arithmetic its body wrote.
                     return !isAPlace(fa.target(), at)
-                            && !Location.isStep(fa.target().type(), fa.field(), symbols);
+                            && !Location.isStep(fa.target().type(), fa.field(), newtypes());
                 }
             };
 
@@ -862,7 +914,7 @@ final class Terms {
 
     /** The same, of a type a caller already holds. */
     private boolean carriesANumber(Type t) {
-        Carrier carrier = Carrier.ofValue(t, symbols);
+        Carrier carrier = Carrier.ofValue(t, newtypeInners(), symbols, kinds(), published());
         return carrier != null && carrier.counts();
     }
 
@@ -1453,7 +1505,7 @@ final class Terms {
      * failure of this compiler.
      */
     private NumericDomain.Bounds extentOf(Type type) {
-        Carrier carrier = Carrier.ofValue(type, symbols);
+        Carrier carrier = Carrier.ofValue(type, newtypeInners(), symbols, kinds(), published());
         if (carrier == null) {
             return null;
         }
@@ -1640,7 +1692,7 @@ final class Terms {
      * atom nothing bounds into the domain and call that an answer.
      */
     FactSubject takenAtomOf(Core e, Type type, Denotations at) {
-        ValueName.Stdlib counts = NumericMeasures.takenOf(type, symbols);
+        ValueName.Stdlib counts = NumericMeasures.takenOf(type, newtypeInners());
         if (counts == null) {
             return null;
         }
@@ -1701,7 +1753,7 @@ final class Terms {
      * in it.
      */
     Granularity granularityOf(Type t) {
-        Carrier carrier = Carrier.ofValue(t, symbols);
+        Carrier carrier = Carrier.ofValue(t, newtypeInners(), symbols, kinds(), published());
         if (carrier == null || !carrier.counts()) {
             throw new IllegalStateException("not a number the domain carries: " + Type.show(t));
         }
@@ -2420,7 +2472,7 @@ final class Terms {
                         : interned.evaluated(evaluationIdOf(e));
             }
             case Core.FieldAccess fa ->
-                    Location.isStep(fa.target().type(), fa.field(), symbols)
+                    Location.isStep(fa.target().type(), fa.field(), newtypes())
                             ? interned.on(subjectKey(fa.target(), at), List.of(fa.field()))
                             : subjectKey(fa.target(), at);
             default -> interned.evaluated(evaluationIdOf(e));
@@ -2443,7 +2495,7 @@ final class Terms {
             // nothing. A chain is asked of this only once it has been found not to be a place.
             case Core.Read r -> at.termOf(r.binding());
             case Core.FieldAccess fa -> {
-                if (!Location.isStep(fa.target().type(), fa.field(), symbols)) {
+                if (!Location.isStep(fa.target().type(), fa.field(), newtypes())) {
                     yield keyOfNowhere(fa.target(), at);
                 }
                 Term base = keyOfNowhere(fa.target(), at);
@@ -2501,7 +2553,7 @@ final class Terms {
      * term grammar names a chain by. A reader that only wants to know whether there is one asks
      * {@link #isAPlace}. */
     Location locationOf(Core e, Denotations at) {
-        return Location.of(e, symbols, at::locationOf);
+        return Location.of(e, newtypes(), at::locationOf);
     }
 
     /**
@@ -2832,7 +2884,7 @@ final class Terms {
      * readable there. What a value has of its own is the one reading's answer, so a field every case
      * of a sum spreads is read off the sum here exactly as it is where a body reads one. */
     Type fieldType(Type owner, String field) {
-        return ValueReading.of(owner, symbols).named().get(field);
+        return ValueReading.of(owner, newtypeInners(), kinds(), symbols, published()).named().get(field);
     }
 
     /** What a container hands its closure: a list's or set's element, a map's value (the key is the
@@ -2872,10 +2924,10 @@ final class Terms {
             return t;
         }
         if (!(t instanceof Type.Ref ref)) {
-            return TypeOps.numericBase(t, symbols);
+            return TypeOps.numericBase(t, newtypeInners());
         }
         return affineScalarBases.computeIfAbsent(ref.name(),
-                _ -> java.util.Optional.ofNullable(TypeOps.numericBase(t, symbols)))
+                _ -> java.util.Optional.ofNullable(TypeOps.numericBase(t, newtypeInners())))
                 .orElse(null);
     }
 

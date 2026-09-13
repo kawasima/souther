@@ -1,5 +1,6 @@
 package souther.compiler.claims;
 
+import souther.compiler.check.DeclarationNewtypes;
 import souther.compiler.check.ElementBindings;
 import souther.compiler.check.Symbols;
 import souther.compiler.core.Core;
@@ -76,13 +77,14 @@ public final class UnreachableClaims {
      *             of its positions from a {@code match} on anything else
      */
     public static UnreachableClaims of(Core body, InputDomain read, Symbols symbols,
+                                       DeclarationNewtypes newtypes,
                                        souther.compiler.coverage.CoverageSites.Plan plan) {
         if (body == null) {
             return NONE;
         }
         List<Claim> found = new ArrayList<>();
         claimedUnder(body, InputReads.ofParameters(read.parameterReads(), ElementBindings.NONE),
-                symbols, plan, NormalReturn.ofBody(body), true, found);
+                symbols, newtypes, plan, NormalReturn.ofBody(body), true, found);
         return found.isEmpty() ? NONE
                 : new UnreachableClaims(found, Optional.of(plan.identity()));
     }
@@ -95,6 +97,7 @@ public final class UnreachableClaims {
      * about what it looks like.
      */
     private static void claimedUnder(Core e, InputReads reads, Symbols symbols,
+                                     DeclarationNewtypes newtypes,
                                      souther.compiler.coverage.CoverageSites.Plan plan,
                                      NormalReturn answering, boolean reachable, List<Claim> found) {
         if (e == null) {
@@ -108,7 +111,7 @@ public final class UnreachableClaims {
         // behind an abort — a case nobody can be asked for a row at and a gap that would stay open
         // for ever. The same rule, and the same reading, the numbering stops on.
         if (reachable && e instanceof Core.Match match) {
-            claimedIn(match, names, symbols, plan, answering, found);
+            claimedIn(match, names, newtypes, plan, answering, found);
         }
         boolean inside = reachable && answering.at(e);
         // Each arm under what it says the value it matched turned out to be: the name it binds
@@ -116,15 +119,16 @@ public final class UnreachableClaims {
         // position inside the arm is about a position of the input. Every other child is walked as
         // it was.
         if (e instanceof Core.Match match) {
-            claimedUnder(match.scrutinee(), names, symbols, plan, answering, inside, found);
+            claimedUnder(match.scrutinee(), names, symbols, newtypes, plan, answering, inside,
+                    found);
             for (Core.Case arm : match.cases()) {
-                claimedUnder(arm.body(), names.insideArm(match, arm, symbols), symbols, plan,
-                        answering, inside, found);
+                claimedUnder(arm.body(), names.insideArm(match, arm, symbols, newtypes), symbols,
+                        newtypes, plan, answering, inside, found);
             }
             return;
         }
-        Core.forEachChild(e,
-                child -> claimedUnder(child, names, symbols, plan, answering, inside, found));
+        Core.forEachChild(e, child ->
+                claimedUnder(child, names, symbols, newtypes, plan, answering, inside, found));
     }
 
     /**
@@ -133,11 +137,12 @@ public final class UnreachableClaims {
      * <p>Says nothing where the scrutinee names no position of this input: there is nothing to
      * claim about, and what is under its arms is walked by the caller either way.
      */
-    private static void claimedIn(Core.Match match, InputReads reads, Symbols symbols,
+    private static void claimedIn(Core.Match match, InputReads reads,
+                                  DeclarationNewtypes newtypes,
                                   souther.compiler.coverage.CoverageSites.Plan plan,
                                   NormalReturn answering, List<Claim> found) {
         // A claim is about a position, so a scrutinee that names none carries none.
-        TermPath path = switch (reads.pathOf(match.scrutinee(), symbols)) {
+        TermPath path = switch (reads.pathOf(match.scrutinee(), newtypes)) {
             case PathResolution.At(var at) -> at;
             case PathResolution.NotAPosition _ -> null;
             // A claim is about one position, and a scrutinee that only may stand at one is about

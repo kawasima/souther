@@ -1,7 +1,7 @@
 package souther.compiler.inputs;
 
+import souther.compiler.check.DeclarationNewtypes;
 import souther.compiler.check.Location;
-import souther.compiler.check.Symbols;
 import souther.compiler.core.Core;
 import souther.compiler.types.BindingId;
 
@@ -56,8 +56,9 @@ public record ElementProjection(List<String> steps) {
      * @param held what each binding on the way holds, over the whole body the closure was left in
      */
     public static ElementProjection read(Core answer, BindingId element,
-                                         Map<BindingId, Core> held, Symbols symbols) {
-        List<String> steps = new Reading(held, symbols).from(answer, element);
+                                         Map<BindingId, Core> held,
+                                         DeclarationNewtypes newtypes) {
+        List<String> steps = new Reading(held, newtypes).from(answer, element);
         return steps == null ? null : new ElementProjection(steps);
     }
 
@@ -69,7 +70,7 @@ public record ElementProjection(List<String> steps) {
      * answering ({@link BindingTrail}), which is the same law the reading of an input position
      * stops by — the one thing the two readings share.
      */
-    private record Reading(Map<BindingId, Core> held, Symbols symbols) {
+    private record Reading(Map<BindingId, Core> held, DeclarationNewtypes newtypes) {
 
         private List<String> from(Core e, BindingId element) {
             return steps(e, element, new BindingTrail());
@@ -97,7 +98,7 @@ public record ElementProjection(List<String> steps) {
                     if (base == null) {
                         yield null;
                     }
-                    if (!Location.isStep(fa.target().type(), fa.field(), symbols)) {
+                    if (!Location.isStep(fa.target().type(), fa.field(), newtypes)) {
                         yield base;
                     }
                     List<String> longer = new ArrayList<>(base);

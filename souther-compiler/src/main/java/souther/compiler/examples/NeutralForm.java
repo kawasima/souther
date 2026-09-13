@@ -4,6 +4,9 @@ import souther.compiler.jvm.SoutherJvmAbi;
 import souther.compiler.ast.Hir;
 import souther.compiler.check.Boundary;
 import souther.compiler.check.DeclarationFacts;
+import souther.compiler.check.DeclarationKinds;
+import souther.compiler.check.DeclarationNewtypes;
+import souther.compiler.check.PublishedDeclarations;
 import souther.compiler.check.Symbols;
 import souther.compiler.observe.FieldTypes;
 import souther.compiler.observe.Position;
@@ -41,16 +44,24 @@ import java.util.Set;
 final class NeutralForm {
 
     private final Symbols symbols;
+    /** What the declarations a fixture is read against say, which is where how a value crosses is
+     *  settled. */
+    private final PublishedDeclarations published;
+    /** Which form each of those declarations was written in. */
+    private final DeclarationKinds kinds;
     /** What a declaration's fields hold, as the check settled it. Read and never worked out here:
      *  the same answer decides what a comparison reads at a place inside a value. */
     private final FieldTypes fields;
 
-    NeutralForm(Symbols symbols, FieldTypes fields) {
+    NeutralForm(Symbols symbols, PublishedDeclarations published, DeclarationKinds kinds,
+                FieldTypes fields) {
         if (fields == null) {
             throw new IllegalArgumentException("a value's parts are read against what its"
                     + " declaration was checked to hold");
         }
         this.symbols = symbols;
+        this.published = published;
+        this.kinds = kinds;
         this.fields = fields;
     }
 
@@ -217,7 +228,7 @@ final class NeutralForm {
         // What the sum's own decoder reads, read from where that is settled rather than from a copy
         // of it kept on the declaration. A fixture that wrote a tag of its own would be a value the
         // generated decoder cannot read.
-        Boundary.Alternatives alternatives = Boundary.of(type, symbols);
+        Boundary.Alternatives alternatives = Boundary.of(type, kinds, published);
         if (!(alternatives.representation() instanceof Boundary.Representation.Discriminated(String key))) {
             return;
         }
@@ -310,7 +321,7 @@ final class NeutralForm {
      */
     boolean readsABareName(Position position) {
         return position.opened() instanceof Position.At(Type type)
-                && Boundary.of(type, symbols).representation()
+                && Boundary.of(type, kinds, published).representation()
                         instanceof Boundary.Representation.Enumeration;
     }
 
@@ -334,7 +345,7 @@ final class NeutralForm {
      * an imported value's body names its own module's types, which the module reading the row need
      * not have imported, and a module of its own may declare something else of that spelling. */
     boolean isNewtype(TypeSymbol name) {
-        return DeclarationFacts.isNewtype(name, symbols);
+        return DeclarationFacts.isNewtype(name, DeclarationNewtypes.asWritten(symbols));
     }
 
     /** What a newtype wraps: the one field it is written with (spec §newtype), read like any other

@@ -57,10 +57,11 @@ public final class Derived {
          * producer of the normalized form beside {@link Normalized.Def#of}, and a declaration read
          * through the two could come back in two forms.
          */
-        static Def derive(Normalized.Def declaration, ResolvedSymbols scope) {
+        static Def derive(Normalized.Def declaration, ResolvedSymbols scope,
+                          DeclarationKinds kinds, PublishedDeclarations published) {
             return switch (declaration) {
                 case Normalized.Data d -> {
-                    Deriver.Codecs codecs = Deriver.derive(d.node(), scope);
+                    Deriver.Codecs codecs = Deriver.derive(d.node(), scope, kinds, published);
                     yield codecs == null ? null : new Data(d, codecs);
                 }
                 case Normalized.Sum s -> new Sum(s);

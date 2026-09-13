@@ -115,7 +115,7 @@ class AsManyContainersAreOfferedAsAreWrittenDownTest {
     private static TermRealizations.Realization offering() {
         NumericTerm.TakenOf total = NumericTerm.TakenOf.of(
                 ValueName.Stdlib.operation("List", "sum"), TermPath.of("ns"), OF_WHOLE_NUMBERS,
-                SYMBOLS);
+                souther.compiler.check.ScopedDeclarations.wrapsOf(SYMBOLS), SYMBOLS);
         assertNotNull(total, "a walk that adds up a list of whole numbers is a number of it");
         TermOrders orders = souther.compiler.inputs.TermOrdersFixtures
                 .at(total, OF_WHOLE_NUMBERS, SYMBOLS);

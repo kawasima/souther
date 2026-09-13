@@ -4,6 +4,9 @@ import souther.compiler.check.AffineForms;
 import souther.compiler.check.Comparison;
 import souther.compiler.check.ComparisonClaim;
 import souther.compiler.check.Location;
+import souther.compiler.check.DeclarationKinds;
+import souther.compiler.check.NewtypeInners;
+import souther.compiler.check.PublishedDeclarations;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.Symbols;
 import souther.compiler.core.Core;
@@ -128,6 +131,21 @@ record DecisionComparison(InputDomain inputs, RuleReadingSource rules, DecisionS
             }
 
             @Override
+            public PublishedDeclarations published() {
+                return rules.published();
+            }
+
+            @Override
+            public DeclarationKinds kinds() {
+                return rules.kinds();
+            }
+
+            @Override
+            public NewtypeInners inners() {
+                return rules.inners();
+            }
+
+            @Override
             public LinearForm<DecisionAtom> leafOf(Core node, InputReads at) {
                 NumericTerm term = InputNumber.of(node, inputs, at, rules);
                 DecisionAtom atom = term != null ? new DecisionAtom.OfTheInput(term)
@@ -143,24 +161,24 @@ record DecisionComparison(InputDomain inputs, RuleReadingSource rules, DecisionS
 
             @Override
             public AffineForms.ReadThrough<InputReads> readThrough(Core.Read read, InputReads at) {
-                return NameAnswers.denoting(read, at, rules.symbols());
+                return NameAnswers.denoting(read, at, rules.symbols(), rules.newtypes());
             }
 
             @Override
             public List<AffineForms.ReadThrough<InputReads>> alternativesOf(Core.Read read,
                                                                            InputReads at) {
-                return NameAnswers.alternativesOf(read, at, rules.symbols());
+                return NameAnswers.alternativesOf(read, at, rules.symbols(), rules.newtypes());
             }
 
             @Override
             public boolean readsThrough(Core.FieldAccess fa, InputReads at) {
-                boolean stands = switch (at.pathOf(fa.target(), rules.symbols())) {
+                boolean stands = switch (at.pathOf(fa.target(), rules.newtypes())) {
                     case PathResolution.At _ -> true;
                     case PathResolution.NotAPosition _ -> false;
                     case PathResolution.MayStandAt _ -> true;
                 };
                 return !stands
-                        && !Location.isStep(fa.target().type(), fa.field(), rules.symbols());
+                        && !Location.isStep(fa.target().type(), fa.field(), rules.newtypes());
             }
         };
     }

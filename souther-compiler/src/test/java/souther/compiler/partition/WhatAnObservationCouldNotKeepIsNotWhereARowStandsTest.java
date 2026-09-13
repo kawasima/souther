@@ -44,6 +44,7 @@ class WhatAnObservationCouldNotKeepIsNotWhereARowStandsTest {
             ValueName.Stdlib.operation("List", "sum"),
             new RunSource.ProjectedOccurrences(UNDER),
             souther.compiler.types.Type.Prim.INT,
+            souther.compiler.check.NewtypeInners.NONE,
             souther.compiler.check.Symbols.none(souther.compiler.DefaultStdlib.get()));
 
     private static final TermPath BESIDE = TermPath.of("fees").element().then("amount");
@@ -52,6 +53,7 @@ class WhatAnObservationCouldNotKeepIsNotWhereARowStandsTest {
             ValueName.Stdlib.operation("List", "sum"),
             new RunSource.ProjectedOccurrences(BESIDE),
             souther.compiler.types.Type.Prim.INT,
+            souther.compiler.check.NewtypeInners.NONE,
             souther.compiler.check.Symbols.none(souther.compiler.DefaultStdlib.get()));
 
     private static final TermOrders ON_THE_TOTAL =

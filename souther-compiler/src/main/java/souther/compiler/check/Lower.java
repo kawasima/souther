@@ -44,8 +44,9 @@ public final class Lower {
      * the binding a call becomes (issue #178): a type settled afterwards would never reach it.
      */
     public static Hir.Module settle(CheckSurface surface, Symbols symbols,
+                                    PublishedDeclarations published, DeclarationKinds kinds,
                                     Map<ValueName.Behavior, ReqSig> reqSigs) {
-        return HelperParams.settle(surface.module(), symbols, reqSigs);
+        return HelperParams.settle(surface.module(), symbols, published, kinds, reqSigs);
     }
 
     /**

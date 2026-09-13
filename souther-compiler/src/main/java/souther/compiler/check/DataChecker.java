@@ -395,7 +395,8 @@ public final class DataChecker {
         };
     }
 
-    static void checkSum(Hir.SumData sum, Symbols symbols) {
+    static void checkSum(Hir.SumData sum, Symbols symbols, DeclarationKinds kinds,
+                         PublishedDeclarations published) {
         rejectDuplicateTypes(sum.cases(), "the sum `" + sum.name() + "`", sum.pos());
         // A generated sum is a sealed interface, and its `permits` is settled when its own module is
         // generated — a case of another module cannot implement it, so it would be permitted without
@@ -424,9 +425,10 @@ public final class DataChecker {
         // union is under the same rule and reads it from the same place (`SpecChecker`), so the two
         // cannot come to be checked against different keys — and an enumeration, which writes no key,
         // is not asked.
-        if (Boundary.of(Type.ref(sum.declares()), symbols).representation()
+        if (Boundary.of(Type.ref(sum.declares()), kinds, published).representation()
                 instanceof Boundary.Representation.Discriminated(String key)) {
-            TypeSymbol carrying = TypeOps.memberCarryingField(Type.ref(sum.declares()), key, symbols);
+            TypeSymbol carrying =
+                    TypeOps.memberCarryingField(Type.ref(sum.declares()), key, symbols, published);
             if (carrying != null) {
                 throw CompileException.of(Diagnostic
                                 .at(sum.pos())
@@ -740,7 +742,8 @@ public final class DataChecker {
             }
             // A field is written to and read from the outside, so a map it holds is a JSON object and
             // its keys are strings. Inside a body the same map may be keyed by anything (ADR-0040).
-            Type badKey = TypeOps.nonBoundaryMapKey(e.getValue(), ctx.symbols());
+            Type badKey = TypeOps.nonBoundaryMapKey(e.getValue(), ctx.symbols(), ctx.kinds(),
+                    ctx.published());
             if (badKey != null) {
                 throw CompileException.of(Diagnostic
                                 .at(fieldRegion(ctx.data(), e.getKey()))
@@ -766,11 +769,15 @@ public final class DataChecker {
      * asking — the discharge check reads the clauses of types other modules declared. A field is
      * bound where it was written, so that is what the scope offers, and the clause carried in with the
      * declaration finds the very bindings it names.
+     *
+     * <p>{@code types} is what each of those fields holds, handed over rather than read here: the
+     * caller is the one that knows which world the declaration was reached in, and a walk made here
+     * would read whatever world this class happens to hold.
      */
-    static Scope fieldScope(TypeSymbol.AtModule declared, Hir.Data data, Symbols symbols) {
-        Map<String, Type> types = TypeOps.fieldTypes(data, symbols);
+    static Scope fieldScope(TypeSymbol.AtModule declared, Map<String, Type> types,
+                            FieldBindings bound) {
         Map<BindingId, Scope.Binding> bindings = new LinkedHashMap<>();
-        TypeOps.fieldBindings(declared, symbols).forEach((name, binding) ->
+        bound.of(declared).forEach((name, binding) ->
                 bindings.put(binding, new Scope.Binding(name, types.get(name))));
         return Scope.of(bindings);
     }
@@ -871,11 +878,11 @@ public final class DataChecker {
             // expected optional no longer means a field asked for it (issue #202).
             CheckContext making = ctx.makingAnOptional(ft instanceof Type.OptionOf);
             Core value = Elaborator.liftIntoOption(
-                    Elaborator.elaborate(init.value(), env, making, ft), ft, ctx.symbols());
+                    Elaborator.elaborate(init.value(), env, making, ft), ft, ctx.published());
             written.put(init.name(), new Core.FieldValue(init.name(), value, init.pos()));
             Type vt = value.type();
             // a case value widens to its sum-typed field (spec §sum-data)
-            if (!TypeOps.assignable(vt, ft, ctx.symbols())) {
+            if (!TypeOps.assignable(vt, ft, ctx.published())) {
                 throw CompileException.of(Diagnostic
                                 .at(init.written().reportedAt())
                                 
@@ -944,7 +951,7 @@ public final class DataChecker {
                 throw CompileException.of(d.build());
             }
             Type pv = from.fields().get(f.getKey());
-            if (!TypeOps.assignable(pv, f.getValue(), ctx.symbols())) {
+            if (!TypeOps.assignable(pv, f.getValue(), ctx.published())) {
                 throw CompileException.of(Diagnostic.at(pos)
                         .say(new DataMessage.SpreadSuppliesTheWrongType(f.getKey(), Type.show(pv),
                                 typeName, Type.show(f.getValue())))
@@ -981,7 +988,8 @@ public final class DataChecker {
     private static Map<String, Type> spreadOfSum(String name, Hir.SumData sum, Type bound,
                                                  SourcePos pos, CheckContext ctx) {
         Map<String, Type> shared =
-                TypeView.of(Type.ref(sum.declares()), ctx.symbols()).shape() instanceof Shape.Sum s
+                TypeView.asWritten(Type.ref(sum.declares()), ctx.symbols(), ctx.published()).shape()
+                        instanceof Shape.Sum s
                         ? ReadableFields.of(s).declaredFields() : Map.of();
         if (shared.isEmpty()) {
             throw CompileException.of(Diagnostic.at(pos)

@@ -192,7 +192,7 @@ public final class SpecChecker {
      * states its type at its definition, so a signature on one is rejected.
      */
     static void checkExposedPipeOutputs(Hir.Module module, Set<String> exposed,
-            Map<String, Sig> sigs, Symbols symbols) {
+            Map<String, Sig> sigs, PublishedDeclarations published) {
         Set<String> pipeNames = new HashSet<>();
         for (Hir.BehaviorDef b : module.behaviors()) {
             if (b instanceof Hir.PipeBehavior p) {
@@ -217,7 +217,8 @@ public final class SpecChecker {
                 // against, and the other compositions still have theirs.
                 continue;
             }
-            Set<TypeSymbol> inferred = new LinkedHashSet<>(AtomSpace.subjectAtoms(sig.outputType(), symbols));
+            Set<TypeSymbol> inferred =
+                    new LinkedHashSet<>(AtomSpace.subjectAtoms(sig.outputType(), published));
             Hir.RetType declared = module.exposedOutputs().get(pipe.name());
             if (declared == null) {
                 throw CompileException.of(Diagnostic.at(pipe.pos())
@@ -232,7 +233,8 @@ public final class SpecChecker {
             if (TypeOps.restsOnAnUnresolvedName(declared)) {
                 throw new Unanswerable(declared.pos());
             }
-            Set<TypeSymbol> declaredCases = new LinkedHashSet<>(AtomSpace.subjectAtoms(declaredOut, symbols));
+            Set<TypeSymbol> declaredCases =
+                    new LinkedHashSet<>(AtomSpace.subjectAtoms(declaredOut, published));
             if (!inferred.equals(declaredCases)) {
                 throw CompileException.of(Diagnostic.at(pipe.pos())
                                 
@@ -254,7 +256,9 @@ public final class SpecChecker {
      */
     static Checked checkSpecFn(Hir.SpecBehavior spec, Hir.FnDef fn, Hir.Expr inlinedBody,
                                     InvariantChecker.Source discharge,
-                                    Symbols symbols, ReadingPolicy policy,
+                                    Symbols symbols, PublishedDeclarations published,
+                                    DeclarationKinds kinds, NewtypeInners inners,
+                                    ReadingPolicy policy,
                                     Map<ValueName.Behavior, ReqSig> calleeSigs,
                                     Map<ValueName.Behavior, ReqSig> reqSigs, HelperInliner inliner,
                                     Map<String, Type> recursiveHelperFns,
@@ -332,7 +336,8 @@ public final class SpecChecker {
         // Check functions passed to helper parameters (e.g. a combinator's predicate) against their
         // declared types first, so a mismatch names the parameter, not the derivation it expands to.
         // A nested fold reaches `List.foldFrom` inside a block, so its signature must be in scope here.
-        HelperTyping.checkFunctionArgs(fn.writtenBody(), tenv, symbols, reqSigs, inliner);
+        HelperTyping.checkFunctionArgs(fn.writtenBody(), tenv, symbols, published, kinds, reqSigs,
+                inliner);
         // The body arrives with helper calls already expanded (the Lower stage, ADR-0021): it is
         // checked as one expression, so a helper's constructions and injected calls count toward this
         // behavior's permission and dependencies — exactly as if the code had been written inline (§blocks).
@@ -341,10 +346,11 @@ public final class SpecChecker {
         // push the declared output type into the body so a body that is directly an empty collection
         // (or a construction whose field is one) takes the declared type rather than a bottom
         Core elaboratedBody = Elaborator.elaborate(body, tenv,
-                new CheckContext(symbols, null, reqSigs).withCallees(calleeSigs)
+                new CheckContext(symbols, published, kinds, inners, null, reqSigs)
+                        .withCallees(calleeSigs)
                         .withDependencies(dependsOn), output);
         Type rt = elaboratedBody.type();
-        if (!TypeOps.assignable(rt, output, symbols)) {
+        if (!TypeOps.assignable(rt, output, published)) {
             throw CompileException.of(Diagnostic
                             .at(body.pos())
                             .diff(Type.show(rt, output), Type.show(output, rt)).say(new BehaviorMessage.TheBodyIsNotWhatTheBehaviorReturns(spec.name(), Type.show(output), Type.show(rt))).build());
@@ -453,7 +459,8 @@ public final class SpecChecker {
         // emitted tree, whose operations are no longer operations.
         Core dischargeBody = discharge == null ? null
                 : Elaborator.elaborate(discharge.body(), tenv,
-                        new CheckContext(symbols, null, reqSigs).withCallees(calleeSigs)
+                        new CheckContext(symbols, published, kinds, inners, null, reqSigs)
+                                .withCallees(calleeSigs)
                                 .withDependencies(dependsOn).forDischarge(), output);
         InvariantChecker.Findings inv = discharge == null
                 ? InvariantChecker.Findings.notRun()
@@ -499,13 +506,14 @@ public final class SpecChecker {
      * <p>Asked of the signature rather than of what was written, so a composition is subject to it as
      * well: two stages may depart cases of one spelling from two modules.
      */
-    static void checkUnionMemberNames(Hir.Module module, Map<String, Sig> sigs, Symbols symbols) {
+    static void checkUnionMemberNames(Hir.Module module, Map<String, Sig> sigs,
+                                      PublishedDeclarations published) {
         for (Hir.BehaviorDef b : module.behaviors()) {
             Sig sig = sigs.get(b.name());
             if (sig == null) {
                 continue;
             }
-            TypeSymbol.AtModule[] clash = TypeOps.ambiguousMembers(sig.outputType(), symbols);
+            TypeSymbol.AtModule[] clash = TypeOps.ambiguousMembers(sig.outputType(), published);
             if (clash == null) {
                 continue;
             }
@@ -521,7 +529,9 @@ public final class SpecChecker {
      * key. The same rule a sum's cases are under, asked of the signature so a composition is subject
      * to it too. Which key that is, is {@code Boundary}'s and is not named again here.
      */
-    static void checkUnionMemberFields(Hir.Module module, Map<String, Sig> sigs, Symbols symbols) {
+    static void checkUnionMemberFields(Hir.Module module, Map<String, Sig> sigs, Symbols symbols,
+                                       DeclarationKinds kinds,
+                                       PublishedDeclarations published) {
         for (Hir.BehaviorDef b : module.behaviors()) {
             Sig sig = sigs.get(b.name());
             if (sig == null || !(sig.outputType() instanceof Type.Union)) {
@@ -530,11 +540,12 @@ public final class SpecChecker {
             // The key is the settled representation's, the same one a named sum's cases are held to
             // (`DataChecker`). Written here as a constant of its own, this checker and the codec that
             // writes the key were two places the language's own spelling was kept.
-            if (!(Boundary.of(sig.outputType(), symbols).representation()
+            if (!(Boundary.of(sig.outputType(), kinds, published).representation()
                     instanceof Boundary.Representation.Discriminated(String key))) {
                 continue;
             }
-            TypeSymbol carrying = TypeOps.memberCarryingField(sig.outputType(), key, symbols);
+            TypeSymbol carrying =
+                    TypeOps.memberCarryingField(sig.outputType(), key, symbols, published);
             if (carrying == null) {
                 continue;
             }

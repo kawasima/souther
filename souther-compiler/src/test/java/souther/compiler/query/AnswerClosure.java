@@ -761,6 +761,43 @@ final class AnswerClosure {
                     part("souther.compiler.partition.MeasuredInput", "written"),
                     part("souther.compiler.partition.BehaviorInputs", "rules"),
                     part("souther.compiler.check.RuleReadingSource", "published")),
+            // Which form each declaration is, beside what it says and for the same reason. Its one
+            // input is which declaration is being asked about, and the answer was settled when the
+            // module was indexed — so a reading holding it holds a way to ask, not a copy of the
+            // forms as they stood when the reading was made.
+            generationReader("souther.compiler.check.DeclarationKinds",
+                    Traversal.Why.NOTHING_CLOSES_IT,
+                    part("souther.compiler.partition.MeasuredInput", "written"),
+                    part("souther.compiler.partition.BehaviorInputs", "rules"),
+                    part("souther.compiler.check.RuleReadingSource", "kinds")),
+            // And whether each wears one value, beside the form for the reason it is beside it: one
+            // input, settled where the module was indexed, so what a reading holds is a way to ask.
+            generationReader("souther.compiler.check.DeclarationNewtypes",
+                    Traversal.Why.NOTHING_CLOSES_IT,
+                    part("souther.compiler.partition.MeasuredInput", "written"),
+                    part("souther.compiler.partition.BehaviorInputs", "rules"),
+                    part("souther.compiler.check.RuleReadingSource", "newtypes")),
+            // And what each of them wraps. One input, and the answer is read off the declaration
+            // with its names resolved, so what a reading holds is a way to ask rather than a copy.
+            generationReader("souther.compiler.check.NewtypeInners",
+                    Traversal.Why.NOTHING_CLOSES_IT,
+                    part("souther.compiler.partition.MeasuredInput", "written"),
+                    part("souther.compiler.partition.BehaviorInputs", "rules"),
+                    part("souther.compiler.check.RuleReadingSource", "inners")),
+            // And which binding each field they reach is. One input, and a closure over the
+            // declarations a walk from it reaches — so what a reading holds is a way to ask.
+            generationReader("souther.compiler.check.FieldBindings",
+                    Traversal.Why.NOTHING_CLOSES_IT,
+                    part("souther.compiler.partition.MeasuredInput", "written"),
+                    part("souther.compiler.partition.BehaviorInputs", "rules"),
+                    part("souther.compiler.check.RuleReadingSource", "bindings")),
+            // And what each of those fields holds. The same shape again: one input, and a closure
+            // over the declarations the spreads reach.
+            generationReader("souther.compiler.check.EffectiveFieldTypes",
+                    Traversal.Why.NOTHING_CLOSES_IT,
+                    part("souther.compiler.partition.MeasuredInput", "written"),
+                    part("souther.compiler.partition.BehaviorInputs", "rules"),
+                    part("souther.compiler.check.RuleReadingSource", "fieldTypes")),
             generationReader("souther.compiler.inputs.ReadQuantities",
                     part("souther.compiler.partition.MeasuredInput", "quantities"),
                     arm("souther.compiler.inputs.ReadQuantities")),

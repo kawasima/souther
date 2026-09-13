@@ -298,8 +298,9 @@ class ANarrowingIsSpelledByTheOneThatOwnsItTest {
     /** What the type at one position divides into. */
     private static List<Case> distinctionsAt(Read read, TermPath at) {
         return Distinctions.ofType(
-                TypeView.of(read.inputs.at(at).view().declared(), read.rules.symbols()),
-                read.rules.symbols());
+                TypeView.asWritten(read.inputs.at(at).view().declared(), read.rules.symbols(),
+                        read.rules.published()),
+                read.rules.symbols(), read.rules.published());
     }
 
     private record Read(InputDomain inputs, Core body, RuleReadingSource rules) {}

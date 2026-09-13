@@ -93,6 +93,7 @@ public final class ExampleExecutions {
         // reaches none by name, which is a module rather than an unanswered question.
         Map<String, Hir.FnDef> values = db.ask(new Bodies.ModuleDefinitions(module)).value();
         return new ExampleExecution(prepared.value(), scope.value(),
+                Shapes.publishedDeclarations(db), Shapes.declarationKinds(db),
                 checkedFieldTypes(db), sigs.value(),
                 requirements, values == null ? Map.of() : values, contracts,
                 Output.policyOf(db),

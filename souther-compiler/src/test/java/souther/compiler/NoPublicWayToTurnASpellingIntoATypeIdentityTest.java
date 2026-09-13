@@ -172,13 +172,15 @@ class NoPublicWayToTurnASpellingIntoATypeIdentityTest {
                 "an address becomes an identity where a declaration world says one is declared there");
         assertEquals(Set.of("Declarations.declaration", "Declarations.contains",
                         "Declarations.declaredByCompilation", "Registry.declaration",
-                        "Symbols.declares", "Symbols.declaredNode",
+                        "Registry.declares", "Symbols.declares", "Symbols.declaredNode",
                         "Symbols.declaredByCompilation"),
                 asking,
-                "everything else that takes an address answers about the declaration world. The "
-                        + "three on the reader that names no stage are what such a reader may ask "
-                        + "of one address: what is declared there, and by whom. None of them hands "
-                        + "back an identity, so none is a way of making one");
+                "everything else that takes an address answers about the declaration world, or — "
+                        + "where what is asked is whether anything is declared there at all — about "
+                        + "the compilation. The three on the reader that names no stage are what "
+                        + "such a reader may ask of one address: what is declared there, and by "
+                        + "whom. None of them hands back an identity, so none is a way of making "
+                        + "one");
     }
 
     /**
@@ -221,6 +223,7 @@ class NoPublicWayToTurnASpellingIntoATypeIdentityTest {
                         "Registry.java: address",
                         "Declarations.java: address",
                         "Stdlib.java: address",
+                        "TypeOps.java: address",
                         // The declaration a store question is keyed by, which the reading that asked
                         // it had already resolved: the question reads that declaration and no other.
                         "Machines.java: named"),

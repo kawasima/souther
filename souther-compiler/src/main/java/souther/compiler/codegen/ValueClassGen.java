@@ -219,7 +219,8 @@ final class ValueClassGen {
         // How this sum's alternatives are written is settled once, here, and handed to everything
         // that generates from it. Each of them holding the type and the symbols instead would be
         // each of them able to work the form and the tag out again, which is what five of them did.
-        Boundary.Alternatives alternatives = Boundary.of(Type.ref(sum.declares()), symbols);
+        Boundary.Alternatives alternatives =
+                Boundary.of(Type.ref(sum.declares()), ctx.kinds, ctx.published);
         boolean enumeration = alternatives.representation() instanceof Boundary.Representation.Enumeration;
         out.put(valueOf(sum), build(cdX, cb -> {
             cb.withFlags(pub(sum.name()) | ClassFile.ACC_INTERFACE | ClassFile.ACC_ABSTRACT);
@@ -234,7 +235,8 @@ final class ValueClassGen {
             cb.with(PermittedSubclassesAttribute.ofSymbols(caseCds));
             // A field every case spreads is readable on the sum (issue #160): declared here, and
             // implemented by each case record's accessor of the same name and descriptor.
-            if (TypeView.of(Type.ref(sum.declares()), symbols).shape() instanceof Shape.Sum shape) {
+            if (TypeView.asWritten(Type.ref(sum.declares()), symbols, ctx.published).shape()
+                    instanceof Shape.Sum shape) {
                 for (Map.Entry<String, Type> e : ReadableFields.of(shape).declaredFields().entrySet()) {
                     cb.withMethod(e.getKey(), MethodTypeDesc.of(jvmType(e.getValue())),
                             ClassFile.ACC_PUBLIC | ClassFile.ACC_ABSTRACT, mb -> { });
@@ -251,7 +253,9 @@ final class ValueClassGen {
             // two gates hold of the same sums today. Written as one, a wire form that stopped being
             // a bare tag would take the ordering methods with it and leave a comparison calling a
             // method nothing emitted.
-            if (Ordering.of(Type.ref(sum.declares()), symbols) instanceof Ordering.Places places
+            if (Ordering.of(Type.ref(sum.declares()), ctx.inners, symbols, ctx.kinds,
+                    ctx.published)
+                    instanceof Ordering.Places places
                     && places.enumeration().equals(sum.declares())) {
                 emitOrderMethods(cb, cdX, alternatives.atoms());
             }
@@ -499,7 +503,7 @@ final class ValueClassGen {
 
     /** How the value a newtype wraps compares, as the newtype's own field holds it. */
     private Ordering orderOfWrapped(Type value) {
-        Ordering how = Ordering.of(value, symbols);
+        Ordering how = Ordering.of(value, ctx.inners, symbols, ctx.kinds, ctx.published);
         return how == null ? null : how.asHeld();
     }
 

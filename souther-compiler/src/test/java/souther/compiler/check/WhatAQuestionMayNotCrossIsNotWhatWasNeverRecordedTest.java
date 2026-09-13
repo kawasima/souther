@@ -73,7 +73,7 @@ class WhatAQuestionMayNotCrossIsNotWhatWasNeverRecordedTest {
 
     private static PathResolution namedPositionOf(ElementProvenance provenance) {
         return reads(provenance).pathOf(read("x", ELEMENT),
-                Symbols.none(DefaultStdlib.get()));
+                DeclarationNewtypes.asWritten(Symbols.none(DefaultStdlib.get())));
     }
 
     /**
@@ -105,7 +105,8 @@ class WhatAQuestionMayNotCrossIsNotWhatWasNeverRecordedTest {
     @Test
     void andAReadingOfProvenanceCrossesIt() {
         assertEquals(new PathResolution.At(TermPath.of("made").element()),
-                reads(madeFrom()).cameFrom(read("x", ELEMENT), Symbols.none(DefaultStdlib.get())),
+                reads(madeFrom()).cameFrom(read("x", ELEMENT),
+                        DeclarationNewtypes.asWritten(Symbols.none(DefaultStdlib.get()))),
                 "the values came from there, which is what a rule about them was written about");
     }
 }

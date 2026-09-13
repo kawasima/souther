@@ -54,7 +54,7 @@ class ThreeQuestionsAboutANumberAndThreeAnswersTest {
             case "Decimal" -> Type.DECIMAL;
             default -> Type.ref(TypeSymbols.declared(new TypeKey(module, type)));
         };
-        Type base = TypeOps.base(t, symbols);
+        Type base = TypeOps.base(t, ScopedDeclarations.wrapsOf(symbols));
         return new Answers(
                 TypeOps.directNumericNewtypeBase(t, symbols),
                 base == Type.INT || base == Type.DECIMAL ? base : null,

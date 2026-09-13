@@ -33,8 +33,10 @@ final class PartitionClasses {
     static List<PartitionClass> of(Type type, RuleReadingContext reading,
                                    java.util.Set<TypeSymbol> expanding) {
         RuleReadingSource ruleSource = reading.source();
-        TypeView view = TypeView.of(type, ruleSource.symbols());
-        return of(Distinctions.ofType(view, ruleSource.symbols()), view, reading, expanding);
+        TypeView view = TypeView.of(type, ruleSource.inners(), ruleSource.symbols(),
+                ruleSource.published());
+        return of(Distinctions.ofType(view, ruleSource.symbols(), ruleSource.published()),
+                view, reading, expanding);
     }
 
     /**
@@ -215,7 +217,8 @@ final class PartitionClasses {
         // is at one of these places, and the class holding it is asked with the place.
         Recognition is = Recognition.Under.of(worn, new Recognition.OfCase(leaf,
                 ValueClasses.placeOf(new souther.compiler.observe.ObservedValue.Unit(leaf), of,
-                        ruleSource.symbols())));
+                        ruleSource.inners(), ruleSource.symbols(), ruleSource.kinds(),
+                        ruleSource.published())));
         // A case whose module does not expose it: a value of the position all the same, and one no
         // author here can write down. Said as that, rather than offered under a spelling that
         // resolves to nothing wherever the row is pasted (issue #696).
@@ -229,7 +232,8 @@ final class PartitionClasses {
         if (!(leaf instanceof TypeSymbol.AtModule declared)) {
             return namingItBuildsIt(leaf, is, writes, names);
         }
-        TypeView held = TypeView.of(Type.ref(declared), ruleSource.symbols());
+        TypeView held = TypeView.of(Type.ref(declared), ruleSource.inners(), ruleSource.symbols(),
+                ruleSource.published());
         if (!held.isWrapped() && !(held.shape() instanceof Shape.Product)) {
             return namingItBuildsIt(leaf, is, writes, names);
         }

@@ -2534,7 +2534,9 @@ public final class Generator {
         // name round a value, and the fields belong to what the name wraps. So the position has to
         // wear no name as well as be a record — read where a position's reading is made, which
         // answers both, rather than walked from the declaration a second time.
-        TypeView view = TypeView.of(Type.ref(built), subject.symbols());
+        TypeView view =
+                TypeView.of(Type.ref(built), subject.rules().inners(), subject.symbols(),
+                        subject.rules().published());
         return !view.isWrapped()
                         && view.shape() instanceof Shape.Product(TypeSymbol _,
                                 SequencedMap<String, Type> fields)
@@ -4058,7 +4060,8 @@ public final class Generator {
         FieldDomains under = rulesOf(subject.types().get(p), subject.rules(),
                 subject.inputs().policy(), under(root, settled), subject.machines());
         ConstructionPlan.Result planned = ConstructionPlan.of(subject.types().get(p), root,
-                subject.symbols(), decided.keySet(), additional,
+                subject.rules().inners(), subject.symbols(), subject.rules().published(),
+                decided.keySet(), additional,
                 (at, building) -> heldRange(under, at, building, subject.ruleReading()));
         ConstructionPlan plan;
         switch (planned) {
@@ -4797,7 +4800,7 @@ public final class Generator {
         // reading's. The rules are then read on the declaration the fields came off — a position
         // written under a name takes its fields from what that name wraps, and reading the rules on
         // the name instead would be asking a declaration that has no such field.
-        return TypeView.of(type, source.symbols()).shape()
+        return TypeView.of(type, source.inners(), source.symbols(), source.published()).shape()
                         instanceof Shape.Product(TypeSymbol.AtModule declared, Map<String, Type> _)
                 ? FieldDomains.of(declared, source, policy, settled, machines) : FieldDomains.NONE;
     }

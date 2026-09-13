@@ -88,8 +88,10 @@ public record PublishedRules(List<ClauseMeaning> reached, boolean everyRuleReach
                                          Map<TypeSymbol.AtModule, PublishedRules> found) {
         DeclarationMeaning said = published.of(named.key());
         if (!(said instanceof DeclarationMeaning.Product product)) {
-            return new PublishedRules(List.of(),
-                    said != null || symbols.declaredNode(named) == null);
+            // Whether anything declares it, which is all the world is asked here. Reaching for the
+            // declaration to find out would make a walk over what declarations publish depend on
+            // where one of them is written.
+            return new PublishedRules(List.of(), said != null || !symbols.declares(named.key()));
         }
         PublishedRules out = new PublishedRules(List.of(), true);
         for (DeclarationReference each : product.includes()) {

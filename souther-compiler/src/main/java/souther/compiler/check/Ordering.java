@@ -82,9 +82,10 @@ public sealed interface Ordering {
      * TypeOps#supportsOrdering} reports. Asking here and reporting there is one question and not
      * two: a reader that admits a value it cannot emit a comparison for is what #856 was.
      */
-    static Ordering of(Type type, Symbols symbols) {
-        TypeOps.NewtypeSpine spine = TypeOps.newtypeSpine(type, symbols);
-        Ordering terminal = ofTerminal(spine.terminal(), symbols);
+    static Ordering of(Type type, NewtypeInners inners, Symbols symbols, DeclarationKinds kinds,
+                       PublishedDeclarations published) {
+        TypeOps.NewtypeSpine spine = TypeOps.newtypeSpine(type, inners);
+        Ordering terminal = ofTerminal(spine.terminal(), symbols, kinds, published);
         if (terminal == null) {
             return null;
         }
@@ -100,13 +101,15 @@ public sealed interface Ordering {
      * open to the same order and are still not comparable (ADR-0047). Asked here of the opened
      * types, this answers for a pair that rule has already admitted.
      */
-    static Ordering ofComparison(Type lt, Type rt, Symbols symbols) {
-        Type lb = TypeOps.base(lt, symbols);
-        Type rb = TypeOps.base(rt, symbols);
+    static Ordering ofComparison(Type lt, Type rt, NewtypeInners inners, Symbols symbols,
+                                 DeclarationKinds kinds,
+                                 PublishedDeclarations published) {
+        Type lb = TypeOps.base(lt, inners);
+        Type rb = TypeOps.base(rt, inners);
         // A case value, a union of cases and the sum itself are all comparable on the sum's order
         // without ranging over it, and either side may be the one that names the sum — so the
         // enumeration is read off the pair rather than off one operand.
-        TypeSymbol enumeration = TypeOps.comparisonEnumeration(lb, rb, symbols);
+        TypeSymbol enumeration = TypeOps.comparisonEnumeration(lb, rb, symbols, kinds, published);
         if (enumeration != null) {
             return new Places(enumeration);
         }
@@ -115,7 +118,7 @@ public sealed interface Ordering {
         // one leaves them with equal bases. Answering off the left alone would give an order for a
         // pair that has none — and the backend's "a comparison the checker admitted has no order"
         // is only an assertion about the checker while nothing here can fail.
-        return lb.equals(rb) ? ofTerminal(lb, symbols) : null;
+        return lb.equals(rb) ? ofTerminal(lb, symbols, kinds, published) : null;
     }
 
     /** How a value still held as the type it was asked of is ordered: a newtype by the {@code
@@ -133,7 +136,8 @@ public sealed interface Ordering {
 
     /** The order of a type with no newtype name left on it. Every constructor is answered, so a type
      *  constructor added to {@link Type} stops compiling until it says whether it has an order. */
-    private static Ordering ofTerminal(Type terminal, Symbols symbols) {
+    private static Ordering ofTerminal(Type terminal, Symbols symbols, DeclarationKinds kinds,
+                                       PublishedDeclarations published) {
         return switch (terminal) {
             case Type.Prim p -> switch (p) {
                 case INT -> LONGS;
@@ -146,8 +150,8 @@ public sealed interface Ordering {
             // Null where more than one enumeration lists the case: the order belongs to the sum, so
             // a value two sums place differently has none of its own, and that is refused rather
             // than guessed (ADR-0069).
-            case Type.Ref r -> placesIn(r, symbols);
-            case Type.Union u -> placesIn(u, symbols);
+            case Type.Ref r -> placesIn(r, symbols, kinds, published);
+            case Type.Union u -> placesIn(u, symbols, kinds, published);
             // A collection has no order of its own whatever it holds, a function and a tuple none at
             // all, and a type standing for a type has no values to order.
             case Type.ListOf _, Type.SetOf _, Type.OptionOf _, Type.MapOf _, Type.TupleOf _,
@@ -155,8 +159,9 @@ public sealed interface Ordering {
         };
     }
 
-    private static Ordering placesIn(Type t, Symbols symbols) {
-        TypeSymbol enumeration = TypeOps.orderingEnumeration(t, symbols);
+    private static Ordering placesIn(Type t, Symbols symbols, DeclarationKinds kinds,
+                                     PublishedDeclarations published) {
+        TypeSymbol enumeration = TypeOps.orderingEnumeration(t, symbols, kinds, published);
         return enumeration == null ? null : new Places(enumeration);
     }
 }

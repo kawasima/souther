@@ -1,6 +1,7 @@
 package souther.compiler.inputs;
 
 import souther.compiler.check.Choice;
+import souther.compiler.check.DeclarationNewtypes;
 import souther.compiler.check.Symbols;
 import souther.compiler.core.Core;
 import souther.compiler.types.BindingId;
@@ -180,8 +181,9 @@ public final class InputReads {
      * arm is no evidence that the name is one of them: what would make it one is there being one
      * left, which is what the set says and the arm does not.
      */
-    public InputReads insideArm(Core.Match match, Core.Case arm, Symbols symbols) {
-        return insideArmOn(match.scrutinee(), arm, symbols);
+    public InputReads insideArm(Core.Match match, Core.Case arm, Symbols symbols,
+                                DeclarationNewtypes newtypes) {
+        return insideArmOn(match.scrutinee(), arm, symbols, newtypes);
     }
 
     /**
@@ -193,7 +195,8 @@ public final class InputReads {
      * is standing on into a slot that takes any expression — which every caller compiles and one of
      * them gets wrong.
      */
-    public InputReads insideArmOn(Core scrutinee, Core.Case arm, Symbols symbols) {
+    public InputReads insideArmOn(Core scrutinee, Core.Case arm, Symbols symbols,
+                                  DeclarationNewtypes newtypes) {
         if (arm.binder() == null || arm.binder().binding() == null) {
             return this;
         }
@@ -202,11 +205,11 @@ public final class InputReads {
         // sum narrows to several of the position's distinctions and so to no one of them.
         Refinement narrowing = arm.selectedCase().map(Refinement::of).orElse(null);
         if (narrowing == null) {
-            return admitting(scrutinee, arm, symbols);
+            return admitting(scrutinee, arm, symbols, newtypes);
         }
         // What the arm narrows is a position of the input, and a scrutinee that stands at none
         // narrows nothing.
-        TermPath standing = switch (pathOf(scrutinee, symbols)) {
+        TermPath standing = switch (pathOf(scrutinee, newtypes)) {
             case PathResolution.At(var at) -> at;
             case PathResolution.NotAPosition _ -> null;
             // A scrutinee that only may stand at a position narrows nothing here either. What an
@@ -215,7 +218,7 @@ public final class InputReads {
             case PathResolution.MayStandAt _ -> null;
         };
         if (standing == null) {
-            return admitting(scrutinee, arm, symbols);
+            return admitting(scrutinee, arm, symbols, newtypes);
         }
         TermPath narrowed = standing.refine(narrowing);
         // And nothing is asked of the reading. What this answers is which location the arm's name
@@ -255,8 +258,9 @@ public final class InputReads {
      * an arm no value reaches, so the name inside it stands for nothing — which is what a name with
      * no meaning here already says, and is not a set of no members.
      */
-    private InputReads admitting(Core scrutinee, Core.Case arm, Symbols symbols) {
-        ReadMeaning.OneOf one = pluralityOf(scrutinee, symbols);
+    private InputReads admitting(Core scrutinee, Core.Case arm, Symbols symbols,
+                                 DeclarationNewtypes newtypes) {
+        ReadMeaning.OneOf one = pluralityOf(scrutinee, symbols, newtypes);
         if (one == null) {
             return this;
         }
@@ -300,11 +304,12 @@ public final class InputReads {
      * {@code match} and what it matches would be two answers about which names may be gone through,
      * and the day they differed the arm would narrow a set the arithmetic never met.
      */
-    private ReadMeaning.OneOf pluralityOf(Core e, Symbols symbols) {
-        Denotation standing = standing(new Denotation(e, this), symbols,
+    private ReadMeaning.OneOf pluralityOf(Core e, Symbols symbols,
+                                          DeclarationNewtypes newtypes) {
+        Denotation standing = standing(new Denotation(e, this), symbols, newtypes,
                 new HashSet<>());
         return standing.value() instanceof Core.Read name
-                && standing.at().meaningOf(name, symbols) instanceof ReadMeaning.OneOf one
+                && standing.at().meaningOf(name, symbols, newtypes) instanceof ReadMeaning.OneOf one
                 ? one : null;
     }
 
@@ -326,12 +331,13 @@ public final class InputReads {
      * the inputs is this class's answer throughout, and {@link souther.compiler.check.Terms} gives
      * the same sum the answer its own readers speak.
      */
-    public InputReads choosing(Choice.Decides decidedBy, Symbols symbols) {
+    public InputReads choosing(Choice.Decides decidedBy, Symbols symbols,
+                               DeclarationNewtypes newtypes) {
         return switch (decidedBy) {
             // A condition binds nothing. Which way it went is settled where the arm is read.
             case Choice.Decides.ACondition _ -> this;
             case Choice.Decides.ACase(Core.Case arm, Core scrutinee) ->
-                    insideArmOn(scrutinee, arm, symbols);
+                    insideArmOn(scrutinee, arm, symbols, newtypes);
             // The invariant held, so the name the attempt writes stands for what was built.
             case Choice.Decides.ItWasBuilt(Core.IfConstructed attempt) ->
                     and(attempt.binder(), attempt.construct());
@@ -350,8 +356,8 @@ public final class InputReads {
     }
 
     /** Where {@code e} stands, read here ({@link PathResolution}). */
-    public PathResolution pathOf(Core e, Symbols symbols) {
-        return InputPath.of(e, names, symbols);
+    public PathResolution pathOf(Core e, DeclarationNewtypes newtypes) {
+        return InputPath.of(e, names, newtypes);
     }
 
     /** Where in the element handed to {@code binding} the value a walk answered stands, or null
@@ -387,8 +393,8 @@ public final class InputReads {
      * permission recorded here: an arithmetic reader substitutes it, and a reader collecting
      * positions walks into it, and neither is the other's rule.
      */
-    public ReadMeaning meaningOf(Core.Read read, Symbols symbols) {
-        return meaningOf(read, symbols, new HashSet<>());
+    public ReadMeaning meaningOf(Core.Read read, Symbols symbols, DeclarationNewtypes newtypes) {
+        return meaningOf(read, symbols, newtypes, new HashSet<>());
     }
 
     /**
@@ -417,13 +423,14 @@ public final class InputReads {
      * name that came round to itself is one already answered for, and what is handed back is the
      * name rather than a walk that does not end.
      */
-    public Denotation denotes(Core e, Symbols symbols) {
+    public Denotation denotes(Core e, Symbols symbols, DeclarationNewtypes newtypes) {
         Core at = e;
         InputReads reads = this;
         Set<BindingId> met = new HashSet<>();
         while (at instanceof Core.Read read) {
             if (!met.add(read.binding())
-                    || !(reads.meaningOf(read, symbols) instanceof ReadMeaning.Through through)) {
+                    || !(reads.meaningOf(read, symbols, newtypes)
+                            instanceof ReadMeaning.Through through)) {
                 return new Denotation(at, reads);
             }
             at = through.denotes().value();
@@ -440,11 +447,11 @@ public final class InputReads {
      * walk meets names this has to answer about. Threaded rather than started afresh at each step,
      * so what stops the walk is the bindings met and not a depth anybody chose.
      */
-    private ReadMeaning meaningOf(Core.Read read, Symbols symbols,
+    private ReadMeaning meaningOf(Core.Read read, Symbols symbols, DeclarationNewtypes newtypes,
                                   Set<BindingId> met) {
         // A name is what it stands at where it stands at one, and where it stands at none the
         // answers below say what else it is.
-        switch (pathOf(read, symbols)) {
+        switch (pathOf(read, newtypes)) {
             case PathResolution.At(var at) -> {
                 return new ReadMeaning.Position(at);
             }
@@ -461,7 +468,7 @@ public final class InputReads {
         return switch (names.roleOf(read.binding())) {
             case BindingRole.Element(var container) -> {
                 java.util.List<Denotation> written =
-                        writtenElementsOf(new Denotation(container, this), symbols, met);
+                        writtenElementsOf(new Denotation(container, this), symbols, newtypes, met);
                 yield written == null ? new ReadMeaning.Element() : new ReadMeaning.OneOf(written);
             }
             // An element of more than one container is an element, and what it may be is not the
@@ -511,8 +518,9 @@ public final class InputReads {
      */
     private static java.util.List<Denotation> writtenElementsOf(Denotation container,
                                                                 Symbols symbols,
+                                                                DeclarationNewtypes newtypes,
                                                                 Set<BindingId> met) {
-        Denotation standing = standing(container, symbols, met);
+        Denotation standing = standing(container, symbols, newtypes, met);
         if (!(standing.value() instanceof Core.ListLit written) || written.elements().isEmpty()) {
             return null;
         }
@@ -540,13 +548,13 @@ public final class InputReads {
      * name that came round to itself is one already answered for.
      */
     private static Denotation standing(Denotation from, Symbols symbols,
-                                       Set<BindingId> met) {
+                                       DeclarationNewtypes newtypes, Set<BindingId> met) {
         Denotation at = from;
         while (true) {
             switch (at.value()) {
                 case Core.Read name -> {
                     if (!met.add(name.binding())
-                            || !(at.at().meaningOf(name, symbols, met)
+                            || !(at.at().meaningOf(name, symbols, newtypes, met)
                                     instanceof ReadMeaning.Through through)) {
                         return at;
                     }
@@ -577,20 +585,20 @@ public final class InputReads {
      * nothing here works out, and it is null the way anything else this cannot answer is —
      * arithmetic over the values is not a question a naming answers.
      */
-    public String writtenStringOf(Core e, Symbols symbols) {
-        return standing(new Denotation(e, this), symbols, new HashSet<>())
+    public String writtenStringOf(Core e, Symbols symbols, DeclarationNewtypes newtypes) {
+        return standing(new Denotation(e, this), symbols, newtypes, new HashSet<>())
                 .value() instanceof Core.Str written ? written.value() : null;
     }
 
     /** Where an element handed to {@code binding} stands ({@link InputPath#elementAt}). */
-    public PathResolution elementAt(BindingId binding, Symbols symbols) {
-        return InputPath.elementAt(binding, names, symbols);
+    public PathResolution elementAt(BindingId binding, DeclarationNewtypes newtypes) {
+        return InputPath.elementAt(binding, names, newtypes);
     }
 
     /** Where {@code e}'s value came from. Not where it is: a value made from a position is not that
      *  position ({@link InputPath#cameFrom}). */
-    public PathResolution cameFrom(Core e, Symbols symbols) {
-        return InputPath.cameFrom(e, names, symbols);
+    public PathResolution cameFrom(Core e, DeclarationNewtypes newtypes) {
+        return InputPath.cameFrom(e, names, newtypes);
     }
 
     /**

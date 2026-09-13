@@ -63,7 +63,8 @@ class WhetherAWrongLibraryCallIsTheAuthorsIsTheLibrarysToSayTest {
 
     private static RuntimeException refusing(Hir.Expr call) {
         return assertThrows(RuntimeException.class,
-                () -> Elaborator.elaborate(call, Scope.NONE, CheckContext.of(Symbols.none(DefaultStdlib.get()))));
+                () -> Elaborator.elaborate(call, Scope.NONE, CheckContext.of(Symbols.none(DefaultStdlib.get()),
+                        PublishedDeclarations.NONE, DeclarationKinds.NONE)));
     }
 
     /**

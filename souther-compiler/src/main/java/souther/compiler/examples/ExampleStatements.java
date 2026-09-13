@@ -75,11 +75,18 @@ public final class ExampleStatements {
      * built and compared in the reading that holds this, so nothing crosses a loader.
      */
     public record Declaring(souther.compiler.check.Prepared.ForExamples forExamples,
-                            Symbols symbols, FieldTypes fields,
+                            Symbols symbols,
+                            souther.compiler.check.PublishedDeclarations published,
+                            souther.compiler.check.DeclarationKinds kinds,
+                            FieldTypes fields,
                             Map<String, Hir.FnDef> values) {}
 
     private final souther.compiler.check.Prepared.ForExamples module;
     private final Symbols symbols;
+    /** What the declarations a statement names say about themselves. */
+    private final souther.compiler.check.PublishedDeclarations published;
+    /** Which form each of those declarations was written in. */
+    private final souther.compiler.check.DeclarationKinds kinds;
     /** What a value of a declaration is made of, as the check settled it. */
     private final FieldTypes fields;
     /** The shape of every behavior a statement here may name, keyed by the declaration it is: this
@@ -108,6 +115,8 @@ public final class ExampleStatements {
     private final Map<String, Declaring> declaring;
 
     private ExampleStatements(souther.compiler.check.Prepared.ForExamples module, Symbols symbols,
+                              souther.compiler.check.PublishedDeclarations published,
+                            souther.compiler.check.DeclarationKinds kinds,
                               FieldTypes fields,
                               Map<ValueName.Behavior, Sig> sigs,
                               MemoryClassLoader loader, Map<String, Hir.FnDef> values,
@@ -118,13 +127,15 @@ public final class ExampleStatements {
         this.declaring = declaring;
         this.module = module;
         this.symbols = symbols;
+        this.published = published;
+        this.kinds = kinds;
         this.fields = fields;
         this.sigs = sigs;
         this.loader = loader;
         this.values = values;
         this.deadline = deadline;
         this.policy = policy;
-        this.rendering = new FixtureReader(module, symbols, fields, values, loader);
+        this.rendering = new FixtureReader(module, symbols, published, kinds, fields, values, loader);
     }
 
     /**
@@ -238,7 +249,7 @@ public final class ExampleStatements {
      * this.
      */
     private FixtureReader newFixtureReader() {
-        return new FixtureReader(module, symbols, fields, values, loader);
+        return new FixtureReader(module, symbols, published, kinds, fields, values, loader);
     }
 
     /**
@@ -255,11 +266,12 @@ public final class ExampleStatements {
         }
         Declaring elsewhere = declaring.get(declaredIn);
         return () -> new FixtureReader(elsewhere.forExamples(), elsewhere.symbols(),
-                elsewhere.fields(), elsewhere.values(), loader);
+                elsewhere.published(), elsewhere.kinds(), elsewhere.fields(), elsewhere.values(),
+                loader);
     }
 
     private Set<TypeSymbol> outCases(Type out) {
-        return TypeOps.outputCases(out, symbols);
+        return TypeOps.outputCases(out, published);
     }
 
     // --- two statements about one behavior -----------------------------------------------------
@@ -276,7 +288,10 @@ public final class ExampleStatements {
      * itself dispatches with ({@link Standins#answering}) — the same rule, not a second reading of it — and
      * the two answers are compared as the written values they are built into.
      */
-    public static Readings disagreements(souther.compiler.check.Prepared.ForExamples module, Symbols symbols,
+    public static Readings disagreements(souther.compiler.check.Prepared.ForExamples module,
+                                         Symbols symbols,
+                                         souther.compiler.check.PublishedDeclarations published,
+                            souther.compiler.check.DeclarationKinds kinds,
                                          FieldTypes fields,
                                          Map<ValueName.Behavior, Sig> sigs,
                                          Map<String, ClassFileImage> classes,
@@ -296,7 +311,7 @@ public final class ExampleStatements {
         if (contested.isEmpty()) {
             return Readings.NONE;
         }
-        ExampleStatements v = new ExampleStatements(module, symbols, fields, sigs,
+        ExampleStatements v = new ExampleStatements(module, symbols, published, kinds, fields, sigs,
                 new MemoryClassLoader(classes, parent), values, deadline, policy, contracts,
                 declaring);
         try {
@@ -371,7 +386,10 @@ public final class ExampleStatements {
      * reports on. Which of them a fake is written in is what its own place says, so the two are never out of
      * step.
      */
-    public static List<Diagnostic> fakeTables(souther.compiler.check.Prepared.ForExamples module, Symbols symbols,
+    public static List<Diagnostic> fakeTables(souther.compiler.check.Prepared.ForExamples module,
+                                              Symbols symbols,
+                                              souther.compiler.check.PublishedDeclarations published,
+                            souther.compiler.check.DeclarationKinds kinds,
                                               FieldTypes fields,
                                               Map<ValueName.Behavior, Sig> sigs,
                                               Map<String, ClassFileImage> classes,
@@ -386,7 +404,7 @@ public final class ExampleStatements {
         }
         // Building a table reads statements written here and nothing another module wrote, so it
         // needs no reading of one.
-        ExampleStatements v = new ExampleStatements(module, symbols, fields, sigs,
+        ExampleStatements v = new ExampleStatements(module, symbols, published, kinds, fields, sigs,
                 new MemoryClassLoader(classes, parent), values, deadline, policy, contracts,
                 Map.of());
         List<Diagnostic> said = new ArrayList<>();

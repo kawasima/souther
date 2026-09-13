@@ -30,12 +30,15 @@ public final class SignatureDeclarations {
      * else the boundary does not carry is refused here, which is what stops a module from being
      * checked past a declaration nothing below could have read.
      */
-    public static Map<String, DeclaredSig> of(List<Hir.BehaviorDef> behaviors, Symbols symbols) {
+    public static Map<String, DeclaredSig> of(List<Hir.BehaviorDef> behaviors, Symbols symbols,
+                                              DeclarationKinds kinds,
+                                              PublishedDeclarations published) {
         Map<String, DeclaredSig> declared = new LinkedHashMap<>();
         for (Hir.BehaviorDef b : behaviors) {
             if (b instanceof Hir.SpecBehavior spec) {
                 try {
-                    declared.put(spec.name(), SignatureBoundary.of(spec, symbols));
+                    declared.put(spec.name(),
+                            SignatureBoundary.of(spec, symbols, kinds, published));
                 } catch (Unanswerable _) {
                     // deliberately empty: see above
                 }

@@ -57,7 +57,7 @@ class ABudgetIsNamedByThePlaceItStopsTest {
     /** The position of this type as the builder is asked about it: what it is, and what the rules
      *  every name it wears carries say of it. */
     private static TypeView position(Type type) {
-        return TypeView.of(type, SYMBOLS);
+        return TypeView.asWritten(type, SYMBOLS, RULES.published());
     }
 
     /**
@@ -116,7 +116,7 @@ class ABudgetIsNamedByThePlaceItStopsTest {
         Type ofWholeNumbers = new Type.ListOf(Type.INT);
         NumericTerm.TakenOf sum = NumericTerm.TakenOf.of(
                 ValueName.Stdlib.operation("List", "sum"), TermPath.of("ns"), ofWholeNumbers,
-                SYMBOLS);
+                souther.compiler.check.ScopedDeclarations.wrapsOf(SYMBOLS), SYMBOLS);
         assertNotNull(sum, "a walk that adds up a list of whole numbers is a number of it");
         TermOrders orders = souther.compiler.inputs.TermOrdersFixtures
                 .at(sum, ofWholeNumbers, SYMBOLS);

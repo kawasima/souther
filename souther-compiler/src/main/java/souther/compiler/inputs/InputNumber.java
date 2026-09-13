@@ -44,7 +44,7 @@ public final class InputNumber {
         if (measured != null) {
             // A taking is of a location, so an argument that stands at none is one there is no
             // location to take it of.
-            TermPath of = switch (reads.pathOf(measured.of(), symbols)) {
+            TermPath of = switch (reads.pathOf(measured.of(), source.newtypes())) {
                 case PathResolution.At(var at) -> at;
                 case PathResolution.NotAPosition _ -> null;
                 // A taking is of one location, and a name that only may stand at one is no one of
@@ -54,7 +54,7 @@ public final class InputNumber {
             };
             if (of != null) {
                 return NumericTerm.TakenOf.of(measured.operation(), of,
-                        inputs.typeAt(of, source), symbols);
+                        inputs.typeAt(of, source), source.inners(), symbols);
             }
             // A location the operation is not taken of, or a value standing at none. The second is
             // a walk's answer, and a number over the values it walked is a term of its own where
@@ -63,7 +63,7 @@ public final class InputNumber {
         }
         // And a number of the input is the value at a position, so an expression naming none names
         // no number here.
-        return switch (reads.pathOf(e, symbols)) {
+        return switch (reads.pathOf(e, source.newtypes())) {
             case PathResolution.At(var at) -> new NumericTerm.ValueOf(at);
             case PathResolution.NotAPosition _ -> null;
             // And a number of the input is the value at one position. A name standing at one of
@@ -109,18 +109,18 @@ public final class InputNumber {
         // The walk and the names it stands under, which travel together: a name bound inside a
         // helper stands for what the call handed over, and what is read of that afterwards is read
         // where it stands rather than where the name was.
-        Denotation met = reads.denotes(measured.of(), symbols);
+        Denotation met = reads.denotes(measured.of(), symbols, source.newtypes());
         Core walk = met.value();
         InputReads where = met.at();
         souther.compiler.types.BindingId element =
-                WalkElements.elementBindingOf(walk, where, symbols);
+                WalkElements.elementBindingOf(walk, where, symbols, source.newtypes());
         if (element == null) {
             return null;
         }
         ElementProjection answered = where.projectionAt(element);
         // Where the elements stand, and nothing where they stand nowhere: a run is over the values
         // at a position, so a container this reading could not place leaves no run to take.
-        TermPath at = switch (where.elementAt(element, symbols)) {
+        TermPath at = switch (where.elementAt(element, source.newtypes())) {
             case PathResolution.At(var stands) -> stands;
             case PathResolution.NotAPosition _ -> null;
             // A run is over the values at one position, and a walk whose elements come from more
@@ -141,7 +141,8 @@ public final class InputNumber {
         }
         Type stands = inputs.typeAt(under, source);
         return stands == null ? null
-                : NumericTerm.TakenOver.of(measured.operation(), over, stands, symbols);
+                : NumericTerm.TakenOver.of(measured.operation(), over, stands, source.inners(),
+                        symbols);
     }
 
 }

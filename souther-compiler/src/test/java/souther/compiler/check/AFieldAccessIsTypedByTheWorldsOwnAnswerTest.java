@@ -148,19 +148,24 @@ class AFieldAccessIsTypedByTheWorldsOwnAnswerTest {
                 "the clause did not elaborate, so the check settled nothing about `Bad`");
 
         assertEquals(Type.INT,
-                new FieldRead(scope, new ResolvedFieldTypes(scope), FieldRead.Unreadable.REFUSED)
+                new FieldRead(scope, ScopedDeclarations.of(scope),
+                        ScopedDeclarations.kindsOf(scope), new ResolvedFieldTypes(scope, ScopedDeclarations.wrapsOf(scope)),
+                        FieldRead.Unreadable.REFUSED)
                         .of(Type.ref(bad), "n"),
                 "and what the declaration denotes is still there to be read");
     }
 
     /** The reading of a {@code .} this walk is handed, in {@code world}. */
     private FieldRead reading(FieldTypes world) {
-        return new FieldRead(symbols, world, FieldRead.Unreadable.REFUSED);
+        return new FieldRead(symbols, ScopedDeclarations.of(symbols),
+                ScopedDeclarations.kindsOf(symbols), world,
+                FieldRead.Unreadable.REFUSED);
     }
 
     /** What the declarations state about an expression, read in {@code world}. */
     private DeclaredTypeReading readingIn(FieldTypes world) {
-        return new DeclaredTypeReading(new DeclarationFacts(reading(world)), values,
+        return new DeclaredTypeReading(
+                new DeclarationFacts(reading(world), DeclarationNewtypes.asWritten(symbols)), values,
                 compilation.db().ask(new Bodies.Reachable(module)).value());
     }
 

@@ -57,14 +57,15 @@ final class SignatureApplication {
      * @param result   what the signature declares it answers
      * @param expected what the position the application stands in requires of the result, or null
      *                 where the reader has no position to read
-     * @param stated   what stands at each parameter, asked by position and asked once
-     * @param symbols  what the names in the types denote
+     * @param stated    what stands at each parameter, asked by position and asked once
+     * @param published what each declaration the types name says about itself
      */
     static Map<String, Type> settledByValues(List<Type> params, Type result, Type expected,
-                                             IntFunction<Type> stated, Symbols symbols) {
+                                             IntFunction<Type> stated,
+                                             PublishedDeclarations published) {
         Map<String, Type> bind = new HashMap<>();
         if (params.stream().anyMatch(Type.FnOf.class::isInstance)) {
-            BottomInfer.pinResultTypeVars(result, expected, bind, symbols);
+            BottomInfer.pinResultTypeVars(result, expected, bind, published);
         }
         // Each value argument is asked once, here, in the order it is written. What the ordering
         // below decides is which of them settles a variable first, and nothing about how many times
@@ -87,7 +88,7 @@ final class SignatureApplication {
         // is in hand. A refusal from here would name the argument in words and point at the callee,
         // the two being as far apart as an argument list is long.
         for (int i : stating) {
-            TypeOps.bindVars(params.get(i), at[i], bind, symbols);
+            TypeOps.bindVars(params.get(i), at[i], bind, published);
         }
         return bind;
     }

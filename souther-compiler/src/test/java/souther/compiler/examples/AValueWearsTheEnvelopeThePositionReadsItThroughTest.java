@@ -7,6 +7,7 @@ import net.unit8.raoh.decode.Decoder;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.query.Scopes;
+import souther.compiler.check.ScopedDeclarations;
 import souther.compiler.check.Symbols;
 import souther.compiler.observe.Position;
 import souther.compiler.query.Compilation;
@@ -66,7 +67,8 @@ class AValueWearsTheEnvelopeThePositionReadsItThroughTest {
     private final Compilation compilation = compiled(MODULE);
     private final Symbols symbols = Scopes.derived(compilation.db(), "demo").value();
     private final NeutralForm neutral =
-            new NeutralForm(symbols,
+            new NeutralForm(symbols, ScopedDeclarations.of(symbols),
+                    ScopedDeclarations.kindsOf(symbols),
                     souther.compiler.query.ExampleExecutions.of(compilation.db(), "demo")
                             .fieldTypes());
 
@@ -193,7 +195,8 @@ class AValueWearsTheEnvelopeThePositionReadsItThroughTest {
     void anotherSumListingTheCaseDoesNotMoveWhatAPlaceNothingReadsWrites() throws Exception {
         Compilation with = compiled(AND_ANOTHER_SUM);
         Symbols theirs = Scopes.derived(with.db(), "demo").value();
-        NeutralForm and = new NeutralForm(theirs,
+        NeutralForm and = new NeutralForm(theirs, ScopedDeclarations.of(theirs),
+                ScopedDeclarations.kindsOf(theirs),
                 souther.compiler.query.ExampleExecutions.of(with.db(), "demo").fieldTypes());
         assertEquals(Map.of(), neutral.of(unit("Filed"), Position.UNREAD, "h"));
         assertEquals(Map.of(), and.of(value(with, "Filed", Map.of()), Position.UNREAD, "h"));

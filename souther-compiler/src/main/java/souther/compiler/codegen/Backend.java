@@ -6,6 +6,8 @@ import souther.compiler.check.ExpandedClauseLookup;
 import souther.compiler.check.InvariantStatements;
 import souther.compiler.check.Boundary;
 import souther.compiler.check.DerivedSymbols;
+import souther.compiler.check.DeclarationKinds;
+import souther.compiler.check.PublishedDeclarations;
 import souther.compiler.diag.CompileException;
 import souther.compiler.diag.Diagnostic;
 import souther.compiler.diag.msg.BehaviorMessage;
@@ -146,6 +148,8 @@ public final class Backend {
      * construction is refused by and is the checker's answer rather than this emitter's
      * (issue #1080). */
     public static Emissions generate(Hir.Module module, DerivedSymbols symbols,
+                                               PublishedDeclarations published,
+                                               DeclarationKinds kinds,
                                                KernelSignatures kernels,
                                                Map<String, String> typePackage,
                                                Map<ValueName.Behavior, Sig> sigs,
@@ -161,7 +165,8 @@ public final class Backend {
                                                Map<ValueName.Behavior, EnsuresEnforcement> checks,
                                                Map<String, Type> standingCalls,
                                                SourceLayouts layouts) {
-        return generate(module, symbols, kernels, typePackage, sigs, importedSigs, importedInjected,
+        return generate(module, symbols, published, kinds, kernels, typePackage, sigs, importedSigs,
+                importedInjected,
                 calleeSigs, requirements, checked, compositions, dischargeInvariants,
                 invariantStatements, shapes, checks, standingCalls, layouts, Instrumentation.NONE);
     }
@@ -180,6 +185,8 @@ public final class Backend {
      * being walked — which is why there is nowhere for a caller to supply one.
      */
     public static Emissions generate(Hir.Module module, DerivedSymbols symbols,
+                                               PublishedDeclarations published,
+                                               DeclarationKinds kinds,
                                                KernelSignatures kernels,
                                                Map<String, String> typePackage,
                                                Map<ValueName.Behavior, Sig> sigs,
@@ -197,7 +204,8 @@ public final class Backend {
                                                SourceLayouts layouts,
                                                Instrumentation instrumentation) {
         try {
-            return generating(module, symbols, kernels, typePackage, sigs, importedSigs,
+            return generating(module, symbols, published, kinds, kernels, typePackage, sigs,
+                    importedSigs,
                     importedInjected, calleeSigs, requirements, checked, compositions,
                     dischargeInvariants, invariantStatements, shapes, checks, standingCalls,
                     layouts, instrumentation);
@@ -210,6 +218,8 @@ public final class Backend {
     }
 
     private static Emissions generating(Hir.Module module, DerivedSymbols symbols,
+                                        PublishedDeclarations published,
+                                        DeclarationKinds kinds,
                                         KernelSignatures kernels,
                                                   Map<String, String> typePackage,
                                                   Map<ValueName.Behavior, Sig> sigs,
@@ -252,7 +262,9 @@ public final class Backend {
                 recHelpers.put(fn.name(), fn);
             }
         }
-        CodegenContext ctx = new CodegenContext(module.name(), symbols, kernels, caseToSums, typePackage,
+        CodegenContext ctx = new CodegenContext(module.name(), symbols, published, kinds,
+                souther.compiler.check.NewtypeInners.asWritten(symbols), kernels,
+                caseToSums, typePackage,
                 module.exposing().isEmpty(), exposed, standingCalls, layouts,
                 module.pos().quotedFrom());
         ctx.setDischargeInvariants(dischargeInvariants);
@@ -1105,7 +1117,7 @@ public final class Backend {
             // encoder and the bridge cases, so none of them is in a position to work the form or a
             // tag out again.
             results.put(new GeneratedClass.BehaviorResult(module.name(), bd.name()),
-                    Boundary.of(sig.outputType(), symbols));
+                    Boundary.of(sig.outputType(), ctx.kinds, ctx.published));
         }
         return results;
     }

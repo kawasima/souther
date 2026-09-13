@@ -7,6 +7,7 @@ import souther.compiler.check.BehaviorImplementation;
 import souther.compiler.check.CoreBinders;
 import souther.compiler.check.Derived;
 import souther.compiler.check.Lower;
+import souther.compiler.check.PublishedDeclarations;
 import souther.compiler.check.Sig;
 import souther.compiler.check.SpecImplementation;
 import souther.compiler.check.Symbols;
@@ -268,7 +269,6 @@ final class CheckedProgramAssembler {
      */
     private static List<CheckedData> languageDataOf(Db db) {
         Stdlib stdlib = libraryOf(db);
-        Symbols language = Symbols.none(stdlib);
         List<CheckedData> declared = new ArrayList<>();
         for (Hir.Def def : stdlib.languageDeclarations().values()) {
             if (def instanceof Hir.Data product) {
@@ -281,7 +281,7 @@ final class CheckedProgramAssembler {
                 throw new IllegalStateException("the language declares `" + product.declares()
                         + "` as a product, and what a value of one is made of is not derived here");
             }
-            declared.add(declaredAs(def, language, Map.of()));
+            declared.add(declaredAs(def, Shapes.publishedDeclarations(db), Map.of()));
         }
         return declared;
     }
@@ -314,7 +314,8 @@ final class CheckedProgramAssembler {
                         + " compile has nothing to say about what it declares");
             }
             for (Derived.Def def : defs.values()) {
-                declared.add(declaredAs(def.declaration().node(), symbols, shapes));
+                declared.add(declaredAs(def.declaration().node(),
+                        Shapes.publishedDeclarations(db), shapes));
             }
         }
         return declared;
@@ -397,7 +398,9 @@ final class CheckedProgramAssembler {
         Hir.Module declarations = lowering.settled();
         Hir.Module bodies = lowering.lowered();
         return new ModuleReading(module, bodies, checked, signatures, implementations,
-                compositions, checks, dataOf(declarations, symbols, shapes), rowsOf(db, module));
+                compositions, checks,
+                dataOf(declarations, Shapes.publishedDeclarations(db), shapes),
+                rowsOf(db, module));
     }
 
     /**
@@ -547,11 +550,12 @@ final class CheckedProgramAssembler {
      * {@link CheckedData.WithFields#fields} and {@link CheckedData.Sum#cases} — and those are the
      * ones said out loud.
      */
-    private static List<CheckedData> dataOf(Hir.Module declarations, Symbols symbols,
+    private static List<CheckedData> dataOf(Hir.Module declarations,
+                                           PublishedDeclarations published,
                                            Map<TypeSymbol.AtModule, ValueShape> shapes) {
         List<CheckedData> declared = new ArrayList<>();
         for (Hir.Def def : declarations.defs()) {
-            declared.add(declaredAs(def, symbols, shapes));
+            declared.add(declaredAs(def, published, shapes));
         }
         return declared;
     }
@@ -563,12 +567,12 @@ final class CheckedProgramAssembler {
      * of thing — they resolve and type alike and a value of either lays out alike — and this is
      * where that stops being something two readings agree about.
      */
-    private static CheckedData declaredAs(Hir.Def def, Symbols symbols,
+    private static CheckedData declaredAs(Hir.Def def, PublishedDeclarations published,
                                           Map<TypeSymbol.AtModule, ValueShape> shapes) {
         return switch (def) {
             case Hir.Data data -> checkedDataOf(data, shapes);
             case Hir.SumData sum -> new CheckedData.Sum(sum.declares(),
-                    AtomSpace.subjectAtoms(Type.ref(sum.declares()), symbols));
+                    AtomSpace.subjectAtoms(Type.ref(sum.declares()), published));
             case Hir.UnitData unit -> new CheckedData.Unit(unit.declares());
         };
     }

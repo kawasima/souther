@@ -281,7 +281,8 @@ final class Intervals {
         // different construction per kind of number, so a kind added is one this has to be told
         // how to build for rather than one that falls to whichever branch it was not named in.
         RuleReadingSource ruleSource = reading.source();
-        TypeView view = TypeView.of(type, ruleSource.symbols());
+        TypeView view = TypeView.of(type, ruleSource.inners(), ruleSource.symbols(),
+                ruleSource.published());
         // A name this module cannot write leaves no value to write, whichever number the value is
         // asked to read as. Asked of the position, once, before anything is built for it.
         if (!(WornNames.of(view.wrappers(), ruleSource) instanceof WornNames.Spelled worn)) {

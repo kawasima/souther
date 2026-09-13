@@ -157,7 +157,8 @@ public final class SemanticSnapshot {
      * the resolved module here.
      */
     private DeclarationFacts declarations() {
-        return new DeclarationFacts(fieldRead());
+        return new DeclarationFacts(fieldRead(),
+                souther.compiler.query.Shapes.declarationNewtypes(db));
     }
 
     /**
@@ -362,12 +363,15 @@ public final class SemanticSnapshot {
      * also told that the buffer cannot answer what may follow a {@code .}.
      */
     private FieldRead fieldRead() {
-        return new FieldRead(symbols, fields(), FieldRead.Unreadable.MAKES_NOTHING_READABLE);
+        return new FieldRead(symbols, souther.compiler.query.Shapes.publishedDeclarations(db),
+                souther.compiler.query.Shapes.declarationKinds(db),
+                souther.compiler.query.Shapes.newtypeInners(db),
+                fields(), FieldRead.Unreadable.MAKES_NOTHING_READABLE);
     }
 
     /** What a declaration holds, as the text has resolved it so far. */
     private FieldTypes fields() {
-        return new ResolvedFieldTypes(symbols);
+        return new ResolvedFieldTypes(symbols, souther.compiler.query.Shapes.newtypeInners(db));
     }
 
     /**

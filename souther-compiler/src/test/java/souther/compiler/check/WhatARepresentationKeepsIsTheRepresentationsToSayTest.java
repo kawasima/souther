@@ -84,10 +84,12 @@ class WhatARepresentationKeepsIsTheRepresentationsToSayTest {
         // built rather than derived from whatever context reached them (issue #1080). This used to
         // be a context you could carry across the boundary and a method that emptied it on the way.
         assertEquals(Preserved.NONE,
-                CheckContext.executableInvariant(Symbols.none(DefaultStdlib.get()), null)
+                CheckContext.executableInvariant(Symbols.none(DefaultStdlib.get()),
+                                PublishedDeclarations.NONE, DeclarationKinds.NONE, null)
                         .preserved());
         assertEquals(Preserved.NONE,
-                CheckContext.executableEnsures(Symbols.none(DefaultStdlib.get())).preserved(),
+                CheckContext.executableEnsures(Symbols.none(DefaultStdlib.get()),
+                                PublishedDeclarations.NONE, DeclarationKinds.NONE).preserved(),
                 "and a rule is read at an entry of its own, as a clause is");
     }
 
@@ -95,7 +97,8 @@ class WhatARepresentationKeepsIsTheRepresentationsToSayTest {
     void whichDataIsBeingCheckedIsNotWhereARepresentationEnds() {
         // `forData` moves within one representation as well, so it must not quietly mean the
         // permission is gone
-        CheckContext keeping = CheckContext.of(Symbols.none(DefaultStdlib.get())).preserving(keeping(MAP, SIGNATURE));
+        CheckContext keeping = CheckContext.of(Symbols.none(DefaultStdlib.get()), PublishedDeclarations.NONE,
+                DeclarationKinds.NONE).preserving(keeping(MAP, SIGNATURE));
 
         assertEquals(keeping.preserved(), keeping.forData(null).preserved());
     }
@@ -113,6 +116,7 @@ class WhatARepresentationKeepsIsTheRepresentationsToSayTest {
 
     private static Core elaborate(Hir.Expr e, Preserved kept) {
         return Elaborator.elaborate(e, Scope.NONE,
-                CheckContext.of(Symbols.none(DefaultStdlib.get())).preserving(kept));
+                CheckContext.of(Symbols.none(DefaultStdlib.get()), PublishedDeclarations.NONE,
+                DeclarationKinds.NONE).preserving(kept));
     }
 }

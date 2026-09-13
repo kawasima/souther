@@ -532,7 +532,8 @@ final class Witnesses {
      */
     private static FixtureTemplate varied(Type type, int index, RuleReadingContext reading) {
         RuleReadingSource ruleSource = reading.source();
-        TypeView view = TypeView.of(type, ruleSource.symbols());
+        TypeView view = TypeView.of(type, ruleSource.inners(), ruleSource.symbols(),
+                ruleSource.published());
         if (view.shape() instanceof Shape.Scalar scalar && scalar.prim() == Type.Prim.STRING) {
             return WornNames.under(view.wrappers(), FixtureTemplate.string(
                     "x".repeat(Math.max(1, Partitions.leastHeld(view, reading)) + index)),

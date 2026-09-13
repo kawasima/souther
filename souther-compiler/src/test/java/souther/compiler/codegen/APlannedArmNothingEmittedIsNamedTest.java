@@ -10,6 +10,7 @@ import souther.compiler.meta.ModulePath;
 import souther.compiler.query.Bodies;
 import souther.compiler.query.Compilation;
 import souther.compiler.query.Scopes;
+import souther.compiler.query.Shapes;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -68,6 +69,8 @@ class APlannedArmNothingEmittedIsNamedTest {
     private CodegenContext counting(CoverageSites.Plan plan) {
         DerivedSymbols symbols = Scopes.derived(compilation.db(), MODULE).value();
         CodegenContext ctx = new CodegenContext(MODULE, symbols,
+                Shapes.publishedDeclarations(compilation.db()),
+                Shapes.declarationKinds(compilation.db()),
                 symbols.library().kernelSignatures(), Map.of(), Map.of(), true, Set.of(), Map.of(),
                 SourceLayouts.NONE, new QuotedFrom.TextItCannotName());
         ctx.setCoveragePlan(plan);

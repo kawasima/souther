@@ -1,7 +1,7 @@
 package souther.compiler.partition;
 
+import souther.compiler.check.DeclarationNewtypes;
 import souther.compiler.check.StatedComparison;
-import souther.compiler.check.Symbols;
 import souther.compiler.core.Core;
 import souther.compiler.diag.Citation;
 import souther.compiler.inputs.BlockReason;
@@ -262,14 +262,14 @@ sealed interface ComparisonAssessment {
             // either, there is no rule about a position to say it of — `2 > 1` is a comparison of
             // constants and states nothing anywhere.
             case Cutting.Read.CutsNothing over -> over.read().isEmpty()
-                    ? aboutNoPosition(comparison, reads, read.symbols())
+                    ? aboutNoPosition(comparison, reads, read.newtypes())
                     : new CutsNothing(AffineReading.filedAt(over.read()));
             // And where the reading stopped, its own answer for having stopped — decided where it
             // stopped rather than worked out again from the comparison afterwards. Here the walk
             // over the expression is the only account of what the rule is about, which is what it
             // is for.
             case Cutting.Read.Stopped stopped -> stopped.why().isEmpty()
-                    ? aboutNoPosition(comparison, reads, read.symbols())
+                    ? aboutNoPosition(comparison, reads, read.newtypes())
                     : new Unread(stopped.why());
             // And where the quantity was read and stands on no order this counts, the carrier is
             // what a reader is owed — at the quantity's own coordinates, because the quantity is
@@ -277,7 +277,7 @@ sealed interface ComparisonAssessment {
             // left when several answers were absent: it says the values here carry no order to
             // draw a line on, and that is exactly what was found.
             case Cutting.Read.NoOrderToCountOn over -> over.over().isEmpty()
-                    ? aboutNoPosition(comparison, reads, read.symbols())
+                    ? aboutNoPosition(comparison, reads, read.newtypes())
                     : new Unread(atEachOf(over.over(),
                             new BlockReason.UnreadComparisonDomain()));
         };
@@ -372,10 +372,11 @@ sealed interface ComparisonAssessment {
      * as one the model states nothing about.
      */
     private static ComparisonAssessment aboutNoPosition(StatedComparison comparison,
-                                                        InputReads reads, Symbols symbols) {
+                                                        InputReads reads,
+                                                        DeclarationNewtypes newtypes) {
         SequencedMap<FilingCoordinate, BlockReason.RuleReadingStopped> why =
                 new LinkedHashMap<>();
-        GuardThresholds.cameFrom(comparison, reads, symbols, why);
+        GuardThresholds.cameFrom(comparison, reads, newtypes, why);
         return why.isEmpty() ? new NoInput() : new Unread(why);
     }
 

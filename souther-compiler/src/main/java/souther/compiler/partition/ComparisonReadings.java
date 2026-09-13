@@ -2,6 +2,7 @@ package souther.compiler.partition;
 
 import souther.compiler.check.Comparison;
 import souther.compiler.diag.Citation;
+import souther.compiler.check.DeclarationNewtypes;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.Symbols;
 import souther.compiler.core.Core;
@@ -171,6 +172,10 @@ record ComparisonReadings(List<Reading> comparisons, List<ForkMet> forks,
             return read.symbols();
         }
 
+        DeclarationNewtypes newtypes() {
+            return read.newtypes();
+        }
+
         RuleReadingSource rules() {
             return read.rules();
         }
@@ -244,14 +249,16 @@ record ComparisonReadings(List<Reading> comparisons, List<ForkMet> forks,
             case Core.Binary both when both.op() == BinOp.AND -> {
                 walk(both.left(), in, reads, flow, assumed, live, out, forks, numbering);
                 walk(both.right(), in, reads, flow,
-                        taking(Condition.of(both.left(), reads, symbols, numbering), true,
+                        taking(Condition.of(both.left(), reads, symbols, in.newtypes(), numbering),
+                                true,
                                 in.read().domain(), assumed, ruleSource),
                         live, out, forks, numbering);
             }
             case Core.Binary either when either.op() == BinOp.OR -> {
                 walk(either.left(), in, reads, flow, assumed, live, out, forks, numbering);
                 walk(either.right(), in, reads, flow,
-                        taking(Condition.of(either.left(), reads, symbols, numbering), false,
+                        taking(Condition.of(either.left(), reads, symbols, in.newtypes(),
+                                        numbering), false,
                                 in.read().domain(), assumed, ruleSource),
                         live, out, forks, numbering);
             }
@@ -262,7 +269,8 @@ record ComparisonReadings(List<Reading> comparisons, List<ForkMet> forks,
                 // Read once, whichever arm is being entered. Reaching the `then` and reaching the
                 // `els` are two things one condition says, and a second reading for the second arm
                 // would name that one condition twice.
-                Condition condition = Condition.of(iff.cond(), reads, symbols, numbering);
+                Condition condition =
+                        Condition.of(iff.cond(), reads, symbols, in.newtypes(), numbering);
                 // What this walk found in the condition, for the reader that decides whether the
                 // fork states a rule of its own. Said of every fork an author wrote, and of none
                 // this compiler composed — a `guard`'s supplied arm and a lowering's test state
@@ -281,11 +289,11 @@ record ComparisonReadings(List<Reading> comparisons, List<ForkMet> forks,
                     // it would call a fork on a named comparison one nobody read.
                     List<Core> atoms = new ArrayList<>();
                     for (Core part : ConditionSkeleton.atoms(iff.cond())) {
-                        atoms.add(reads.denotes(part, symbols).value());
+                        atoms.add(reads.denotes(part, symbols, in.newtypes()).value());
                     }
                     Set<Core> owned = Collections.newSetFromMap(new IdentityHashMap<>());
                     for (Core atom : atoms) {
-                        if (statedElsewhere(atom, reads, symbols).isEmpty()) {
+                        if (statedElsewhere(atom, reads, symbols, in.newtypes()).isEmpty()) {
                             owned.add(atom);
                         }
                     }
@@ -321,7 +329,7 @@ record ComparisonReadings(List<Reading> comparisons, List<ForkMet> forks,
                 walk(match.scrutinee(), in, reads, flow, assumed, live, out, forks, numbering);
                 for (int part = 0; part < match.cases().size(); part++) {
                     Core.Case arm = match.cases().get(part);
-                    walk(arm.body(), in, reads.insideArm(match, arm, symbols), flow,
+                    walk(arm.body(), in, reads.insideArm(match, arm, symbols, in.newtypes()), flow,
                             entering(match, arm, part, in.read().domain(), reads, assumed,
                                     ruleSource, numbering),
                             live, out, forks, numbering);
@@ -408,12 +416,13 @@ record ComparisonReadings(List<Reading> comparisons, List<ForkMet> forks,
      * as "something in there is owned", the second went with the first — which is the same partial
      * ownership a condition's own parts are cut along, lost one step past the operation.
      */
-    static List<Core> statedElsewhere(Core atom, InputReads reads, Symbols symbols) {
+    static List<Core> statedElsewhere(Core atom, InputReads reads, Symbols symbols,
+                                      DeclarationNewtypes newtypes) {
         List<Core> left = new ArrayList<>();
         for (Core part : WhatAForkTests.partsOfTheAnswer(atom,
-                one -> reads.denotes(one, symbols).value())) {
+                one -> reads.denotes(one, symbols, newtypes).value())) {
             if (comparisonAt(part) == null
-                    && !(reads.pathOf(part, symbols) instanceof PathResolution.At)) {
+                    && !(reads.pathOf(part, newtypes) instanceof PathResolution.At)) {
                 left.add(part);
             }
         }
@@ -423,15 +432,15 @@ record ComparisonReadings(List<Reading> comparisons, List<ForkMet> forks,
     /** Whether the truth of {@code atom} turns on a predicate {@code read} took in, which is the
      *  same walk a comparison is looked for along and is here so that the two agree about it. */
     static boolean turnsOnAPredicate(Core atom, PredicateReadings read, InputReads reads,
-                                     Symbols symbols) {
-        return leftUnread(atom, read, reads, symbols).isEmpty();
+                                     Symbols symbols, DeclarationNewtypes newtypes) {
+        return leftUnread(atom, read, reads, symbols, newtypes).isEmpty();
     }
 
     /** The parts of what {@code atom} decides that none of the three readers answers for, which is
      *  what a fork over it is left stating. */
     static List<Core> leftUnread(Core atom, PredicateReadings read, InputReads reads,
-                                 Symbols symbols) {
-        return statedElsewhere(atom, reads, symbols).stream()
+                                 Symbols symbols, DeclarationNewtypes newtypes) {
+        return statedElsewhere(atom, reads, symbols, newtypes).stream()
                 .filter(part -> !read.statesOneAt(part))
                 .toList();
     }

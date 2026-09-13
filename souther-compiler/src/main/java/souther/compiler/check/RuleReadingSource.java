@@ -38,6 +38,28 @@ package souther.compiler.check;
  *                   the tree a module expanded its own clauses into, which is what a declaration
  *                   answering for itself reads and what nothing reading another module's
  *                   declaration may
+ * @param kinds      which form each declaration was written in. Beside {@code published} and not
+ *                   inside it: the form was settled when the module was indexed and what the
+ *                   declaration says is worked out well above that, so a reader telling a sum from
+ *                   a product depends on the first alone — and may ask it where asking the second
+ *                   would be asking for an answer still being worked out
+ * @param newtypes   which declarations were written as one value wearing a name. Beside
+ *                   {@code kinds} and not a fourth value of it: a product written over again as a
+ *                   sum changes form and is no more a newtype than it was, so a reader asking only
+ *                   this keeps its answer through that edit
+ * @param inners     what each declaration that wears one value wraps. Beside {@code newtypes} and
+ *                   not inside it, because the two are answerable at different times: whether a
+ *                   declaration wears one value was settled when the module was indexed, and what it
+ *                   wraps is not settled until the names in it resolve
+ * @param bindings   which binding each field a declaration reaches is, which is what a clause of
+ *                   that declaration resolves its own names against. Beside {@code inners} and not
+ *                   inside it: what a field is called and which of them it is are settled where the
+ *                   declaration's includes resolve, and what any of them holds is a different answer
+ *                   that moves at different times
+ * @param fieldTypes what each field a declaration reaches holds, its spreads walked through. Beside
+ *                   {@code bindings} for the reason that entry gives, read from the other side: an
+ *                   edit that only retypes a field moves this and leaves the bindings where they
+ *                   were
  * @param written    where a clause of a declaration is written, for the sentences this reading
  *                   produces that point at one. Beside {@code invariants} and not inside it: what a
  *                   clause states is what the reading is built on, and where it is written is what
@@ -46,12 +68,15 @@ package souther.compiler.check;
  * @param origin     which source this is, for a reader telling two of them apart
  */
 public record RuleReadingSource(Symbols symbols, ExpandedClauseLookup invariants,
-                                PublishedDeclarations published, ClauseLocations written,
-                                Origin origin) {
+                                PublishedDeclarations published, DeclarationKinds kinds,
+                                DeclarationNewtypes newtypes, NewtypeInners inners,
+                                FieldBindings bindings, EffectiveFieldTypes fieldTypes,
+                                ClauseLocations written, Origin origin) {
 
     public RuleReadingSource {
-        if (symbols == null || invariants == null || published == null || written == null
-                || origin == null) {
+        if (symbols == null || invariants == null || published == null || kinds == null
+                || newtypes == null || inners == null || bindings == null || fieldTypes == null
+                || written == null || origin == null) {
             throw new IllegalArgumentException(
                     "reading a declaration's rules takes a scope, somewhere to read clauses from,"
                             + " somewhere to read what a declaration says, somewhere to read where"
@@ -59,10 +84,29 @@ public record RuleReadingSource(Symbols symbols, ExpandedClauseLookup invariants
         }
     }
 
+    /**
+     * A source whose reader has not been handed what the declarations wrap, which binding each of
+     * their fields is, nor what any of those fields holds.
+     *
+     * <p>All three are read off {@code symbols} instead, which is what a reading built out of a
+     * scope alone can answer from — each by the walk that owns the question. Every caller of this
+     * is a reading that has not crossed the cut.
+     */
+    public RuleReadingSource(Symbols symbols, ExpandedClauseLookup invariants,
+                             PublishedDeclarations published, DeclarationKinds kinds,
+                             DeclarationNewtypes newtypes, ClauseLocations written) {
+        this(symbols, invariants, published, kinds, newtypes, NewtypeInners.asWritten(symbols),
+                FieldBindings.asWritten(symbols), EffectiveFieldTypes.asWritten(symbols), written);
+    }
+
     /** A source made for a reading of its own, which nobody else can name. */
     public RuleReadingSource(Symbols symbols, ExpandedClauseLookup invariants,
-                             PublishedDeclarations published, ClauseLocations written) {
-        this(symbols, invariants, published, written, AReadingOfItsOwn.next());
+                             PublishedDeclarations published, DeclarationKinds kinds,
+                             DeclarationNewtypes newtypes, NewtypeInners inners,
+                             FieldBindings bindings, EffectiveFieldTypes fieldTypes,
+                             ClauseLocations written) {
+        this(symbols, invariants, published, kinds, newtypes, inners, bindings, fieldTypes, written,
+                AReadingOfItsOwn.next());
     }
 
     /**

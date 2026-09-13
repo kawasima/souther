@@ -39,6 +39,8 @@ final class Clauses {
      *  not one this reader makes out of the tree it was handed. Which clauses it has, what each of
      *  them states, and what it spreads all come from here. */
     private final PublishedDeclarations published;
+    /** Which form each of those declarations was written in. */
+    private final DeclarationKinds kinds;
     private final Map<TypeSymbol.AtModule, Map<String, Type>> fields = new HashMap<>();
     private final Map<TypeSymbol.AtModule, Map<String, BindingId>> bindings =
             new HashMap<>();
@@ -67,6 +69,7 @@ final class Clauses {
         this.expandedClauses = source.invariants();
         this.written = source.written();
         this.published = source.published();
+        this.kinds = source.kinds();
     }
 
 
@@ -99,10 +102,16 @@ final class Clauses {
         return TypeOps.writtenOn(named, expandedClauses);
     }
 
-    /** What {@code named}'s fields are, read from this reading's own world for the reason
-     *  {@link #declarationOf} gives. */
+    /**
+     * What each field {@code named} reaches holds — its own and the ones its spreads bring in.
+     *
+     * <p>Asked of the source rather than worked out from a declaration read here. What a value of
+     * the type is made of is one answer about the declarations the spread reaches, and a reader
+     * walking their trees again would be a second one — made afresh for every reader, and moving
+     * whenever anything above any of those declarations is edited.
+     */
     Map<String, Type> fieldsOf(TypeSymbol.AtModule named) {
-        return fields.computeIfAbsent(named, name -> TypeOps.fieldTypes(declarationOf(name), symbols));
+        return fields.computeIfAbsent(named, name -> source().fieldTypes().of(name));
     }
 
     /**
@@ -114,22 +123,7 @@ final class Clauses {
      * them answer alike.
      */
     Map<String, BindingId> bindingsOf(TypeSymbol.AtModule named) {
-        return bindings.computeIfAbsent(named, name -> TypeOps.fieldBindings(name, symbols));
-    }
-
-    /**
-     * The declaration {@code named} is, read from the world this reading was made against.
-     *
-     * <p>Read here and not taken from a caller. What a clause states is read in a representation,
-     * and so is what the declaration it is written on holds; handed a node, this would type a clause
-     * of one reading against the fields of another, and nothing it held would say so.
-     */
-    private Hir.Data declarationOf(TypeSymbol.AtModule named) {
-        if (symbols.declaredNode(named) instanceof Hir.Data data) {
-            return data;
-        }
-        throw new IllegalArgumentException(
-                "`" + named.name() + "` is not a product this reading's world declares");
+        return bindings.computeIfAbsent(named, name -> source().bindings().of(name));
     }
 
     /**
@@ -150,12 +144,12 @@ final class Clauses {
     /** What a clause of {@code named} is read over, worked out inside the reading for the reason
      *  {@link SecondaryClauseReading.Over} gives. */
     private Supplier<SecondaryClauseReading.Over> over(TypeSymbol.AtModule named) {
-        return () -> {
-            Hir.Data data = declarationOf(named);
-            return new SecondaryClauseReading.Over(
-                    DataChecker.fieldScope(named, data, symbols),
-                    CheckContext.of(symbols).forData(data).forDischarge());
-        };
+        // No declaration in the context. What a clause of one is typed against is the fields it
+        // reads, which the scope below holds; the node a context carries is read where a
+        // declaration's own text is checked, and a clause reached from another module is not that.
+        return () -> new SecondaryClauseReading.Over(
+                DataChecker.fieldScope(named, fieldsOf(named), source().bindings()),
+                CheckContext.of(symbols, published, kinds, source().inners()).forDischarge());
     }
 
     /**

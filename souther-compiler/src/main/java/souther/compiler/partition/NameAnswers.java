@@ -1,6 +1,7 @@
 package souther.compiler.partition;
 
 import souther.compiler.check.AffineForms;
+import souther.compiler.check.DeclarationNewtypes;
 import souther.compiler.check.Symbols;
 import souther.compiler.core.Core;
 import souther.compiler.inputs.Denotation;
@@ -27,8 +28,9 @@ final class NameAnswers {
 
     /** The one value {@code read}'s name denotes, or null where it denotes none. */
     static AffineForms.ReadThrough<InputReads> denoting(Core.Read read, InputReads at,
-                                                        Symbols symbols) {
-        return at.meaningOf(read, symbols) instanceof ReadMeaning.Through through
+                                                        Symbols symbols,
+                                                        DeclarationNewtypes newtypes) {
+        return at.meaningOf(read, symbols, newtypes) instanceof ReadMeaning.Through through
                 ? asked(through.denotes()) : null;
     }
 
@@ -39,8 +41,9 @@ final class NameAnswers {
      * was anything to write out.
      */
     static List<AffineForms.ReadThrough<InputReads>> alternativesOf(Core.Read read, InputReads at,
-                                                                    Symbols symbols) {
-        if (!(at.meaningOf(read, symbols) instanceof ReadMeaning.OneOf one)) {
+                                                                    Symbols symbols,
+                                                                    DeclarationNewtypes newtypes) {
+        if (!(at.meaningOf(read, symbols, newtypes) instanceof ReadMeaning.OneOf one)) {
             return null;
         }
         List<AffineForms.ReadThrough<InputReads>> each = new ArrayList<>();

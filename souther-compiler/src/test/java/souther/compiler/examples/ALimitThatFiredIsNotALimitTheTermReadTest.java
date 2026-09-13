@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import souther.compiler.DefaultStdlib;
 import souther.compiler.check.Carrier;
 import souther.compiler.check.CheckedDeclarations;
+import souther.compiler.check.ScopedDeclarations;
 import souther.compiler.check.Symbols;
 import souther.compiler.inputs.NumericTerm;
 import souther.compiler.inputs.RunSource;
@@ -58,7 +59,7 @@ class ALimitThatFiredIsNotALimitTheTermReadTest {
             ValueName.Stdlib.operation("List", "sum"),
             new RunSource.ProjectedOccurrences(UNDER),
             souther.compiler.types.Type.Prim.INT,
-            Symbols.none(DefaultStdlib.get()));
+            souther.compiler.check.NewtypeInners.NONE, Symbols.none(DefaultStdlib.get()));
 
     private static final TermOrders ON_THE_TOTAL =
             TermOrdersFixtures.itself(TOTAL, new Carrier.Whole());
@@ -135,7 +136,7 @@ class ALimitThatFiredIsNotALimitTheTermReadTest {
                 ValueName.Stdlib.operation("List", "length"),
                 TermPath.of("lines"),
                 new souther.compiler.types.Type.ListOf(souther.compiler.types.Type.Prim.INT),
-                Symbols.none(DefaultStdlib.get()));
+                souther.compiler.check.NewtypeInners.NONE, Symbols.none(DefaultStdlib.get()));
         return new BorderQuantity.OverAForm("decide", LinearForm.atom((NumericTerm) counted),
                 Map.of(counted, TermOrdersFixtures.itself(counted, new Carrier.Whole())));
     }
@@ -178,7 +179,8 @@ class ALimitThatFiredIsNotALimitTheTermReadTest {
         Symbols symbols = Symbols.none(DefaultStdlib.get());
         // No module is being read, so nothing here declares a data whose fields could be asked for.
         return ObservedValues.of(live, symbols,
-                new NeutralForm(symbols,
+                new NeutralForm(symbols, ScopedDeclarations.of(symbols),
+                        ScopedDeclarations.kindsOf(symbols),
                         FieldTypes.over(new CheckedDeclarations(_ -> null, _ -> null))), limits);
     }
 

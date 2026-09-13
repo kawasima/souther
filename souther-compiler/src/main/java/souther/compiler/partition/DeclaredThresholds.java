@@ -1,6 +1,7 @@
 package souther.compiler.partition;
 
 import souther.compiler.check.ComparisonClaim;
+import souther.compiler.check.DeclarationNewtypes;
 import souther.compiler.check.DeclaredLine;
 import souther.compiler.check.Location;
 import souther.compiler.check.Symbols;
@@ -66,7 +67,7 @@ public final class DeclaredThresholds {
     private static void drawn(String behavior, ClauseWithoutAnEnd clause,
                               InputReading read, List<LineDrawn> out) {
         Symbols symbols = read.symbols();
-        Map<BindingId, TermPath> roots = rootsOf(clause, symbols);
+        Map<BindingId, TermPath> roots = rootsOf(clause, symbols, read.rules().newtypes());
         if (roots.isEmpty()) {
             return;
         }
@@ -148,7 +149,8 @@ public final class DeclaredThresholds {
      * clause is a rule of the model whether or not this could say what its names stand for, and what
      * the model states at those positions is said by the reading that filed the rule there.
      */
-    private static Map<BindingId, TermPath> rootsOf(ClauseWithoutAnEnd clause, Symbols symbols) {
+    private static Map<BindingId, TermPath> rootsOf(ClauseWithoutAnEnd clause, Symbols symbols,
+                                                    DeclarationNewtypes newtypes) {
         Map<BindingId, TermPath> roots = new LinkedHashMap<>();
         // Both the declaration that wrote the clause and the one it was read under, because a name
         // wrapped round a record is a governing declaration of its own: the record's clauses are
@@ -164,7 +166,7 @@ public final class DeclaredThresholds {
                 : List.of(clause.rule().clause().id().declaredOn(), clause.readUnder())) {
             Type of = Type.ref(declaration);
             TypeOps.fieldBindings(declaration, symbols).forEach((field, binding) ->
-                    roots.putIfAbsent(binding, Location.isStep(of, field, symbols)
+                    roots.putIfAbsent(binding, Location.isStep(of, field, newtypes)
                             ? clause.at().then(field) : clause.at()));
         }
         return roots;

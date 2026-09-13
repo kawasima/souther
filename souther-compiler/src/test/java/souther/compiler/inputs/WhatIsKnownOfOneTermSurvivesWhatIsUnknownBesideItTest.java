@@ -154,8 +154,8 @@ class WhatIsKnownOfOneTermSurvivesWhatIsUnknownBesideItTest {
         souther.compiler.types.Type there =
                 read.inputs().at(TermPath.of("p").then("ys")).type();
         NumericTerm buried = NumericTerm.TakenOf.of(
-                souther.compiler.check.NumericMeasures.takenOf(there, read.rules().symbols()),
-                deep, there, read.rules().symbols());
+                souther.compiler.check.NumericMeasures.takenOf(there, read.rules().inners()),
+                deep, there, read.rules().inners(), read.rules().symbols());
         assertNotNull(buried, "the term is one the operation may be taken of");
         NumericTerm n = new NumericTerm.ValueOf(TermPath.of("p").then("n"));
         Map<NumericTerm, BigDecimal> coefs = new LinkedHashMap<>();
@@ -335,8 +335,8 @@ class WhatIsKnownOfOneTermSurvivesWhatIsUnknownBesideItTest {
         TermPath at = TermPath.of("p").then(field);
         souther.compiler.types.Type type = read.inputs().at(at).type();
         NumericTerm.TakenOf made = NumericTerm.TakenOf.of(
-                souther.compiler.check.NumericMeasures.takenOf(type, read.rules().symbols()),
-                at, type, read.rules().symbols());
+                souther.compiler.check.NumericMeasures.takenOf(type, read.rules().inners()),
+                at, type, read.rules().inners(), read.rules().symbols());
         assertNotNull(made, at + " is counted by what its type is counted by");
         return made;
     }

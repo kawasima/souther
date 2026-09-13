@@ -38,6 +38,7 @@ class ATermSaysWhyItHasNoNumberTest {
     private static final NumericTerm.FromOnePosition LENGTH = NumericTerm.TakenOf.of(
             ValueName.Stdlib.operation("String", "length"), TermPath.of("x"),
             souther.compiler.types.Type.STRING,
+            souther.compiler.check.NewtypeInners.NONE,
             souther.compiler.check.Symbols.none(souther.compiler.DefaultStdlib.get()));
     private static final TypeSymbol.AtModule WRAPPER = TypeSymbols.declared(new TypeKey("example", "Wrapped"));
 

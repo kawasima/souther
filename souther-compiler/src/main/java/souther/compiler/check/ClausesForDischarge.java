@@ -54,8 +54,10 @@ public final class ClausesForDischarge {
      * scope where it is written, and an imported definition is in scope there as it is in a body.
      */
     public static ClausesForDischarge of(Expandable expandable, Symbols symbols,
+                                         PublishedDeclarations declarations, DeclarationKinds kinds,
                                          Map<String, Hir.FnDef> published) {
-        Hir.Module settled = ClauseHelpers.settled(expandable.module(), symbols);
+        Hir.Module settled =
+                ClauseHelpers.settled(expandable.module(), symbols, declarations, kinds);
         return new ClausesForDischarge(settled, HelperInliner.forHelpers(settled.name(),
                 HelperInliner.helpersOf(settled), published, InliningPolicy.DISCHARGE,
                 symbols.library()));

@@ -42,6 +42,7 @@ class ANumberOverARunIsMeasuredWithoutAPositionTest {
             ValueName.Stdlib.operation("List", "sum"),
             new RunSource.ProjectedOccurrences(UNDER),
             souther.compiler.types.Type.Prim.INT,
+            souther.compiler.check.NewtypeInners.NONE,
             souther.compiler.check.Symbols.none(souther.compiler.DefaultStdlib.get()));
 
     private static final TermOrders WHOLE =

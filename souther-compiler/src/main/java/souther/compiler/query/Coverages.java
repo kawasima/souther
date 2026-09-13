@@ -118,7 +118,7 @@ final class Coverages {
         ElementBindings standing = analysis == null
                 ? ElementBindings.NONE
                 : ElementBindings.of(analysis.core(), analysis.elements(),
-                        read.symbols());
+                        read.rules().newtypes());
         // Whether there is a tree to read is the reading's own answer, so a body with no analysis
         // representation is handed over and comes back with nothing rather than being checked for
         // here as well.

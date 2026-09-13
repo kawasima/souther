@@ -90,7 +90,8 @@ class AValueTheModuleStatesIsOneHoweverItsLetWasWrittenTest {
         return Adequacy.Generated.named(module, specOf(db, module), sig,
                 db.ask(new Bodies.ModuleDefinitions(module)).value(),
                 db.ask(new Bodies.Reachable(module)).value(),
-                symbols, new ResolvedFieldTypes(symbols));
+                symbols, Shapes.publishedDeclarations(db), Shapes.declarationKinds(db),
+                new ResolvedFieldTypes(symbols, Shapes.newtypeInners(db)));
     }
 
     private static Hir.SpecBehavior specOf(Db db, String module) {

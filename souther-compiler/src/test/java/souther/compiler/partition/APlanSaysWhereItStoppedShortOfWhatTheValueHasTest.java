@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import souther.compiler.ast.Hir;
 import souther.compiler.check.DeclaredBounds;
 import souther.compiler.check.Prepared;
+import souther.compiler.check.ScopedDeclarations;
 import souther.compiler.check.Sig;
 import souther.compiler.check.Symbols;
 import souther.compiler.inputs.Case;
@@ -161,7 +162,9 @@ class APlanSaysWhereItStoppedShortOfWhatTheValueHasTest {
         TermPath deeper = down(9);
 
         ConstructionPlan.Result asked = ConstructionPlan.of(typeOf(DEEP), TermPath.of("query"),
-                symbolsOf(DEEP), Set.of(deeper), Requirements.NONE, ANY);
+                ScopedDeclarations.wrapsOf(symbolsOf(DEEP)),
+                symbolsOf(DEEP), ScopedDeclarations.of(symbolsOf(DEEP)), Set.of(deeper),
+                Requirements.NONE, ANY);
 
         assertEquals(Set.of(CompositionBudget.DEPTH_A_CONSTRUCTION_PLAN_DESCENDS),
                 assertInstanceOf(ConstructionPlan.Result.Beyond.class, asked,
@@ -183,7 +186,8 @@ class APlanSaysWhereItStoppedShortOfWhatTheValueHasTest {
     @Test
     void aNarrowingStatedUnderTheFigureIsRefusedRatherThanDropped() {
         ConstructionPlan.Result asked = ConstructionPlan.of(typeOf(DEEP), TermPath.of("query"),
-                symbolsOf(DEEP), Set.of(),
+                ScopedDeclarations.wrapsOf(symbolsOf(DEEP)),
+                symbolsOf(DEEP), ScopedDeclarations.of(symbolsOf(DEEP)), Set.of(),
                 Requirements.NONE.and(down(9), Refinement.of(new Case.Presence(true))),
                 ANY);
 
@@ -206,7 +210,9 @@ class APlanSaysWhereItStoppedShortOfWhatTheValueHasTest {
     @Test
     void aDemandUnderACollectionWithNoRoomIsTheModelsAnswerAndNotTheFigure() {
         ConstructionPlan.Result asked = ConstructionPlan.of(typeOf(TREE), TermPath.of("query"),
-                symbolsOf(TREE), Set.of(insideTheTree(6)), Requirements.NONE, NONE_OF_THEM);
+                ScopedDeclarations.wrapsOf(symbolsOf(TREE)),
+                symbolsOf(TREE), ScopedDeclarations.of(symbolsOf(TREE)),
+                Set.of(insideTheTree(6)), Requirements.NONE, NONE_OF_THEM);
 
         ConstructionPlan.ModelRefusal.NoRoom why = assertInstanceOf(
                 ConstructionPlan.ModelRefusal.NoRoom.class,
@@ -228,7 +234,9 @@ class APlanSaysWhereItStoppedShortOfWhatTheValueHasTest {
     @Test
     void theSameDemandWhereThereIsRoomIsTheFigure() {
         ConstructionPlan.Result asked = ConstructionPlan.of(typeOf(TREE), TermPath.of("query"),
-                symbolsOf(TREE), Set.of(insideTheTree(6)), Requirements.NONE, ANY);
+                ScopedDeclarations.wrapsOf(symbolsOf(TREE)),
+                symbolsOf(TREE), ScopedDeclarations.of(symbolsOf(TREE)),
+                Set.of(insideTheTree(6)), Requirements.NONE, ANY);
 
         assertEquals(Set.of(CompositionBudget.DEPTH_A_CONSTRUCTION_PLAN_DESCENDS),
                 assertInstanceOf(ConstructionPlan.Result.Beyond.class, asked,
@@ -257,7 +265,9 @@ class APlanSaysWhereItStoppedShortOfWhatTheValueHasTest {
         TermPath inside = down(8);
 
         ConstructionPlan.Result asked = ConstructionPlan.of(typeOf(DEEP), TermPath.of("query"),
-                symbolsOf(DEEP), Set.of(inside), Requirements.NONE, ANY);
+                ScopedDeclarations.wrapsOf(symbolsOf(DEEP)),
+                symbolsOf(DEEP), ScopedDeclarations.of(symbolsOf(DEEP)), Set.of(inside),
+                Requirements.NONE, ANY);
 
         ConstructionPlan plan = assertInstanceOf(ConstructionPlan.Result.Planned.class, asked,
                 "the position is one this plans at").plan();
@@ -351,8 +361,9 @@ class APlanSaysWhereItStoppedShortOfWhatTheValueHasTest {
     private static ConstructionPlan planned(String source, Set<TermPath> decided,
                                             Requirements additional) {
         return assertInstanceOf(ConstructionPlan.Result.Planned.class,
-                ConstructionPlan.of(typeOf(source), TermPath.of("query"), symbolsOf(source),
-                        decided, additional, ANY),
+                ConstructionPlan.of(typeOf(source), TermPath.of("query"),
+                        ScopedDeclarations.wrapsOf(symbolsOf(source)), symbolsOf(source),
+                        ScopedDeclarations.of(symbolsOf(source)), decided, additional, ANY),
                 "nothing here asks one position to be two things").plan();
     }
 

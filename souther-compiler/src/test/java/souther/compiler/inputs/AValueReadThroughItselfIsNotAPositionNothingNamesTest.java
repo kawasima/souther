@@ -3,6 +3,7 @@ package souther.compiler.inputs;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.DefaultStdlib;
+import souther.compiler.check.DeclarationNewtypes;
 import souther.compiler.check.ElementBindings;
 import souther.compiler.check.Symbols;
 import souther.compiler.core.Core;
@@ -65,8 +66,8 @@ class AValueReadThroughItselfIsNotAPositionNothingNamesTest {
                 ElementBindings.NONE);
     }
 
-    private static Symbols symbols() {
-        return Symbols.none(DefaultStdlib.get());
+    private static DeclarationNewtypes newtypes() {
+        return DeclarationNewtypes.asWritten(Symbols.none(DefaultStdlib.get()));
     }
 
     /** A name bound to what a second holds, and that one bound back to the first. */
@@ -103,7 +104,7 @@ class AValueReadThroughItselfIsNotAPositionNothingNamesTest {
 
         assertThrows(BindingTrail.ReadThroughItself.class,
                 () -> names.pathOf(new Core.FieldAccess(read("c", FIRST, Type.ref(CODE)), "value",
-                        Type.INT, POS), symbols()));
+                        Type.INT, POS), newtypes()));
     }
 
     /** Raised where a value is read through itself, and named as this compiler's own state. */
@@ -112,7 +113,7 @@ class AValueReadThroughItselfIsNotAPositionNothingNamesTest {
         InputReads names = twoNamesHoldingEachOther();
 
         BindingTrail.ReadThroughItself raised = assertThrows(BindingTrail.ReadThroughItself.class,
-                () -> names.pathOf(read("a", FIRST, Type.INT), symbols()));
+                () -> names.pathOf(read("a", FIRST, Type.INT), newtypes()));
 
         assertInstanceOf(IllegalStateException.class, raised,
                 "a lineage that runs back to where it started is a graph nothing here builds, so"
@@ -126,6 +127,6 @@ class AValueReadThroughItselfIsNotAPositionNothingNamesTest {
         InputReads names = reads(Map.of());
 
         assertEquals(new PathResolution.NotAPosition(),
-                names.pathOf(read("a", FIRST, Type.INT), symbols()));
+                names.pathOf(read("a", FIRST, Type.INT), newtypes()));
     }
 }

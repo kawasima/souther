@@ -2,6 +2,10 @@ package souther.compiler.partition;
 
 import souther.compiler.check.AffineForms;
 import souther.compiler.check.Location;
+import souther.compiler.check.DeclarationKinds;
+import souther.compiler.check.DeclarationNewtypes;
+import souther.compiler.check.NewtypeInners;
+import souther.compiler.check.PublishedDeclarations;
 import souther.compiler.check.Symbols;
 import souther.compiler.numeric.LinearForm;
 import souther.compiler.core.Core;
@@ -32,7 +36,9 @@ import java.util.Set;
  * @param dependencies the behaviors this one declares it depends on, which are the ones a row
  *                     stands in for
  */
-record DecisionSubjects(InputDomain inputs, Symbols symbols,
+record DecisionSubjects(InputDomain inputs, Symbols symbols, PublishedDeclarations published,
+                        DeclarationKinds kinds, DeclarationNewtypes newtypes,
+                        NewtypeInners inners,
                         Set<ValueName.Behavior> dependencies) {
 
     DecisionSubjects {
@@ -47,7 +53,7 @@ record DecisionSubjects(InputDomain inputs, Symbols symbols,
      * them a call this behavior stands a dependency in for.
      */
     DecisionSubject of(Core e, InputReads at) {
-        if (at.pathOf(e, symbols) instanceof PathResolution.At(TermPath stands)
+        if (at.pathOf(e, newtypes) instanceof PathResolution.At(TermPath stands)
                 && inputs.at(stands) != null) {
             return new DecisionSubject.AnInput(stands);
         }
@@ -59,14 +65,15 @@ record DecisionSubjects(InputDomain inputs, Symbols symbols,
             // one. Read as a step, `riskScore(c).value` and `riskScore(c)` would be two columns
             // over one answer.
             if (under instanceof Core.FieldAccess field) {
-                if (Location.isStep(field.target().type(), field.field(), symbols)) {
+                if (Location.isStep(field.target().type(), field.field(), newtypes)) {
                     steps.add(new TermPath.Step.Field(field.field()));
                 }
                 under = field.target();
                 continue;
             }
             if (under instanceof Core.Read name
-                    && reads.meaningOf(name, symbols) instanceof ReadMeaning.Through through) {
+                    && reads.meaningOf(name, symbols, newtypes)
+                            instanceof ReadMeaning.Through through) {
                 under = through.denotes().value();
                 reads = through.denotes().at();
                 continue;
@@ -140,6 +147,21 @@ record DecisionSubjects(InputDomain inputs, Symbols symbols,
             }
 
             @Override
+            public PublishedDeclarations published() {
+                return published;
+            }
+
+            @Override
+            public DeclarationKinds kinds() {
+                return kinds;
+            }
+
+            @Override
+            public NewtypeInners inners() {
+                return inners;
+            }
+
+            @Override
             public LinearForm<Void> leafOf(Core node, InputReads at) {
                 return null;
             }
@@ -151,13 +173,13 @@ record DecisionSubjects(InputDomain inputs, Symbols symbols,
 
             @Override
             public AffineForms.ReadThrough<InputReads> readThrough(Core.Read read, InputReads at) {
-                return NameAnswers.denoting(read, at, symbols);
+                return NameAnswers.denoting(read, at, symbols, newtypes);
             }
 
             @Override
             public List<AffineForms.ReadThrough<InputReads>> alternativesOf(Core.Read read,
                                                                            InputReads at) {
-                return NameAnswers.alternativesOf(read, at, symbols);
+                return NameAnswers.alternativesOf(read, at, symbols, newtypes);
             }
 
             @Override

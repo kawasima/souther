@@ -3,6 +3,7 @@ package souther.compiler.inputs;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.DefaultStdlib;
+import souther.compiler.check.DeclarationNewtypes;
 import souther.compiler.check.ElementBindings;
 import souther.compiler.check.Symbols;
 import souther.compiler.core.Core;
@@ -92,7 +93,7 @@ class AProjectionOutOfAConstructionIsWhereItWasGivenItTest {
     private static PathResolution readingOf(Core e, Map<BindingId, Core> bound) {
         return InputReads.written(Map.of(LEFT, TermPath.of("a"), RIGHT, TermPath.of("b")),
                         bound, ElementBindings.NONE)
-                .pathOf(e, Symbols.none(DefaultStdlib.get()));
+                .pathOf(e, DeclarationNewtypes.asWritten(Symbols.none(DefaultStdlib.get())));
     }
 
     private static PathResolution readingOf(Core e) {

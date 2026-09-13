@@ -120,7 +120,8 @@ public record ElementBindings(Map<BindingId, List<Core>> containers,
      * wrote about their input would leave the measurement without a word. So both are kept, and
      * which of them a rule inside the closure is about is what nothing here can say.
      */
-    public static ElementBindings of(Core body, ElementProvenance provenance, Symbols symbols) {
+    public static ElementBindings of(Core body, ElementProvenance provenance,
+                                     DeclarationNewtypes newtypes) {
         Map<BindingId, List<Core>> found = new LinkedHashMap<>();
         Map<BindingId, Core> held = new LinkedHashMap<>();
         Map<BindingId, Core> answered = new LinkedHashMap<>();
@@ -136,10 +137,10 @@ public record ElementBindings(Map<BindingId, List<Core>> containers,
             }
         });
         Map<BindingId, ElementProjection> projected =
-                projections(answered, found, held, provenance, symbols);
+                projections(answered, found, held, provenance, newtypes);
         standing.forEach((element, closure) -> {
             ElementProjection was =
-                    ElementProjection.read(closure, element, held, symbols);
+                    ElementProjection.read(closure, element, held, newtypes);
             if (was != null) {
                 projected.putIfAbsent(element, was);
             }
@@ -170,7 +171,8 @@ public record ElementBindings(Map<BindingId, List<Core>> containers,
      */
     private static Map<BindingId, ElementProjection> projections(
             Map<BindingId, Core> answered, Map<BindingId, List<Core>> containers,
-            Map<BindingId, Core> held, ElementProvenance provenance, Symbols symbols) {
+            Map<BindingId, Core> held, ElementProvenance provenance,
+            DeclarationNewtypes newtypes) {
         Map<BindingId, ElementProjection> out = new LinkedHashMap<>();
         answered.forEach((parameter, body) -> {
             // The element the closure was applied to, which is what the parameter was bound to.
@@ -187,7 +189,7 @@ public record ElementBindings(Map<BindingId, List<Core>> containers,
                 return;
             }
             ElementProjection projected =
-                    ElementProjection.read(body, parameter, held, symbols);
+                    ElementProjection.read(body, parameter, held, newtypes);
             if (projected != null) {
                 out.put(read.binding(), projected);
             }

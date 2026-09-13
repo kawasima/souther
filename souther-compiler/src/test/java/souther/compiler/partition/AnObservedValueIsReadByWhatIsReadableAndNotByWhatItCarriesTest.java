@@ -207,9 +207,11 @@ class AnObservedValueIsReadByWhatIsReadableAndNotByWhatItCarriesTest {
 
     /** The narrowing to {@code leaf}, taken from what the position's type divides into. */
     private static Refinement theCase(String source, String sum, String leaf) {
-        Symbols symbols = RuleReadings.ofSource(source).symbols();
+        RuleReadingSource rules = RuleReadings.ofSource(source);
+        Symbols symbols = rules.symbols();
         TypeSymbol wanted = sym(leaf);
-        for (Case one : Distinctions.ofType(TypeView.of(named(sum), symbols), symbols)) {
+        for (Case one : Distinctions.ofType(TypeView.asWritten(named(sum), symbols, rules.published()),
+                symbols, rules.published())) {
             if (one instanceof Case.SumCase found && found.leaf().equals(wanted)) {
                 return Refinement.of(one);
             }

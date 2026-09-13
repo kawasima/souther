@@ -33,6 +33,11 @@ public final class TheCompilationsSources {
     private final Function<String, Symbols> scopeOf;
     private final ExpandedClauseLookup clauses;
     private final PublishedDeclarations published;
+    private final DeclarationKinds kinds;
+    private final DeclarationNewtypes newtypes;
+    private final NewtypeInners inners;
+    private final FieldBindings bindings;
+    private final EffectiveFieldTypes fieldTypes;
     private final ClauseLocations written;
 
     /** Which mint this is, told to nobody: what it stamps says this and what another stamps says
@@ -49,8 +54,12 @@ public final class TheCompilationsSources {
      * to read.
      */
     public TheCompilationsSources(Function<String, Symbols> scopeOf, ExpandedClauseLookup clauses,
-                                  PublishedDeclarations published, ClauseLocations written) {
-        if (scopeOf == null || clauses == null || published == null || written == null) {
+                                  PublishedDeclarations published, DeclarationKinds kinds,
+                                  DeclarationNewtypes newtypes, NewtypeInners inners,
+                                  FieldBindings bindings, EffectiveFieldTypes fieldTypes,
+                                  ClauseLocations written) {
+        if (scopeOf == null || clauses == null || published == null || kinds == null
+                || newtypes == null || written == null) {
             throw new IllegalArgumentException(
                     "a compilation reads its modules under a scope, reads clauses somewhere, reads"
                             + " what a declaration says somewhere, and reads where one is written"
@@ -59,7 +68,23 @@ public final class TheCompilationsSources {
         this.scopeOf = scopeOf;
         this.clauses = clauses;
         this.published = published;
+        this.kinds = kinds;
+        this.newtypes = newtypes;
+        this.inners = inners;
+        this.bindings = bindings;
+        this.fieldTypes = fieldTypes;
         this.written = written;
+    }
+
+    /** The same, for a compilation whose sources read what a declaration wraps off the scope they
+     *  are made over rather than from an answer handed to them. */
+    public TheCompilationsSources(Function<String, Symbols> scopeOf, ExpandedClauseLookup clauses,
+                                  PublishedDeclarations published, DeclarationKinds kinds,
+                                  DeclarationNewtypes newtypes, ClauseLocations written) {
+        // Null rather than an answer of its own: what a declaration wraps, which binding each of
+        // its fields is and what each of them holds are read off the scope the source is made over,
+        // and which scope that is is not known until a module is named.
+        this(scopeOf, clauses, published, kinds, newtypes, null, null, null, written);
     }
 
     /** The source {@code module}'s rules are read under, or null where the compilation resolves no
@@ -67,7 +92,10 @@ public final class TheCompilationsSources {
     public RuleReadingSource of(String module) {
         Symbols scope = scopeOf.apply(module);
         return scope == null ? null
-                : new RuleReadingSource(scope, clauses, published, written,
-                        new AModulesRules(mint, module));
+                : new RuleReadingSource(scope, clauses, published, kinds, newtypes,
+                        inners == null ? NewtypeInners.asWritten(scope) : inners,
+                        bindings == null ? FieldBindings.asWritten(scope) : bindings,
+                        fieldTypes == null ? EffectiveFieldTypes.asWritten(scope) : fieldTypes,
+                        written, new AModulesRules(mint, module));
     }
 }

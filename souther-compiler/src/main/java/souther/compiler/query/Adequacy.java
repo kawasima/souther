@@ -30,6 +30,7 @@ import souther.compiler.check.ElementBindings;
 import souther.compiler.check.DeclarationCitations;
 import souther.compiler.check.DeclarationReadings;
 import souther.compiler.check.DeclaredSig;
+import souther.compiler.check.DeclarationKinds;
 import souther.compiler.check.PublishedDeclarations;
 import souther.compiler.check.RuleRef;
 import souther.compiler.publish.PublicationOrders;
@@ -649,7 +650,8 @@ public final class Adequacy {
             Db db, String module, Hir.SpecBehavior spec,
             SpecImplementation.Implemented implemented, Symbols symbols,
             souther.compiler.check.StatedContract stated) {
-        return statedIn(stated, symbols, bodyIn(db, module, spec, implemented, symbols));
+        return statedIn(stated, symbols, Shapes.declarationNewtypes(db),
+                bodyIn(db, module, spec, implemented, symbols));
     }
 
     /** The locations the implementation reads, or none where nothing implements the behavior. */
@@ -672,7 +674,7 @@ public final class Adequacy {
         }
         return souther.compiler.inputs.InputDemand.of(checked.body(),
                 souther.compiler.inputs.InputReads.ofParameters(parameters, checked.elements()),
-                symbols);
+                symbols, Shapes.declarationNewtypes(db));
     }
 
     /**
@@ -689,6 +691,7 @@ public final class Adequacy {
      */
     private static souther.compiler.inputs.InputDemand statedIn(
             souther.compiler.check.StatedContract stated, Symbols symbols,
+            souther.compiler.check.DeclarationNewtypes newtypes,
             souther.compiler.inputs.InputDemand demand) {
         if (stated == null || stated.isEmpty()) {
             return demand;
@@ -705,7 +708,7 @@ public final class Adequacy {
                 souther.compiler.core.Core said = conjunct.stated().orNull();
                 if (said != null) {
                     out = out.and(souther.compiler.inputs.InputDemand
-                            .of(said, names, symbols).paths());
+                            .of(said, names, symbols, newtypes).paths());
                 }
             }
         }
@@ -907,7 +910,7 @@ public final class Adequacy {
                         analysis.core(), read.reading(reading.value()),
                         InputReads.ofParametersWhereCallsStand(read.parameterReads(),
                                 ElementBindings.of(analysis.core(), analysis.elements(),
-                                        reading.value().symbols())),
+                                        reading.value().newtypes())),
                         spec.dependsOnBehaviors()));
             }
             return Answer.of(Ordered.map(out));
@@ -1395,7 +1398,10 @@ public final class Adequacy {
                         case BoundaryForMeasurement.NotDerived why ->
                                 SignatureEvidence.notMeasurable(behavior, why);
                         case BoundaryForMeasurement.Derived(Sig sig, InputForMeasurement input) ->
-                                evidenceOf(behavior.name(), sig, scope.value(), asked,
+                                evidenceOf(behavior.name(), sig,
+                                        Shapes.publishedDeclarations(db),
+                                        Shapes.declarationKinds(db), Shapes.newtypeInners(db),
+                                        asked,
                                         RowReadings.readingFor(byTarget, behavior.name()),
                                         InputPositions.of(input),
                                         InputCaseExclusions.of(input),
@@ -3592,13 +3598,15 @@ public final class Adequacy {
             try {
                 composed = rowsFor(spec, sig, Shapes.ruleReading(db, name).value(), asked,
                         baselines(name, spec, sig, definitions.value(), reachable.value(),
-                                prepared.value(), symbols,
+                                prepared.value(), symbols, Shapes.publishedDeclarations(db),
+                                Shapes.declarationKinds(db),
                                 // What the declarations of this module denote, and not what a check
                                 // settled about them: a generation is a measurement of a module
                                 // that need not have been accepted — this same answer is worked out
                                 // where a body did not check — and a declaration the check said
                                 // nothing about is a value this cannot reach rather than a fault.
-                                new souther.compiler.check.ResolvedFieldTypes(symbols)),
+                                new souther.compiler.check.ResolvedFieldTypes(
+                                        symbols, Shapes.newtypeInners(db))),
                         bodies.get(behavior), plan, numbering,
                         RowReadings.readingFor(byTarget, behavior),
                         constructing(db, name),
@@ -4175,7 +4183,8 @@ public final class Adequacy {
         private static List<Generator.Baseline> baselines(
                 String module, Hir.SpecBehavior spec, Sig sig, Map<String, Hir.FnDef> values,
                 Map<ValueName.Behavior, Sig> behaviors,
-                CheckSurface prepared, Symbols symbols,
+                CheckSurface prepared, Symbols symbols, PublishedDeclarations published,
+                DeclarationKinds kinds,
                 souther.compiler.observe.FieldTypes fields) {
             List<Generator.Baseline> out = new ArrayList<>();
             // What the author has already written, first and whole. A row of theirs names a set of
@@ -4196,7 +4205,8 @@ public final class Adequacy {
             // Then every value the module states of a parameter's own type, in the order it states
             // them, one origin per turn. Narrowed to the only value of a type, a module that states
             // a second one lost the spread from every row of every behavior taking it.
-            out.addAll(named(module, spec, sig, values, behaviors, symbols, fields));
+            out.addAll(named(module, spec, sig, values, behaviors, symbols, published, kinds,
+                    fields));
             return List.copyOf(out);
         }
 
@@ -4240,6 +4250,8 @@ public final class Adequacy {
                                                       Map<String, Hir.FnDef> values,
                                                       Map<ValueName.Behavior, Sig> behaviors,
                                                       Symbols symbols,
+                                                      PublishedDeclarations published,
+                                                      DeclarationKinds kinds,
                                                       souther.compiler.observe.FieldTypes fields) {
             // What a value is declared to be, asked of the one walk that answers it. A second
             // reading of a definition's type here would be a second answer about what a row may
@@ -4250,8 +4262,11 @@ public final class Adequacy {
             souther.compiler.check.DeclaredTypeReading evidence =
                     new souther.compiler.check.DeclaredTypeReading(
                             new souther.compiler.check.DeclarationFacts(
-                                    new souther.compiler.check.FieldRead(symbols, fields,
-                                            souther.compiler.check.FieldRead.Unreadable.REFUSED)),
+                                    new souther.compiler.check.FieldRead(symbols, published, kinds,
+                                            souther.compiler.check.NewtypeInners.asWritten(symbols),
+                                            fields,
+                                            souther.compiler.check.FieldRead.Unreadable.REFUSED),
+                                    souther.compiler.check.DeclarationNewtypes.asWritten(symbols)),
                             values, behaviors);
             Map<TypeSymbol, List<String>> stated = new LinkedHashMap<>();
             for (Map.Entry<String, Hir.FnDef> each : values.entrySet()) {
@@ -6400,8 +6415,11 @@ public final class Adequacy {
      * numerator answering with the outermost of them, so every row would land outside the set it is
      * counted in: {@code 1} of {@code 2} covered, and both of the two still owed a row.
      */
-    private static Set<TypeSymbol> inputCoverableCases(Type t, Symbols symbols) {
-        return casesOfSum(TypeOps.base(t, symbols), symbols);
+    private static Set<TypeSymbol> inputCoverableCases(Type t,
+                                                       souther.compiler.check.NewtypeInners inners,
+                                                       DeclarationKinds kinds,
+                                                       PublishedDeclarations published) {
+        return casesOfSum(TypeOps.base(t, inners), kinds, published);
     }
 
     /**
@@ -6417,15 +6435,17 @@ public final class Adequacy {
      * <p>The arm check is wider than this on purpose: it uses the single name of a position that is
      * not a sum at all to catch a row that wrote the wrong one.
      */
-    private static Set<TypeSymbol> outputCoverableCases(Type t, Symbols symbols) {
-        return casesOfSum(t, symbols);
+    private static Set<TypeSymbol> outputCoverableCases(Type t, DeclarationKinds kinds,
+                                                        PublishedDeclarations published) {
+        return casesOfSum(t, kinds, published);
     }
 
     /** What a sum divides into, and nothing for a type that is not one. The one thing the two
      *  measures above share; what tells them apart is which type each hands it. */
-    private static Set<TypeSymbol> casesOfSum(Type t, Symbols symbols) {
-        return TypeOps.isSumType(t, symbols)
-                ? new LinkedHashSet<>(AtomSpace.subjectAtoms(t, symbols))
+    private static Set<TypeSymbol> casesOfSum(Type t, DeclarationKinds kinds,
+                                              PublishedDeclarations published) {
+        return TypeOps.isSumType(t, kinds)
+                ? new LinkedHashSet<>(AtomSpace.subjectAtoms(t, published))
                 : Set.of();
     }
 
@@ -6436,7 +6456,10 @@ public final class Adequacy {
      *                 for ever. Handed the answer and not the reading it was read off, so that a
      *                 behavior with no reading of its own has nothing to be handed in its place
      */
-    static SignatureEvidence evidenceOf(String name, Sig sig, Symbols symbols, boolean asked,
+    static SignatureEvidence evidenceOf(String name, Sig sig,
+                                        PublishedDeclarations published, DeclarationKinds kinds,
+                                        souther.compiler.check.NewtypeInners inners,
+                                        boolean asked,
                                         RowReading seen,
                                         InputPositions layout,
                                         InputCaseExclusions excluded,
@@ -6447,7 +6470,8 @@ public final class Adequacy {
         // The cases the output type has, less the ones only an arm nothing reaches produces. A case
         // no reachable producer answers with is not a gap in the rows.
         Set<TypeSymbol> declaredOut = souther.compiler.partition.ProducedCases.of(
-                body, plan, reachable.answers(), outputCoverableCases(sig.outputType(), symbols));
+                body, plan, reachable.answers(),
+                outputCoverableCases(sig.outputType(), kinds, published));
         Set<TypeSymbol> specified = new LinkedHashSet<>();
         Set<TypeSymbol> observed = new LinkedHashSet<>();
         Set<TypeSymbol> verified = new LinkedHashSet<>();
@@ -6462,7 +6486,7 @@ public final class Adequacy {
         List<Set<TypeSymbol>> inExcluded = new ArrayList<>(ins.size());
         int[] unreadableIn = new int[ins.size()];
         for (int i = 0; i < ins.size(); i++) {
-            Set<TypeSymbol> declared = inputCoverableCases(ins.get(i), symbols);
+            Set<TypeSymbol> declared = inputCoverableCases(ins.get(i), inners, kinds, published);
             declaredIn.add(declared);
             inSpecified.add(new LinkedHashSet<>());
             inExecuted.add(new LinkedHashSet<>());

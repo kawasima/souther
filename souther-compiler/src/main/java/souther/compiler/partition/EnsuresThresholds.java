@@ -141,7 +141,8 @@ public final class EnsuresThresholds {
                     continue;
                 }
                 for (ClauseStatements.Stated said : ClauseStatements.of(
-                        conjunct.part(), conjunct.stated().orNull(), reads, read.symbols())) {
+                        conjunct.part(), conjunct.stated().orNull(), reads, read.symbols(),
+                        read.newtypes())) {
                     switch (said.statement()) {
                         case ClauseStatements.Statement.Compares it ->
                                 compared(it, rule, said.id(), read,
@@ -191,7 +192,7 @@ public final class EnsuresThresholds {
         reportRuleWithoutLine(rule.ref(), it.stated(), rule.value(),
                 ComparisonAssessment.atEachOf(
                         GuardThresholds.mentionedIn(it.stated(), it.reads(), read.symbols(),
-                                        answering).stream()
+                                        read.newtypes(), answering).stream()
                                 .map(FilingCoordinate::at).toList(),
                         new BlockReason.UnreadComparisonForm()),
                 out.noLine());

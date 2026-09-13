@@ -1,7 +1,6 @@
 package souther.compiler.check;
 
 import souther.compiler.semantics.ConditionJoin;
-import souther.compiler.ast.Hir;
 import souther.compiler.core.Core;
 import souther.compiler.diag.SourcePos;
 import souther.compiler.inputs.ChoiceToLift;
@@ -77,7 +76,7 @@ public final class FieldDomains {
                     Map.of(), Map.of(), new ReadingEvidence(), Map.of(),
                     Map.of(RuleKey.THE_VALUE, Set.of(new RulesMissed.NoReadingWasMade())), Set.of(),
                     NOTHING_NAMED,
-                    ConstraintState.<FactSubject>top(), null, null, null, null, Map.of(),
+                    ConstraintState.<FactSubject>top(), null, null, null, Map.of(),
                     Set.of(RuleKey.THE_VALUE),
                     Map.of(), Map.of(), List.of(), Map.of(), StringFacts.NONE, KnownExtents.NONE,
                     Map.of(), Map.of(), BoundaryState.nothing(),
@@ -188,7 +187,6 @@ public final class FieldDomains {
     private final ConstraintState<FactSubject> constraints;
     /** What this was read from, so that it can be read again without one declaration's clauses. */
     private final TypeSymbol.AtModule named;
-    private final Hir.Data data;
     /** The scope and the representation together, so that a second reading of this declaration reads
      *  the same tree. Held apart, a counterfactual could be taken against the other form and what
      *  moved would be read as what a rule did. */
@@ -257,7 +255,7 @@ public final class FieldDomains {
                          Map<RuleKey, Set<RulesMissed>> notGathered, Set<RuleKey> handedOn,
                          SequencedMap<FactSubject, RuleKey> namedBy,
                          ConstraintState<FactSubject> constraints, TypeSymbol.AtModule named,
-                         Hir.Data data, RuleReadingSource source, ReadingPolicy policy,
+                         RuleReadingSource source, ReadingPolicy policy,
                          Map<NumberAt<RuleKey>, Count> settled,
                          Set<RuleKey> unreadOfEveryValue,
                          Map<RuleKey, FactSubject> atomAt, Map<RuleKey, Counted> countAt,
@@ -293,7 +291,6 @@ public final class FieldDomains {
         this.namedBy = namedBy;
         this.constraints = constraints;
         this.named = named;
-        this.data = data;
         this.source = source;
         this.policy = policy;
         this.settled = settled;
@@ -423,8 +420,8 @@ public final class FieldDomains {
         // nothing written comes to here. The same answer the other readers of a declaration give
         // when handed such a name, because it is the same fact about the name rather than three
         // opinions about the caller.
-        return source.symbols().declaredNode(named.key()) instanceof Hir.Data data
-                ? of(named, data, source, policy, atValues(settled),
+        return source.kinds().of(named.key()) == DeclarationKind.PRODUCT
+                ? of(named, source, policy, atValues(settled),
                         InvariantChecker.Reach.EVERYTHING, machines)
                 : NONE;
     }
@@ -446,16 +443,16 @@ public final class FieldDomains {
      * record holding it is otherwise told it holds nothing by the very rules the supposing was
      * about.
      */
-    static FieldDomains granting(TypeSymbol.AtModule named, Hir.Data data, RuleReadingSource source,
+    static FieldDomains granting(TypeSymbol.AtModule named, RuleReadingSource source,
                                  ReadingPolicy policy,
                                  Set<TypeSymbol> granted,
                                  DeclarationReadings machines) {
-        return of(named, data, source, policy, Map.of(),
+        return of(named, source, policy, Map.of(),
                 InvariantChecker.Reach.stoppingAt(granted), machines);
     }
 
     /** The same, reading only as far as {@code reach} says — see {@link #narrowedBy}. */
-    private static FieldDomains of(TypeSymbol.AtModule named, Hir.Data data, RuleReadingSource source,
+    private static FieldDomains of(TypeSymbol.AtModule named, RuleReadingSource source,
                                    ReadingPolicy policy, Map<NumberAt<RuleKey>, Count> settled,
                                    InvariantChecker.Reach reach, DeclarationReadings machines) {
         // A newtype is read the same way, and only its bounds are not worth handing back: its value
@@ -469,14 +466,14 @@ public final class FieldDomains {
         // the whole attribution a second time. Which readings are kept and which belong to one
         // question is settled where a reading is asked for, and is not asked again here.
         return InvariantChecker.readFields(named, source, policy, settled, reach, machines)
-                .fields(seeded -> leftBy(seeded, named, data, source, policy, settled, reach,
+                .fields(seeded -> leftBy(seeded, named, source, policy, settled, reach,
                         machines));
     }
 
     /** What the reading {@code seeded} leaves the fields able to hold, under the terms it was made
      *  with. */
     private static FieldDomains leftBy(InvariantChecker.Seeded seeded, TypeSymbol.AtModule named,
-                                       Hir.Data data, RuleReadingSource source,
+                                       RuleReadingSource source,
                                        ReadingPolicy policy, Map<NumberAt<RuleKey>, Count> settled,
                                        InvariantChecker.Reach reach, DeclarationReadings machines) {
         Map<RuleKey, NumericDomain.Bounds> out = new LinkedHashMap<>();
@@ -531,7 +528,7 @@ public final class FieldDomains {
                 seeded.reading().standing(), seeded.took(),
                 seeded.reading().narrowers(),
                 seeded.notGathered(), seeded.handedOn(), placeOf,
-                seeded.constraints(), named, data, source, policy, settled,
+                seeded.constraints(), named, source, policy, settled,
                 seeded.unreadOfEveryValue(), seeded.atoms(), seeded.held(),
                 seeded.readings(), seeded.spacing(), seeded.stringMachines(), machines.extents(),
                 seeded.endsLeftOpen(), seeded.boundsLeftOpen(), seeded.derived(),
@@ -895,7 +892,7 @@ public final class FieldDomains {
      */
     private FieldDomains counterfactual(LeftOut omitted) {
         return counterfactuals.computeIfAbsent(omitted,
-                left -> of(named, data, source, policy, settled, left.reach(), borrowingMachines()));
+                left -> of(named, source, policy, settled, left.reach(), borrowingMachines()));
     }
 
     /**
@@ -1785,13 +1782,13 @@ public final class FieldDomains {
      * bottom out, and a reader that guessed would refuse a type somebody can write.
      *
      */
-    public static boolean mayHoldNothingAt(TypeSymbol.AtModule named, Hir.Data data, RuleKey path,
+    public static boolean mayHoldNothingAt(TypeSymbol.AtModule named, RuleKey path,
                                            RuleReadingSource source, ReadingPolicy policy) {
-        return mayHoldNothingAt(named, data, path, source, policy, DeclarationReadings.NONE);
+        return mayHoldNothingAt(named, path, source, policy, DeclarationReadings.NONE);
     }
 
     /** The same, asking {@code machines} for what somebody has already made of the declaration. */
-    public static boolean mayHoldNothingAt(TypeSymbol.AtModule named, Hir.Data data, RuleKey path,
+    public static boolean mayHoldNothingAt(TypeSymbol.AtModule named, RuleKey path,
                                            RuleReadingSource source, ReadingPolicy policy,
                                            DeclarationReadings machines) {
         // A count is never below none, so leaving it no room above none is leaving it at none.

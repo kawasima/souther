@@ -41,6 +41,10 @@ public final class ExampleExecution {
 
     private final Prepared prepared;
     private final Symbols symbols;
+    /** What the declarations the rows name say about themselves. */
+    private final souther.compiler.check.PublishedDeclarations published;
+    /** Which form each of those declarations was written in. */
+    private final souther.compiler.check.DeclarationKinds kinds;
     private final FieldTypes fields;
     private final Map<ValueName.Behavior, Sig> signatures;
     private final Map<String, List<BehaviorRequirement>> requirements;
@@ -49,7 +53,10 @@ public final class ExampleExecution {
     private final EvaluationPolicy policy;
     private final Map<String, ExampleExecution> declaring;
 
-    public ExampleExecution(Prepared prepared, Symbols symbols, FieldTypes fields,
+    public ExampleExecution(Prepared prepared, Symbols symbols,
+                            souther.compiler.check.PublishedDeclarations published,
+                            souther.compiler.check.DeclarationKinds kinds,
+                            FieldTypes fields,
                             Map<ValueName.Behavior, Sig> signatures,
                             Map<String, List<BehaviorRequirement>> requirements,
                             Map<String, Hir.FnDef> definitions,
@@ -58,6 +65,8 @@ public final class ExampleExecution {
                             Map<String, ExampleExecution> declaring) {
         this.prepared = prepared;
         this.symbols = symbols;
+        this.published = published;
+        this.kinds = kinds;
         this.fields = fields;
         this.declaring = declaring;
         // Taken as they are and not copied. Each is another question's settled answer, and this is
@@ -91,6 +100,16 @@ public final class ExampleExecution {
     /** What a name written here means. */
     public Symbols symbols() {
         return symbols;
+    }
+
+    /** What the declarations the rows name say about themselves. */
+    public souther.compiler.check.PublishedDeclarations published() {
+        return published;
+    }
+
+    /** Which form each of those declarations was written in. */
+    public souther.compiler.check.DeclarationKinds kinds() {
+        return kinds;
     }
 
     /**

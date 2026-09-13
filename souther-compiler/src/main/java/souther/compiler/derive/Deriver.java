@@ -1,5 +1,7 @@
 package souther.compiler.derive;
 
+import souther.compiler.check.DeclarationKinds;
+import souther.compiler.check.PublishedDeclarations;
 import souther.compiler.check.Symbols;
 import souther.compiler.diag.SourcePos;
 import souther.compiler.ast.Hir;
@@ -58,7 +60,8 @@ public final class Deriver {
      * with {@code T} unnamed is refused as a tuple, and {@code Map<Int, T>} for its key. What is
      * absorbed is the one report there would be about {@code T} itself, which was already made.
      */
-    public static Codecs derive(Hir.Data d, Symbols symbols) {
+    public static Codecs derive(Hir.Data d, Symbols symbols, DeclarationKinds kinds,
+                                PublishedDeclarations published) {
         Map<String, Type> fields = TypeOps.fieldTypes(d, symbols);
         // One walk decides what each field carries, and the decoder and the encoder are both lowered
         // from it. Asked separately they would agree only by coincidence: a builder with an arm the
@@ -68,7 +71,7 @@ public final class Deriver {
         try {
             for (Map.Entry<String, Type> f : fields.entrySet()) {
                 shapes.put(f.getKey(), CodecShape.of(f.getValue(), d, f.getKey(),
-                        fieldPos(d, f.getKey()), symbols));
+                        fieldPos(d, f.getKey()), symbols, kinds, published));
             }
         } catch (CodecShape.Unnamed _) {
             return null;

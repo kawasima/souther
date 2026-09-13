@@ -5,6 +5,7 @@ import souther.compiler.diag.SourceLayouts;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.ast.Hir;
+import souther.compiler.check.PublishedDeclarations;
 import souther.compiler.check.Boundary;
 import souther.compiler.check.DerivedSymbols;
 import souther.compiler.jvm.GeneratedClass;
@@ -63,6 +64,12 @@ class AnEmitterWritesWhatItWasHandedTest {
     /** The world an emitter reads against, which is the derived one. */
     private final DerivedSymbols symbols =
             souther.compiler.query.Scopes.derived(compilation.db(), "m").value();
+    /** What the declarations this emitter reads against say. */
+    private final PublishedDeclarations said =
+            souther.compiler.query.Shapes.publishedDeclarations(compilation.db());
+    /** Which form each of them was written in. */
+    private final souther.compiler.check.DeclarationKinds forms =
+            souther.compiler.query.Shapes.declarationKinds(compilation.db());
     private final CodecGen codec = codecGen();
 
     @Test
@@ -109,7 +116,8 @@ class AnEmitterWritesWhatItWasHandedTest {
 
     /** The sum's first atom alone, under a key no derivation produces. */
     private Boundary.Alternatives oneAtom(String sumName, String key) {
-        List<TypeSymbol> atoms = Boundary.of(Type.ref(sum(sumName).declares()), symbols).atoms();
+        List<TypeSymbol> atoms =
+                Boundary.of(Type.ref(sum(sumName).declares()), forms, said).atoms();
         return new Boundary.Alternatives(List.of(atoms.get(0)),
                 new Boundary.Representation.Discriminated(key));
     }
@@ -146,7 +154,8 @@ class AnEmitterWritesWhatItWasHandedTest {
                 }
             }
         }
-        return new CodecGen(new CodegenContext("m", symbols, symbols.library().kernelSignatures(),
+        return new CodecGen(new CodegenContext("m", symbols, said, forms,
+                symbols.library().kernelSignatures(),
                 caseToSums, Map.of(), true, Set.of(), Map.of(), SourceLayouts.NONE,
                 new QuotedFrom.TextItCannotName()));
     }

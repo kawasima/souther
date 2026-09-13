@@ -329,7 +329,8 @@ class AContainerAddingUpIsFilledThroughTheCasesOfWhatItHoldsTest {
         NumericTerm.TakenOver total = NumericTerm.TakenOver.of(
                 ValueName.Stdlib.operation("List", "sum"),
                 new RunSource.ProjectedOccurrences(read),
-                named("Amount"), symbols);
+                named("Amount"), souther.compiler.check.ScopedDeclarations.wrapsOf(symbols),
+                symbols);
         assertNotNull(total, "adding up the amounts of a run is a number of it");
         TermOrders orders = TermOrdersFixtures.at(total, named("Amount"), symbols);
         assertNotNull(orders.answered(), "and the order it answers on is the amounts'");

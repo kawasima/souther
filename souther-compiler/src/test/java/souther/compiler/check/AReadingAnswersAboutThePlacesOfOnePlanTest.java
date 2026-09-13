@@ -285,7 +285,7 @@ class AReadingAnswersAboutThePlacesOfOnePlanTest {
                     .ask(new Adequacy.Inputs(module)).value().get("pick");
             AnalysisBody analysis = checked.analysisBodies().get("pick");
             return GuardThresholds.of("pick", analysis, body, plan, inputs.reading(rules),
-                    ElementBindings.of(analysis.core(), analysis.elements(), rules.symbols()),
+                    ElementBindings.of(analysis.core(), analysis.elements(), rules.newtypes()),
                     against, new RuleReachNumbering(module, "pick"));
         }
 
@@ -294,7 +294,7 @@ class AReadingAnswersAboutThePlacesOfOnePlanTest {
             RuleReadingSource rules = RuleReadings.of(compilation, module);
             InputDomain inputs = compilation.db()
                     .ask(new Adequacy.Inputs(module)).value().get("pick");
-            return UnreachableClaims.of(body, inputs, rules.symbols(), plan);
+            return UnreachableClaims.of(body, inputs, rules.symbols(), rules.newtypes(), plan);
         }
 
         /** The arm this module's own reading proves nothing arrives at. */

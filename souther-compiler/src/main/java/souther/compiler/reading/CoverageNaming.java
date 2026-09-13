@@ -1,5 +1,6 @@
 package souther.compiler.reading;
 
+import souther.compiler.check.DeclarationNewtypes;
 import souther.compiler.check.Symbols;
 import souther.compiler.core.Core;
 import souther.compiler.coverage.ControlClaim;
@@ -44,15 +45,20 @@ final class CoverageNaming implements Naming<Outcome> {
 
     private final CoverageSites.Plan plan;
     private final Symbols symbols;
+
+    /** Which declarations wear one value, which is what says whether reading a field reaches
+     *  somewhere else ({@link souther.compiler.check.Location#isStep}). */
+    private final DeclarationNewtypes newtypes;
     private final InputReads reads;
 
     /** What each comparison of this body is about, read once and shared with whatever else asks. */
     private final ComparedNumbers numbers;
 
-    CoverageNaming(CoverageSites.Plan plan, Symbols symbols, InputReads reads,
-                   ComparedNumbers numbers) {
+    CoverageNaming(CoverageSites.Plan plan, Symbols symbols, DeclarationNewtypes newtypes,
+                   InputReads reads, ComparedNumbers numbers) {
         this.plan = plan;
         this.symbols = symbols;
+        this.newtypes = newtypes;
         this.reads = reads;
         this.numbers = numbers;
     }
@@ -77,12 +83,13 @@ final class CoverageNaming implements Naming<Outcome> {
     // this naming's own, and what each comparison came to is one answer for the whole body.
     @Override
     public CoverageNaming under(Core.Binder binder, Core value) {
-        return new CoverageNaming(plan, symbols, reads.and(binder, value), numbers);
+        return new CoverageNaming(plan, symbols, newtypes, reads.and(binder, value), numbers);
     }
 
     @Override
     public CoverageNaming insideArm(Core.Match match, Core.Case arm) {
-        return new CoverageNaming(plan, symbols, reads.insideArm(match, arm, symbols), numbers);
+        return new CoverageNaming(plan, symbols, newtypes,
+                reads.insideArm(match, arm, symbols, newtypes), numbers);
     }
 
     /**
@@ -136,7 +143,7 @@ final class CoverageNaming implements Naming<Outcome> {
         }
         // What a fork is named by is the position it is on, and a scrutinee at none names nothing —
         // which is also what a scrutinee this reading did not follow leaves to name it with.
-        TermPath at = switch (reads.pathOf(match.scrutinee(), symbols)) {
+        TermPath at = switch (reads.pathOf(match.scrutinee(), newtypes)) {
             case PathResolution.At(var stands) -> stands;
             case PathResolution.NotAPosition _ -> null;
             // A name that only may stand at a position names no one position for a fork to be on,
@@ -169,7 +176,7 @@ final class CoverageNaming implements Naming<Outcome> {
             return null;
         }
         if (fork instanceof Core.If iff) {
-            TermPath read = switch (reads.pathOf(iff.cond(), symbols)) {
+            TermPath read = switch (reads.pathOf(iff.cond(), newtypes)) {
                 case PathResolution.At(var stands) -> stands;
                 case PathResolution.NotAPosition _ -> null;
                 case PathResolution.MayStandAt _ -> null;

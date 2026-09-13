@@ -45,8 +45,8 @@ public record Location(BindingId root, List<String> path) {
      * what the field is read from rather than from the field being spelled {@code value}, so an
      * ordinary data that happens to declare a field of that name keeps its two locations apart.
      */
-    public Location then(Type readFrom, String field, Symbols symbols) {
-        if (!isStep(readFrom, field, symbols)) {
+    public Location then(Type readFrom, String field, DeclarationNewtypes newtypes) {
+        if (!isStep(readFrom, field, newtypes)) {
             return this;
         }
         List<String> longer = new ArrayList<>(path);
@@ -60,9 +60,13 @@ public record Location(BindingId root, List<String> path) {
      * <p>The rule above, asked on its own. A term this is read of is not a location — nothing binds
      * it — and it is still the same value read the same two ways, so the rule is one and its two
      * readers ask it here rather than each stating it.
+     *
+     * <p>Asked of how the declaration was written and not of the declaration. Whether a name wears
+     * one value was settled when the module was indexed, so where a location goes does not turn on
+     * what the declaration says or on where it is written.
      */
-    public static boolean isStep(Type readFrom, String field, Symbols symbols) {
-        return !(field.equals("value") && TypeOps.isSingleValueNewtype(readFrom, symbols));
+    public static boolean isStep(Type readFrom, String field, DeclarationNewtypes newtypes) {
+        return !(field.equals("value") && newtypes.wraps(readFrom));
     }
 
     /**
@@ -78,13 +82,13 @@ public record Location(BindingId root, List<String> path) {
      * knows what its bindings were given answers with what they were given, and the rest of the walk
      * is the same walk.
      */
-    public static Location of(Core e, Symbols symbols,
+    public static Location of(Core e, DeclarationNewtypes newtypes,
                               java.util.function.Function<BindingId, Location> rooted) {
         return switch (e) {
             case Core.Read read -> rooted.apply(read.binding());
             case Core.FieldAccess fa -> {
-                Location base = of(fa.target(), symbols, rooted);
-                yield base == null ? null : base.then(fa.target().type(), fa.field(), symbols);
+                Location base = of(fa.target(), newtypes, rooted);
+                yield base == null ? null : base.then(fa.target().type(), fa.field(), newtypes);
             }
             default -> null;
         };

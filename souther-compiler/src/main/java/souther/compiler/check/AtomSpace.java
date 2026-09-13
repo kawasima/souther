@@ -1,10 +1,10 @@
 package souther.compiler.check;
 
-import souther.compiler.ast.Hir;
 import souther.compiler.types.CanonicalNameOrder;
 import souther.compiler.types.Type;
 import souther.compiler.types.TypeSymbol;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -51,10 +51,15 @@ public final class AtomSpace {
      * <p>One entry and not one per shape. A sum asked about through its declaration rather than its
      * type would be a second way of deciding where the descent starts, and the two would answer
      * alike until the day one of them was extended.
+     *
+     * <p>Asked of what the declarations publish and not of a world's declarations. Which cases a sum
+     * has is what that declaration says about itself, so a reader here means nothing by the tree it
+     * was written in — and reading one would answer differently for the same sum every time a line
+     * above it moved.
      */
-    public static List<TypeSymbol> subjectAtoms(Type t, Symbols symbols) {
+    public static List<TypeSymbol> subjectAtoms(Type t, PublishedDeclarations published) {
         Set<TypeSymbol> atoms = new LinkedHashSet<>();
-        descend(roots(t), symbols, atoms, new HashSet<>());
+        descend(roots(t), published, atoms, new HashSet<>());
         return List.copyOf(atoms);
     }
 
@@ -85,16 +90,32 @@ public final class AtomSpace {
      * Such a declaration is refused where it is written ({@link DataChecker}); this only has to
      * come back.
      */
-    private static void descend(Iterable<TypeSymbol> names, Symbols symbols,
+    private static void descend(Iterable<TypeSymbol> names, PublishedDeclarations published,
                                 Set<TypeSymbol> atoms, Set<TypeSymbol> expanded) {
         for (TypeSymbol name : names) {
-            if (symbols.declaredNode(name) instanceof Hir.SumData sum) {
+            // What the language declares is a case and never a sum, and it has no address to ask
+            // about: a name that is not a module's is an atom without anything being asked.
+            if (name instanceof TypeSymbol.AtModule at
+                    && published.of(at.key()) instanceof DeclarationMeaning.Sum sum) {
                 if (expanded.add(name)) {
-                    descend(TypeOps.caseNames(sum), symbols, atoms, expanded);
+                    descend(declaredCases(sum), published, atoms, expanded);
                 }
             } else {
                 atoms.add(name);
             }
         }
+    }
+
+    /** The declarations {@code sum} lists, in the order it lists them. A name it lists that reaches
+     *  nothing is no case: it is reported where it is written, and a reader counting what a value
+     *  can be counts what is there. */
+    static List<TypeSymbol> declaredCases(DeclarationMeaning.Sum sum) {
+        List<TypeSymbol> named = new ArrayList<>();
+        for (DeclarationReference each : sum.cases()) {
+            if (each instanceof DeclarationReference.Named it) {
+                named.add(it.declaration());
+            }
+        }
+        return named;
     }
 }

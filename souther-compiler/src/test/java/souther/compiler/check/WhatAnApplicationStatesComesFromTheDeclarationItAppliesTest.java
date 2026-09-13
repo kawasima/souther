@@ -445,12 +445,12 @@ class WhatAnApplicationStatesComesFromTheDeclarationItAppliesTest {
     }
 
     private DeclaredTypeReading reading() {
-        return readingOver(new ResolvedFieldTypes(symbols));
+        return readingOver(new ResolvedFieldTypes(symbols, ScopedDeclarations.wrapsOf(symbols)));
     }
 
     /** The same reading, over a world that records which declarations it was asked about. */
     private DeclaredTypeReading readingCounting(Map<String, Integer> asked) {
-        FieldTypes world = new ResolvedFieldTypes(symbols);
+        FieldTypes world = new ResolvedFieldTypes(symbols, ScopedDeclarations.wrapsOf(symbols));
         return readingOver(owner -> {
             asked.merge(owner.name(), 1, Integer::sum);
             return world.of(owner);
@@ -459,7 +459,10 @@ class WhatAnApplicationStatesComesFromTheDeclarationItAppliesTest {
 
     private DeclaredTypeReading readingOver(FieldTypes world) {
         return new DeclaredTypeReading(
-                new DeclarationFacts(new FieldRead(symbols, world, FieldRead.Unreadable.REFUSED)),
+                new DeclarationFacts(new FieldRead(symbols, ScopedDeclarations.of(symbols),
+                        ScopedDeclarations.kindsOf(symbols), world,
+                        FieldRead.Unreadable.REFUSED),
+                        DeclarationNewtypes.asWritten(symbols)),
                 values, compilation.db().ask(new Bodies.Reachable(module)).value());
     }
 
@@ -483,8 +486,11 @@ class WhatAnApplicationStatesComesFromTheDeclarationItAppliesTest {
         Map<String, Hir.FnDef> declared =
                 read.db().ask(new Bodies.ModuleDefinitions(module)).value();
         return new DeclaredTypeReading(
-                new DeclarationFacts(new FieldRead(scope, new ResolvedFieldTypes(scope),
-                        FieldRead.Unreadable.REFUSED)),
+                new DeclarationFacts(new FieldRead(scope, ScopedDeclarations.of(scope),
+                        ScopedDeclarations.kindsOf(scope),
+                        new ResolvedFieldTypes(scope, ScopedDeclarations.wrapsOf(scope)),
+                        FieldRead.Unreadable.REFUSED),
+                        DeclarationNewtypes.asWritten(scope)),
                 declared, read.db().ask(new Bodies.Reachable(module)).value())
                 .declaredTypeOf(assertInstanceOf(Hir.FnBody.Written.class,
                         declared.get(name).body()).expr());

@@ -47,10 +47,11 @@ final class CoveringNames {
      * <p>A value the descent reaches no name for is named as itself, so what comes back covers the
      * set however odd the subject is.
      */
-    static List<String> of(Type subject, List<TypeSymbol> atoms, Symbols symbols) {
+    static List<String> of(Type subject, List<TypeSymbol> atoms, DeclarationKinds kinds,
+                           PublishedDeclarations published) {
         Set<TypeSymbol> left = new LinkedHashSet<>(atoms);
         List<String> named = new ArrayList<>();
-        name(subject, left, symbols, named, new HashSet<>());
+        name(subject, left, kinds, published, named, new HashSet<>());
         for (TypeSymbol atom : left) {
             named.add(atom.name());
         }
@@ -67,9 +68,10 @@ final class CoveringNames {
      * <p>{@code opened} is the cases already descended, which a sum reaching one case through two
      * others terminates on.
      */
-    private static void name(Type subject, Set<TypeSymbol> left, Symbols symbols, List<String> out,
-                             Set<TypeSymbol> opened) {
-        for (ResolvedCase selected : CaseSpace.of(subject, symbols).selectors()) {
+    private static void name(Type subject, Set<TypeSymbol> left, DeclarationKinds kinds,
+                             PublishedDeclarations published,
+                             List<String> out, Set<TypeSymbol> opened) {
+        for (ResolvedCase selected : CaseSpace.of(subject, kinds, published).selectors()) {
             if (left.isEmpty()) {
                 return;
             }
@@ -84,7 +86,7 @@ final class CoveringNames {
                     && opened.add(selected.name())) {
                 // Some of what it covers is missing and some is answered, so the case itself is not
                 // what is missing — what is inside it is.
-                name(selected.bound(), left, symbols, out, opened);
+                name(selected.bound(), left, kinds, published, out, opened);
             }
         }
     }

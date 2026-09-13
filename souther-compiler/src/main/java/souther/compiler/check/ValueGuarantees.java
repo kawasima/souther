@@ -48,8 +48,8 @@ public final class ValueGuarantees {
         // Whose clauses hold of a value of this type is the one reading's answer. Asked here from
         // the declaration instead, an element that is a sum is an element nothing is known about,
         // while the same value read as a field of a record carries the shared part's bounds.
-        List<ValueReading.Owner> owners =
-                ValueReading.of(type, reading.source().symbols()).owners();
+        List<ValueReading.Owner> owners = ValueReading.of(type, reading.source().inners(), reading.source().kinds(),
+                reading.source().symbols(), reading.source().published()).owners();
         Map<RuleKey, Bounds> guaranteed = new LinkedHashMap<>();
         for (ValueReading.Owner owner : owners) {
             InvariantChecker.Seeded seeded = seededOf(owner.named(), reading);

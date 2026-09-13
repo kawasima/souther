@@ -76,6 +76,8 @@ public final class TypeChecker {
      * because the body check reads the same two and they must be the same two.
      */
     public static Reported checkModule(Hir.Module module, DerivedSymbols symbols,
+                                       PublishedDeclarations published, DeclarationKinds kinds,
+                                       NewtypeInners inners,
                                        UninhabitableTypes.WithNoValue withNoValue,
                                        DeclarationLocations declaredAt,
                                        ReadingPolicy policy,
@@ -92,7 +94,9 @@ public final class TypeChecker {
         List<CompileException> errors = new ArrayList<>();
         boolean stopped = false;
         try {
-            checkRecovering(module, symbols, withNoValue, declaredAt, policy, sigs, importedInjected,
+            checkRecovering(module, symbols, published, kinds, inners, withNoValue, declaredAt,
+                    policy, sigs,
+                    importedInjected,
                     importedUnwritten,
                     lowered, calleeSigs, errors,
                     elaborated, abandoned, reqSigs, recursiveHelperFns, imported, settled, shapes);
@@ -122,13 +126,16 @@ public final class TypeChecker {
                                      Hir.Expr loweredBody,
                                     ReadingPolicy policy,
                                      InvariantChecker.Source discharge,
-                                     Symbols symbols, Map<ValueName.Behavior, ReqSig> calleeSigs,
+                                     Symbols symbols, PublishedDeclarations published,
+                                     DeclarationKinds kinds, NewtypeInners inners,
+                                     Map<ValueName.Behavior, ReqSig> calleeSigs,
                                      Map<ValueName.Behavior, ReqSig> reqSigs, HelperInliner inliner,
                                      Map<String, Type> recursiveHelperFns,
                                      Map<String, DataChecker.Constructs> recHelperConstructs,
                                      List<Diagnostic> warnings) {
-        return SpecChecker.checkSpecFn(spec, fn, loweredBody, discharge, symbols, policy, calleeSigs, reqSigs,
-                inliner, recursiveHelperFns, recHelperConstructs, warnings);
+        return SpecChecker.checkSpecFn(spec, fn, loweredBody, discharge, symbols, published, kinds,
+                inners, policy,
+                calleeSigs, reqSigs, inliner, recursiveHelperFns, recHelperConstructs, warnings);
     }
 
     /**
@@ -206,6 +213,8 @@ public final class TypeChecker {
      * throw straight out — its caller treats that as fail-fast and abandons the module.
      */
     static void checkRecovering(Hir.Module module, DerivedSymbols symbols,
+                                        PublishedDeclarations published, DeclarationKinds kinds,
+                                        NewtypeInners inners,
                                         UninhabitableTypes.WithNoValue withNoValue,
                                         DeclarationLocations declaredAt,
                                        ReadingPolicy policy,
@@ -321,10 +330,11 @@ public final class TypeChecker {
                         if (symbols.declarations().declaration(data.declares())
                                 instanceof Derived.Data derived) {
                             DataChecker.checkData(derived,
-                                    CheckContext.of(symbols).forData(data));
+                                    CheckContext.of(symbols, published, kinds, inners)
+                                            .forData(data));
                         }
                     }
-                    case Hir.SumData sum -> DataChecker.checkSum(sum, symbols);
+                    case Hir.SumData sum -> DataChecker.checkSum(sum, symbols, kinds, published);
                     case Hir.UnitData _ -> { }
                 }
             });
@@ -509,8 +519,8 @@ public final class TypeChecker {
         // settled with the rest — and held to the position it stands at by the type its wrapper
         // declares, which is the same check every other definition of this module gets. There is
         // nothing left here for a reading of its own to ask.
-        collect(errors, abandoned, () -> HelperTyping.checkHelpers(inliner, toCheck, symbols, reqSigs,
-                recursiveHelperFns, loweredBodies, elaborated));
+        collect(errors, abandoned, () -> HelperTyping.checkHelpers(inliner, toCheck, symbols,
+                published, kinds, reqSigs, recursiveHelperFns, loweredBodies, elaborated));
         // Recursion is total by default (spec §fn-declaration): a non-`partial` recursive helper must
         // be structurally recursive, so its examples terminate at compile time.
         collect(errors, abandoned, () -> TotalityChecker.check(inliner));
@@ -544,10 +554,11 @@ public final class TypeChecker {
         });
         // an exposed composition must declare its output in `exposing`, matching the inferred one
         // (spec §declared-composition-output, ADR-0024), so a far-away change cannot grow a published output silently.
-        collect(errors, abandoned, () -> SpecChecker.checkUnionMemberNames(module, sigs, symbols));
-        collect(errors, abandoned, () -> SpecChecker.checkUnionMemberFields(module, sigs, symbols));
+        collect(errors, abandoned, () -> SpecChecker.checkUnionMemberNames(module, sigs, published));
+        collect(errors, abandoned, () -> SpecChecker.checkUnionMemberFields(module, sigs, symbols,
+                kinds, published));
         collect(errors, abandoned, () -> SpecChecker.checkExposedPipeOutputs(module,
-                exposed, sigs, symbols));
+                exposed, sigs, published));
         // What this module reaches out with may not rest on what it keeps to itself — a name in
         // `exposing`, and an injection target, whose base is public whatever `exposing` says. After
         // the exposing signature checks: a signature that should not be there at all (E1605), or one

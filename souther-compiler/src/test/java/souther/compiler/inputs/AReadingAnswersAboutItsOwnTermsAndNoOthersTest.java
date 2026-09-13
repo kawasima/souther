@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import souther.compiler.DefaultStdlib;
 import souther.compiler.check.RuleReadingSource;
+import souther.compiler.check.ScopedDeclarations;
 import souther.compiler.check.RuleReadings;
 import souther.compiler.check.Symbols;
 import souther.compiler.query.ReadAs;
@@ -54,7 +55,7 @@ class AReadingAnswersAboutItsOwnTermsAndNoOthersTest {
     private static NumericTerm lengthOfS() {
         NumericTerm.TakenOf made = NumericTerm.TakenOf.of(
                 ValueName.Stdlib.operation("String", "length"), TermPath.of("s"), Type.STRING,
-                SYMBOLS);
+                souther.compiler.check.ScopedDeclarations.wrapsOf(SYMBOLS), SYMBOLS);
         assertNotNull(made, "a length is taken of a string");
         return made;
     }
@@ -119,7 +120,9 @@ class AReadingAnswersAboutItsOwnTermsAndNoOthersTest {
     /** What the answer would have been, which is what makes the refusal load-bearing. */
     @Test
     void theAnswerItWouldHaveGivenIsHalfOne() {
-        TermOrders would = TermOrdering.of(lengthOfS(), null, SYMBOLS);
+        TermOrders would = TermOrdering.of(lengthOfS(), null,
+                souther.compiler.check.ScopedDeclarations.wrapsOf(SYMBOLS), SYMBOLS,
+                ScopedDeclarations.kindsOf(SYMBOLS), ScopedDeclarations.of(SYMBOLS));
 
         assertEquals(souther.compiler.check.Carrier.WHOLE, would.answered(),
                 "the operation answers with a whole number wherever it was applied");

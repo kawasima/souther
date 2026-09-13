@@ -1,6 +1,7 @@
 package souther.compiler.inputs;
 
 import souther.compiler.check.Carrier;
+import souther.compiler.check.NewtypeInners;
 import souther.compiler.check.DefaultBoundOperationFacts;
 import souther.compiler.check.NumericAnswers;
 import souther.compiler.check.Symbols;
@@ -157,16 +158,16 @@ public sealed interface NumericTerm permits NumericTerm.FromOnePosition, Numeric
          * reach {@link Carrier#ofValue} takes, and taken here so that no caller takes it itself.
          */
         public static TakenOf of(ValueName.Stdlib operation, TermPath position, Type at,
-                                 Symbols symbols) {
+                                 NewtypeInners inners, Symbols symbols) {
             TakenAs how = DefaultBoundOperationFacts.get().takenAs(operation);
             // Of what stands here, because for an operation that walks a container the answer is
             // what the container holds. Asked of the operation alone, a sum answered no number this
             // could name and no term was made for any rule written on one.
-            Type answers = NumericAnswers.typeOf(operation, at, symbols);
+            Type answers = NumericAnswers.typeOf(operation, at, inners, symbols);
             if (how == null || answers == null || at == null) {
                 return null;
             }
-            return how.takenOf(souther.compiler.check.TypeOps.base(at, symbols), answers)
+            return how.takenOf(souther.compiler.check.TypeOps.base(at, inners), answers)
                     ? new TakenOf(operation, position) : null;
         }
 
@@ -248,15 +249,15 @@ public sealed interface NumericTerm permits NumericTerm.FromOnePosition, Numeric
          * @param each what stands at the place the run's values are read from
          */
         public static TakenOver of(ValueName.Stdlib operation, RunSource source, Type each,
-                                   Symbols symbols) {
+                                   NewtypeInners inners, Symbols symbols) {
             TakenAs how = DefaultBoundOperationFacts.get().takenAs(operation);
             // A container of what the run holds, with the names its values are written under taken
             // off — the same reach {@link TakenOf#of} takes of the value at a place, and for the
             // same reason: a name wrapped round a whole number is what the account is taken of.
             Type over = each == null ? null
-                    : new Type.ListOf(souther.compiler.check.TypeOps.base(each, symbols));
+                    : new Type.ListOf(souther.compiler.check.TypeOps.base(each, inners));
             Type answers = over == null ? null
-                    : NumericAnswers.typeOf(operation, over, symbols);
+                    : NumericAnswers.typeOf(operation, over, inners, symbols);
             if (how == null || answers == null || source == null) {
                 return null;
             }
@@ -352,10 +353,10 @@ public sealed interface NumericTerm permits NumericTerm.FromOnePosition, Numeric
      *
      * @param at what stands at {@code other}, as the signature wrote it
      */
-    default NumericTerm movedTo(TermPath other, Type at, Symbols symbols) {
+    default NumericTerm movedTo(TermPath other, Type at, NewtypeInners inners, Symbols symbols) {
         return switch (this) {
             case ValueOf _ -> new ValueOf(other);
-            case TakenOf taken -> TakenOf.of(taken.operation(), other, at, symbols);
+            case TakenOf taken -> TakenOf.of(taken.operation(), other, at, inners, symbols);
             // What moves here is where a number is taken, and a run is not taken anywhere: its
             // values come from a place inside a sequence, and the name that would move is the
             // container's. Answered as "not there" rather than by rebuilding the run at a
