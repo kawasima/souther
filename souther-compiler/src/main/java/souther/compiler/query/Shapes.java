@@ -13,7 +13,9 @@ import souther.compiler.check.NewtypeInners;
 import souther.compiler.check.Normalized;
 import souther.compiler.check.PublishedDeclarations;
 import souther.compiler.stdlib.Stdlib;
+import souther.compiler.check.EffectiveFieldTypes;
 import souther.compiler.check.FieldBindings;
+import souther.compiler.check.TypeOps;
 import souther.compiler.check.ExpandedClauseLookup;
 import souther.compiler.check.ExpandedClauseResult;
 import souther.compiler.check.ExpandedClauses;
@@ -399,6 +401,80 @@ public final class Shapes {
             Answer<Hir.Def> declared = db.ask(new Names.ResolvedDeclaration(address));
             return declared.present() ? declared.value() : null;
         }
+    }
+
+    /**
+     * What each field a declaration reaches holds, its spreads walked through.
+     *
+     * <p>What a value of the type is made of, and nothing about the declarations the walk passed
+     * through: no position, no spelling, and no report about either. A reader asking this depends
+     * on what those declarations hold and on nothing else about them, so a declaration moved and
+     * not otherwise touched leaves this answer equal and nothing that read it is looked at again.
+     *
+     * <p>Absent where nothing declares the name, and empty where what it declares reaches no field
+     * — a sum, a unit data, or a spread of something that is not a product. The difference between
+     * the two is what {@link Names.DeclarationKindOf} answers, and a reader wanting it asks that.
+     */
+    public record EffectiveFieldTypesOf(TypeKey named) implements Key<Map<String, Type>> {
+        @Override
+        public String module() {
+            return named.module();
+        }
+
+        @Override
+        public Answer<Map<String, Type>> compute(Db db) {
+            Hir.Def declared = declaredAt(db, named);
+            if (declared == null) {
+                return Answer.absent();
+            }
+            Map<String, Type> types = new LinkedHashMap<>();
+            if (declared instanceof Hir.Data data) {
+                walk(db, data, types);
+            }
+            // In the order a value lays its fields out, which is what the walk reaches them in.
+            return Answer.of(Collections.unmodifiableMap(types));
+        }
+
+        /**
+         * What {@code data} spreads, then its own fields — the walk {@code TypeOps.fieldTypes}
+         * makes, reading each declaration it reaches off the store.
+         *
+         * <p>Carried over as it stands: which field a name holds where two of them carry one
+         * spelling is decided by the order this goes in, and an edit to that order here would
+         * change what a field means under cover of a change to where the answer comes from.
+         */
+        private static void walk(Db db, Hir.Data data, Map<String, Type> out) {
+            for (Hir.Name include : data.includes()) {
+                // A name nothing declares, or one that declares something no field can be taken
+                // out of. Both bring in nothing here and are reported where the spread is written.
+                if (include instanceof Hir.Name.Denoting denoting
+                        && denoting.type() instanceof TypeSymbol.AtModule at
+                        && declaredAt(db, at.key()) instanceof Hir.Data included) {
+                    walk(db, included, out);
+                }
+            }
+            for (Hir.Field field : data.fields()) {
+                out.put(field.name(), TypeOps.fieldType(field));
+            }
+        }
+
+        /** The declaration at {@code address} with its names resolved, or null where none is. */
+        private static Hir.Def declaredAt(Db db, TypeKey address) {
+            Answer<Hir.Def> declared = db.ask(new Names.ResolvedDeclaration(address));
+            return declared.present() ? declared.value() : null;
+        }
+    }
+
+    /**
+     * What each field of any declaration holds, for a reader of what its clauses state.
+     *
+     * <p>One of these for the whole compilation, for the reason {@link #expandedClauses} gives.
+     */
+    public static EffectiveFieldTypes effectiveFieldTypes(Db db) {
+        return declared -> {
+            Answer<Map<String, Type>> types = db.ask(new EffectiveFieldTypesOf(declared.key()));
+            return types.present() ? types.value() : Map.of();
+        };
     }
 
     /**

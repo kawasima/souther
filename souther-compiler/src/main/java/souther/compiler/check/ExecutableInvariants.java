@@ -66,8 +66,8 @@ public final class ExecutableInvariants {
         types.forEach((field, type) -> fields.add(
                 new ValueShape.Field(field, type, bindings.get(field))));
 
-        Scope reading = DataChecker.fieldScope(data.declares(), data,
-                FieldBindings.asWritten(symbols), symbols).reaching(helpers);
+        Scope reading = DataChecker.fieldScope(data.declares(), types,
+                FieldBindings.asWritten(symbols)).reaching(helpers);
         CheckContext ctx =
                 CheckContext.executableInvariant(symbols, published, kinds, inners, data);
         List<ValueShape.Invariant> invariants = new ArrayList<>();

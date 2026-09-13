@@ -57,7 +57,7 @@ public sealed interface DeclarationMeaning {
                 new RuleReadingSource(source.symbols(), source.invariants(),
                         besidesItself(declared.declares().key(), source.published()),
                         source.kinds(), source.newtypes(), source.inners(), source.bindings(),
-                        source.written())));
+                        source.fieldTypes(), source.written())));
     }
 
     /**

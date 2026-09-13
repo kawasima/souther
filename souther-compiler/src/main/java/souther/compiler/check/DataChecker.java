@@ -769,10 +769,13 @@ public final class DataChecker {
      * asking — the discharge check reads the clauses of types other modules declared. A field is
      * bound where it was written, so that is what the scope offers, and the clause carried in with the
      * declaration finds the very bindings it names.
+     *
+     * <p>{@code types} is what each of those fields holds, handed over rather than read here: the
+     * caller is the one that knows which world the declaration was reached in, and a walk made here
+     * would read whatever world this class happens to hold.
      */
-    static Scope fieldScope(TypeSymbol.AtModule declared, Hir.Data data, FieldBindings bound,
-                            Symbols symbols) {
-        Map<String, Type> types = TypeOps.fieldTypes(data, symbols);
+    static Scope fieldScope(TypeSymbol.AtModule declared, Map<String, Type> types,
+                            FieldBindings bound) {
         Map<BindingId, Scope.Binding> bindings = new LinkedHashMap<>();
         bound.of(declared).forEach((name, binding) ->
                 bindings.put(binding, new Scope.Binding(name, types.get(name))));

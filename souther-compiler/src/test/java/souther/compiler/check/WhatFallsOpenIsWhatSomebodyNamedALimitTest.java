@@ -28,7 +28,6 @@ import java.util.function.Supplier;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -271,14 +270,14 @@ class WhatFallsOpenIsWhatSomebodyNamedALimitTest {
     void aCallNoExpansionNamedIsNotCoveredByOneItDid() {
         Compilation c = answered(TWO_STANDING);
         TypeSymbol.AtModule named = TypeSymbols.declared(new TypeKey("demo", "制限木"));
-        Hir.Data data = declarationOf(c, named);
         TypeOps.Declared clause = expandedClauseOf(c, named);
         Supplier<SecondaryClauseReading.Over> over =
                 () -> new SecondaryClauseReading.Over(
-                        DataChecker.fieldScope(named, data,
-                                souther.compiler.query.Shapes.fieldBindings(c.db()), symbolsOf(c)),
+                        DataChecker.fieldScope(named,
+                                Shapes.effectiveFieldTypes(c.db()).of(named),
+                                Shapes.fieldBindings(c.db())),
                         CheckContext.of(symbolsOf(c), Shapes.publishedDeclarations(c.db()),
-                                Shapes.declarationKinds(c.db())).forData(data).forDischarge());
+                                Shapes.declarationKinds(c.db())).forDischarge());
 
         assertInstanceOf(TypedClause.Stopped.class,
                 SecondaryClauseReading.of(clause.asExpanded(), over, "a test"),
@@ -304,14 +303,14 @@ class WhatFallsOpenIsWhatSomebodyNamedALimitTest {
     void aStandingCallNoExpansionNamedIsNotALimitButAFailure() {
         Compilation c = answered(STANDING);
         TypeSymbol.AtModule named = TypeSymbols.declared(new TypeKey("demo", "制限木"));
-        Hir.Data data = declarationOf(c, named);
         TypeOps.Declared clause = expandedClauseOf(c, named);
         java.util.function.Supplier<SecondaryClauseReading.Over> over =
                 () -> new SecondaryClauseReading.Over(
-                        DataChecker.fieldScope(named, data,
-                                souther.compiler.query.Shapes.fieldBindings(c.db()), symbolsOf(c)),
+                        DataChecker.fieldScope(named,
+                                Shapes.effectiveFieldTypes(c.db()).of(named),
+                                Shapes.fieldBindings(c.db())),
                         CheckContext.of(symbolsOf(c), Shapes.publishedDeclarations(c.db()),
-                                Shapes.declarationKinds(c.db())).forData(data).forDischarge());
+                                Shapes.declarationKinds(c.db())).forDischarge());
 
         assertInstanceOf(TypedClause.Stopped.class,
                 SecondaryClauseReading.of(clause.asExpanded(), over, "a test"),
@@ -364,12 +363,6 @@ class WhatFallsOpenIsWhatSomebodyNamedALimitTest {
         return new RuleReadingSource(symbolsOf(c), lookupOf(c), said,
                 Shapes.declarationKinds(c.db()), Shapes.declarationNewtypes(c.db()),
                 ClauseLocations.NONE);
-    }
-
-    private static Hir.Data declarationOf(Compilation c, TypeSymbol.AtModule named) {
-        Hir.Data data = symbolsOf(c).declaredNode(named) instanceof Hir.Data it ? it : null;
-        assertNotNull(data, () -> named + " is declared by the source this reads");
-        return data;
     }
 
     private static TypeOps.Declared expandedClauseOf(Compilation c, TypeSymbol.AtModule named) {
