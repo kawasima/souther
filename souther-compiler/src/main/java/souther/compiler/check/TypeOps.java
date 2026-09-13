@@ -144,9 +144,10 @@ public final class TypeOps {
      * order its cases are declared in (ADR-0069), so a newtype over an enumeration is ordered by
      * that enumeration. This is {@link Ordering#of} having an answer, and asking it any other way is
      * a second definition of the same word. */
-    public static boolean supportsOrdering(Type t, Symbols symbols, DeclarationKinds kinds,
+    public static boolean supportsOrdering(Type t, NewtypeInners inners, Symbols symbols,
+                                           DeclarationKinds kinds,
                                            PublishedDeclarations published) {
-        return Ordering.of(t, symbols, kinds, published) != null;
+        return Ordering.of(t, inners, symbols, kinds, published) != null;
     }
 
     /**
@@ -1783,8 +1784,8 @@ public final class TypeOps {
      * the base of its {@code value} type, recursively (so {@code 管理職 = レベル = Int} bases to Int).
      * A newtype's value is what its comparison and equality read.
      */
-    public static Type base(Type t, Symbols symbols) {
-        return newtypeSpineAsWritten(t, symbols).terminal();
+    public static Type base(Type t, NewtypeInners inners) {
+        return newtypeSpine(t, inners).terminal();
     }
 
     /**
@@ -1817,17 +1818,6 @@ public final class TypeOps {
         return new NewtypeSpine(List.copyOf(layers), at);
     }
 
-    /**
-     * The same, for a walk that holds the declarations rather than the compilation's answer.
-     *
-     * <p>Asked here so that the declaration is read where the walk is owned, for the reason
-     * {@link NewtypeInners#asWritten} gives. Every caller of this is a reader that has not been
-     * handed the compilation's answer, and a test counts them.
-     */
-    public static NewtypeSpine newtypeSpineAsWritten(Type t, Symbols symbols) {
-        return newtypeSpine(t, NewtypeInners.asWritten(symbols));
-    }
-
     /** The names a value wears, and the type underneath them. */
     public record NewtypeSpine(List<Layer> layers, Type terminal) {}
 
@@ -1854,8 +1844,8 @@ public final class TypeOps {
      * <p>Stops on a name already worn, so a declaration that wraps its own kind ends the walk rather
      * than repeating it. A type that is not a newtype has one layer or none.
      */
-    public static List<Layer> newtypeChain(Type t, Symbols symbols) {
-        return newtypeSpineAsWritten(t, symbols).layers();
+    public static List<Layer> newtypeChain(Type t, NewtypeInners inners) {
+        return newtypeSpine(t, inners).layers();
     }
 
     /**
@@ -1866,8 +1856,8 @@ public final class TypeOps {
      * however many names are wrapped round them (ADR-0047). Not what arithmetic asks — that is
      * {@link #directNumericNewtypeBase} and stops at one layer, which the language means.
      */
-    public static Type numericBase(Type t, Symbols symbols) {
-        Type carried = newtypeSpineAsWritten(t, symbols).terminal();
+    public static Type numericBase(Type t, NewtypeInners inners) {
+        Type carried = newtypeSpine(t, inners).terminal();
         return carried == Type.INT || carried == Type.DECIMAL ? carried : null;
     }
 

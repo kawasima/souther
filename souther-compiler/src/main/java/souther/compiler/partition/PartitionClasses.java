@@ -217,7 +217,8 @@ final class PartitionClasses {
         // is at one of these places, and the class holding it is asked with the place.
         Recognition is = Recognition.Under.of(worn, new Recognition.OfCase(leaf,
                 ValueClasses.placeOf(new souther.compiler.observe.ObservedValue.Unit(leaf), of,
-                        ruleSource.symbols(), ruleSource.kinds(), ruleSource.published())));
+                        ruleSource.inners(), ruleSource.symbols(), ruleSource.kinds(),
+                        ruleSource.published())));
         // A case whose module does not expose it: a value of the position all the same, and one no
         // author here can write down. Said as that, rather than offered under a spelling that
         // resolves to nothing wherever the row is pasted (issue #696).

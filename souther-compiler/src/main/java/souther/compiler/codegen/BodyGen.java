@@ -1856,7 +1856,8 @@ final class BodyGen {
             // Whether the two may be compared at all was settled by BinaryElaborator against the
             // types as written; this reads what they open to.
             Ordering how = Ordering.ofComparison(
-                    comparison.left().type(), comparison.right().type(), symbols, ctx.kinds,
+                    comparison.left().type(), comparison.right().type(), ctx.inners, symbols,
+                    ctx.kinds,
                     ctx.published);
             if (how == null) {
                 throw new IllegalStateException("a comparison the checker admitted has no order: "
@@ -1948,7 +1949,7 @@ final class BodyGen {
          * natural order", so an order added to {@link Ordering} has to say which of the two it is
          * instead of inheriting the answer that happens to be right for these three. */
         private TypeSymbol sumOrdering(Type t) {
-            Ordering how = Ordering.of(t, symbols, ctx.kinds, ctx.published);
+            Ordering how = Ordering.of(t, ctx.inners, symbols, ctx.kinds, ctx.published);
             if (how == null) {
                 return null;
             }

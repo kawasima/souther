@@ -75,6 +75,10 @@ public final class AffineForms {
          *  whether one is a sum. */
         DeclarationKinds kinds();
 
+        /** What each of them that wears one value wraps, for the walk that takes the names off a
+         *  position before the carrier is read. */
+        NewtypeInners inners();
+
         /** {@code e} as a form, where nothing here composes one: an atom, a value read through, or
          *  null where the caller can say nothing about it. */
         LinearForm<A> leafOf(Core e, E at);
@@ -397,6 +401,11 @@ public final class AffineForms {
         }
 
         @Override
+        public NewtypeInners inners() {
+            return of.inners();
+        }
+
+        @Override
         public LinearForm<A> leafOf(Core e, E at) {
             return of.leafOf(e, at);
         }
@@ -703,7 +712,8 @@ public final class AffineForms {
      */
     private static <A, E> LinearForm<A> literal(Core e, Reading<A, E> reading) {
         Carrier carrier =
-                Carrier.ofValue(e.type(), reading.symbols(), reading.kinds(), reading.published());
+                Carrier.ofValue(e.type(), reading.inners(), reading.symbols(), reading.kinds(),
+                        reading.published());
         if (carrier == null || !carrier.counts()) {
             return null;
         }

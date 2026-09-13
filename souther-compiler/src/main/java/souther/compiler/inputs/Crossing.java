@@ -1,6 +1,7 @@
 package souther.compiler.inputs;
 
 import souther.compiler.check.Carrier;
+import souther.compiler.check.NewtypeInners;
 import souther.compiler.check.DeclarationKinds;
 import souther.compiler.check.PublishedDeclarations;
 import souther.compiler.check.Symbols;
@@ -53,11 +54,12 @@ final class Crossing {
      *                 nothing had been short of
      */
     static ReadingResult of(List<Case> declared, TypeView view, NumericDomain.Bounds within,
-                            AdmissibleSet admitted, Symbols symbols,
+                            AdmissibleSet admitted, NewtypeInners inners, Symbols symbols,
                             DeclarationKinds kinds, PublishedDeclarations published,
                             BlockReason.RuleReadingStopped stopped) {
         List<Case> kept = admits(
-                constructibleWithin(declared, view, within, symbols, kinds, published), admitted);
+                constructibleWithin(declared, view, within, inners, symbols, kinds, published),
+                admitted);
         List<Case> refused = new ArrayList<>(declared);
         refused.removeAll(kept);
         BlockReason.ReadingStopReason why =
@@ -120,11 +122,12 @@ final class Crossing {
     /** The same, against what the intervals leave. A position with no order has no value for a rule
      *  to name a place on, so nothing is taken away. */
     private static List<Case> constructibleWithin(List<Case> declared, TypeView view,
-                                                  NumericDomain.Bounds within, Symbols symbols,
+                                                  NumericDomain.Bounds within,
+                                                  NewtypeInners inners, Symbols symbols,
                                                   DeclarationKinds kinds,
                                                   PublishedDeclarations published) {
         if (within == null || declared.isEmpty()
-                || !(Carrier.ofValue(view.declared(), symbols, kinds, published)
+                || !(Carrier.ofValue(view.declared(), inners, symbols, kinds, published)
                         instanceof Carrier.Ordinal order)) {
             return declared;
         }

@@ -2,6 +2,7 @@ package souther.compiler.inputs;
 
 import souther.compiler.ast.Hir;
 import souther.compiler.check.AtomSpace;
+import souther.compiler.check.NewtypeInners;
 import souther.compiler.check.PublishedDeclarations;
 import souther.compiler.check.Shape;
 import souther.compiler.check.Symbols;
@@ -119,13 +120,13 @@ public final class Distinctions {
      * something the position does not hold, and a division this can only half describe is one it
      * does not make.
      */
-    static List<Case> ofValues(ValueSet admitted, Type type, Symbols symbols) {
+    static List<Case> ofValues(ValueSet admitted, Type type, NewtypeInners inners) {
         if (!(admitted instanceof ValueSet.Finite finite) || finite.values().isEmpty()) {
             return List.of();
         }
         List<Case> out = new ArrayList<>();
         for (Value value : finite.values()) {
-            if (!standsAt(value, type, symbols)) {
+            if (!standsAt(value, type, inners)) {
                 return List.of();
             }
             out.add(new Case.Named(value));
@@ -144,10 +145,10 @@ public final class Distinctions {
      * <p>A number an {@code Int} cannot hold is not one either. A rule naming one admits nothing,
      * which is a refusal of the declaration rather than a distinction here.
      */
-    private static boolean standsAt(Value value, Type type, Symbols symbols) {
+    private static boolean standsAt(Value value, Type type, NewtypeInners inners) {
         return switch (value) {
             case Value.Text _, Value.Truth _ -> true;
-            case Value.Number number -> TypeOps.numericBase(type, symbols) == Type.DECIMAL
+            case Value.Number number -> TypeOps.numericBase(type, inners) == Type.DECIMAL
                     || whole(number.value());
             case Value.Case _ -> false;
         };

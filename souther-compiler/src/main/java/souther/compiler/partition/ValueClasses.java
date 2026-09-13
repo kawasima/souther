@@ -46,7 +46,7 @@ final class ValueClasses {
         }
         Recognition is = Recognition.Under.of(worn,
                 new Recognition.AtAValue(value,
-                        placeOf(value, view.declared(), ruleSource.symbols(),
+                        placeOf(value, view.declared(), ruleSource.inners(), ruleSource.symbols(),
                                 ruleSource.kinds(), ruleSource.published())));
         FixtureTemplate stands = WornNames.under(view.wrappers(), bare, ruleSource);
         return (stands == null
@@ -74,7 +74,10 @@ final class ValueClasses {
      * a value written in a shape that order does not hold. Both are answers about this class rather
      * than reasons to stop building it — the class is still what a row is read against.
      */
-    private static souther.compiler.numeric.Place placeOf(Value value, Type type, Symbols symbols,
+    private static souther.compiler.numeric.Place placeOf(Value value, Type type,
+                                                          souther.compiler.check.NewtypeInners
+                                                                  inners,
+                                                          Symbols symbols,
                                                           DeclarationKinds kinds,
                                                           PublishedDeclarations published) {
         return placeOf(switch (value) {
@@ -82,7 +85,7 @@ final class ValueClasses {
             case Value.Truth truth -> new ObservedValue.Bool(truth.value());
             case Value.Number number -> new ObservedValue.Decimal(number.value());
             case Value.Case one -> new ObservedValue.Unit(one.data());
-        }, type, symbols, kinds, published);
+        }, type, inners, symbols, kinds, published);
     }
 
     /**
@@ -94,11 +97,13 @@ final class ValueClasses {
      * order: which order a case of an enumeration is placed on is the enumeration's, and a unit data
      * that is a case of two sums is at a different place in each.
      */
-    static souther.compiler.numeric.Place placeOf(ObservedValue value, Type type, Symbols symbols,
+    static souther.compiler.numeric.Place placeOf(ObservedValue value, Type type,
+                                                  souther.compiler.check.NewtypeInners inners,
+                                                  Symbols symbols,
                                                   DeclarationKinds kinds,
                                                   PublishedDeclarations published) {
         souther.compiler.check.Carrier carrier =
-                souther.compiler.check.Carrier.ofValue(type, symbols, kinds, published);
+                souther.compiler.check.Carrier.ofValue(type, inners, symbols, kinds, published);
         return carrier == null ? null : carrier.placeOf(value);
     }
 

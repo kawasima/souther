@@ -69,7 +69,7 @@ public final class BinaryElaborator {
                 // except that a bare literal takes the other side's newtype from context.
                 Type lt = left.type();
                 Type rt = right.type();
-                if (!orderedComparable(lt, rt, bin.left(), bin.right(), ctx.symbols(),
+                if (!orderedComparable(lt, rt, bin.left(), bin.right(), ctx.inners(), ctx.symbols(),
                         ctx.kinds(), ctx.published())) {
                     throw CompileException.of(Diagnostic
                                     .at(bin.pos()).say(new TypeMessage.ComparisonNeedsOrderedValuesOfOneType(Type.show(lt), Type.show(rt))).build());
@@ -167,7 +167,7 @@ public final class BinaryElaborator {
                 List<TypeSymbol> rCases = AtomSpace.subjectAtoms(rt, ctx.published());
                 boolean caseOfSum = !lCases.isEmpty() && !rCases.isEmpty()
                         && (lCases.containsAll(rCases) || rCases.containsAll(lCases));
-                if (!lt.equals(rt) && !eqCoercible(lt, rt, bin.left(), bin.right(), ctx.symbols())
+                if (!lt.equals(rt) && !eqCoercible(lt, rt, bin.left(), bin.right(), ctx.inners(), ctx.symbols())
                         && !caseOfSum && !BottomInfer.isBottom(lt) && !BottomInfer.isBottom(rt)) {
                     throw CompileException.of(Diagnostic
                                     .at(bin.pos(), 2)
@@ -201,12 +201,13 @@ public final class BinaryElaborator {
      * first — is the backend's and says so.
      */
     static boolean orderedComparable(Type lt, Type rt, Hir.Expr le, Hir.Expr re,
+                                             NewtypeInners inners,
                                              Symbols symbols, DeclarationKinds kinds,
                                              PublishedDeclarations published) {
         // Two of the same type, where that type has an order: 金額 <= 金額, Stage <= Stage, and
         // StageN <= StageN, whose order is the enumeration it wraps (ADR-0047 over ADR-0069).
         if (lt.equals(rt)) {
-            return TypeOps.supportsOrdering(lt, symbols, kinds, published);
+            return TypeOps.supportsOrdering(lt, inners, symbols, kinds, published);
         }
         // Two values of one enumeration that are not one type: a case value is a value of its sum
         // (spec §sum-data), so `stage < Won` compares in the sum both sides belong to (issue #161).
@@ -216,16 +217,16 @@ public final class BinaryElaborator {
         // A newtype and a source literal of what it wraps: 金額 <= 100, but not 金額 <= n for an
         // Int variable, and not 金額 <= 数量. Ordering asks in addition that the wrapped value be
         // ordered, which the equality rule this shares does not.
-        return TypeOps.supportsOrdering(lt, symbols, kinds, published)
-                && TypeOps.base(lt, symbols).equals(TypeOps.base(rt, symbols))
+        return TypeOps.supportsOrdering(lt, inners, symbols, kinds, published)
+                && TypeOps.base(lt, inners).equals(TypeOps.base(rt, inners))
                 && literalPairsNewtype(lt, rt, le, re, symbols);
     }
 
     /** Whether {@code ==}/{@code /=} may pair a newtype with a bare literal of its base type (the
      * same-type and bottom cases are handled by the caller). */
     static boolean eqCoercible(Type lt, Type rt, Hir.Expr le, Hir.Expr re,
-                                       Symbols symbols) {
-        return TypeOps.base(lt, symbols).equals(TypeOps.base(rt, symbols))
+                                       NewtypeInners inners, Symbols symbols) {
+        return TypeOps.base(lt, inners).equals(TypeOps.base(rt, inners))
                 && literalPairsNewtype(lt, rt, le, re, symbols);
     }
 

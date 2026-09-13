@@ -147,6 +147,7 @@ public record DecisionReading(String behavior, List<Ruled> found, Enumeration en
         DecisionSubjects subjects =
                 new DecisionSubjects(read.domain(), read.rules().symbols(),
                         read.rules().published(), read.rules().kinds(), read.rules().newtypes(),
+                        read.rules().inners(),
                         dependencies);
         return new DecisionMeanings(states, subjects,
                 new DecisionComparison(read.domain(), read.rules(), subjects));

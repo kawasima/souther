@@ -94,6 +94,11 @@ class WhereAReadingStoppedComesBackWithWhatItWasReadInTest {
             }
 
             @Override
+            public NewtypeInners inners() {
+                return NewtypeInners.NONE;
+            }
+
+            @Override
             public LinearForm<String> leafOf(Core e, String at) {
                 return null;
             }

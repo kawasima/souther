@@ -447,9 +447,11 @@ final class ContainersAddingUp {
         Symbols symbols = reading.source().symbols();
         DeclaredBounds.CountRange declared =
                 DeclaredBounds.countsHeld(container, reading, null);
-        ValueName.Stdlib counts = NumericMeasures.takenOf(container.declared(), symbols);
+        ValueName.Stdlib counts =
+                NumericMeasures.takenOf(container.declared(), reading.source().inners());
         NumericTerm.FromOnePosition term = counts == null ? null
-                : NumericTerm.TakenOf.of(counts, root, container.declared(), symbols);
+                : NumericTerm.TakenOf.of(counts, root, container.declared(),
+                        reading.source().inners(), symbols);
         NumericDomain.Bounds runs = term == null ? null : within.runsBetween(term);
         if (runs == null) {
             return declared;

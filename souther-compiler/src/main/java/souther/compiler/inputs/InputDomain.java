@@ -1393,8 +1393,9 @@ public final class InputDomain {
         TypeView view = input.view();
         Type type = view.declared();
         Carrier carried =
-                Carrier.ofValue(type, source.symbols(), source.kinds(), source.published());
-        ValueName.Stdlib taken = NumericMeasures.takenOf(type, source.symbols());
+                Carrier.ofValue(type, source.inners(), source.symbols(), source.kinds(),
+                        source.published());
+        ValueName.Stdlib taken = NumericMeasures.takenOf(type, source.inners());
         // The ends the value this sits in places on this position, which its own type says nothing
         // about. Read beside the type's own rules and not after them: a clause naming one coordinate
         // and a constant places an end wherever it is written, so where the rule was written is not
@@ -1426,7 +1427,7 @@ public final class InputDomain {
         // position holds without stating where they stop, and one that states where they stop
         // without naming any of them.
         AdmissibleSet admitted =
-                placed.admits(path, souther.compiler.check.TypeOps.base(type, source.symbols()));
+                placed.admits(path, souther.compiler.check.TypeOps.base(type, source.inners()));
         List<PositionBounds> bounds = new ArrayList<>();
         for (NumberAt.OfWhatNumber kind : kinds) {
             bounds.add(boundsOn(kind, path, type, taken, source, carried, placed,
@@ -1509,7 +1510,8 @@ public final class InputDomain {
         }
         BlockReason.RuleReadingStopped here = found.aReadingThatStopped();
         if (!declared.isEmpty()) {
-            return Crossing.of(declared, view, admissible, admitted, source.symbols(),
+            return Crossing.of(declared, view, admissible, admitted, source.inners(),
+                    source.symbols(),
                     source.kinds(), source.published(), here);
         }
         // The values a rule named, where the type states no division. Not crossed with anything:
@@ -1517,7 +1519,7 @@ public final class InputDomain {
         // is one they admit. Nothing is read for a value whose own rules contradict — there is no
         // value of it for a rule to have named.
         List<Case> named = nothingExists ? List.of()
-                : Distinctions.ofValues(admitted.approximation(), type, source.symbols());
+                : Distinctions.ofValues(admitted.approximation(), type, source.inners());
         BlockReason.ReadingStopReason why = admitted.whyPartial() != null
                 ? Crossing.stopped(admitted.whyPartial()) : here;
         if (why != null) {
@@ -1590,7 +1592,7 @@ public final class InputDomain {
         NumericTerm.FromOnePosition term = switch (kind) {
             case NumberAt.OfWhatNumber.OfItsOwnValue _ -> new NumericTerm.ValueOf(path);
             case NumberAt.OfWhatNumber.OfWhatAnOperationAnswers _ ->
-                    NumericTerm.TakenOf.of(taken, path, type, source.symbols());
+                    NumericTerm.TakenOf.of(taken, path, type, source.inners(), source.symbols());
         };
         if (term == null) {
             throw new IllegalStateException(
@@ -1730,7 +1732,8 @@ public final class InputDomain {
             throw new IllegalStateException("a clause of `" + path + "` was read as a rule about `"
                     + by + "`, which is not an operation a number is taken by");
         }
-        NumericTerm.TakenOf taken = NumericTerm.TakenOf.of(operation, path, type, source.symbols());
+        NumericTerm.TakenOf taken =
+                NumericTerm.TakenOf.of(operation, path, type, source.inners(), source.symbols());
         if (taken == null) {
             throw new IllegalStateException("a clause of `" + path + "` was read as a rule about `"
                     + by + "`, and that takes no number of what stands there");

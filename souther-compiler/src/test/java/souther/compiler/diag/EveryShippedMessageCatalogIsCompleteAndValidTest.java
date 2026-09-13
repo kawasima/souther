@@ -430,7 +430,8 @@ public class EveryShippedMessageCatalogIsCompleteAndValidTest {
     void everyCatalogListsTheOrderedPrimitivesAndOnlyThose() throws IOException {
         Set<String> ordered = new TreeSet<>();
         for (Type.Prim prim : Type.Prim.values()) {
-            if (Ordering.of(prim, null, DeclarationKinds.NONE, PublishedDeclarations.NONE)
+            if (Ordering.of(prim, souther.compiler.check.NewtypeInners.NONE, null, DeclarationKinds.NONE,
+                    PublishedDeclarations.NONE)
                     != null) {
                 ordered.add(prim.shown());
             }

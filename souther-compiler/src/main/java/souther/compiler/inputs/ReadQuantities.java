@@ -180,6 +180,7 @@ final class ReadQuantities implements Quantities {
         // other — an answer about no reading, wearing this one's name.
         held(term);
         return TermOrdering.of(term, typeAt.apply(term.subjectPath()),
+                ruleReading.source().inners(),
                 ruleReading.source().symbols(), ruleReading.source().kinds(),
                 ruleReading.source().published());
     }
@@ -239,7 +240,7 @@ final class ReadQuantities implements Quantities {
         }
         NumericTerm.TakenOf term =
                 NumericTerm.TakenOf.of(operation, at, typeAt.apply(at),
-                        ruleReading.source().symbols());
+                        ruleReading.source().inners(), ruleReading.source().symbols());
         return term != null && term.takenAs() instanceof TakenAs.HowManyItHolds ? term : null;
     }
 

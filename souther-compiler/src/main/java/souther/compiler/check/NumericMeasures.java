@@ -104,8 +104,8 @@ public final class NumericMeasures {
      * observation read off a row cannot disagree about which count was meant. Reaches through as
      * many newtypes as the type is written with: a name wrapped round a list is still a list.
      */
-    public static ValueName.Stdlib takenOf(Type type, Symbols symbols) {
-        Type carried = TypeOps.base(type, symbols);
+    public static ValueName.Stdlib takenOf(Type type, NewtypeInners inners) {
+        Type carried = TypeOps.base(type, inners);
         if (carried == Type.STRING) {
             return ValueName.Stdlib.operation("String", "length");
         }

@@ -1,5 +1,6 @@
 package souther.compiler.partition;
 
+import souther.compiler.check.NewtypeInners;
 import souther.compiler.check.Symbols;
 import souther.compiler.inputs.BlockReason;
 import souther.compiler.inputs.FilingCoordinate;
@@ -96,7 +97,7 @@ public final class LinesWhereTheyFall {
             // here, so it has nothing to say those others were ever expected. There is no partial
             // filing to write: what a name stands at is one list and this maps it.
             List<NumericTerm> destinations =
-                    standingOf(inputs, each.at(), symbols, each.by()).all();
+                    standingOf(inputs, each.at(), read.rules().inners(), symbols, each.by()).all();
             destinations.forEach(at -> out.add(measuredAt(each, at)));
         }
         // And the rules that would have divided a position and did not, through the same authority
@@ -105,7 +106,8 @@ public final class LinesWhereTheyFall {
         // moved — so a position would be composed out of rules one of these was meant to stop.
         List<ClassingBlocker> outBlocked = new ArrayList<>();
         for (ClassingBlocker each : blocked) {
-            standingOf(inputs, each.at(), symbols, each.by()).all().forEach(at -> {
+            standingOf(inputs, each.at(), read.rules().inners(), symbols, each.by()).all()
+                    .forEach(at -> {
                 NumericTerm.FromOnePosition here = at.atOnePosition();
                 // Held to what the evidence beside it is held to. A destination no single position
                 // answers is this compiler contradicting the reading that produced the blocker, and
@@ -185,7 +187,7 @@ public final class LinesWhereTheyFall {
         Symbols symbols = read.symbols();
         List<FiledName> filed = new ArrayList<>();
         for (NumericTerm term : line.cuts().of().terms()) {
-            switch (standingOf(inputs, term, symbols, line.by())) {
+            switch (standingOf(inputs, term, read.rules().inners(), symbols, line.by())) {
                 // Where the model wrote it, so the line is already about the position it names.
                 case WhereTheNameStands.AsWritten _ -> { }
                 case WhereTheNameStands.FiledAt at -> filed.add(new FiledName(term, at));
@@ -250,7 +252,7 @@ public final class LinesWhereTheyFall {
      * so a fourth outcome is a question asked of this method and not an answer it already gives.
      */
     private static WhereTheNameStands standingOf(InputDomain inputs, NumericTerm term,
-                                                 Symbols symbols,
+                                                 NewtypeInners inners, Symbols symbols,
                                                  RuleEvidenceOrigin origin) {
         TermPath path = term.subjectPath();
         if (inputs.at(path) != null) {
@@ -269,7 +271,7 @@ public final class LinesWhereTheyFall {
         for (souther.compiler.inputs.PlacementOutcome outcome : filing.outcomes()) {
             switch (outcome) {
                 case souther.compiler.inputs.PlacementOutcome.Filed(PositionId at) ->
-                        filed.add(termAt(term, at, inputs, symbols));
+                        filed.add(termAt(term, at, inputs, inners, symbols));
                 // The reading held to what it already said about this case: no row is written under
                 // it, so there is no position there for a line to be about. Nothing is owed and
                 // nothing is left over.
@@ -295,10 +297,10 @@ public final class LinesWhereTheyFall {
      * compiler contradicting itself rather than a place to drop one.
      */
     private static NumericTerm termAt(NumericTerm term, PositionId at, InputDomain inputs,
-                                      Symbols symbols) {
+                                      NewtypeInners inners, Symbols symbols) {
         Position position = inputs.at(at.at());
         NumericTerm moved = position == null ? null
-                : term.movedTo(at.at(), position.type(), symbols);
+                : term.movedTo(at.at(), position.type(), inners, symbols);
         if (moved == null) {
             throw new IllegalStateException(
                     "`" + term + "` was filed at " + at + " and cannot be taken there, though a "

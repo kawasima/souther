@@ -1326,7 +1326,7 @@ public final class InvariantChecker {
         // operation — the one that counts what the position's type holds. A coordinate that recorded
         // only "not the value" brought a count and a number some other operation answers of the same
         // location to one name (#1027).
-        ValueName countsIt = NumericMeasures.takenOf(type, symbols);
+        ValueName countsIt = NumericMeasures.takenOf(type, terms.newtypeInners());
         FactSubject counted = countsIt == null ? null : terms.takenAtomOf(value, type, at);
         if (counted != null) {
             held.put(path, new FieldDomains.Counted(counted, countsIt));
@@ -1337,7 +1337,7 @@ public final class InvariantChecker {
         // ends that walk, and a copy of it here is a place the two could come to disagree.
         Core inner = value;
         Type worn = type;
-        for (TypeOps.Layer layer : TypeOps.newtypeChain(type, symbols)) {
+        for (TypeOps.Layer layer : TypeOps.newtypeChain(type, terms.newtypeInners())) {
             Type under = TypeOps.newtypeInner(layer.named(), symbols);
             if (under == null) {
                 break;
@@ -1961,7 +1961,8 @@ public final class InvariantChecker {
         Map<FactSubject, Coordinate> byName = new LinkedHashMap<>();
         keys.forEach((path, key) -> {
             Carrier carrier =
-                    Carrier.ofValue(typeAt.get(path), symbols, terms.kinds(), terms.published());
+                    Carrier.ofValue(typeAt.get(path), terms.newtypeInners(), symbols,
+                            terms.kinds(), terms.published());
             byName.put(key, new Coordinate(NumberAt.valueOf(path), carrier));
             FactSubject atom = atoms.get(path);
             if (atom != null) {

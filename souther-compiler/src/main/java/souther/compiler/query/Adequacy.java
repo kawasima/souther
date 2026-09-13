@@ -1398,7 +1398,8 @@ public final class Adequacy {
                         case BoundaryForMeasurement.Derived(Sig sig, InputForMeasurement input) ->
                                 evidenceOf(behavior.name(), sig, scope.value(),
                                         Shapes.publishedDeclarations(db),
-                                        Shapes.declarationKinds(db), asked,
+                                        Shapes.declarationKinds(db), Shapes.newtypeInners(db),
+                                        asked,
                                         RowReadings.readingFor(byTarget, behavior.name()),
                                         InputPositions.of(input),
                                         InputCaseExclusions.of(input),
@@ -6411,10 +6412,11 @@ public final class Adequacy {
      * numerator answering with the outermost of them, so every row would land outside the set it is
      * counted in: {@code 1} of {@code 2} covered, and both of the two still owed a row.
      */
-    private static Set<TypeSymbol> inputCoverableCases(Type t, Symbols symbols,
+    private static Set<TypeSymbol> inputCoverableCases(Type t,
+                                                       souther.compiler.check.NewtypeInners inners,
                                                        DeclarationKinds kinds,
                                                        PublishedDeclarations published) {
-        return casesOfSum(TypeOps.base(t, symbols), kinds, published);
+        return casesOfSum(TypeOps.base(t, inners), kinds, published);
     }
 
     /**
@@ -6453,6 +6455,7 @@ public final class Adequacy {
      */
     static SignatureEvidence evidenceOf(String name, Sig sig, Symbols symbols,
                                         PublishedDeclarations published, DeclarationKinds kinds,
+                                        souther.compiler.check.NewtypeInners inners,
                                         boolean asked,
                                         RowReading seen,
                                         InputPositions layout,
@@ -6480,7 +6483,7 @@ public final class Adequacy {
         List<Set<TypeSymbol>> inExcluded = new ArrayList<>(ins.size());
         int[] unreadableIn = new int[ins.size()];
         for (int i = 0; i < ins.size(); i++) {
-            Set<TypeSymbol> declared = inputCoverableCases(ins.get(i), symbols, kinds, published);
+            Set<TypeSymbol> declared = inputCoverableCases(ins.get(i), inners, kinds, published);
             declaredIn.add(declared);
             inSpecified.add(new LinkedHashSet<>());
             inExecuted.add(new LinkedHashSet<>());

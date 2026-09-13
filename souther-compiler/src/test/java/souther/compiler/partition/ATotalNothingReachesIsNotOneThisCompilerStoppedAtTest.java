@@ -95,7 +95,7 @@ class ATotalNothingReachesIsNotOneThisCompilerStoppedAtTest {
     private static TermRealizations.Realization totalOf(Count total) {
         NumericTerm.TakenOf sum = NumericTerm.TakenOf.of(
                 ValueName.Stdlib.operation("List", "sum"), TermPath.of("ns"), OF_WHOLE_NUMBERS,
-                SYMBOLS);
+                souther.compiler.check.ScopedDeclarations.wrapsOf(SYMBOLS), SYMBOLS);
         assertNotNull(sum, "a walk that adds up a list of whole numbers is a number of it");
         TermOrders orders = TermOrdersFixtures.at(sum, OF_WHOLE_NUMBERS, SYMBOLS);
         return TermRealizations.at(OF_WHOLE_NUMBERS, orders, total,

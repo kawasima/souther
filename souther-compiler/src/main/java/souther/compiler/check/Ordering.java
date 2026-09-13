@@ -82,9 +82,9 @@ public sealed interface Ordering {
      * TypeOps#supportsOrdering} reports. Asking here and reporting there is one question and not
      * two: a reader that admits a value it cannot emit a comparison for is what #856 was.
      */
-    static Ordering of(Type type, Symbols symbols, DeclarationKinds kinds,
+    static Ordering of(Type type, NewtypeInners inners, Symbols symbols, DeclarationKinds kinds,
                        PublishedDeclarations published) {
-        TypeOps.NewtypeSpine spine = TypeOps.newtypeSpineAsWritten(type, symbols);
+        TypeOps.NewtypeSpine spine = TypeOps.newtypeSpine(type, inners);
         Ordering terminal = ofTerminal(spine.terminal(), symbols, kinds, published);
         if (terminal == null) {
             return null;
@@ -101,10 +101,11 @@ public sealed interface Ordering {
      * open to the same order and are still not comparable (ADR-0047). Asked here of the opened
      * types, this answers for a pair that rule has already admitted.
      */
-    static Ordering ofComparison(Type lt, Type rt, Symbols symbols, DeclarationKinds kinds,
+    static Ordering ofComparison(Type lt, Type rt, NewtypeInners inners, Symbols symbols,
+                                 DeclarationKinds kinds,
                                  PublishedDeclarations published) {
-        Type lb = TypeOps.base(lt, symbols);
-        Type rb = TypeOps.base(rt, symbols);
+        Type lb = TypeOps.base(lt, inners);
+        Type rb = TypeOps.base(rt, inners);
         // A case value, a union of cases and the sum itself are all comparable on the sum's order
         // without ranging over it, and either side may be the one that names the sum — so the
         // enumeration is read off the pair rather than off one operand.

@@ -4,6 +4,7 @@ import souther.compiler.check.AffineForms;
 import souther.compiler.check.Location;
 import souther.compiler.check.DeclarationKinds;
 import souther.compiler.check.DeclarationNewtypes;
+import souther.compiler.check.NewtypeInners;
 import souther.compiler.check.PublishedDeclarations;
 import souther.compiler.check.Symbols;
 import souther.compiler.numeric.LinearForm;
@@ -37,6 +38,7 @@ import java.util.Set;
  */
 record DecisionSubjects(InputDomain inputs, Symbols symbols, PublishedDeclarations published,
                         DeclarationKinds kinds, DeclarationNewtypes newtypes,
+                        NewtypeInners inners,
                         Set<ValueName.Behavior> dependencies) {
 
     DecisionSubjects {
@@ -151,6 +153,11 @@ record DecisionSubjects(InputDomain inputs, Symbols symbols, PublishedDeclaratio
             @Override
             public DeclarationKinds kinds() {
                 return kinds;
+            }
+
+            @Override
+            public NewtypeInners inners() {
+                return inners;
             }
 
             @Override

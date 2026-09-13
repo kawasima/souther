@@ -164,7 +164,9 @@ public sealed interface Carrier extends ValueOrder {
      * that answers. None of them falls out of range on this account.
      */
     static Carrier ofPrimitive(Type type) {
-        return type instanceof Type.Prim ? ofValue(type, null, DeclarationKinds.NONE, null) : null;
+        return type instanceof Type.Prim
+                ? ofValue(type, NewtypeInners.NONE, null, DeclarationKinds.NONE, null)
+                : null;
     }
 
     /**
@@ -193,17 +195,18 @@ public sealed interface Carrier extends ValueOrder {
      * makes {@code data Cutoff = Date} the same carrier as a bare {@code Date}, and
      * {@code data StageN = Stage} the same carrier as a bare {@code Stage}.
      */
-    static Carrier ofValue(Type type, Symbols symbols, DeclarationKinds kinds,
+    static Carrier ofValue(Type type, NewtypeInners inners, Symbols symbols,
+                           DeclarationKinds kinds,
                            PublishedDeclarations published) {
         // Which order a value of this type is compared on is {@link Ordering}'s, and this asks it
         // rather than deciding what an enumeration is a second time. Every one of its answers is
         // answered for here, so an order added there is one this has to place or say it has no
         // count for — the direction #856 went silent in was a reader measuring what another refused.
-        Ordering how = Ordering.of(type, symbols, kinds, published);
+        Ordering how = Ordering.of(type, inners, symbols, kinds, published);
         if (how == null) {
             return null;
         }
-        Type base = TypeOps.base(type, symbols);
+        Type base = TypeOps.base(type, inners);
         return switch (how.opened()) {
             // Being ordered is not being counted: two dates order alike whatever a line on one is
             // counted in, and which count that is belongs here and is asked of the type.

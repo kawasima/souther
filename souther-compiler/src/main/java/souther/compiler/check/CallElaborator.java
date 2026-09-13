@@ -71,7 +71,8 @@ public final class CallElaborator {
             default -> null;
         };
         if (element == null || element instanceof Type.Nothing
-                || TypeOps.supportsOrdering(element, ctx.symbols(), ctx.kinds(), ctx.published())) {
+                || TypeOps.supportsOrdering(element, ctx.inners(), ctx.symbols(), ctx.kinds(),
+                        ctx.published())) {
             return;
         }
         String name = call.written().substring(call.written().indexOf('.') + 1);
@@ -93,7 +94,8 @@ public final class CallElaborator {
         }
         Type answered = TypeOps.substitute(declaredKey.result(), bindings);
         if (BottomInfer.isBottom(answered) || answered instanceof Type.Var
-                || TypeOps.supportsOrdering(answered, ctx.symbols(), ctx.kinds(), ctx.published())) {
+                || TypeOps.supportsOrdering(answered, ctx.inners(), ctx.symbols(), ctx.kinds(),
+                        ctx.published())) {
             return;
         }
         throw CompileException.of(Diagnostic

@@ -59,7 +59,7 @@ class ALimitThatFiredIsNotALimitTheTermReadTest {
             ValueName.Stdlib.operation("List", "sum"),
             new RunSource.ProjectedOccurrences(UNDER),
             souther.compiler.types.Type.Prim.INT,
-            Symbols.none(DefaultStdlib.get()));
+            souther.compiler.check.NewtypeInners.NONE, Symbols.none(DefaultStdlib.get()));
 
     private static final TermOrders ON_THE_TOTAL =
             TermOrdersFixtures.itself(TOTAL, new Carrier.Whole());
@@ -136,7 +136,7 @@ class ALimitThatFiredIsNotALimitTheTermReadTest {
                 ValueName.Stdlib.operation("List", "length"),
                 TermPath.of("lines"),
                 new souther.compiler.types.Type.ListOf(souther.compiler.types.Type.Prim.INT),
-                Symbols.none(DefaultStdlib.get()));
+                souther.compiler.check.NewtypeInners.NONE, Symbols.none(DefaultStdlib.get()));
         return new BorderQuantity.OverAForm("decide", LinearForm.atom((NumericTerm) counted),
                 Map.of(counted, TermOrdersFixtures.itself(counted, new Carrier.Whole())));
     }

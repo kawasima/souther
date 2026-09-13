@@ -54,7 +54,7 @@ public final class InputNumber {
             };
             if (of != null) {
                 return NumericTerm.TakenOf.of(measured.operation(), of,
-                        inputs.typeAt(of, source), symbols);
+                        inputs.typeAt(of, source), source.inners(), symbols);
             }
             // A location the operation is not taken of, or a value standing at none. The second is
             // a walk's answer, and a number over the values it walked is a term of its own where
@@ -141,7 +141,8 @@ public final class InputNumber {
         }
         Type stands = inputs.typeAt(under, source);
         return stands == null ? null
-                : NumericTerm.TakenOver.of(measured.operation(), over, stands, symbols);
+                : NumericTerm.TakenOver.of(measured.operation(), over, stands, source.inners(),
+                        symbols);
     }
 
 }

@@ -253,7 +253,8 @@ final class ValueClassGen {
             // two gates hold of the same sums today. Written as one, a wire form that stopped being
             // a bare tag would take the ordering methods with it and leave a comparison calling a
             // method nothing emitted.
-            if (Ordering.of(Type.ref(sum.declares()), symbols, ctx.kinds, ctx.published)
+            if (Ordering.of(Type.ref(sum.declares()), ctx.inners, symbols, ctx.kinds,
+                    ctx.published)
                     instanceof Ordering.Places places
                     && places.enumeration().equals(sum.declares())) {
                 emitOrderMethods(cb, cdX, alternatives.atoms());
@@ -502,7 +503,7 @@ final class ValueClassGen {
 
     /** How the value a newtype wraps compares, as the newtype's own field holds it. */
     private Ordering orderOfWrapped(Type value) {
-        Ordering how = Ordering.of(value, symbols, ctx.kinds, ctx.published);
+        Ordering how = Ordering.of(value, ctx.inners, symbols, ctx.kinds, ctx.published);
         return how == null ? null : how.asHeld();
     }
 

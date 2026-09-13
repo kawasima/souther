@@ -116,7 +116,7 @@ class ABudgetIsNamedByThePlaceItStopsTest {
         Type ofWholeNumbers = new Type.ListOf(Type.INT);
         NumericTerm.TakenOf sum = NumericTerm.TakenOf.of(
                 ValueName.Stdlib.operation("List", "sum"), TermPath.of("ns"), ofWholeNumbers,
-                SYMBOLS);
+                souther.compiler.check.ScopedDeclarations.wrapsOf(SYMBOLS), SYMBOLS);
         assertNotNull(sum, "a walk that adds up a list of whole numbers is a number of it");
         TermOrders orders = souther.compiler.inputs.TermOrdersFixtures
                 .at(sum, ofWholeNumbers, SYMBOLS);

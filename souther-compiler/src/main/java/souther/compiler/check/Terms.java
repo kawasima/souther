@@ -523,6 +523,11 @@ final class Terms {
             }
 
             @Override
+            public NewtypeInners inners() {
+                return Terms.this.newtypeInners();
+            }
+
+            @Override
             public LinearForm<FactSubject> leafOf(Core e, Denotations where) {
                 LinearForm<FactSubject> named = affineReading.leafOf(e, where);
                 return named == null || named.coefs().keySet().stream().allMatch(names)
@@ -578,6 +583,11 @@ final class Terms {
                 @Override
                 public DeclarationKinds kinds() {
                     return Terms.this.kinds();
+                }
+
+                @Override
+                public NewtypeInners inners() {
+                    return Terms.this.newtypeInners();
                 }
 
                 @Override
@@ -904,7 +914,7 @@ final class Terms {
 
     /** The same, of a type a caller already holds. */
     private boolean carriesANumber(Type t) {
-        Carrier carrier = Carrier.ofValue(t, symbols, kinds(), published());
+        Carrier carrier = Carrier.ofValue(t, newtypeInners(), symbols, kinds(), published());
         return carrier != null && carrier.counts();
     }
 
@@ -1495,7 +1505,7 @@ final class Terms {
      * failure of this compiler.
      */
     private NumericDomain.Bounds extentOf(Type type) {
-        Carrier carrier = Carrier.ofValue(type, symbols, kinds(), published());
+        Carrier carrier = Carrier.ofValue(type, newtypeInners(), symbols, kinds(), published());
         if (carrier == null) {
             return null;
         }
@@ -1682,7 +1692,7 @@ final class Terms {
      * atom nothing bounds into the domain and call that an answer.
      */
     FactSubject takenAtomOf(Core e, Type type, Denotations at) {
-        ValueName.Stdlib counts = NumericMeasures.takenOf(type, symbols);
+        ValueName.Stdlib counts = NumericMeasures.takenOf(type, newtypeInners());
         if (counts == null) {
             return null;
         }
@@ -1743,7 +1753,7 @@ final class Terms {
      * in it.
      */
     Granularity granularityOf(Type t) {
-        Carrier carrier = Carrier.ofValue(t, symbols, kinds(), published());
+        Carrier carrier = Carrier.ofValue(t, newtypeInners(), symbols, kinds(), published());
         if (carrier == null || !carrier.counts()) {
             throw new IllegalStateException("not a number the domain carries: " + Type.show(t));
         }
@@ -2914,10 +2924,10 @@ final class Terms {
             return t;
         }
         if (!(t instanceof Type.Ref ref)) {
-            return TypeOps.numericBase(t, symbols);
+            return TypeOps.numericBase(t, newtypeInners());
         }
         return affineScalarBases.computeIfAbsent(ref.name(),
-                _ -> java.util.Optional.ofNullable(TypeOps.numericBase(t, symbols)))
+                _ -> java.util.Optional.ofNullable(TypeOps.numericBase(t, newtypeInners())))
                 .orElse(null);
     }
 

@@ -179,7 +179,8 @@ public final class DeclaredBounds {
      * the value and not about anything taken of it. */
     public static Range of(TypeView view, RuleReadingContext reading) {
         return of(view, reading,
-                Carrier.ofValue(view.declared(), reading.source().symbols(),
+                Carrier.ofValue(view.declared(), reading.source().inners(),
+                        reading.source().symbols(),
                         reading.source().kinds(), reading.source().published()), null);
     }
 
@@ -361,7 +362,7 @@ public final class DeclaredBounds {
     public static CountRange countsHeld(TypeView view, RuleReadingContext reading,
                                         FieldDomains.Held held) {
         ValueName.Stdlib counts =
-                NumericMeasures.takenOf(view.declared(), reading.source().symbols());
+                NumericMeasures.takenOf(view.declared(), reading.source().inners());
         Range sized = counts == null ? null : of(view, reading, Carrier.WHOLE, counts);
         Endpoint least = sized == null ? null : sized.min();
         Endpoint most = sized == null ? null : sized.max();

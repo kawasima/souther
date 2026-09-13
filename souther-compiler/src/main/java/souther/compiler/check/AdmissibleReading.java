@@ -540,7 +540,8 @@ final class AdmissibleReading {
         if (states) {
             return ValueSet.just(value);
         }
-        List<Value> every = ValueUniverse.of(type, symbols, terms.kinds(), published);
+        List<Value> every =
+                ValueUniverse.of(type, terms.newtypeInners(), symbols, terms.kinds(), published);
         if (every == null) {
             return ValueSet.allBut(value);
         }

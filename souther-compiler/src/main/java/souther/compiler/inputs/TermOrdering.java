@@ -1,6 +1,7 @@
 package souther.compiler.inputs;
 
 import souther.compiler.check.Carrier;
+import souther.compiler.check.NewtypeInners;
 import souther.compiler.check.NumericAnswers;
 import souther.compiler.check.DeclarationKinds;
 import souther.compiler.check.PublishedDeclarations;
@@ -28,16 +29,17 @@ final class TermOrdering {
      * safe to stand in for. A term that is what a location holds has one order twice, and says so
      * here rather than by two readings that happen to agree.
      */
-    static TermOrders of(NumericTerm term, Type positionType, Symbols symbols,
+    static TermOrders of(NumericTerm term, Type positionType, NewtypeInners inners,
+                         Symbols symbols,
                          DeclarationKinds kinds, PublishedDeclarations published) {
-        Carrier observed = observedOn(positionType, symbols, kinds, published);
+        Carrier observed = observedOn(positionType, inners, symbols, kinds, published);
         // One construction and not one per arm. A term that is a location's own content answers on
         // the order its value is read on, which is that order twice rather than a second way of
         // making a pair — and a second way is a second place a pair can come from.
         Carrier answered = switch (term) {
             case NumericTerm.ValueOf _ -> observed;
             case NumericTerm.TakenOf _, NumericTerm.TakenOver _ ->
-                    answeredOn(term, positionType, symbols, kinds, published);
+                    answeredOn(term, positionType, inners, symbols, kinds, published);
         };
         return new TermOrders(term, observed, answered);
     }
@@ -56,14 +58,17 @@ final class TermOrdering {
      * what it answers all the same. What is null there is a term measured by its own values, which
      * is the one case the position was the answer to.
      */
-    private static Carrier answeredOn(NumericTerm term, Type positionType, Symbols symbols,
+    private static Carrier answeredOn(NumericTerm term, Type positionType, NewtypeInners inners,
+                                      Symbols symbols,
                                       DeclarationKinds kinds, PublishedDeclarations published) {
         return switch (term) {
             case NumericTerm.ValueOf _ -> positionType == null ? null
-                    : Carrier.ofValue(positionType, symbols, kinds, published);
+                    : Carrier.ofValue(positionType, inners, symbols, kinds, published);
             case NumericTerm.TakenOf taken -> {
-                Type answers = NumericAnswers.typeOf(taken.operation(), positionType, symbols);
-                yield answers == null ? null : Carrier.ofValue(answers, symbols, kinds, published);
+                Type answers =
+                        NumericAnswers.typeOf(taken.operation(), positionType, inners, symbols);
+                yield answers == null ? null
+                        : Carrier.ofValue(answers, inners, symbols, kinds, published);
             }
             // Asked of the operation as a taking is, and asked of what it was given: a run is a
             // container of the values standing at the place it is read from, so what the operation
@@ -73,8 +78,9 @@ final class TermOrdering {
             // answering what its elements are.
             case NumericTerm.TakenOver over -> {
                 Type answers = positionType == null ? null : NumericAnswers.typeOf(
-                        over.operation(), new Type.ListOf(positionType), symbols);
-                yield answers == null ? null : Carrier.ofValue(answers, symbols, kinds, published);
+                        over.operation(), new Type.ListOf(positionType), inners, symbols);
+                yield answers == null ? null
+                        : Carrier.ofValue(answers, inners, symbols, kinds, published);
             }
         };
     }
@@ -88,9 +94,10 @@ final class TermOrdering {
      * refused is silently reading the value on the order its answer is measured on, which is right
      * for every operation whose two ends agree and wrong without a word for the first that does not.
      */
-    private static Carrier observedOn(Type positionType, Symbols symbols, DeclarationKinds kinds,
+    private static Carrier observedOn(Type positionType, NewtypeInners inners, Symbols symbols,
+                                      DeclarationKinds kinds,
                                       PublishedDeclarations published) {
         return positionType == null ? null
-                : Carrier.ofValue(positionType, symbols, kinds, published);
+                : Carrier.ofValue(positionType, inners, symbols, kinds, published);
     }
 }

@@ -121,6 +121,11 @@ class WhatThisGrammarReadsIsReadWithoutACallersLeafTest {
             }
 
             @Override
+            public NewtypeInners inners() {
+                return NewtypeInners.NONE;
+            }
+
+            @Override
             public LinearForm<String> leafOf(Core e, String at) {
                 fail("the grammar owns this reading and asked a caller's leaf about " + e);
                 return null;
