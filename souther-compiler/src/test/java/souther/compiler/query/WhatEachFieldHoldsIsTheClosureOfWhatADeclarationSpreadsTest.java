@@ -39,7 +39,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class WhatEachFieldHoldsIsTheClosureOfWhatADeclarationSpreadsTest {
 
     private static final TypeKey LINE = new TypeKey("shop.prices", "Line");
-    private static final TypeKey MONEY = new TypeKey("shop.prices", "Money");
     private static final TypeKey CENTS = new TypeKey("shop.prices", "Cents");
     private static final TypeKey PICKED = new TypeKey("shop.prices", "Picked");
     private static final TypeKey NOWHERE = new TypeKey("shop.prices", "Nowhere");

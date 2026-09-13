@@ -1,6 +1,5 @@
 package souther.compiler.check;
 
-import souther.compiler.DefaultStdlib;
 import souther.compiler.types.BinOp;
 import souther.compiler.ast.Hir;
 import souther.compiler.types.ConstructOccurrence;
