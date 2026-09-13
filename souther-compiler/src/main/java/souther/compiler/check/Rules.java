@@ -156,13 +156,31 @@ public sealed interface Rules {
         if (named == null) {
             return new NoneWritten();
         }
+        if (named instanceof TypeSymbol.AtModule at) {
+            return switch (source.kinds().of(at.key())) {
+                // Which form the declaration is, and nothing it says: whether a rule can be written
+                // on one at all is decided by the form, and what is written on it is read below
+                // that. Exhaustive over the forms, so one added to the language arrives here as a
+                // compile error rather than as a value the model states no rule about.
+                case DeclarationKind.PRODUCT ->
+                        new Read(FieldDomains.of(at, source, policy, machines));
+                // A sum names which cases a value can be and carries no clause of its own; a unit
+                // data has one value and may write no rule about it (spec §unit-data). Both are
+                // declarations this looked at and found nothing written on, which is not the same
+                // as not having looked.
+                case DeclarationKind.SUM, DeclarationKind.UNIT -> new NoneWritten();
+                // A name denoting no declaration. Nothing is written about it here because there is
+                // nothing here to write it on — and what that costs the value is said by the
+                // reading of its shape, which reports the type as one this could not interpret.
+                case null -> new NoneWritten();
+            };
+        }
+        // A primitive or one of the language's own cases, which no module wrote. The world is asked
+        // here and nowhere above it: what comes back is a declaration of the library's, and one
+        // that wrote fields would be this compiler answering a module's declaration for a name that
+        // is not one.
         return switch (source.symbols().declaredNode(named)) {
-            // A data is a declaration a module wrote, and this asked the declaration world with
-            // the identity to get one, so the test below never decides anything. It is how the
-            // name says which kind it is rather than a reader assuming it.
-            case Hir.Data data -> named instanceof TypeSymbol.AtModule at
-                    ? new Read(FieldDomains.of(at, source, policy, machines))
-                    : Declared.notAModules(named, data);
+            case Hir.Data data -> Declared.notAModules(named, data);
             // A sum names which cases a value can be and carries no clause of its own; a unit data
             // has one value and may write no rule about it (spec §unit-data). Both are declarations
             // this looked at and found nothing written on, which is not the same as not having

@@ -154,8 +154,7 @@ class WhatOneReadingDecidesIsLentWithItTest {
         FieldDomains canonical = asTheCompilationReads(compilation, "Held");
         TypeSymbol.AtModule held = declared("Held");
         RuleReadingSource source = RuleReadings.of(compilation, "demo");
-        Hir.Data data = (Hir.Data) source.symbols().declaredNode(held.key());
-        FieldDomains granting = FieldDomains.granting(held, data, source,
+        FieldDomains granting = FieldDomains.granting(held, source,
                 ReadAs.THE_COMPILATION_DOES, Set.of(declared("Common")),
                 compilation.db().readings());
 

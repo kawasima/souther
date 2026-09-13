@@ -137,7 +137,7 @@ final class CardinalityTransfer {
         // counted between are gone with them. Asked before the positions, which have nothing to say
         // about a value the declaration as a whole refuses, and nearer than anything they could say.
         Optional<Emptiness> contradiction =
-                FieldDomains.granting(named, data, source, policy, granted, machines)
+                FieldDomains.granting(named, source, policy, granted, machines)
                         .holdsNothing(machines.of(named.key()));
         if (contradiction.isPresent()) {
             return Cardinality.none(contradiction.get());
