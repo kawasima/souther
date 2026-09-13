@@ -34,8 +34,7 @@ final class ValueUniverse {
      * <p>Read through whatever names the type wears: a name wrapped round a boolean is two values
      * like the boolean it wraps.
      */
-    static List<Value> of(Type type, NewtypeInners inners, Symbols symbols,
-                          DeclarationKinds kinds,
+    static List<Value> of(Type type, NewtypeInners inners, DeclarationKinds kinds,
                           PublishedDeclarations published) {
         Type base = TypeOps.base(type, inners);
         if (base instanceof Type.Prim prim) {

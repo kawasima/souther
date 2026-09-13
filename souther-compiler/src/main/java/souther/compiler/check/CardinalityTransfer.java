@@ -186,7 +186,7 @@ final class CardinalityTransfer {
     private static Cardinality howManyValues(Type type, NewtypeInners inners, Symbols symbols,
                                              DeclarationKinds kinds,
                                              PublishedDeclarations published) {
-        List<Value> every = ValueUniverse.of(type, inners, symbols, kinds, published);
+        List<Value> every = ValueUniverse.of(type, inners, kinds, published);
         return every == null || every.isEmpty() ? Cardinality.UNKNOWN
                 : Cardinality.atMost(every.size());
     }

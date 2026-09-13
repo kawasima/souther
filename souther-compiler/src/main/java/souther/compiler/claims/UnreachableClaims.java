@@ -111,7 +111,7 @@ public final class UnreachableClaims {
         // behind an abort — a case nobody can be asked for a row at and a gap that would stay open
         // for ever. The same rule, and the same reading, the numbering stops on.
         if (reachable && e instanceof Core.Match match) {
-            claimedIn(match, names, symbols, newtypes, plan, answering, found);
+            claimedIn(match, names, newtypes, plan, answering, found);
         }
         boolean inside = reachable && answering.at(e);
         // Each arm under what it says the value it matched turned out to be: the name it binds
@@ -137,7 +137,7 @@ public final class UnreachableClaims {
      * <p>Says nothing where the scrutinee names no position of this input: there is nothing to
      * claim about, and what is under its arms is walked by the caller either way.
      */
-    private static void claimedIn(Core.Match match, InputReads reads, Symbols symbols,
+    private static void claimedIn(Core.Match match, InputReads reads,
                                   DeclarationNewtypes newtypes,
                                   souther.compiler.coverage.CoverageSites.Plan plan,
                                   NormalReturn answering, List<Claim> found) {

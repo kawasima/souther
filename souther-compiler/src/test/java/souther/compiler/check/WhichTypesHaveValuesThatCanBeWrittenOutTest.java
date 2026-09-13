@@ -42,7 +42,8 @@ class WhichTypesHaveValuesThatCanBeWrittenOutTest {
     private static List<Value> of(String source, String named) {
         Symbols symbols = symbolsOf(source);
         return ValueUniverse.of(
-                Type.ref(TypeSymbols.declared(new TypeKey(symbols.module(), named))), ScopedDeclarations.wrapsOf(symbols), symbols,
+                Type.ref(TypeSymbols.declared(new TypeKey(symbols.module(), named))),
+                ScopedDeclarations.wrapsOf(symbols),
                 ScopedDeclarations.kindsOf(symbols), ScopedDeclarations.of(symbols));
     }
 
@@ -50,7 +51,6 @@ class WhichTypesHaveValuesThatCanBeWrittenOutTest {
     void aBooleanIsTwoValues() {
         assertEquals(List.of(Value.truth(false), Value.truth(true)),
                 ValueUniverse.of(Type.BOOL, NewtypeInners.NONE,
-                        symbolsOf("module demo\n\ndata U\n"),
                         DeclarationKinds.NONE, PublishedDeclarations.NONE));
     }
 
@@ -80,7 +80,7 @@ class WhichTypesHaveValuesThatCanBeWrittenOutTest {
                 List.of(named(symbols, "Red"), named(symbols, "Green"), named(symbols, "Blue")),
                 ValueUniverse.of(
                         Type.ref(TypeSymbols.declared(new TypeKey(symbols.module(), "Colour"))),
-                        ScopedDeclarations.wrapsOf(symbols), symbols,
+                        ScopedDeclarations.wrapsOf(symbols),
                         ScopedDeclarations.kindsOf(symbols),
                         ScopedDeclarations.of(symbols)));
     }
@@ -98,11 +98,14 @@ class WhichTypesHaveValuesThatCanBeWrittenOutTest {
      */
     @Test
     void thePositionsWithNoValuesToWriteOutAreAnsweredNothing() {
-        Symbols symbols = symbolsOf("module demo\n\ndata U\n");
-        assertNull(ValueUniverse.of(Type.STRING, NewtypeInners.NONE, symbols, DeclarationKinds.NONE, PublishedDeclarations.NONE));
-        assertNull(ValueUniverse.of(Type.INT, NewtypeInners.NONE, symbols, DeclarationKinds.NONE, PublishedDeclarations.NONE));
-        assertNull(ValueUniverse.of(Type.DECIMAL, NewtypeInners.NONE, symbols, DeclarationKinds.NONE, PublishedDeclarations.NONE));
-        assertNull(ValueUniverse.of(Type.DATE, NewtypeInners.NONE, symbols, DeclarationKinds.NONE, PublishedDeclarations.NONE));
+        assertNull(ValueUniverse.of(Type.STRING, NewtypeInners.NONE, DeclarationKinds.NONE,
+                PublishedDeclarations.NONE));
+        assertNull(ValueUniverse.of(Type.INT, NewtypeInners.NONE, DeclarationKinds.NONE,
+                PublishedDeclarations.NONE));
+        assertNull(ValueUniverse.of(Type.DECIMAL, NewtypeInners.NONE, DeclarationKinds.NONE,
+                PublishedDeclarations.NONE));
+        assertNull(ValueUniverse.of(Type.DATE, NewtypeInners.NONE, DeclarationKinds.NONE,
+                PublishedDeclarations.NONE));
     }
 
     /** A sum whose cases hold something is not an enumeration, so its values are not written out. */

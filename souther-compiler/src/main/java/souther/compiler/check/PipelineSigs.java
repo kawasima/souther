@@ -203,9 +203,9 @@ public final class PipelineSigs {
             walked.add(new Composition.Stage(reaches(stages.get(i)), g.outputType(),
                     TypeOps.isDataLike(mainline)
                             ? new Composition.Routing.OnCases(
-                                    mainlineCases(mainline, g, symbols, published))
+                                    mainlineCases(mainline, g, published))
                             : new Composition.Routing.Always()));
-            mainline = route(mainline, g, retired, symbols, published, pipe.pos());
+            mainline = route(mainline, g, retired, published, pipe.pos());
         }
         return new Composition(walked, withRetired(mainline, retired));
     }
@@ -270,7 +270,7 @@ public final class PipelineSigs {
     }
 
     /** The main-line leaf cases {@code g} accepts — the ones the backend routes into it (spec §type-routing). */
-    private static List<TypeSymbol> mainlineCases(Type mainline, Sig g, Symbols symbols,
+    private static List<TypeSymbol> mainlineCases(Type mainline, Sig g,
                                                   PublishedDeclarations published) {
         List<TypeSymbol> accepted = new ArrayList<>();
         for (TypeSymbol caseName : AtomSpace.subjectAtoms(mainline, published)) {
@@ -297,7 +297,7 @@ public final class PipelineSigs {
      * saying it once left a main line (§unmarked-sum), the plumbing is structural. Viewed on its own, `fg`
      * still has the merged sum `f`+`g` produce as its output.
      */
-    private static Type route(Type mainline, Sig g, Set<TypeSymbol> retired, Symbols symbols,
+    private static Type route(Type mainline, Sig g, Set<TypeSymbol> retired,
                               PublishedDeclarations published, SourcePos pos) {
         Type in = g.in();
         if (TypeOps.isDataLike(mainline)) {

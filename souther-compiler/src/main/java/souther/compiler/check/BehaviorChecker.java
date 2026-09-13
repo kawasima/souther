@@ -171,7 +171,7 @@ public final class BehaviorChecker {
                 int ordinal = armOrdinal++;
                 int clauseIndex = c;
                 collect(found, () -> rules.addAll(
-                        read(behavior, arm, answer, symbols, published, kinds, owner, params.size(),
+                        read(behavior, arm, answer, published, owner, params.size(),
                                 clauseIndex, ordinal)));
             }
             clauses.add(new BehaviorContract.Clause(written.name(), rules, written.pos(),
@@ -191,8 +191,7 @@ public final class BehaviorChecker {
      * answer does not have.
      */
     private static List<Rule> read(Hir.SpecBehavior behavior, Hir.EnsuresArm arm, CaseSpace answer,
-                                   Symbols symbols, PublishedDeclarations published,
-                                   DeclarationKinds kinds,
+                                   PublishedDeclarations published,
                                    BindingOwner owner, int paramCount, int clause,
                                    int ordinal) {
         boolean hasCases = !(answer instanceof CaseSpace.Plain);
