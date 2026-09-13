@@ -6,7 +6,7 @@ import souther.compiler.check.Shape;
 import souther.compiler.check.TypeView;
 import souther.compiler.types.TypeReachName;
 
-import java.util.Map;
+import java.util.SequencedMap;
 
 /**
  * The value a construction plan builds.
@@ -42,8 +42,13 @@ final class PlanComposer {
          * @param under composes a position of the plan, which is how a caller reaches the fields it
          *              does have a value under. Handed over rather than left to the caller so that
          *              what is below a field is still read the one way
+         *
+         *              <p>Answered in the order the record declares its fields, and answered as
+         *              something that has one, because a fixture is written field by field in that
+         *              order and a caller handed only which fields there are would write them in
+         *              whatever a walk of them came to.
          */
-        Map<String, FixtureTemplate> under(ConstructionPlan.Built built, Under under);
+        SequencedMap<String, FixtureTemplate> under(ConstructionPlan.Built built, Under under);
     }
 
     /** Composing one position of the plan, which is what a caller is given to reach below a field. */
@@ -116,7 +121,7 @@ final class PlanComposer {
     /** One record of the plan, out of whatever the caller has at the positions under it. */
     private static FixtureTemplate composed(ConstructionPlan.Built built, Values values,
                                             RuleReadingContext reading) {
-        Map<String, FixtureTemplate> fields =
+        SequencedMap<String, FixtureTemplate> fields =
                 values.under(built, node -> compose(node, values, reading));
         if (fields == null) {
             return null;

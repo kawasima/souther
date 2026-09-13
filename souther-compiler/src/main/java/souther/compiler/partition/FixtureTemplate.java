@@ -18,6 +18,7 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.SequencedMap;
 
 /**
  * A value written the way a row writes it — {@code Amount(0)}, {@code None}, {@code Overseas} — held
@@ -307,7 +308,7 @@ public record FixtureTemplate(String text, Hir.Expr value) {
      * @param moved the fields this writes over what the base holds, in the order they are written
      */
     public static FixtureTemplate spreading(TypeReachName.Written type, FixtureTemplate base,
-                                            Map<String, FixtureTemplate> moved) {
+                                            SequencedMap<String, FixtureTemplate> moved) {
         if (!(base.value() instanceof Hir.Var spread)) {
             throw new IllegalArgumentException("a spread names a value: " + base.text());
         }
@@ -326,8 +327,10 @@ public record FixtureTemplate(String text, Hir.Expr value) {
                         List.of(spread), NOWHERE, NO_SOURCE));
     }
 
-    /** A record, field by field, in the order the fields were declared. */
-    public static FixtureTemplate record(TypeReachName.Written type, Map<String, FixtureTemplate> fields) {
+    /** A record, field by field, in the order the fields were declared — which the fields are handed
+     *  over in, and which is why they are handed over as something that has one. */
+    public static FixtureTemplate record(TypeReachName.Written type,
+                                         SequencedMap<String, FixtureTemplate> fields) {
         List<String> written = new ArrayList<>();
         List<Hir.FieldInit> inits = new ArrayList<>();
         for (Map.Entry<String, FixtureTemplate> field : fields.entrySet()) {

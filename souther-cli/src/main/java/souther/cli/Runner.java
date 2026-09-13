@@ -278,7 +278,10 @@ public final class Runner {
         // against names the source settled.
         String requested = Reserved.name(requestedSpelling);
         Map<String, List<BehaviorRequirement>> requirements = requirementsOf(compilation, module);
-        Map<String, Hir.BehaviorDef> drivable = new java.util.LinkedHashMap<>();
+        // The ones that can be run, in the order the module declares them. A reader is given this
+        // list to pick from, so it is held as something that has an order rather than as a set of
+        // names put in whatever a walk of them came to.
+        java.util.SequencedMap<String, Hir.BehaviorDef> drivable = new java.util.LinkedHashMap<>();
         for (Hir.BehaviorDef b : module.behaviors()) {
             if (!exposes(module, b.name())) {
                 continue;
@@ -304,7 +307,7 @@ public final class Runner {
                         + " needing nothing injected, a `>->` pipeline when every stage is — and"
                         + " that the module exposes.");
             }
-            String names = String.join(", ", drivable.keySet());
+            String names = String.join(", ", drivable.sequencedKeySet());
             throw usage("run.behavior.several",
                     "several behaviors can be run — pick one with --behavior: " + names, names);
         }
@@ -312,7 +315,7 @@ public final class Runner {
         if (found != null) {
             return found;
         }
-        throw whyNotRunnable(compilation, module, requested, drivable.keySet());
+        throw whyNotRunnable(compilation, module, requested, drivable.sequencedKeySet());
     }
 
     /** A reason a behavior cannot be driven, in both forms: the catalog key with its arguments, and
@@ -384,7 +387,8 @@ public final class Runner {
      * author back to the same refusal.
      */
     private static RunException whyNotRunnable(Compilation compilation, Prepared module,
-                                               String name, java.util.Set<String> drivable) {
+                                               String name,
+                                               java.util.SequencedSet<String> drivable) {
         String available = drivable.isEmpty() ? "none" : String.join(", ", drivable);
         Map<String, List<BehaviorRequirement>> requirements = requirementsOf(compilation, module);
         for (Hir.BehaviorDef b : module.behaviors()) {

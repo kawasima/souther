@@ -18,6 +18,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.SequencedMap;
 import java.util.Set;
 
 /**
@@ -208,11 +209,11 @@ final class ConstructionPlan {
      * @param under the positions of its fields, in the order the declaration writes them
      */
     record Built(TermPath at, Type type, TypeSymbol of, List<TypeSymbol> worn,
-                 Map<String, Node> under) implements Node {
+                 SequencedMap<String, Node> under) implements Node {
 
         Built {
             worn = List.copyOf(worn);
-            under = java.util.Collections.unmodifiableMap(new LinkedHashMap<>(under));
+            under = java.util.Collections.unmodifiableSequencedMap(new LinkedHashMap<>(under));
         }
     }
 
@@ -651,7 +652,7 @@ final class ConstructionPlan {
             return givenUpAt(descent, here, building, settled.outer(),
                     anythingIsAskedUnder(here, decided, required));
         }
-        Map<String, Node> under = new LinkedHashMap<>();
+        SequencedMap<String, Node> under = new LinkedHashMap<>();
         Set<CompositionBudget> beyond = new LinkedHashSet<>();
         NodeResult.Unnarrowed owed = null;
         for (Map.Entry<String, Type> field : composed.fields().entrySet()) {

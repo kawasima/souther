@@ -885,7 +885,9 @@ public final class DataChecker {
         // the sums spread here, which a field the construction still wants was not in the shared part
         // of — all of them, because naming one of several would pick by position and send the author
         // to open a sum whose cases never had the field
-        Set<String> fromSums = new LinkedHashSet<>();
+        // Named to the author one after another, so held as something that has an order: the one the
+        // spreads are written in.
+        java.util.SequencedSet<String> fromSums = new LinkedHashSet<>();
         List<Spread> spread = new ArrayList<>();
         for (Core.Read read : spreads) {
             String sp = read.name();
