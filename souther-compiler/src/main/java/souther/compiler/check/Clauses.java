@@ -117,7 +117,7 @@ final class Clauses {
      * them answer alike.
      */
     Map<String, BindingId> bindingsOf(TypeSymbol.AtModule named) {
-        return bindings.computeIfAbsent(named, name -> TypeOps.fieldBindings(name, symbols));
+        return bindings.computeIfAbsent(named, name -> source().bindings().of(name));
     }
 
     /**

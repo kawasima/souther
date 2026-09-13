@@ -13,6 +13,7 @@ import souther.compiler.check.NewtypeInners;
 import souther.compiler.check.Normalized;
 import souther.compiler.check.PublishedDeclarations;
 import souther.compiler.stdlib.Stdlib;
+import souther.compiler.check.FieldBindings;
 import souther.compiler.check.ExpandedClauseLookup;
 import souther.compiler.check.ExpandedClauseResult;
 import souther.compiler.check.ExpandedClauses;
@@ -34,15 +35,19 @@ import souther.compiler.diag.Citation;
 import souther.compiler.diag.CompileException;
 import souther.compiler.diag.DiagnosticPlace;
 import souther.compiler.diag.Region;
+import souther.compiler.types.BindingId;
 import souther.compiler.types.BindingOwner;
 import souther.compiler.types.Type;
 import souther.compiler.types.TypeKey;
 import souther.compiler.types.TypeSymbol;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * What each declaration becomes before anything is checked against it, one achievement to a rung:
@@ -319,6 +324,94 @@ public final class Shapes {
         return declaration -> {
             Answer<Type> inner = db.ask(new NewtypeInnerOf(declaration));
             return inner.present() ? inner.value() : null;
+        };
+    }
+
+    /**
+     * Which binding each field a declaration reaches is.
+     *
+     * <p>The closure a walk from one declaration makes: its own fields, then the fields its spreads
+     * bring in, each keeping the binding of the declaration that wrote it. One answer and not one
+     * per declaration reached, because which field a name means depends on what the walk reached
+     * first — a name a spread repeats keeps the one already bound, and that is a fact about the walk
+     * rather than about any declaration in it.
+     *
+     * <p><b>The walk recurses and the question does not.</b> Asked once per declaration it reaches,
+     * the answer would be the union of several closures and the order between them would be nobody's
+     * — so this reads the resolved declaration of every node it walks and puts the whole closure
+     * together here.
+     *
+     * <p>Nothing of what a field holds. A binding is an owner and which field of that owner it is, so
+     * an edit that changes a field's type leaves this answer alone; one that reorders the fields, or
+     * changes what is spread, does not.
+     */
+    public record FieldBindingsOf(TypeKey named) implements Key<Map<String, BindingId>> {
+        @Override
+        public String module() {
+            return named.module();
+        }
+
+        @Override
+        public Answer<Map<String, BindingId>> compute(Db db) {
+            Map<String, BindingId> bindings = new LinkedHashMap<>();
+            if (declaredAt(db, named) instanceof Hir.Data data) {
+                // The identity the declaration carries, which is what its own clauses resolve
+                // against — not one built here out of the address this was asked under.
+                walk(db, data, data.declares(), new LinkedHashSet<>(), bindings);
+            }
+            // Kept in the order the walk reached them. A reader lists what a declaration binds and
+            // reports it in that order, so an answer that came back in whatever order a hash gave
+            // would move a sentence about a program nothing had changed.
+            return Answer.of(Collections.unmodifiableMap(bindings));
+        }
+
+        /**
+         * {@code data}'s own fields, then what it spreads — the walk {@code TypeOps.fieldBindings}
+         * makes, reading each declaration it reaches off the store.
+         *
+         * <p>Carried over as it stands, {@code seen} and all: which include is walked and which
+         * binding a repeated name keeps are decided by the order this goes in, and an edit to that
+         * order here would be a change to what a clause resolves to made under cover of a change to
+         * where the answer comes from.
+         */
+        private static void walk(Db db, Hir.Data data, TypeSymbol.AtModule declared,
+                                 Set<TypeSymbol> seen, Map<String, BindingId> out) {
+            BindingOwner owner = new BindingOwner.OfFields(declared);
+            int ordinal = 0;
+            for (Hir.Field field : data.fields()) {
+                out.putIfAbsent(field.name(), new BindingId(owner, ordinal++));
+            }
+            for (Hir.Name include : data.includes()) {
+                TypeSymbol source = switch (include) {
+                    case Hir.Name.Denoting denoting -> denoting.type();
+                    // Reported where it is written, and bringing in no fields.
+                    case Hir.Name.Unanswered _ -> null;
+                };
+                if (source instanceof TypeSymbol.AtModule at && seen.add(at)
+                        && declaredAt(db, at.key()) instanceof Hir.Data included) {
+                    walk(db, included, at, seen, out);
+                }
+            }
+        }
+
+        /** The declaration at {@code address} with its names resolved, or null where none is. */
+        private static Hir.Def declaredAt(Db db, TypeKey address) {
+            Answer<Hir.Def> declared = db.ask(new Names.ResolvedDeclaration(address));
+            return declared.present() ? declared.value() : null;
+        }
+    }
+
+    /**
+     * Which binding each field of any declaration is, for a reader of what its clauses state.
+     *
+     * <p>One of these for the whole compilation, for the reason {@link #expandedClauses} gives. A
+     * reader taking one depends on the fields the declarations it asks about reach and on nothing
+     * else about them — not on what those fields hold, and not on where any of it is written.
+     */
+    public static FieldBindings fieldBindings(Db db) {
+        return declared -> {
+            Answer<Map<String, BindingId>> bindings = db.ask(new FieldBindingsOf(declared.key()));
+            return bindings.present() ? bindings.value() : Map.of();
         };
     }
 

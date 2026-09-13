@@ -51,6 +51,11 @@ package souther.compiler.check;
  *                   not inside it, because the two are answerable at different times: whether a
  *                   declaration wears one value was settled when the module was indexed, and what it
  *                   wraps is not settled until the names in it resolve
+ * @param bindings   which binding each field a declaration reaches is, which is what a clause of
+ *                   that declaration resolves its own names against. Beside {@code inners} and not
+ *                   inside it: what a field is called and which of them it is are settled where the
+ *                   declaration's includes resolve, and what any of them holds is a different answer
+ *                   that moves at different times
  * @param written    where a clause of a declaration is written, for the sentences this reading
  *                   produces that point at one. Beside {@code invariants} and not inside it: what a
  *                   clause states is what the reading is built on, and where it is written is what
@@ -61,11 +66,13 @@ package souther.compiler.check;
 public record RuleReadingSource(Symbols symbols, ExpandedClauseLookup invariants,
                                 PublishedDeclarations published, DeclarationKinds kinds,
                                 DeclarationNewtypes newtypes, NewtypeInners inners,
+                                FieldBindings bindings,
                                 ClauseLocations written, Origin origin) {
 
     public RuleReadingSource {
         if (symbols == null || invariants == null || published == null || kinds == null
-                || newtypes == null || inners == null || written == null || origin == null) {
+                || newtypes == null || inners == null || bindings == null || written == null
+                || origin == null) {
             throw new IllegalArgumentException(
                     "reading a declaration's rules takes a scope, somewhere to read clauses from,"
                             + " somewhere to read what a declaration says, somewhere to read where"
@@ -74,25 +81,26 @@ public record RuleReadingSource(Symbols symbols, ExpandedClauseLookup invariants
     }
 
     /**
-     * A source whose reader has not been handed what the declarations wrap.
+     * A source whose reader has not been handed what the declarations wrap, nor which binding each
+     * of their fields is.
      *
-     * <p>The inners are read off {@code symbols} instead, which is what a reading built out of a
-     * scope alone can answer from. Every caller of this is a reading that has not crossed the cut,
-     * and a test counts them.
+     * <p>Both are read off {@code symbols} instead, which is what a reading built out of a scope
+     * alone can answer from — each by the walk that owns the question. Every caller of this is a
+     * reading that has not crossed the cut.
      */
     public RuleReadingSource(Symbols symbols, ExpandedClauseLookup invariants,
                              PublishedDeclarations published, DeclarationKinds kinds,
                              DeclarationNewtypes newtypes, ClauseLocations written) {
         this(symbols, invariants, published, kinds, newtypes, NewtypeInners.asWritten(symbols),
-                written);
+                FieldBindings.asWritten(symbols), written);
     }
 
     /** A source made for a reading of its own, which nobody else can name. */
     public RuleReadingSource(Symbols symbols, ExpandedClauseLookup invariants,
                              PublishedDeclarations published, DeclarationKinds kinds,
                              DeclarationNewtypes newtypes, NewtypeInners inners,
-                             ClauseLocations written) {
-        this(symbols, invariants, published, kinds, newtypes, inners, written,
+                             FieldBindings bindings, ClauseLocations written) {
+        this(symbols, invariants, published, kinds, newtypes, inners, bindings, written,
                 AReadingOfItsOwn.next());
     }
 

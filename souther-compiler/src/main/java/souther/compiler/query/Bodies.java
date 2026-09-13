@@ -2122,6 +2122,7 @@ public final class Bodies {
                                             Shapes.declarationKinds(db),
                                             Shapes.declarationNewtypes(db),
                                             Shapes.newtypeInners(db),
+                                            Shapes.fieldBindings(db),
                                             Shapes.clauseLocations(db)),
                                     policy, db.readings()),
                             contracts.present() ? contracts.value() : Map.of())
