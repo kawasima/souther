@@ -48,8 +48,16 @@ class AValueReadThroughItselfIsNotAPositionNothingNamesTest {
     private static final TypeSymbol.AtModule CODE =
             TypeSymbols.declared(new TypeKey("example", "Code"));
 
-    private static Core.Read read(String name, BindingId binding) {
-        return new Core.Read(name, binding, Type.INT, POS);
+    /**
+     * {@code name}, typed as what the binding holds.
+     *
+     * <p>Written out at each call because a read carries the type of the value it names. The one
+     * thing wrong with these environments is the way the binding graph runs back on itself, and a
+     * read typed by something other than what its binding was given would be a second thing wrong
+     * with them — one the raising could be coming from instead.
+     */
+    private static Core.Read read(String name, BindingId binding, Type holds) {
+        return new Core.Read(name, binding, holds, POS);
     }
 
     private static InputReads reads(Map<BindingId, Core> bound) {
@@ -64,15 +72,15 @@ class AValueReadThroughItselfIsNotAPositionNothingNamesTest {
     /** A name bound to what a second holds, and that one bound back to the first. */
     private static InputReads twoNamesHoldingEachOther() {
         Map<BindingId, Core> bound = new LinkedHashMap<>();
-        bound.put(FIRST, read("b", SECOND));
-        bound.put(SECOND, read("a", FIRST));
+        bound.put(FIRST, read("b", SECOND, Type.INT));
+        bound.put(SECOND, read("a", FIRST, Type.INT));
         return reads(bound);
     }
 
     /** A name bound to a construction one of whose fields reads the name back. */
     private static InputReads aNameHoldingAConstructionOfItself() {
         Core.FieldAccess ofItself =
-                new Core.FieldAccess(read("c", FIRST), "value", Type.INT, POS);
+                new Core.FieldAccess(read("c", FIRST, Type.ref(CODE)), "value", Type.INT, POS);
         Core.Construct wrapping = new Core.Construct(CODE,
                 java.util.List.of(new Core.FieldValue("value", ofItself, POS)),
                 Type.ref(CODE), POS);
@@ -94,8 +102,8 @@ class AValueReadThroughItselfIsNotAPositionNothingNamesTest {
         InputReads names = aNameHoldingAConstructionOfItself();
 
         assertThrows(BindingTrail.ReadThroughItself.class,
-                () -> names.pathOf(new Core.FieldAccess(read("c", FIRST), "value", Type.INT, POS),
-                        symbols()));
+                () -> names.pathOf(new Core.FieldAccess(read("c", FIRST, Type.ref(CODE)), "value",
+                        Type.INT, POS), symbols()));
     }
 
     /** Raised where a value is read through itself, and named as this compiler's own state. */
@@ -104,7 +112,7 @@ class AValueReadThroughItselfIsNotAPositionNothingNamesTest {
         InputReads names = twoNamesHoldingEachOther();
 
         BindingTrail.ReadThroughItself raised = assertThrows(BindingTrail.ReadThroughItself.class,
-                () -> names.pathOf(read("a", FIRST), symbols()));
+                () -> names.pathOf(read("a", FIRST, Type.INT), symbols()));
 
         assertInstanceOf(IllegalStateException.class, raised,
                 "a lineage that runs back to where it started is a graph nothing here builds, so"
@@ -118,6 +126,6 @@ class AValueReadThroughItselfIsNotAPositionNothingNamesTest {
         InputReads names = reads(Map.of());
 
         assertEquals(new PathResolution.NotAPosition(),
-                names.pathOf(read("a", FIRST), symbols()));
+                names.pathOf(read("a", FIRST, Type.INT), symbols()));
     }
 }
