@@ -72,7 +72,13 @@ class WhoMaySayWhatARuleHandleReadsAsTest {
             "souther/compiler/report/AdequacyReport"
                     + "#said(Subject, SourceRendering, PublishedRuleHandle$WhereARuleIs)",
             "souther/compiler/report/GeneratedRows"
-                    + "#about(Adequacy$Finding, SourceRendering, PublishedRuleHandle$WhereARuleIs)");
+                    + "#about(Adequacy$Finding, SourceRendering, PublishedRuleHandle$WhereARuleIs)",
+            // And the same block saying which rule gave the offer no value, which is the same
+            // reader meeting the same rule: told that a search was short of what the rules leave
+            // and not told which rule, they have every rule of the position to look at.
+            "souther/compiler/report/GeneratedRows"
+                    + "#gaveNothing(StringOfferShortfall$NotOffered, TermPath, SourceRendering,"
+                    + " PublishedRuleHandle$WhereARuleIs)");
 
     /**
      * And every class that writes one into the document, which is one.

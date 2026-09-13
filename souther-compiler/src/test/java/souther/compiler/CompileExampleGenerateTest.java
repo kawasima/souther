@@ -1196,10 +1196,13 @@ class CompileExampleGenerateTest {
         assertTrue(block.contains("// no row for `s = 5` in `label`"), block);
         assertTrue(block.contains("// no row for `1 < s < 5` in `label`"), block);
         // And what the block says about the rest of the account, beside the points rather than in
-        // place of them. The arm is looked for at the classes the way into it leaves, and every
-        // value of them is refused here — which is the search's answer and is said as one.
-        assertTrue(block.contains("// no row for `else` in `label`: every value tried was"
-                + " refused at construction"), block);
+        // place of them. The arm is looked for at the classes the way into it leaves and every
+        // value of them was refused, and the rule this compiler could not read is why those were
+        // the values — so the sentence is the one the search can stand behind rather than the one
+        // that reads as the model refusing what it states.
+        assertTrue(block.contains("// no row for `else` in `label`: every value tried was refused"
+                + " at construction, and what was tried was not everything the rules leave, and"
+                + " invariant C #1 at `c` gave none of them"), block);
     }
 
     /**

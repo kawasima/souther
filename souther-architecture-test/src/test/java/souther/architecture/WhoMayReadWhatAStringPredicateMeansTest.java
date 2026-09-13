@@ -193,6 +193,15 @@ class WhoMayReadWhatAStringPredicateMeansTest {
             WITNESS + "$Reading",
             WITNESS + "$Reading$Accepting",
             WITNESS + "$Reading$Accepting#accepts()Lsouther/compiler/regex/PatternSyntax;",
+            // And the outcomes a witness was not composed from, which is not a second answer about
+            // the position. What is taken here is that this reading yielded no pattern to compose
+            // out of — so the value offered came from the rules beside it, and a search that had
+            // every one of those refused may not report that as the model refusing what it states.
+            // The strings such a rule admits stay unasked: nothing here reads one, and what the
+            // position is left admitting is settled where the row above says it is.
+            WITNESS + "$Reading$PatternNotRead",
+            WITNESS + "$Reading$PatternNotRead#why()Lsouther/compiler/regex/PatternRead$Unsupported;",
+            WITNESS + "$Reading$WrittenArgumentNotKnown",
             A_BODYS_RULES,
             A_BODYS_RULES + IN_A_DESCRIPTOR,
             A_BODYS_RULES + "#statedBy(Lsouther/compiler/core/Core;"
