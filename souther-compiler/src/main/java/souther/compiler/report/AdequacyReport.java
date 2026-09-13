@@ -10,6 +10,7 @@ import souther.compiler.check.Carrier;
 import souther.compiler.check.ComparisonClaim;
 import souther.compiler.check.CoverageObligation;
 import souther.compiler.check.PartId;
+import souther.compiler.types.CanonicalNameOrder;
 import souther.compiler.types.SourceConstructOrigin;
 import souther.compiler.check.RuleCitation;
 import souther.compiler.check.RuleCitations;
@@ -5858,9 +5859,12 @@ public record AdequacyReport(int schemaVersion, String compilerVersion,
         };
     }
 
-    /** Case names, sorted: a report that changes order between runs cannot be compared between runs,
-     * and the sets these come from keep the order the rows happened to arrive in. */
+    /** Case names, in the order this compiler shows a set of names in. The sets these come from keep
+     * the order the rows happened to arrive in, which is a fact about a run and not about the model,
+     * and two reports that put the cases differently cannot be compared. Asked of the names rather
+     * than of their spellings, so that two modules declaring one spelling are still told apart
+     * somewhere and not left in whichever order they arrived. */
     private static void names(ArrayNode into, Set<TypeSymbol> cases) {
-        cases.stream().map(TypeSymbol::name).sorted().forEach(into::add);
+        CanonicalNameOrder.shown(cases).stream().map(TypeSymbol::name).forEach(into::add);
     }
 }
