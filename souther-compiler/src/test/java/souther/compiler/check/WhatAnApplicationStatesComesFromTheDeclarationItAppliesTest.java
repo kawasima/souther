@@ -461,7 +461,8 @@ class WhatAnApplicationStatesComesFromTheDeclarationItAppliesTest {
         return new DeclaredTypeReading(
                 new DeclarationFacts(new FieldRead(symbols, ScopedDeclarations.of(symbols),
                         ScopedDeclarations.kindsOf(symbols), world,
-                        FieldRead.Unreadable.REFUSED)),
+                        FieldRead.Unreadable.REFUSED),
+                        DeclarationNewtypes.asWritten(symbols)),
                 values, compilation.db().ask(new Bodies.Reachable(module)).value());
     }
 
@@ -486,8 +487,10 @@ class WhatAnApplicationStatesComesFromTheDeclarationItAppliesTest {
                 read.db().ask(new Bodies.ModuleDefinitions(module)).value();
         return new DeclaredTypeReading(
                 new DeclarationFacts(new FieldRead(scope, ScopedDeclarations.of(scope),
-                        ScopedDeclarations.kindsOf(scope), new ResolvedFieldTypes(scope, ScopedDeclarations.wrapsOf(scope)),
-                        FieldRead.Unreadable.REFUSED)),
+                        ScopedDeclarations.kindsOf(scope),
+                        new ResolvedFieldTypes(scope, ScopedDeclarations.wrapsOf(scope)),
+                        FieldRead.Unreadable.REFUSED),
+                        DeclarationNewtypes.asWritten(scope)),
                 declared, read.db().ask(new Bodies.Reachable(module)).value())
                 .declaredTypeOf(assertInstanceOf(Hir.FnBody.Written.class,
                         declared.get(name).body()).expr());

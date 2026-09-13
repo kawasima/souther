@@ -164,7 +164,8 @@ class AFieldAccessIsTypedByTheWorldsOwnAnswerTest {
 
     /** What the declarations state about an expression, read in {@code world}. */
     private DeclaredTypeReading readingIn(FieldTypes world) {
-        return new DeclaredTypeReading(new DeclarationFacts(reading(world)), values,
+        return new DeclaredTypeReading(
+                new DeclarationFacts(reading(world), DeclarationNewtypes.asWritten(symbols)), values,
                 compilation.db().ask(new Bodies.Reachable(module)).value());
     }
 

@@ -4263,7 +4263,8 @@ public final class Adequacy {
                                     new souther.compiler.check.FieldRead(symbols, published, kinds,
                                             souther.compiler.check.NewtypeInners.asWritten(symbols),
                                             fields,
-                                            souther.compiler.check.FieldRead.Unreadable.REFUSED)),
+                                            souther.compiler.check.FieldRead.Unreadable.REFUSED),
+                                    souther.compiler.check.DeclarationNewtypes.asWritten(symbols)),
                             values, behaviors);
             Map<TypeSymbol, List<String>> stated = new LinkedHashMap<>();
             for (Map.Entry<String, Hir.FnDef> each : values.entrySet()) {

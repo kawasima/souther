@@ -156,7 +156,7 @@ final class Clauses {
         return () -> {
             Hir.Data data = declarationOf(named);
             return new SecondaryClauseReading.Over(
-                    DataChecker.fieldScope(named, data, symbols),
+                    DataChecker.fieldScope(named, data, source().bindings(), symbols),
                     CheckContext.of(symbols, published, kinds, source().inners())
                             .forData(data).forDischarge());
         };

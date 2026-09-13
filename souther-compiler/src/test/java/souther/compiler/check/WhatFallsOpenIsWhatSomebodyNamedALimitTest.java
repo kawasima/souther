@@ -275,7 +275,8 @@ class WhatFallsOpenIsWhatSomebodyNamedALimitTest {
         TypeOps.Declared clause = expandedClauseOf(c, named);
         Supplier<SecondaryClauseReading.Over> over =
                 () -> new SecondaryClauseReading.Over(
-                        DataChecker.fieldScope(named, data, symbolsOf(c)),
+                        DataChecker.fieldScope(named, data,
+                                souther.compiler.query.Shapes.fieldBindings(c.db()), symbolsOf(c)),
                         CheckContext.of(symbolsOf(c), Shapes.publishedDeclarations(c.db()),
                                 Shapes.declarationKinds(c.db())).forData(data).forDischarge());
 
@@ -307,7 +308,8 @@ class WhatFallsOpenIsWhatSomebodyNamedALimitTest {
         TypeOps.Declared clause = expandedClauseOf(c, named);
         java.util.function.Supplier<SecondaryClauseReading.Over> over =
                 () -> new SecondaryClauseReading.Over(
-                        DataChecker.fieldScope(named, data, symbolsOf(c)),
+                        DataChecker.fieldScope(named, data,
+                                souther.compiler.query.Shapes.fieldBindings(c.db()), symbolsOf(c)),
                         CheckContext.of(symbolsOf(c), Shapes.publishedDeclarations(c.db()),
                                 Shapes.declarationKinds(c.db())).forData(data).forDischarge());
 

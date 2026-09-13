@@ -194,7 +194,10 @@ class WhatADotMayNameIsOneAnswerForEveryReaderOfItTest {
         FieldTypes checked = ExampleExecutions.of(COMPILATION.db(), "demo").fieldTypes();
         Type declared = new DeclaredTypeReading(
                 new DeclarationFacts(
-                        new FieldRead(symbols, ScopedDeclarations.of(symbols), ScopedDeclarations.kindsOf(symbols),checked, FieldRead.Unreadable.REFUSED)),
+                        new FieldRead(symbols, ScopedDeclarations.of(symbols),
+                                ScopedDeclarations.kindsOf(symbols), checked,
+                                FieldRead.Unreadable.REFUSED),
+                        DeclarationNewtypes.asWritten(symbols)),
                 definitions(), COMPILATION.db().ask(new Bodies.Reachable("demo")).value())
                 .declaredTypeOf(bodyOf("taken"));
         assertEquals(Type.STRING, declared,

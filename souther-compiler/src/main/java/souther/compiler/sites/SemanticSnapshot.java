@@ -157,7 +157,8 @@ public final class SemanticSnapshot {
      * the resolved module here.
      */
     private DeclarationFacts declarations() {
-        return new DeclarationFacts(fieldRead());
+        return new DeclarationFacts(fieldRead(),
+                souther.compiler.query.Shapes.declarationNewtypes(db));
     }
 
     /**

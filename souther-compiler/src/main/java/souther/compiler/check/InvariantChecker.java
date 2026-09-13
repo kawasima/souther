@@ -791,7 +791,7 @@ public final class InvariantChecker {
         // A newtype's value is the same location as the newtype, so it is at no name of its own and
         // its fields are the first step there is. Read from the world rather than off a node handed
         // in, and turned into a name here, where the names a rule may write are decided.
-        boolean atTheValue = DeclarationFacts.isNewtype(named, symbols);
+        boolean atTheValue = DeclarationFacts.isNewtype(named, c.terms.newtypes());
         Map<String, Type> fields = c.clauses.fieldsOf(named);
         Map<String, BindingId> bindings = c.clauses.bindingsOf(named);
         Denotations at = Denotations.none()
@@ -1338,7 +1338,7 @@ public final class InvariantChecker {
         Core inner = value;
         Type worn = type;
         for (TypeOps.Layer layer : TypeOps.newtypeChain(type, terms.newtypeInners())) {
-            Type under = TypeOps.newtypeInner(layer.named(), symbols);
+            Type under = terms.newtypeInners().under(Type.ref(layer.named()));
             if (under == null) {
                 break;
             }

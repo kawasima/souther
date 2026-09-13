@@ -21,7 +21,7 @@ import souther.compiler.types.TypeSymbol;
  *
  * @param read the reading of a {@code .}, in the world these facts are being asked in
  */
-public record DeclarationFacts(FieldRead read) {
+public record DeclarationFacts(FieldRead read, DeclarationNewtypes newtypes) {
 
     public DeclarationFacts {
         if (read == null) {
@@ -67,7 +67,7 @@ public record DeclarationFacts(FieldRead read) {
 
     /** Whether {@code name} is a newtype, in this world. */
     public boolean isNewtype(TypeSymbol name) {
-        return isNewtype(name, symbols());
+        return isNewtype(name, newtypes);
     }
 
     /**
@@ -75,8 +75,7 @@ public record DeclarationFacts(FieldRead read) {
      * imported value's body names its own module's types, which the module reading the row need not
      * have imported, and a module of its own may declare something else of that spelling.
      */
-    public static boolean isNewtype(TypeSymbol name, Symbols symbols) {
-        return name != null
-                && symbols.declaredNode(name) instanceof Hir.Data d && d.newtype();
+    public static boolean isNewtype(TypeSymbol name, DeclarationNewtypes newtypes) {
+        return name instanceof TypeSymbol.AtModule at && newtypes.of(at.key());
     }
 }

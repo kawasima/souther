@@ -75,7 +75,8 @@ class AReadingDoesNotWalkTheBindingsItWasHandedTest {
         return new DeclaredTypeReading(
                 new DeclarationFacts(new FieldRead(symbols, ScopedDeclarations.of(symbols),
                         ScopedDeclarations.kindsOf(symbols), new ResolvedFieldTypes(symbols, ScopedDeclarations.wrapsOf(symbols)),
-                        FieldRead.Unreadable.MAKES_NOTHING_READABLE)),
+                        FieldRead.Unreadable.MAKES_NOTHING_READABLE),
+                        DeclarationNewtypes.asWritten(symbols)),
                 compilation.db().ask(new Bodies.ModuleDefinitions("demo")).value(),
                 compilation.db().ask(new Bodies.Reachable("demo")).value(),
                 bound);

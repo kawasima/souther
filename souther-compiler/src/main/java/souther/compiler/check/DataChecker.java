@@ -770,10 +770,11 @@ public final class DataChecker {
      * bound where it was written, so that is what the scope offers, and the clause carried in with the
      * declaration finds the very bindings it names.
      */
-    static Scope fieldScope(TypeSymbol.AtModule declared, Hir.Data data, Symbols symbols) {
+    static Scope fieldScope(TypeSymbol.AtModule declared, Hir.Data data, FieldBindings bound,
+                            Symbols symbols) {
         Map<String, Type> types = TypeOps.fieldTypes(data, symbols);
         Map<BindingId, Scope.Binding> bindings = new LinkedHashMap<>();
-        TypeOps.fieldBindings(declared, symbols).forEach((name, binding) ->
+        bound.of(declared).forEach((name, binding) ->
                 bindings.put(binding, new Scope.Binding(name, types.get(name))));
         return Scope.of(bindings);
     }
