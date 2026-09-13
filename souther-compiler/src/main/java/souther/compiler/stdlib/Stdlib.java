@@ -18,6 +18,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.SequencedSet;
 import java.util.Set;
 import java.util.function.IntFunction;
 
@@ -166,7 +167,7 @@ public final class Stdlib {
      *  library rather than the declaration it would have to open to find out. */
     private final Map<ValueName.Stdlib.Operation, Intrinsic> kernelOperations;
     private final Map<ValueName.Stdlib.Operation, Hir.FnDef> helpers;
-    private final Set<String> published;
+    private final SequencedSet<String> published;
     private final Map<String, List<String>> candidates;
     /** The projection a resolver takes, worked out once with everything else. A set built on each
      *  ask would be the same answer allocated again for every module of every compilation. */
@@ -178,7 +179,8 @@ public final class Stdlib {
                    Map<ValueName.Stdlib.Operation, Rewrite> sugars,
                    Map<TypeKey, Hir.Def> language, Map<Kernel, Intrinsic> intrinsics,
                    Map<ValueName.Stdlib.Operation, Intrinsic> kernelOperations,
-                   Map<ValueName.Stdlib.Operation, Hir.FnDef> helpers, Set<String> published,
+                   Map<ValueName.Stdlib.Operation, Hir.FnDef> helpers,
+                   SequencedSet<String> published,
                    Map<String, List<String>> candidates) {
         this.entries = entries;
         this.privateNames = privateNames;
@@ -280,9 +282,16 @@ public final class Stdlib {
         return entry != null && entry.declaration().params().isEmpty();
     }
 
-    /** The library's published surface: every qualified name a module outside the reserved namespace
-     *  may write, one module's vocabulary at a time. */
-    public Set<String> published() {
+    /**
+     * The library's published surface: every qualified name a module outside the reserved namespace
+     * may write, one module's vocabulary at a time.
+     *
+     * <p>One module's at a time is an order, and it is this that has it: the names are gathered by
+     * walking the load order. A reader is shown them one after another, so what is handed over says
+     * there is an order rather than leaving whoever writes the listing to take one from however the
+     * names happen to be held.
+     */
+    public SequencedSet<String> published() {
         return published;
     }
 
@@ -551,7 +560,7 @@ public final class Stdlib {
             // name a reader may write, so it belongs there.
             Map<String, ValueName.Stdlib.Operation> named = new LinkedHashMap<>(operations);
             SUGARED.forEach(sugar -> named.put(sugar.written().qualified(), sugar.written()));
-            Set<String> published = published(sugars.keySet());
+            SequencedSet<String> published = published(sugars.keySet());
             for (ValueName.Stdlib.Operation ascribed
                     : List.of(THE_WALK, THE_DISTINCTNESS_PREDICATE)) {
                 if (!helpers.containsKey(ascribed)) {
@@ -629,7 +638,7 @@ public final class Stdlib {
          *  be ordered by, so it is placed among the module it belongs to — a reader of this list is
          *  reading one module's vocabulary at a time, and a name that reads as {@code List}'s belongs
          *  among them. */
-        private Set<String> published(Set<ValueName.Stdlib.Operation> sugared) {
+        private SequencedSet<String> published(Set<ValueName.Stdlib.Operation> sugared) {
             Set<ValueName.Stdlib.Operation> named = new LinkedHashSet<>();
             for (ValueName.Stdlib.Operation operation : entries.keySet()) {
                 if (!privateNames.contains(operation)) {
@@ -639,7 +648,7 @@ public final class Stdlib {
             named.addAll(sugared);
             // Which module a name belongs to is the operation's alias, which it holds. Read off a
             // spelling, this had to be given the operations back to look each one up again.
-            Set<String> byModule = new LinkedHashSet<>();
+            SequencedSet<String> byModule = new LinkedHashSet<>();
             for (String qualifier : Reserved.QUALIFIERS) {
                 for (ValueName.Stdlib.Operation operation : named) {
                     if (operation.alias().equals(qualifier)) {
@@ -649,7 +658,7 @@ public final class Stdlib {
             }
             // anything under a qualifier not in the load order
             named.forEach(operation -> byModule.add(operation.qualified()));
-            return Collections.unmodifiableSet(byModule);
+            return Collections.unmodifiableSequencedSet(byModule);
         }
 
         /** Bare name → every published name it could be, in the order they are published in. */

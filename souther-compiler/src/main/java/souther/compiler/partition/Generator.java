@@ -2537,8 +2537,8 @@ public final class Generator {
         TypeView view = TypeView.of(Type.ref(built), subject.symbols());
         return !view.isWrapped()
                         && view.shape() instanceof Shape.Product(TypeSymbol _,
-                                Map<String, Type> fields)
-                ? List.copyOf(fields.keySet()) : null;
+                                SequencedMap<String, Type> fields)
+                ? List.copyOf(fields.sequencedKeySet()) : null;
     }
 
     /**

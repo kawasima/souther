@@ -5,7 +5,7 @@ import souther.compiler.types.TypeSymbol;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.SequencedMap;
 
 /**
  * Where a value at a position has to be built, one step down.
@@ -36,10 +36,10 @@ public final class ConstructionDescent {
      * @param fields      the fields, in the order the declaration writes them — which is the order
      *                    they are composed and reported in
      */
-    public record ProductBuild(TypeSymbol constructor, Map<String, Type> fields) {
+    public record ProductBuild(TypeSymbol constructor, SequencedMap<String, Type> fields) {
 
         public ProductBuild {
-            fields = Collections.unmodifiableMap(new LinkedHashMap<>(fields));
+            fields = Collections.unmodifiableSequencedMap(new LinkedHashMap<>(fields));
         }
     }
 

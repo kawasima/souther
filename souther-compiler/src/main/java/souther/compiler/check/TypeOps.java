@@ -1107,9 +1107,11 @@ public final class TypeOps {
         }
     }
 
-    /** Effective field name → type (included data flattened first, then own fields). */
-    public static Map<String, Type> fieldTypes(Hir.Data data, Symbols symbols) {
-        Map<String, Type> types = new LinkedHashMap<>();
+    /** Effective field name → type, in the order the declaration writes them: the data spread in
+     *  first, then the data's own. Which order that is, is what a reader is shown the fields in and
+     *  which one a row is built for first, so it is handed back as something that has one. */
+    public static java.util.SequencedMap<String, Type> fieldTypes(Hir.Data data, Symbols symbols) {
+        java.util.SequencedMap<String, Type> types = new LinkedHashMap<>();
         // Which spread put each field here, so a collision names the group that supplied the earlier
         // one. Reporting it against the taking data names a declaration that, where both fields came
         // through spreads, holds no such field at all.
@@ -1943,10 +1945,10 @@ public final class TypeOps {
                     // In scope denoting nothing: the import line that could not bring it in was
                     // reported there, and a use of it takes the error type rather than being
                     // reported again here.
-                    case Denotation.StandsForNothing ignored -> {
+                    case Denotation.StandsForNothing _ -> {
                         yield Type.ERRONEOUS;
                     }
-                    case Denotation.NotInScope ignored -> { }
+                    case Denotation.NotInScope _ -> { }
                 }
                 // A union's case names a type where a type goes. A `match` arm has always read it
                 // that way; a declaration reads it the same, which is what lets `Int |

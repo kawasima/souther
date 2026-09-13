@@ -1814,7 +1814,7 @@ public final class Partitions {
         TypeView view = TypeView.of(Type.ref(record), ruleSource.symbols());
         if (expanding.contains(record) || view.isWrapped()
                 || !(view.shape() instanceof Shape.Product(TypeSymbol _,
-                        Map<String, Type> fields))) {
+                        SequencedMap<String, Type> fields))) {
             return null;
         }
         if (fields.isEmpty()) {

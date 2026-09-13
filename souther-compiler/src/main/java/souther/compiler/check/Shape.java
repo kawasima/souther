@@ -79,11 +79,14 @@ public sealed interface Shape permits Shape.ReadablePositionShape, Shape.Cases, 
     /** A data with fields, and what they are, in the order the declaration writes them.
      *
      *  <p>The order is part of the answer, not an accident of the map: what a report names first
-     *  and which field a row is built for first are read off it. So the copy keeps it — an
-     *  unordered one would leave every reader depending on a hash. */
-    record Product(TypeSymbol name, Map<String, Type> fields) implements ReadablePositionShape {
+     *  and which field a row is built for first are read off it. So it is held as something that
+     *  has one, and a caller with only a set of fields is refused here rather than downstream,
+     *  where the reading would already be depending on a hash. */
+    record Product(TypeSymbol name, java.util.SequencedMap<String, Type> fields)
+            implements ReadablePositionShape {
         public Product {
-            fields = java.util.Collections.unmodifiableMap(new java.util.LinkedHashMap<>(fields));
+            fields = java.util.Collections.unmodifiableSequencedMap(
+                    new java.util.LinkedHashMap<>(fields));
         }
     }
 
