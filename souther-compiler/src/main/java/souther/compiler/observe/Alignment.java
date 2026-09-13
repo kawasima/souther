@@ -6,11 +6,17 @@ import java.util.Map;
 /**
  * Which part of an answer stands for which part of what a text stated.
  *
- * <p>What a report needs to write the two side by side, taken from the walk that decided it. A map
- * pairs its entries by key and a set pairs its elements without an order, and both of those are
- * questions about what being the same value means — asked once, where the comparison asks them. A
- * report that paired them again would be a second answer to that: two entries the comparison
- * matched but a report could not would be written as though the answer held neither.
+ * <p>What a report needs to write the two side by side. A map pairs its entries by key and a set
+ * pairs its elements without an order, and both of those are questions about what being the same
+ * value means — asked here by the step the comparison asks them by. A report that found them from
+ * what the two are written as would be a second answer to that: two entries the comparison matched
+ * but a rendering could not tell apart would be written as though the answer held neither.
+ *
+ * <p><b>Worked out when a report wants it, rather than kept by every comparison that holds.</b> A
+ * verdict is asked of every row and nearly all of them hold; this is asked of the ones that did
+ * not. So it is a second walk over the two values, under the rule the first one used and not a
+ * rule of its own — which is what there is to hold to, and is why the one step that finds which
+ * value a statement is about is written once and called from both.
  *
  * <p><b>A correspondence and not a verdict.</b> Nothing here says the two are the same; it says
  * which stood against which while that was being settled. A part that stands against nothing is

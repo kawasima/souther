@@ -9,6 +9,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 
 /**
  * Whether two values are the same value, and where they are not.
@@ -382,7 +383,7 @@ final class ValueMatch {
                                  Position element, ObservedValue right, Position position) {
         List<ObservedValue> remaining = new ArrayList<>(ys);
         for (Compared x : left.elements()) {
-            int found = standing(path, x, remaining, element);
+            int found = standing(path, x, remaining, Function.identity(), element);
             if (found < 0) {
                 return differs(path, Mismatch.Reason.SHAPE, left, right, position);
             }
@@ -399,24 +400,21 @@ final class ValueMatch {
      * statement is about, where nothing but the values says. Written once because it is one
      * question — a second way of finding it would be a second answer to what being the same value
      * means, held somewhere the first one is not.
+     *
+     * <p>{@code of} says how to reach the value from what the caller is holding: a set holds the
+     * values and a map holds pairs whose keys are matched. Said that way rather than by having each
+     * caller hand over a list of what is to be compared, because building one is work done once per
+     * member of a scan that is already one per member — the same question, asked of what the caller
+     * has, and nothing made to ask it.
      */
-    private int standing(List<PathElement> path, Compared x, List<ObservedValue> among,
-                         Position at) {
+    private <T> int standing(List<PathElement> path, Compared x, List<T> among,
+                             Function<T, ObservedValue> of, Position at) {
         for (int i = 0; i < among.size(); i++) {
-            if (at(path, x, among.get(i), at) == null) {
+            if (at(path, x, of.apply(among.get(i)), at) == null) {
                 return i;
             }
         }
         return -1;
-    }
-
-    /** The keys of {@code entries}, which is what a map's entries are matched by. */
-    private static List<ObservedValue> keysOf(List<ObservedValue.Entry> entries) {
-        List<ObservedValue> out = new ArrayList<>(entries.size());
-        for (ObservedValue.Entry each : entries) {
-            out.add(each.key());
-        }
-        return out;
     }
 
     /**
@@ -481,20 +479,24 @@ final class ValueMatch {
             }
             return new Alignment.Elements(byElement);
         }
-        // Each of the answer's, against the one of the statement's it was found to be. Asked of the
-        // answer's elements rather than of the statement's, because what is written out is the
-        // answer, and an element nothing was found for is one nothing states.
-        List<Compared> remaining = new ArrayList<>(left.elements());
-        for (ObservedValue each : s.elements()) {
-            int found = -1;
-            for (int i = 0; i < remaining.size(); i++) {
-                if (at(List.of(), remaining.get(i), each, element) == null) {
-                    found = i;
-                    break;
-                }
+        // Each of the statement's elements takes the one of the answer's it stands for, asked the
+        // way a set is matched everywhere else. Filled in by where the answer holds it, because what
+        // is written out is the answer and an element nothing was found for is one nothing states.
+        Alignment[] found = new Alignment[s.elements().size()];
+        List<Integer> remaining = new ArrayList<>(found.length);
+        for (int i = 0; i < found.length; i++) {
+            remaining.add(i);
+        }
+        for (Compared x : left.elements()) {
+            int at = standing(List.of(), x, remaining, i -> s.elements().get(i), element);
+            if (at < 0) {
+                continue;
             }
-            byElement.add(found < 0 ? new Alignment.Nothing()
-                    : align(remaining.remove(found), each, element));
+            int where = remaining.remove(at);
+            found[where] = align(x, s.elements().get(where), element);
+        }
+        for (Alignment each : found) {
+            byElement.add(each == null ? new Alignment.Nothing() : each);
         }
         return new Alignment.Elements(byElement);
     }
@@ -507,7 +509,7 @@ final class ValueMatch {
         List<ObservedValue.Entry> remaining = new ArrayList<>(m.entries());
         List<Alignment.Placed> written = new ArrayList<>();
         for (Pair each : left.entries()) {
-            int found = standing(List.of(), each.key(), keysOf(remaining), key);
+            int found = standing(List.of(), each.key(), remaining, ObservedValue.Entry::key, key);
             if (found < 0) {
                 continue;
             }
@@ -534,7 +536,7 @@ final class ValueMatch {
         }
         List<ObservedValue.Entry> remaining = new ArrayList<>(ys.entries());
         for (Pair entry : left.entries()) {
-            int found = standing(path, entry.key(), keysOf(remaining), key);
+            int found = standing(path, entry.key(), remaining, ObservedValue.Entry::key, key);
             if (found < 0) {
                 return differs(path, Mismatch.Reason.SHAPE, left, right, position);
             }
