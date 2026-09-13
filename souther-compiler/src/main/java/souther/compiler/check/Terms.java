@@ -2874,7 +2874,7 @@ final class Terms {
      * readable there. What a value has of its own is the one reading's answer, so a field every case
      * of a sum spreads is read off the sum here exactly as it is where a body reads one. */
     Type fieldType(Type owner, String field) {
-        return ValueReading.of(owner, newtypeInners(), symbols, published()).named().get(field);
+        return ValueReading.of(owner, newtypeInners(), kinds(), symbols, published()).named().get(field);
     }
 
     /** What a container hands its closure: a list's or set's element, a map's value (the key is the

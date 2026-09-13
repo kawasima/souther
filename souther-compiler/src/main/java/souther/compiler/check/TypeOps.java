@@ -1267,10 +1267,14 @@ public final class TypeOps {
      * settled before anything asks this; what is left is finding the declaration that answer is
      * about, and a reader doing that for itself has a second way to decide what stands at a
      * position.
+     *
+     * <p>What it asks of the declaration is which form it is, and nothing else: the fields are not
+     * read here and never were — what comes back is the address that was handed in, which is what a
+     * clause of that declaration resolves its own names against.
      */
-    static ValueReading.Owner writingFields(TypeSymbol name, Symbols symbols) {
+    static ValueReading.Owner writingFields(TypeSymbol name, DeclarationKinds kinds) {
         return name instanceof TypeSymbol.AtModule at
-                && symbols.declaredNode(at) instanceof Hir.Data
+                && kinds.of(at.key()) == DeclarationKind.PRODUCT
                 ? new ValueReading.Owner(at) : null;
     }
 

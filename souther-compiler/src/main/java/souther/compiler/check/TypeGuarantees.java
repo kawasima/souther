@@ -62,6 +62,12 @@ final class TypeGuarantees {
         return clauses.source().inners();
     }
 
+    /** Which form each declaration this reading was made against is, for the reading that asks
+     *  which of them writes fields. */
+    private DeclarationKinds kinds() {
+        return clauses.source().kinds();
+    }
+
     /**
      * What the type of the value at {@code root} guarantees of it, what is readable off it, and
      * what a reading opened elsewhere answers for.
@@ -83,7 +89,7 @@ final class TypeGuarantees {
      * asked about.
      */
     At at(Core root, Denotations denotations, PartsLeftOut withoutParts) {
-        ValueReading written = ValueReading.of(root.type(), inners(), symbols, published());
+        ValueReading written = ValueReading.of(root.type(), inners(), kinds(), symbols, published());
         Map<String, Core> values = new LinkedHashMap<>();
         List<At.Readable> readable = new ArrayList<>();
         for (Map.Entry<String, Type> field : written.named().entrySet()) {
@@ -150,7 +156,7 @@ final class TypeGuarantees {
     /** Whether {@code type} holds a rule that is not one this value already stated, nor one under a
      * name this reading already reaches. */
     private boolean beyond(Type type, ValueReading here, Set<Object> stated) {
-        ValueReading there = ValueReading.of(type, inners(), symbols, published());
+        ValueReading there = ValueReading.of(type, inners(), kinds(), symbols, published());
         for (ValueReading.Owner owner : there.owners()) {
             for (ClauseMeaning each : clauses.declared(owner.named())) {
                 if (!stated.contains(each.ref())) {
@@ -233,7 +239,7 @@ final class TypeGuarantees {
     /** {@code seen} stops a type that holds its own kind. A name met on the way here was read where
      * it was met, so what it holds is accounted for and reaching it again adds nothing. */
     private boolean anyRuleUnder(Type type, Set<TypeSymbol> seen) {
-        ValueReading written = ValueReading.of(type, inners(), symbols, published());
+        ValueReading written = ValueReading.of(type, inners(), kinds(), symbols, published());
         if (written.entering() != null && !seen.add(written.entering())) {
             return false;
         }
