@@ -382,19 +382,139 @@ final class ValueMatch {
                                  Position element, ObservedValue right, Position position) {
         List<ObservedValue> remaining = new ArrayList<>(ys);
         for (Compared x : left.elements()) {
-            boolean found = false;
+            int found = standing(path, x, remaining, element);
+            if (found < 0) {
+                return differs(path, Mismatch.Reason.SHAPE, left, right, position);
+            }
+            remaining.remove(found);
+        }
+        return null;
+    }
+
+    /**
+     * Which of {@code among} stands for {@code x}, or {@code -1} where none does.
+     *
+     * <p>The one step a set and a map are both matched by, and the one thing either of them asks
+     * beyond what everything else is compared by: which value of the answer is the one the
+     * statement is about, where nothing but the values says. Written once because it is one
+     * question — a second way of finding it would be a second answer to what being the same value
+     * means, held somewhere the first one is not.
+     */
+    private int standing(List<PathElement> path, Compared x, List<ObservedValue> among,
+                         Position at) {
+        for (int i = 0; i < among.size(); i++) {
+            if (at(path, x, among.get(i), at) == null) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    /** The keys of {@code entries}, which is what a map's entries are matched by. */
+    private static List<ObservedValue> keysOf(List<ObservedValue.Entry> entries) {
+        List<ObservedValue> out = new ArrayList<>(entries.size());
+        for (ObservedValue.Entry each : entries) {
+            out.add(each.key());
+        }
+        return out;
+    }
+
+    /**
+     * Which part of {@code answered} stands for which part of what {@code stated} states.
+     *
+     * <p>The correspondence the comparison settles, said out so that a report writing the two side
+     * by side does not settle it again. A map's entries are paired by key and a set's elements
+     * without an order, and both are answered by {@link #standing} — the same step, asked of the
+     * same values at the same positions, so that two entries the comparison matched are two a
+     * report puts together.
+     *
+     * <p><b>All of it, where a comparison stops at the first difference.</b> What is written out is
+     * the whole answer, so the pairing is wanted under the parts that differ as much as under the
+     * ones that do not. Nothing here decides whether they are the same, which is why walking on
+     * says nothing it should not: a part that stands against nothing is recorded as standing
+     * against nothing.
+     */
+    Alignment align(Asserted stated, ObservedValue answered, Position position) {
+        return align(stated(stated), answered, position);
+    }
+
+    private Alignment align(Compared left, ObservedValue right, Position position) {
+        return switch (left) {
+            case Built built when right instanceof ObservedValue.Constructed b
+                    && built.type().equals(b.type()) -> {
+                Map<String, Alignment> fields = new LinkedHashMap<>();
+                for (Map.Entry<String, Compared> each : built.fields().entrySet()) {
+                    ObservedValue under = b.field(each.getKey());
+                    if (under != null) {
+                        fields.put(each.getKey(), align(each.getValue(), under,
+                                types.field(built.type(), each.getKey())));
+                    }
+                }
+                yield new Alignment.Built(fields);
+            }
+            case Elements elements when right instanceof ObservedValue.Sequence s ->
+                    aligned(elements, s, position);
+            case Entries entries when right instanceof ObservedValue.Mapping m ->
+                    aligned(entries, m, position);
+            // Two shapes that do not line up. What stands under one of them stands under nothing of
+            // the other, which is what there is to say about it.
+            case Leaf _, Built _, Elements _, Entries _ -> new Alignment.Leaf();
+        };
+    }
+
+    /** A sequence, element by element: where it is read as a set, each of the answer's stands for
+     *  whichever of the statement's it was found to be; otherwise for the one in its place. */
+    private Alignment aligned(Elements left, ObservedValue.Sequence s, Position position) {
+        Type open = position.opened() instanceof Position.At(Type type) ? type : null;
+        Position element = switch (open) {
+            case Type.ListOf l -> Position.at(l.element());
+            case Type.SetOf set -> Position.at(set.element());
+            case null, default -> Position.UNREAD;
+        };
+        boolean asASet = left.container() == Asserted.Container.SET || open instanceof Type.SetOf;
+        List<Alignment> byElement = new ArrayList<>();
+        if (!asASet) {
+            for (int i = 0; i < s.elements().size(); i++) {
+                byElement.add(i < left.elements().size()
+                        ? align(left.elements().get(i), s.elements().get(i), element)
+                        : new Alignment.Nothing());
+            }
+            return new Alignment.Elements(byElement);
+        }
+        // Each of the answer's, against the one of the statement's it was found to be. Asked of the
+        // answer's elements rather than of the statement's, because what is written out is the
+        // answer, and an element nothing was found for is one nothing states.
+        List<Compared> remaining = new ArrayList<>(left.elements());
+        for (ObservedValue each : s.elements()) {
+            int found = -1;
             for (int i = 0; i < remaining.size(); i++) {
-                if (at(path, x, remaining.get(i), element) == null) {
-                    remaining.remove(i);
-                    found = true;
+                if (at(List.of(), remaining.get(i), each, element) == null) {
+                    found = i;
                     break;
                 }
             }
-            if (!found) {
-                return differs(path, Mismatch.Reason.SHAPE, left, right, position);
-            }
+            byElement.add(found < 0 ? new Alignment.Nothing()
+                    : align(remaining.remove(found), each, element));
         }
-        return null;
+        return new Alignment.Elements(byElement);
+    }
+
+    /** A mapping: the answer's entries the statement wrote, in the order it wrote them, then the
+     *  rest. */
+    private Alignment aligned(Entries left, ObservedValue.Mapping m, Position position) {
+        Position key = position.key();
+        Position value = position.value();
+        List<ObservedValue.Entry> remaining = new ArrayList<>(m.entries());
+        List<Alignment.Placed> written = new ArrayList<>();
+        for (Pair each : left.entries()) {
+            int found = standing(List.of(), each.key(), keysOf(remaining), key);
+            if (found < 0) {
+                continue;
+            }
+            ObservedValue.Entry taken = remaining.remove(found);
+            written.add(new Alignment.Placed(taken, align(each.value(), taken.value(), value)));
+        }
+        return new Alignment.Entries(written, List.copyOf(remaining));
     }
 
     /**
@@ -414,13 +534,7 @@ final class ValueMatch {
         }
         List<ObservedValue.Entry> remaining = new ArrayList<>(ys.entries());
         for (Pair entry : left.entries()) {
-            int found = -1;
-            for (int i = 0; i < remaining.size(); i++) {
-                if (at(path, entry.key(), remaining.get(i).key(), key) == null) {
-                    found = i;
-                    break;
-                }
-            }
+            int found = standing(path, entry.key(), keysOf(remaining), key);
             if (found < 0) {
                 return differs(path, Mismatch.Reason.SHAPE, left, right, position);
             }
