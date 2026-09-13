@@ -176,6 +176,44 @@ class WhatTheOfferWasShortOfReachesTheAccountTest {
     }
 
     /**
+     * And every entry is shaped the way the document says entries of this are shaped.
+     *
+     * <p>The schema states it, and what evaluates a schema is a consumer's validator rather than
+     * anything here — so what holds the writer to it is this. Over every model below and not over
+     * the one that shows the news, because what is being held is a shape and the shape is the same
+     * wherever an entry is written.
+     *
+     * <p>The count first, so that a walk that found no entries is this failing rather than this
+     * passing with nothing to say.
+     */
+    @Test
+    void everyCauseIsShapedTheWayTheDocumentSaysTheyAre() {
+        List<JsonNode> seen = new ArrayList<>();
+        for (String document : List.of(json(model(OUTSIDE_THE_SUBSET)),
+                json(model(MORE_THAN_A_WITNESS_MAY_SPEND)), json(NOTHING_WAS_SHORT))) {
+            for (JsonNode owed : withAShortfall(document)) {
+                JsonNode causes = owed.get("synthesisShortfallCauses");
+                if (causes != null) {
+                    causes.forEach(seen::add);
+                }
+            }
+        }
+
+        assertFalse(seen.isEmpty(), "the models below write entries for this to be about");
+        for (JsonNode each : seen) {
+            boolean named = each.get("rule") != null;
+            assertEquals("a_rule".equals(each.get("attribution").stringValue()), named,
+                    () -> "a rule is named exactly where the shortfall is attributed to one: "
+                            + each);
+            assertEquals(named, each.get("ruleId") != null,
+                    () -> "and what tells one rule from another travels with it: " + each);
+            assertNotEquals(each.get("unread") == null, each.get("limit") == null,
+                    () -> "what stopped it is one of the two, never both and never neither: "
+                            + each);
+        }
+    }
+
+    /**
      * The questions under the position say what they said before, which is another axis and not the
      * half this was missing.
      *

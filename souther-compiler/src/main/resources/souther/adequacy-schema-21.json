@@ -2175,6 +2175,56 @@
                     "attribution"
                   ],
                   "additionalProperties": false,
+                  "dependentRequired": {
+                    "rule": [
+                      "ruleId"
+                    ],
+                    "ruleId": [
+                      "rule"
+                    ]
+                  },
+                  "allOf": [
+                    {
+                      "description": "A rule is named exactly where the shortfall is attributed to one. Written as a shape and not only as a sentence: what the rules leave between them is nobody's rule and the allowance for composing a value is about no rule of the position, so an entry carrying one under either would send an author to a rule that reads perfectly — and an entry attributed to a rule and naming none would leave them every rule written at the position to look at.",
+                      "if": {
+                        "properties": {
+                          "attribution": {
+                            "const": "a_rule"
+                          }
+                        },
+                        "required": [
+                          "attribution"
+                        ]
+                      },
+                      "then": {
+                        "required": [
+                          "rule"
+                        ]
+                      },
+                      "else": {
+                        "not": {
+                          "required": [
+                            "rule"
+                          ]
+                        }
+                      }
+                    },
+                    {
+                      "description": "And what stopped it is one of the two, never both and never neither. They are two vocabularies rather than two words: a reading that stopped is a rule somebody may write another way and a limit is a figure, and an entry carrying both would be one thing that gave nothing wearing two accounts of why.",
+                      "oneOf": [
+                        {
+                          "required": [
+                            "unread"
+                          ]
+                        },
+                        {
+                          "required": [
+                            "limit"
+                          ]
+                        }
+                      ]
+                    }
+                  ],
                   "properties": {
                     "position": {
                       "type": "string",
