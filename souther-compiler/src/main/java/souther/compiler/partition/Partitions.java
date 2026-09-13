@@ -2488,18 +2488,6 @@ public final class Partitions {
                 : new CandidateStrings(within, shortfall);
     }
 
-    /**
-     * What composing a value out of these rules ran past, read where the construction came back
-     * with nothing.
-     *
-     * <p>Read here and not carried to be read later. A meter is the whole question's allowance and
-     * the next construction on it says which limit refused that one, so an answer taken afterwards
-     * is about whatever was built last.
-     */
-    private static StringOfferShortfall.Why whatItSpent(Meter meter) {
-        return new StringOfferShortfall.Why.TooCostly(meter.stoppedBy());
-    }
-
     /** A count the position holds, or null where it holds none. The ends decide it, so nothing here
      * reads one of them as a number and loses whether the range reaches it. */
     private static Place inside(NumericDomain.Bounds within, Carrier carrier) {
