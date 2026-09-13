@@ -77,8 +77,16 @@ class AProjectionOutOfAConstructionIsWhereItWasGivenItTest {
                 new Core.FieldValue("right", right, POS)), Type.ref(PAIR), POS);
     }
 
-    private static Core.FieldAccess field(Core target, String field) {
-        return new Core.FieldAccess(target, field, Type.STRING, POS);
+    /**
+     * {@code target.field}, typed as what the field holds.
+     *
+     * <p>Written out because a projection carries the type of the value it reads, and a tree that
+     * carries another is one the checker never built. What this walk asks of a type is which fields
+     * are steps of a path, so a fixture typed by what the assertion wanted would be holding the
+     * reading to a shape nothing else in the compiler answers about.
+     */
+    private static Core.FieldAccess field(Core target, String field, Type holds) {
+        return new Core.FieldAccess(target, field, holds, POS);
     }
 
     private static PathResolution readingOf(Core e, Map<BindingId, Core> bound) {
@@ -94,7 +102,8 @@ class AProjectionOutOfAConstructionIsWhereItWasGivenItTest {
     /** The value a newtype's construction was given, read back out of it, is where that value is. */
     @Test
     void aFieldReadOutOfAConstructionWrittenWhereItStandsIsAtThePositionItWasGiven() {
-        assertEquals(new PathResolution.At(TermPath.of("a")), readingOf(field(code(a()), "value")));
+        assertEquals(new PathResolution.At(TermPath.of("a")),
+                readingOf(field(code(a()), "value", Type.STRING)));
     }
 
     /**
@@ -108,7 +117,7 @@ class AProjectionOutOfAConstructionIsWhereItWasGivenItTest {
         Core held = new Core.Read("code", LOCAL, Type.ref(CODE), POS);
 
         assertEquals(new PathResolution.At(TermPath.of("a")),
-                readingOf(field(held, "value"), Map.of(LOCAL, code(a()))));
+                readingOf(field(held, "value", Type.STRING), Map.of(LOCAL, code(a()))));
     }
 
     /**
@@ -121,9 +130,9 @@ class AProjectionOutOfAConstructionIsWhereItWasGivenItTest {
     @Test
     void oneFieldOfTwoIsAtItsOwnPosition() {
         assertEquals(new PathResolution.At(TermPath.of("a")),
-                readingOf(field(pair(a(), b()), "left")));
+                readingOf(field(pair(a(), b()), "left", Type.STRING)));
         assertEquals(new PathResolution.At(TermPath.of("b")),
-                readingOf(field(pair(a(), b()), "right")));
+                readingOf(field(pair(a(), b()), "right", Type.STRING)));
     }
 
     /** However many constructions stand between the projection and the value. */
@@ -133,7 +142,7 @@ class AProjectionOutOfAConstructionIsWhereItWasGivenItTest {
                 List.of(new Core.FieldValue("inner", code(a()), POS)), Type.ref(OUTER), POS);
 
         assertEquals(new PathResolution.At(TermPath.of("a")),
-                readingOf(field(field(outer, "inner"), "value")));
+                readingOf(field(field(outer, "inner", Type.ref(CODE)), "value", Type.STRING)));
     }
 
     /**
