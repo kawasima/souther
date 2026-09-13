@@ -1449,6 +1449,31 @@
         "unavailable"
       ]
     },
+    "measureReason": {
+      "description": "Where a measure writes the reason beside its status: at `unavailable` and nowhere else. Said once and referred to by every measure rather than written into each of them, because it is one relation — spelled at each, it would be a relation wherever somebody wrote it again and prose wherever they did not, which is what it was. A measure with a number has nothing here to say: what stopped it is a question about a measure that stopped.",
+      "if": {
+        "properties": {
+          "status": {
+            "const": "unavailable"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "required": [
+          "reason"
+        ]
+      },
+      "else": {
+        "not": {
+          "required": [
+            "reason"
+          ]
+        }
+      }
+    },
     "module": {
       "type": "object",
       "required": [
@@ -1551,6 +1576,14 @@
         "status"
       ],
       "additionalProperties": false,
+      "dependentRequired": {
+        "rows": [
+          "pending"
+        ],
+        "pending": [
+          "rows"
+        ]
+      },
       "properties": {
         "name": {
           "type": "string"
@@ -1566,7 +1599,7 @@
         "rows": {
           "type": "integer",
           "minimum": 0,
-          "description": "How many example rows name this behavior, across every source that writes one. Present exactly where this behavior's rows were read, and absent where they were not: a source nobody could evaluate leaves no row to count, and a build that reads no rows counted none of them. So `0` is a behavior whose rows were read and numbered none, which is what an author acts on differently from rows nobody looked at — the two were one number until this version, and a model being migrated onto read as one with no rows written. Which of the ways it was is `status` and `weakening` beside it."
+          "description": "How many example rows name this behavior, across every source that writes one. Written where this behavior's rows were read and absent where they were not, which is a fact about the reading and is in no field of this object — so the absence is the answer rather than something a reader works out from what is beside it: a source nobody could evaluate leaves no row to count, and a build that reads no rows counted none of them. So `0` is a behavior whose rows were read and numbered none, which is what an author acts on differently from rows nobody looked at — the two were one number until this version, and a model being migrated onto read as one with no rows written. Which of the ways it was is `status` and `weakening` beside it."
         },
         "pending": {
           "type": "integer",
@@ -1608,6 +1641,65 @@
         ],
         "additionalProperties": false,
         "allOf": [
+          {
+            "description": "The code is written for the kinds a build is told about and for no others. A kind that carries one carries it wherever it is written, since which code a finding is told under is the kind's and not this finding's.",
+            "if": {
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "output_case_unspecified",
+                    "input_case_unspecified",
+                    "boundary_unmet",
+                    "arm_unreached",
+                    "unanswered_row",
+                    "axis_class_uncovered",
+                    "decision_rule_uncovered",
+                    "domain_point_uncovered"
+                  ]
+                }
+              },
+              "required": [
+                "kind"
+              ]
+            },
+            "then": {
+              "required": [
+                "code"
+              ]
+            },
+            "else": {
+              "not": {
+                "required": [
+                  "code"
+                ]
+              }
+            }
+          },
+          {
+            "description": "And the place is written for the one kind whose place is its own. The rest are cited at the declaration the entry already names, and a place written for them would be that declaration's said twice.",
+            "if": {
+              "properties": {
+                "kind": {
+                  "const": "arm_unreached"
+                }
+              },
+              "required": [
+                "kind"
+              ]
+            },
+            "then": {
+              "required": [
+                "at"
+              ]
+            },
+            "else": {
+              "not": {
+                "required": [
+                  "at"
+                ]
+              }
+            }
+          },
           {
             "if": {
               "properties": {
@@ -2082,6 +2174,11 @@
             "status"
           ],
           "additionalProperties": false,
+          "allOf": [
+            {
+              "$ref": "#/$defs/measureReason"
+            }
+          ],
           "properties": {
             "status": {
               "$ref": "#/$defs/status"
@@ -2114,6 +2211,33 @@
               "obligationId"
             ],
             "additionalProperties": false,
+            "allOf": [
+              {
+                "description": "What the composing came to is written exactly where the search had no candidate to try the rule with, which is the one answer it is about. Beside any other answer it would be a shortfall recorded of a search that composed a row and ran it.",
+                "if": {
+                  "properties": {
+                    "because": {
+                      "const": "nothing_was_composed_to_try"
+                    }
+                  },
+                  "required": [
+                    "because"
+                  ]
+                },
+                "then": {
+                  "required": [
+                    "synthesisShortfall"
+                  ]
+                },
+                "else": {
+                  "not": {
+                    "required": [
+                      "synthesisShortfall"
+                    ]
+                  }
+                }
+              }
+            ],
             "properties": {
               "obligationId": {
                 "$ref": "#/$defs/ruleObligationId"
@@ -2272,6 +2396,11 @@
         "status"
       ],
       "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "#/$defs/measureReason"
+        }
+      ],
       "if": {
         "properties": {
           "status": {
@@ -2471,6 +2600,11 @@
             "status"
           ],
           "additionalProperties": false,
+          "allOf": [
+            {
+              "$ref": "#/$defs/measureReason"
+            }
+          ],
           "properties": {
             "status": {
               "$ref": "#/$defs/status"
@@ -2497,6 +2631,11 @@
             "status"
           ],
           "additionalProperties": false,
+          "allOf": [
+            {
+              "$ref": "#/$defs/measureReason"
+            }
+          ],
           "properties": {
             "status": {
               "$ref": "#/$defs/status"
@@ -2527,6 +2666,11 @@
               "status"
             ],
             "additionalProperties": false,
+            "allOf": [
+              {
+                "$ref": "#/$defs/measureReason"
+              }
+            ],
             "properties": {
               "axis": {
                 "type": "string"
@@ -2795,6 +2939,9 @@
                   },
                   "allOf": [
                     {
+                      "$ref": "#/$defs/measureReason"
+                    },
+                    {
                       "description": "The verdict and the grounds are one answer written twice, so this says they cannot differ. Where the array is there and `knownWritable` is `true`, some ground is in it.",
                       "if": {
                         "required": [
@@ -2942,6 +3089,11 @@
             "between"
           ],
           "additionalProperties": false,
+          "allOf": [
+            {
+              "$ref": "#/$defs/measureReason"
+            }
+          ],
           "properties": {
             "total": {
               "type": "integer",
@@ -3166,7 +3318,7 @@
         },
         "claimsOffAxis": {
           "type": "array",
-          "description": "Claims about positions this report has no axis for — a position deeper than the walk goes, or one whose rules the reading never arrived at. Named by position, and carrying `why` exactly where nothing settled the claim.",
+          "description": "Claims about positions this report has no axis for — a position deeper than the walk goes, or one whose rules the reading never arrived at. Named by position, and carrying `why` where nothing settled the claim.",
           "items": {
             "type": "object",
             "required": [
@@ -3189,7 +3341,7 @@
                 }
               },
               "why": {
-                "description": "What stopped the answer, present exactly where nothing settled the claim.",
+                "description": "What stopped the answer, where nothing settled the claim. Its presence is how a reader tells the two apart: what settled a claim is not in this document, so an entry without this is one nothing was left open about rather than one whose reason went unwritten.",
                 "enum": [
                   "a_rule_went_unread",
                   "the_rules_leave_the_position_nothing",
@@ -3259,6 +3411,11 @@
         "inputs"
       ],
       "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "#/$defs/measureReason"
+        }
+      ],
       "properties": {
         "status": {
           "$ref": "#/$defs/status"

@@ -50,6 +50,7 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -249,6 +250,17 @@ class EverySchemaWordIsAccountedForTest {
         return words;
     }
 
+    /** The words for the kinds of finding a build is told about, which is the ones with a code. */
+    private static Set<String> kindsWithACode() {
+        Set<String> words = new LinkedHashSet<>();
+        for (Adequacy.Kind kind : Adequacy.Kind.values()) {
+            if (kind.code().isPresent()) {
+                words.add(kind.name().toLowerCase(Locale.ROOT));
+            }
+        }
+        return words;
+    }
+
     /**
      * What a document may say about how the requirement of one rule came to its answer.
      *
@@ -424,6 +436,13 @@ class EverySchemaWordIsAccountedForTest {
             new Vocabulary("findings[].kind",
                     List.of("$defs", "findings", "items", "properties", "kind"),
                     Adequacy.Kind.class),
+            // The kinds a build is told about, which is the condition saying where a `code` is
+            // written. Read off the kinds rather than kept here: which of them carries a code is
+            // the kind's own answer, and a list of those written by hand is a condition that goes
+            // on promising a code for a kind that stopped having one.
+            new Vocabulary("findings[].code, in the condition that says where it is written",
+                    List.of("$defs", "findings", "items", "allOf", "0", "if", "properties", "kind"),
+                    List.of(), kindsWithACode(), Set.of()),
             // What wrote a block a caller handed in. The set comes from the owners a source can
             // write, so a sixth of them has to teach this its word before the schema will pass;
             // only the spelling is written down here, the report's own switch being exhaustive over
