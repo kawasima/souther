@@ -70,21 +70,6 @@ public record Location(BindingId root, List<String> path) {
     }
 
     /**
-     * The same, for a walk that holds the declarations rather than the compilation's answer.
-     *
-     * <p>Asked here so that the declaration is read where the question is owned. A walk reaching for
-     * it itself would be reading raw structure on its own side of the boundary, which is the thing
-     * the stage is held to not doing — and there is an architecture test that says so.
-     *
-     * <p>Every caller of this is a reader that has not been handed the compilation's answer. What it
-     * decides is the one rule above, so there is one rule and two ways of getting at the flag it
-     * turns on. A test counts the callers, so the number can fall and cannot quietly rise.
-     */
-    public static boolean isStepAsWritten(Type readFrom, String field, Symbols symbols) {
-        return isStep(readFrom, field, DeclarationNewtypes.asWritten(symbols));
-    }
-
-    /**
      * The location {@code e} names, or null where it names none, with {@code rooted} saying where a
      * binding is.
      *

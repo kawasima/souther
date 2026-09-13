@@ -650,7 +650,8 @@ public final class Adequacy {
             Db db, String module, Hir.SpecBehavior spec,
             SpecImplementation.Implemented implemented, Symbols symbols,
             souther.compiler.check.StatedContract stated) {
-        return statedIn(stated, symbols, bodyIn(db, module, spec, implemented, symbols));
+        return statedIn(stated, symbols, Shapes.declarationNewtypes(db),
+                bodyIn(db, module, spec, implemented, symbols));
     }
 
     /** The locations the implementation reads, or none where nothing implements the behavior. */
@@ -673,7 +674,7 @@ public final class Adequacy {
         }
         return souther.compiler.inputs.InputDemand.of(checked.body(),
                 souther.compiler.inputs.InputReads.ofParameters(parameters, checked.elements()),
-                symbols);
+                symbols, Shapes.declarationNewtypes(db));
     }
 
     /**
@@ -690,6 +691,7 @@ public final class Adequacy {
      */
     private static souther.compiler.inputs.InputDemand statedIn(
             souther.compiler.check.StatedContract stated, Symbols symbols,
+            souther.compiler.check.DeclarationNewtypes newtypes,
             souther.compiler.inputs.InputDemand demand) {
         if (stated == null || stated.isEmpty()) {
             return demand;
@@ -706,7 +708,7 @@ public final class Adequacy {
                 souther.compiler.core.Core said = conjunct.stated().orNull();
                 if (said != null) {
                     out = out.and(souther.compiler.inputs.InputDemand
-                            .of(said, names, symbols).paths());
+                            .of(said, names, symbols, newtypes).paths());
                 }
             }
         }

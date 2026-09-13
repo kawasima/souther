@@ -74,8 +74,6 @@ class PartitionReadsAPositionRatherThanReinterpretingItTest {
                     "souther.compiler.check.DeclaredClauses", Traversal.OPAQUE),
             new Authority("what carries the values of a type, and in what order",
                     "souther.compiler.check.Carrier", Traversal.OPAQUE),
-            new Authority("whether reading a field reaches another location",
-                    "souther.compiler.check.Location", Traversal.OPAQUE),
             new Authority("what there is to count about a value",
                     "souther.compiler.check.NumericMeasures", Traversal.OPAQUE),
             new Authority("what reaches each position of a behavior's inputs, read once",

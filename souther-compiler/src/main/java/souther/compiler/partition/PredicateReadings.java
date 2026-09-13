@@ -166,7 +166,7 @@ record PredicateReadings(List<Reading> predicates, Set<Core> statedAt,
                         continue;
                     }
                     for (ClauseStatements.Stated said : ClauseStatements.of(
-                            conjunct.part(), one, reads, read.symbols())) {
+                            conjunct.part(), one, reads, read.symbols(), read.newtypes())) {
                         // The statements this reader owns, and nothing said about the rest. What a
                         // statement of another kind came to is answered by the reader that owns it,
                         // once.
@@ -212,7 +212,8 @@ record PredicateReadings(List<Reading> predicates, Set<Core> statedAt,
         }
         Symbols symbols = read.symbols();
         StringPredicates.Stated stated =
-                StringPredicates.statedBy(call, symbols, at -> reads.writtenStringOf(at, symbols));
+                StringPredicates.statedBy(call, symbols,
+                        at -> reads.writtenStringOf(at, symbols, read.newtypes()));
         if (stated != null) {
             read(call, written.application(), behavior, stated, reads, out, reaches);
         }
@@ -268,7 +269,8 @@ record PredicateReadings(List<Reading> predicates, Set<Core> statedAt,
             case Core.Match match -> {
                 walk(match.scrutinee(), behavior, read, reads, flow, live, out, reaches, statedAt);
                 for (Core.Case arm : match.cases()) {
-                    walk(arm.body(), behavior, read, reads.insideArm(match, arm, read.symbols()),
+                    walk(arm.body(), behavior, read,
+                            reads.insideArm(match, arm, read.symbols(), read.newtypes()),
                             flow, live, out, reaches, statedAt);
                 }
             }

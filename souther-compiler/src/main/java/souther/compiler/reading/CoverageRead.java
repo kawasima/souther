@@ -159,9 +159,11 @@ public final class CoverageRead {
         // each reading it for itself is how they came to be about different numbers.
         souther.compiler.inputs.ComparedNumbers numbers =
                 souther.compiler.inputs.ComparedNumbers.of(inputs.reading(source));
-        CoverageNaming naming = new CoverageNaming(plan, symbols, reads, numbers);
+        CoverageNaming naming =
+                new CoverageNaming(plan, symbols, source.newtypes(), reads, numbers);
         ValueArrivals<Outcome> reading = ValueArrivals.ofBody(body, naming,
-                new NumberWays(numbers, numbers.reading().quantities(), reads, symbols));
+                new NumberWays(numbers, numbers.reading().quantities(), reads, symbols,
+                        source.newtypes()));
         Meetings meetings = new Meetings(plan, reading);
         Arms arms = new Arms(plan);
         new CoverageRead(reading, meetings, arms)

@@ -5,6 +5,7 @@ import souther.compiler.check.Carrier;
 import souther.compiler.check.NewtypeInners;
 import souther.compiler.check.Choice;
 import souther.compiler.check.DeclarationKinds;
+import souther.compiler.check.DeclarationNewtypes;
 import souther.compiler.check.PublishedDeclarations;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.StatedComparison;
@@ -315,11 +316,12 @@ public final class GuardThresholds {
      * be. Answered alike, a rule about an element of a sequence would be reported as one about a
      * value somebody computed, and an author would go looking for the operation to invert.
      */
-    static void cameFrom(StatedComparison comparison, InputReads reads, Symbols symbols,
+    static void cameFrom(StatedComparison comparison, InputReads reads,
+                         DeclarationNewtypes newtypes,
                          SequencedMap<FilingCoordinate, BlockReason.RuleReadingStopped> out) {
         for (Core side : List.of(comparison.left(), comparison.right())) {
             // Where a side's values came from, and nothing where they came from nowhere.
-            switch (reads.cameFrom(side, symbols)) {
+            switch (reads.cameFrom(side, newtypes)) {
                 case PathResolution.At(var at) -> out.putIfAbsent(FilingCoordinate.at(at),
                         new BlockReason.RuleAboutADerivedValue());
                 case PathResolution.NotAPosition _ -> { }
@@ -359,12 +361,13 @@ public final class GuardThresholds {
      *                  makes the difference
      */
     static ValueOrigin<TermPath> originOf(Core e, InputReads reads, Symbols symbols,
-                                          Arrivals answering) {
-        return namesIn(e, reads, symbols, answering).origin();
+                                          DeclarationNewtypes newtypes, Arrivals answering) {
+        return namesIn(e, reads, symbols, newtypes, answering).origin();
     }
 
     /** The same, with what stood at each position the walk met. */
-    static Names namesIn(Core e, InputReads reads, Symbols symbols, Arrivals answering) {
+    static Names namesIn(Core e, InputReads reads, Symbols symbols, DeclarationNewtypes newtypes,
+                         Arrivals answering) {
         java.util.Map<TermPath, Type> met = new java.util.LinkedHashMap<>();
         return new Names(ValueOrigin.of(e, reads,
                 new ValueOrigin.Reading<TermPath, InputReads>() {
@@ -386,8 +389,8 @@ public final class GuardThresholds {
 
             private TermPath pathOf(Core here, InputReads at) {
                 if (here instanceof Core.Read read) {
-                    return at.meaningOf(read, symbols) instanceof ReadMeaning.Position position
-                            ? position.path() : null;
+                    return at.meaningOf(read, symbols, newtypes)
+                            instanceof ReadMeaning.Position position ? position.path() : null;
                 }
                 // A call the language defines the meaning of stands for what it answers and not for
                 // a location, however the reading spells the two apart.
@@ -396,7 +399,7 @@ public final class GuardThresholds {
                 }
                 // Which position the expression is, and none where it is none: the walk this
                 // answers for reads through what names nothing.
-                return switch (at.pathOf(here, symbols)) {
+                return switch (at.pathOf(here, newtypes)) {
                     case PathResolution.At(var stands) -> stands;
                     case PathResolution.NotAPosition _ -> null;
                     // A name that only may stand at a position is a term over no one of them. What
@@ -408,7 +411,7 @@ public final class GuardThresholds {
 
             @Override
             public TermPath madeFrom(Core here, InputReads at) {
-                return switch (at.cameFrom(here, symbols)) {
+                return switch (at.cameFrom(here, newtypes)) {
                     case PathResolution.At(var from) -> from;
                     case PathResolution.NotAPosition _ -> null;
                     case PathResolution.MayStandAt _ -> null;
@@ -423,7 +426,7 @@ public final class GuardThresholds {
             @Override
             public souther.compiler.check.AffineForms.ReadThrough<InputReads> readThrough(
                     Core.Read read, InputReads at) {
-                return NameAnswers.denoting(read, at, symbols);
+                return NameAnswers.denoting(read, at, symbols, newtypes);
             }
 
             @Override
@@ -436,7 +439,8 @@ public final class GuardThresholds {
             @Override
             public ValueOrigin.Opened<InputReads> choosing(Choice.Decides decidedBy,
                                                            InputReads at) {
-                return new ValueOrigin.Opened.Entered<>(at.choosing(decidedBy, symbols));
+                return new ValueOrigin.Opened.Entered<>(
+                        at.choosing(decidedBy, symbols, newtypes));
             }
 
             /**
@@ -475,9 +479,10 @@ public final class GuardThresholds {
                                     AffineReading.OfAComparison.Stopped stopped,
                                     InputReading read, InputReads reads, Arrivals answering) {
         Symbols symbols = read.symbols();
-        Names left = namesIn(comparison.left(), reads, symbols, answering);
-        Names right = namesIn(comparison.right(), reads, symbols, answering);
-        Names here = namesIn(stopped.node(), stopped.at(), symbols, answering);
+        DeclarationNewtypes newtypes = read.newtypes();
+        Names left = namesIn(comparison.left(), reads, symbols, newtypes, answering);
+        Names right = namesIn(comparison.right(), reads, symbols, newtypes, answering);
+        Names here = namesIn(stopped.node(), stopped.at(), symbols, newtypes, answering);
         java.util.Map<TermPath, Type> met = new java.util.LinkedHashMap<>(left.met());
         right.met().forEach(met::putIfAbsent);
         here.met().forEach(met::putIfAbsent);
@@ -524,8 +529,8 @@ public final class GuardThresholds {
      * comparison between them would be settled by whichever the caller looked at.
      */
     static List<TermPath> mentionedIn(Core e, InputReads reads, Symbols symbols,
-                                      Arrivals answering) {
-        return new ArrayList<>(originOf(e, reads, symbols, answering).positions());
+                                      DeclarationNewtypes newtypes, Arrivals answering) {
+        return new ArrayList<>(originOf(e, reads, symbols, newtypes, answering).positions());
     }
 
     /**
@@ -560,8 +565,8 @@ public final class GuardThresholds {
         // stands at no position of the input, so what a walk over it meets is what a walk over each
         // side meets.
         List<TermPath> named = new ArrayList<>();
-        mentioned(comparison.left(), reads, symbols, answering, named);
-        mentioned(comparison.right(), reads, symbols, answering, named);
+        mentioned(comparison.left(), reads, symbols, read.newtypes(), answering, named);
+        mentioned(comparison.right(), reads, symbols, read.newtypes(), answering, named);
         for (TermPath each : named) {
             if (out.stream().noneMatch(had -> had.path().equals(each))) {
                 add(FilingCoordinate.at(each), out);
@@ -577,9 +582,10 @@ public final class GuardThresholds {
     }
 
     /** The same, added to what a caller has already gathered from beside it. */
-    private static void mentioned(Core e, InputReads reads, Symbols symbols, Arrivals answering,
+    private static void mentioned(Core e, InputReads reads, Symbols symbols,
+                                  DeclarationNewtypes newtypes, Arrivals answering,
                                   List<TermPath> out) {
-        for (TermPath each : originOf(e, reads, symbols, answering).positions()) {
+        for (TermPath each : originOf(e, reads, symbols, newtypes, answering).positions()) {
             if (!out.contains(each)) {
                 out.add(each);
             }

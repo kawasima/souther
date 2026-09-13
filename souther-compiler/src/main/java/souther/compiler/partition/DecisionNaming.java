@@ -78,7 +78,8 @@ final class DecisionNaming implements Naming<DecisionPath> {
     @Override
     public Naming<DecisionPath> insideArm(Core.Match match, Core.Case arm) {
         return new DecisionNaming(meanings,
-                reads.insideArm(match, arm, meanings.states().symbols()),
+                reads.insideArm(match, arm, meanings.states().symbols(),
+                        meanings.states().newtypes()),
                 numbering, mostArrivals);
     }
 
@@ -96,7 +97,8 @@ final class DecisionNaming implements Naming<DecisionPath> {
      */
     @Override
     public DecisionPath side(Core value, boolean held) {
-        Condition condition = Condition.of(value, reads, meanings.states().symbols(), numbering);
+        Condition condition = Condition.of(value, reads, meanings.states().symbols(),
+                meanings.states().newtypes(), numbering);
         DecisionPath path = DecisionPath.NOWHERE;
         for (DecisionMeanings.Read each : meanings.deciding(condition, held)) {
             path = path.and(each.answer(), shownBy(each.answer(), condition, held),

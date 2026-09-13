@@ -53,7 +53,7 @@ record DecisionSubjects(InputDomain inputs, Symbols symbols, PublishedDeclaratio
      * them a call this behavior stands a dependency in for.
      */
     DecisionSubject of(Core e, InputReads at) {
-        if (at.pathOf(e, symbols) instanceof PathResolution.At(TermPath stands)
+        if (at.pathOf(e, newtypes) instanceof PathResolution.At(TermPath stands)
                 && inputs.at(stands) != null) {
             return new DecisionSubject.AnInput(stands);
         }
@@ -72,7 +72,8 @@ record DecisionSubjects(InputDomain inputs, Symbols symbols, PublishedDeclaratio
                 continue;
             }
             if (under instanceof Core.Read name
-                    && reads.meaningOf(name, symbols) instanceof ReadMeaning.Through through) {
+                    && reads.meaningOf(name, symbols, newtypes)
+                            instanceof ReadMeaning.Through through) {
                 under = through.denotes().value();
                 reads = through.denotes().at();
                 continue;
@@ -172,13 +173,13 @@ record DecisionSubjects(InputDomain inputs, Symbols symbols, PublishedDeclaratio
 
             @Override
             public AffineForms.ReadThrough<InputReads> readThrough(Core.Read read, InputReads at) {
-                return NameAnswers.denoting(read, at, symbols);
+                return NameAnswers.denoting(read, at, symbols, newtypes);
             }
 
             @Override
             public List<AffineForms.ReadThrough<InputReads>> alternativesOf(Core.Read read,
                                                                            InputReads at) {
-                return NameAnswers.alternativesOf(read, at, symbols);
+                return NameAnswers.alternativesOf(read, at, symbols, newtypes);
             }
 
             @Override

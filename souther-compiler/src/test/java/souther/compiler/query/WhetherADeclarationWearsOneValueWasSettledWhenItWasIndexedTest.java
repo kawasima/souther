@@ -196,13 +196,13 @@ class WhetherADeclarationWearsOneValueWasSettledWhenItWasIndexedTest {
     /**
      * Which readers still take this off a declaration they are holding.
      *
-     * <p>{@code Location.isStepAsWritten} is how a walk that has not been handed the compilation's
-     * answer asks, and every call of it is a reader whose dependency on the declaration this cut has
-     * not removed. Listed by file, so moving one across the fence is what shortens the list and
-     * writing a new one is what reddens this.
+     * <p>{@code DeclarationNewtypes.asWritten} builds the answer out of a scope rather than taking
+     * the compilation's, so every call of it is a reader whose dependency on the declarations this
+     * cut has not removed. Listed by file, so moving one across the fence is what shortens the list
+     * and writing a new one is what reddens this.
      *
-     * <p>It counts calls and not files, because a walk already holding a declaration is where the
-     * next such reading is cheapest to add.
+     * <p>It counts calls and not files, because a walk already holding a scope is where the next
+     * such reading is cheapest to add.
      */
     @Test
     void theReadersStillTakingThisOffADeclarationAreListed() throws IOException {
@@ -213,7 +213,7 @@ class WhetherADeclarationWearsOneValueWasSettledWhenItWasIndexedTest {
         List<String> calls = new ArrayList<>();
         for (Path source : sources) {
             String code = withoutComments(Files.readString(source, StandardCharsets.UTF_8));
-            assertFalse(code.contains("import static souther.compiler.check.Location.isStepAsWritten"),
+            assertFalse(code.contains("import static souther.compiler.check.DeclarationNewtypes"),
                     () -> source.getFileName() + " takes the question under a bare name, which is a"
                             + " call site this counts by the spelling it is written in");
             int here = 0;
@@ -230,15 +230,15 @@ class WhetherADeclarationWearsOneValueWasSettledWhenItWasIndexedTest {
             }
         }
 
-        assertEquals(List.of("InputPath.java"), calls,
-                "one walk still reads this off the declaration it holds, and it reads that"
-                        + " declaration for what a name stands for as well");
+        assertEquals(List.of("NeutralForm.java", "Adequacy.java"), calls,
+                "the walks that still build this out of a scope rather than being handed the"
+                        + " compilation's answer");
     }
 
-    private static final String ASKED_OF_THE_DECLARATION = "isStepAsWritten(";
+    private static final String ASKED_OF_THE_DECLARATION = "DeclarationNewtypes.asWritten(";
 
     /** Where it is declared, whose own mention of it is the declaration and no call. */
-    private static final String DECLARES_IT = "Location.java";
+    private static final String DECLARES_IT = "DeclarationNewtypes.java";
 
     /**
      * The source with its comments taken out, so that a javadoc naming the question does not read as

@@ -2240,7 +2240,8 @@ public final class Bodies {
             }
             Hir.FnDef fn = db.ask(new SettledFn(module, spec.name())).value();
             out.put(spec.name(), souther.compiler.claims.Claims.of(
-                    souther.compiler.claims.UnreachableClaims.of(body, read, scope.value(), plan),
+                    souther.compiler.claims.UnreachableClaims.of(body, read, scope.value(),
+                            ruleReading.source().newtypes(), plan),
                     souther.compiler.check.PathReachability.of(body,
                             fn == null ? null : SpecImplementation.align(spec, fn),
                             plan, read, ruleReading)));

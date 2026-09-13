@@ -273,7 +273,8 @@ public final class PathReachability {
                     p.getValue().type(), body.pos()), in.known(), in.at());
         }
         PathReachability reading =
-                new PathReachability(engine, plan, read, ruleReading.source().symbols(), out,
+                new PathReachability(engine, plan, read, ruleReading.source().symbols(),
+                        ruleReading.source().newtypes(), out,
                         arriving);
         reading.entry = in.known();
         reading.entered = in.at();
@@ -386,6 +387,10 @@ public final class PathReachability {
      *  against. A condition narrows a path; a case is refused or left by the rules themselves. */
     private final InputDomain read;
     private final Symbols symbols;
+
+    /** Which declarations wear one value, which is what says whether reading a field reaches
+     *  somewhere else ({@link Location#isStep}). */
+    private final DeclarationNewtypes newtypes;
     private final Map<ControlPlace, Reachability> out;
     private final Map<ConstructOccurrence,
             souther.compiler.reach.ComparisonArrival> arriving;
@@ -401,7 +406,8 @@ public final class PathReachability {
     private Denotations entered = Denotations.none();
 
     private PathReachability(PathEngine engine, CoverageSites.Plan plan, InputDomain read,
-                             Symbols symbols, Map<ControlPlace, Reachability> out,
+                             Symbols symbols, DeclarationNewtypes newtypes,
+                             Map<ControlPlace, Reachability> out,
                              Map<ConstructOccurrence,
                                      souther.compiler.reach.ComparisonArrival> arriving) {
         this.engine = engine;
@@ -410,6 +416,7 @@ public final class PathReachability {
         // reading that might not be one.
         this.read = Objects.requireNonNull(read);
         this.symbols = symbols;
+        this.newtypes = newtypes;
         this.out = out;
         this.arriving = arriving;
     }
@@ -512,8 +519,8 @@ public final class PathReachability {
                     // And the name the arm binds stands for the scrutinee's position narrowed to
                     // the case it selects, which is where a comparison written inside the arm draws
                     // its line.
-                    walk(arm.body(), in.known(), in.at(), reads.insideArm(match, arm, symbols),
-                            decided, false);
+                    walk(arm.body(), in.known(), in.at(),
+                            reads.insideArm(match, arm, symbols, newtypes), decided, false);
                 }
             }
             default -> {
@@ -660,7 +667,7 @@ public final class PathReachability {
     /** Where {@code e} stands, and null where it stands nowhere or was not read — which are one
      *  answer to a reader asking whether the guards above reach a position. */
     private TermPath positionOf(Core e, InputReads reads) {
-        return switch (reads.pathOf(e, symbols)) {
+        return switch (reads.pathOf(e, newtypes)) {
             case PathResolution.At(var at) -> at;
             case PathResolution.NotAPosition _ -> null;
             // And one of several is not this position either. What the caller does with an answer

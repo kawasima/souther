@@ -31,10 +31,12 @@ public final class WalkElements {
      * as a name reaches the block it is. Asked of the reading that owns that question rather than
      * read off the tree: a model of any size binds the block before handing it over.
      */
-    public static BindingId elementBindingOf(Core walk, InputReads where, Symbols symbols) {
+    public static BindingId elementBindingOf(Core walk, InputReads where, Symbols symbols,
+                                             DeclarationNewtypes newtypes) {
         if (walk instanceof Core.PreservedCall call) {
             Combinators.Handed handed =
-                    Combinators.handedTo(call, closure -> blockOf(closure, where, symbols));
+                    Combinators.handedTo(call,
+                            closure -> blockOf(closure, where, symbols, newtypes));
             return handed == null ? null : handed.element().binding();
         }
         return GrowingFold.elementBindingOf(walk);
@@ -43,7 +45,9 @@ public final class WalkElements {
     /** The block {@code closure} is, or null where what it stands for is not one. What a name
      *  stands for is the reading's answer ({@link InputReads#denotes}); which kind of expression
      *  this wanted is its own. */
-    private static Core.Block blockOf(Core closure, InputReads where, Symbols symbols) {
-        return where.denotes(closure, symbols).value() instanceof Core.Block block ? block : null;
+    private static Core.Block blockOf(Core closure, InputReads where, Symbols symbols,
+                                      DeclarationNewtypes newtypes) {
+        return where.denotes(closure, symbols, newtypes).value() instanceof Core.Block block
+                ? block : null;
     }
 }

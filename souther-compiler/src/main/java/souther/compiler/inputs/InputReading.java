@@ -1,5 +1,6 @@
 package souther.compiler.inputs;
 
+import souther.compiler.check.DeclarationNewtypes;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.Symbols;
 
@@ -58,5 +59,11 @@ public final class InputReading {
     /** The names the two were read against. */
     public Symbols symbols() {
         return rules.symbols();
+    }
+
+    /** Which declarations wear one value, which is what says whether reading a field reaches
+     *  somewhere else ({@link souther.compiler.check.Location#isStep}). */
+    public DeclarationNewtypes newtypes() {
+        return rules.newtypes();
     }
 }

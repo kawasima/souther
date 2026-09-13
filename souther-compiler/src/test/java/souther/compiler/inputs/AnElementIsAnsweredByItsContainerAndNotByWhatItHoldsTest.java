@@ -3,6 +3,7 @@ package souther.compiler.inputs;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.DefaultStdlib;
+import souther.compiler.check.DeclarationNewtypes;
 import souther.compiler.check.ElementBindings;
 import souther.compiler.check.ElementProvenance;
 import souther.compiler.check.Symbols;
@@ -58,7 +59,7 @@ class AnElementIsAnsweredByItsContainerAndNotByWhatItHoldsTest {
     private static PathResolution readingOf(Core e, ElementBindings elements,
                                             Map<BindingId, Core> bound) {
         return InputReads.written(Map.of(PARAMETER, TermPath.of("n")), bound, elements)
-                .pathOf(e, Symbols.none(DefaultStdlib.get()));
+                .pathOf(e, DeclarationNewtypes.asWritten(Symbols.none(DefaultStdlib.get())));
     }
 
     private static PathResolution readingOf(Core e) {

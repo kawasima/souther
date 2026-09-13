@@ -251,7 +251,8 @@ record AffineReading(LinearForm<NumericTerm> form, BigDecimal cut, ComparisonCla
              */
             @Override
             public AffineForms.ReadThrough<InputReads> readThrough(Core.Read read, InputReads at) {
-                return NameAnswers.denoting(read, at, ruleSource.symbols());
+                return NameAnswers.denoting(read, at, ruleSource.symbols(),
+                        ruleSource.newtypes());
             }
 
             /**
@@ -262,7 +263,8 @@ record AffineReading(LinearForm<NumericTerm> form, BigDecimal cut, ComparisonCla
             @Override
             public java.util.List<AffineForms.ReadThrough<InputReads>> alternativesOf(
                     Core.Read read, InputReads at) {
-                return NameAnswers.alternativesOf(read, at, ruleSource.symbols());
+                return NameAnswers.alternativesOf(read, at, ruleSource.symbols(),
+                        ruleSource.newtypes());
             }
 
             @Override
@@ -270,7 +272,7 @@ record AffineReading(LinearForm<NumericTerm> form, BigDecimal cut, ComparisonCla
                 // Read through where the target is at no position of the input: a field of a value
                 // that stands nowhere is arithmetic's to walk into, since it is no place a row
                 // writes at.
-                boolean stands = switch (at.pathOf(fa.target(), ruleSource.symbols())) {
+                boolean stands = switch (at.pathOf(fa.target(), ruleSource.newtypes())) {
                     case PathResolution.At _ -> true;
                     case PathResolution.NotAPosition _ -> false;
                     // A target that may stand at a position of the input does, on some run, and
@@ -355,6 +357,7 @@ record AffineReading(LinearForm<NumericTerm> form, BigDecimal cut, ComparisonCla
         }
         for (souther.compiler.inputs.TermPath named
                 : GuardThresholds.mentionedIn(leftSide, reads, ruleSource.symbols(),
+                        ruleSource.newtypes(),
                         // A side of a comparison and not a clause: what this is handed is the side
                         // alone, and rooting a reading of arrivals at it would read it as a tree of
                         // its own and lose whatever bound a name above it.

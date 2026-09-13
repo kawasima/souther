@@ -161,18 +161,18 @@ record DecisionComparison(InputDomain inputs, RuleReadingSource rules, DecisionS
 
             @Override
             public AffineForms.ReadThrough<InputReads> readThrough(Core.Read read, InputReads at) {
-                return NameAnswers.denoting(read, at, rules.symbols());
+                return NameAnswers.denoting(read, at, rules.symbols(), rules.newtypes());
             }
 
             @Override
             public List<AffineForms.ReadThrough<InputReads>> alternativesOf(Core.Read read,
                                                                            InputReads at) {
-                return NameAnswers.alternativesOf(read, at, rules.symbols());
+                return NameAnswers.alternativesOf(read, at, rules.symbols(), rules.newtypes());
             }
 
             @Override
             public boolean readsThrough(Core.FieldAccess fa, InputReads at) {
-                boolean stands = switch (at.pathOf(fa.target(), rules.symbols())) {
+                boolean stands = switch (at.pathOf(fa.target(), rules.newtypes())) {
                     case PathResolution.At _ -> true;
                     case PathResolution.NotAPosition _ -> false;
                     case PathResolution.MayStandAt _ -> true;

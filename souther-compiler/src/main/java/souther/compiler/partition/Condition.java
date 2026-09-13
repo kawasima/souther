@@ -1,6 +1,7 @@
 package souther.compiler.partition;
 
 import souther.compiler.check.Comparison;
+import souther.compiler.check.DeclarationNewtypes;
 import souther.compiler.check.Symbols;
 import souther.compiler.core.Core;
 import souther.compiler.inputs.InputReads;
@@ -155,9 +156,11 @@ sealed interface Condition {
      * <p>Asked after the way in has been looked through, so that what is filed is the condition
      * rather than the route to it: a truth reached through a binding is the truth.
      */
-    static Condition of(Core e, InputReads reads, Symbols symbols, ConditionNumbering numbering) {
+    static Condition of(Core e, InputReads reads, Symbols symbols, DeclarationNewtypes newtypes,
+                        ConditionNumbering numbering) {
         if (e instanceof Core.LetIn let) {
-            return of(let.body(), reads.and(let.binder(), let.value()), symbols, numbering);
+            return of(let.body(), reads.and(let.binder(), let.value()), symbols, newtypes,
+                    numbering);
         }
         // A name standing for a truth is that truth. What a `let` binds is already carried for the
         // sake of which position a term names, and stopping at the name here left a fork on one
@@ -172,8 +175,10 @@ sealed interface Condition {
         // It terminates because a binder's value can only mention binders introduced before it, so
         // each step of this goes strictly outwards.
         if (e instanceof Core.Read name
-                && reads.meaningOf(name, symbols) instanceof ReadMeaning.Through through) {
-            return of(through.denotes().value(), through.denotes().at(), symbols, numbering);
+                && reads.meaningOf(name, symbols, newtypes)
+                        instanceof ReadMeaning.Through through) {
+            return of(through.denotes().value(), through.denotes().at(), symbols, newtypes,
+                    numbering);
         }
         Condition already = numbering.alreadyRead(e, reads);
         if (already != null) {
@@ -192,8 +197,8 @@ sealed interface Condition {
                 ConditionOccurrence met = numbering.met();
                 made = new Joined(met,
                         numbering.anchorOf(binary.origin(), binary.pos(), met), joined,
-                        of(binary.left(), reads, symbols, numbering),
-                        of(binary.right(), reads, symbols, numbering));
+                        of(binary.left(), reads, symbols, newtypes, numbering),
+                        of(binary.right(), reads, symbols, newtypes, numbering));
             } else if (comparison != null) {
                 ConditionOccurrence met = numbering.met();
                 made = new Compares(comparison, binary.occurrence(), met,

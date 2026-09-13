@@ -1,5 +1,6 @@
 package souther.compiler.partition;
 
+import souther.compiler.check.DeclarationNewtypes;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.Symbols;
 import souther.compiler.core.Core;
@@ -30,6 +31,12 @@ record ConditionMeanings(InputDomain inputs, RuleReadingSource rules) {
     /** The names the body's own text is read under. */
     Symbols symbols() {
         return rules.symbols();
+    }
+
+    /** Which declarations wear one value, which is what says whether reading a field reaches
+     *  somewhere else ({@link souther.compiler.check.Location#isStep}). */
+    DeclarationNewtypes newtypes() {
+        return rules.newtypes();
     }
 
     /** What {@code condition} coming out {@code held} states, and where it states nothing, that. */

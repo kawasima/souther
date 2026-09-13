@@ -98,7 +98,7 @@ class WhatAWalkTakesInHoldsOfEveryRowItLetsThroughTest {
                 compilation.db().ask(new Adequacy.Inputs(module)).value().get(behavior);
         InputReads reads = InputReads.ofParameters(inputs.parameterReads(),
                 checked.elementBindings().get(behavior));
-        return ReachingCuts.stating(Condition.of(body, reads, rules.symbols(),
+        return ReachingCuts.stating(Condition.of(body, reads, rules.symbols(), rules.newtypes(),
                 new ConditionNumbering(module, behavior)), inputs, holding, rules);
     }
 

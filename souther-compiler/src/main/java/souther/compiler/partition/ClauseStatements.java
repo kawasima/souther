@@ -1,6 +1,7 @@
 package souther.compiler.partition;
 
 import souther.compiler.check.Comparison;
+import souther.compiler.check.DeclarationNewtypes;
 import souther.compiler.check.PartId;
 import souther.compiler.check.RuleRef;
 import souther.compiler.check.StringPredicates;
@@ -105,9 +106,9 @@ final class ClauseStatements {
      *             this part's, and it is assigned here and nowhere a reader stands
      */
     static List<Stated> of(PartId<RuleRef.Ensures> part, Core e, InputReads reads,
-                           Symbols symbols) {
+                           Symbols symbols, DeclarationNewtypes newtypes) {
         List<Statement> found = new ArrayList<>();
-        walk(e, reads, symbols, found);
+        walk(e, reads, symbols, newtypes, found);
         List<Stated> out = new ArrayList<>();
         for (int at = 0; at < found.size(); at++) {
             out.add(new Stated(new ClauseStatementId(part, at), found.get(at)));
@@ -115,13 +116,14 @@ final class ClauseStatements {
         return out;
     }
 
-    private static void walk(Core e, InputReads reads, Symbols symbols, List<Statement> out) {
+    private static void walk(Core e, InputReads reads, Symbols symbols,
+                             DeclarationNewtypes newtypes, List<Statement> out) {
         // Through what a `let` binds: what the expression comes to is its body, so the body states
         // whatever the rule states. This is the shape a helper called from a clause arrives in —
         // the call expanded and its argument bound to the helper's own parameter — and a walk that
         // stopped here would find the rule stating nothing while the model plainly says something.
         if (e instanceof Core.LetIn let) {
-            walk(let.body(), reads.and(let.binder(), let.value()), symbols, out);
+            walk(let.body(), reads.and(let.binder(), let.value()), symbols, newtypes, out);
             return;
         }
         if (e instanceof Core.Binary binary) {
@@ -130,8 +132,8 @@ final class ClauseStatements {
             // operator the first has already been read for.
             ConditionJoin joined = ConditionJoin.of(binary.op()).orElse(null);
             if (joined == ConditionJoin.BOTH) {
-                walk(binary.left(), reads, symbols, out);
-                walk(binary.right(), reads, symbols, out);
+                walk(binary.left(), reads, symbols, newtypes, out);
+                walk(binary.right(), reads, symbols, newtypes, out);
                 return;
             }
             if (joined == ConditionJoin.EITHER) {
@@ -139,11 +141,12 @@ final class ClauseStatements {
                 return;
             }
         }
-        out.add(whatItStates(e, reads, symbols));
+        out.add(whatItStates(e, reads, symbols, newtypes));
     }
 
     /** Which kind of rule one statement is. */
-    private static Statement whatItStates(Core e, InputReads reads, Symbols symbols) {
+    private static Statement whatItStates(Core e, InputReads reads, Symbols symbols,
+                                          DeclarationNewtypes newtypes) {
         if (e instanceof Core.Binary binary) {
             Comparison comparison = Comparison.of(binary).orElse(null);
             return comparison == null ? new Statement.NotRead(e, reads)
@@ -155,7 +158,7 @@ final class ClauseStatements {
         if (e instanceof Core.PreservedCall call
                 && call.application() instanceof ApplicationOrigin.Written) {
             StringPredicates.Stated states = StringPredicates.statedBy(call, symbols,
-                    at -> reads.writtenStringOf(at, symbols));
+                    at -> reads.writtenStringOf(at, symbols, newtypes));
             if (states != null) {
                 return new Statement.TellsStringsApart(call, reads, states);
             }

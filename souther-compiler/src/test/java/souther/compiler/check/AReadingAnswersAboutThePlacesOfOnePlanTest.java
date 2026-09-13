@@ -294,7 +294,7 @@ class AReadingAnswersAboutThePlacesOfOnePlanTest {
             RuleReadingSource rules = RuleReadings.of(compilation, module);
             InputDomain inputs = compilation.db()
                     .ask(new Adequacy.Inputs(module)).value().get("pick");
-            return UnreachableClaims.of(body, inputs, rules.symbols(), plan);
+            return UnreachableClaims.of(body, inputs, rules.symbols(), rules.newtypes(), plan);
         }
 
         /** The arm this module's own reading proves nothing arrives at. */

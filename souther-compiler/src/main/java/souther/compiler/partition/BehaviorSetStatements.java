@@ -1,6 +1,7 @@
 package souther.compiler.partition;
 
 import souther.compiler.check.AnalysisBody;
+import souther.compiler.check.DeclarationNewtypes;
 import souther.compiler.check.RuleCitation;
 import souther.compiler.check.RuleRef;
 import souther.compiler.check.UnreadComparison;
@@ -199,7 +200,7 @@ public final class BehaviorSetStatements {
                           RuleReachNumbering reaches) {
         return of(behavior,
                 PredicateReadings.of(behavior, body, stated, read, parameters, elements, reaches),
-                read.symbols(), allowance, forks, reaches);
+                read.symbols(), read.newtypes(), allowance, forks, reaches);
     }
 
     /**
@@ -211,6 +212,7 @@ public final class BehaviorSetStatements {
      * stating nothing about the strings at any of its positions.
      */
     static Read of(String behavior, PredicateReadings read, Symbols symbols,
+                   DeclarationNewtypes newtypes,
                    Allowance<NumericTerm.FromOnePosition> allowance,
                    List<ComparisonReadings.ForkMet> forks,
                    RuleReachNumbering reaches) {
@@ -218,7 +220,7 @@ public final class BehaviorSetStatements {
         List<ClassingBlocker> blocked = new ArrayList<>();
         List<StandingQuestion.NothingClassifiesIt> nothingClassifies = new ArrayList<>();
         for (PredicateReadings.Reading each : read.predicates()) {
-            switch (ask(each, symbols, read.arrivals())) {
+            switch (ask(each, symbols, newtypes, read.arrivals())) {
                 case Outcome.OfADistinction(Asked it) -> asked.add(it);
                 case Outcome.NotGot(var at, var why) ->
                         blocked.add(new ClassingBlocker(at, each.origin(), why));
@@ -254,7 +256,7 @@ public final class BehaviorSetStatements {
             state(each, answers.get(each.term()), statements, blocked);
         }
         return new Read(statements, blocked, nothingClassifies,
-                ofTheirOwn(behavior, read, symbols, forks, reaches));
+                ofTheirOwn(behavior, read, symbols, newtypes, forks, reaches));
     }
 
     /**
@@ -321,11 +323,12 @@ public final class BehaviorSetStatements {
      * somebody decides about here rather than one that quietly takes its neighbour's answer.
      */
     private static Outcome ask(PredicateReadings.Reading each, Symbols symbols,
+                               DeclarationNewtypes newtypes,
                                souther.compiler.coverage.Arrivals answering) {
         // Where the rule's subject stands, read where the rule stands.
-        PathResolution stands = each.reads().pathOf(each.subject(), symbols);
+        PathResolution stands = each.reads().pathOf(each.subject(), newtypes);
         if (!(stands instanceof PathResolution.At at)) {
-            return saidWithoutADenominator(each, stands, symbols, answering);
+            return saidWithoutADenominator(each, stands, symbols, newtypes, answering);
         }
         NumericTerm.FromOnePosition term = new NumericTerm.ValueOf(at.path());
         return switch (each.reading()) {
@@ -359,11 +362,12 @@ public final class BehaviorSetStatements {
      */
     private static Outcome saidWithoutADenominator(PredicateReadings.Reading each,
                                                    PathResolution stands, Symbols symbols,
+                                                   DeclarationNewtypes newtypes,
                                                    souther.compiler.coverage.Arrivals answering) {
         return switch (stands) {
             case PathResolution.MayStandAt(var among) -> mayStandAt(among);
             case PathResolution.NotAPosition _ ->
-                    whereItsValueCameFrom(each, symbols, answering);
+                    whereItsValueCameFrom(each, symbols, newtypes, answering);
             // The caller asks this only where the subject stands at no one place.
             case PathResolution.At at -> throw new IllegalArgumentException(
                     "a rule whose subject stands at " + at.path() + " has a denominator");
@@ -390,13 +394,14 @@ public final class BehaviorSetStatements {
      * and the body holds no arms to read it off.
      */
     private static Outcome whereItsValueCameFrom(PredicateReadings.Reading each, Symbols symbols,
+                                                 DeclarationNewtypes newtypes,
                                                  souther.compiler.coverage.Arrivals answering) {
-        if (each.reads().cameFrom(each.subject(), symbols)
+        if (each.reads().cameFrom(each.subject(), newtypes)
                 instanceof PathResolution.MayStandAt(var among)) {
             return mayStandAt(among);
         }
-        Set<TermPath> from = positionsItCameFrom(
-                GuardThresholds.originOf(each.subject(), each.reads(), symbols, answering));
+        Set<TermPath> from = positionsItCameFrom(GuardThresholds.originOf(
+                each.subject(), each.reads(), symbols, newtypes, answering));
         // And a rule about a value that came from no position the reading can name, which has
         // nowhere to be said.
         return from.isEmpty() ? new Outcome.Nowhere()
@@ -512,10 +517,11 @@ public final class BehaviorSetStatements {
      * that reached the first condition goes on through it to the second along the same edges.
      */
     private static List<ForkOfItsOwn> ofTheirOwn(String behavior, PredicateReadings read,
-                                                 Symbols symbols,
+                                                 Symbols symbols, DeclarationNewtypes newtypes,
                                                  List<ComparisonReadings.ForkMet> forks,
                                                  RuleReachNumbering reaches) {
-        List<Standing> standing = standingRules(behavior, read, symbols, forks, reaches);
+        List<Standing> standing =
+                standingRules(behavior, read, symbols, newtypes, forks, reaches);
         List<ForkOfItsOwn> out = new ArrayList<>();
         for (Standing each : standing) {
             List<Unread> left = new ArrayList<>();
@@ -531,7 +537,8 @@ public final class BehaviorSetStatements {
             if (left.isEmpty()) {
                 continue;
             }
-            ForkOfItsOwn asked = asked(behavior, each.fork(), left, symbols, read.arrivals(), reaches);
+            ForkOfItsOwn asked = asked(behavior, each.fork(), left, symbols, newtypes,
+                    read.arrivals(), reaches);
             if (asked != null) {
                 out.add(asked);
             }
@@ -573,7 +580,7 @@ public final class BehaviorSetStatements {
     }
 
     private static List<Standing> standingRules(String behavior, PredicateReadings read,
-                                                Symbols symbols,
+                                                Symbols symbols, DeclarationNewtypes newtypes,
                                                 List<ComparisonReadings.ForkMet> forks,
                                                 RuleReachNumbering reaches) {
         List<Standing> out = new ArrayList<>();
@@ -586,7 +593,7 @@ public final class BehaviorSetStatements {
             List<Unread> unread = new ArrayList<>();
             for (Core atom : each.leftHere()) {
                 List<Core> parts =
-                        ComparisonReadings.leftUnread(atom, read, each.reads(), symbols);
+                        ComparisonReadings.leftUnread(atom, read, each.reads(), symbols, newtypes);
                 if (!parts.isEmpty()) {
                     unread.add(new Unread(atom, parts));
                 }
@@ -594,7 +601,8 @@ public final class BehaviorSetStatements {
             if (unread.isEmpty()) {
                 continue;
             }
-            ForkOfItsOwn asked = asked(behavior, each, unread, symbols, read.arrivals(), reaches);
+            ForkOfItsOwn asked = asked(behavior, each, unread, symbols, newtypes,
+                    read.arrivals(), reaches);
             if (asked != null) {
                 out.add(new Standing(each, unread, asked));
             }
@@ -629,6 +637,7 @@ public final class BehaviorSetStatements {
      */
     private static ForkOfItsOwn asked(String behavior, ComparisonReadings.ForkMet fork,
                                       List<Unread> unread, Symbols symbols,
+                                      DeclarationNewtypes newtypes,
                                       souther.compiler.coverage.Arrivals answering,
                                       RuleReachNumbering reaches) {
         SequencedMap<FilingCoordinate, BlockReason.RuleReadingStopped> filed =
@@ -644,7 +653,7 @@ public final class BehaviorSetStatements {
             // element leaves the fork turning on the sequence it walks, and that is where a reader
             // is owed the question.
             List<Core> places = each.parts().stream()
-                    .anyMatch(one -> namesSomething(one, fork, symbols, answering))
+                    .anyMatch(one -> namesSomething(one, fork, symbols, newtypes, answering))
                     ? each.parts() : List.of(each.atom());
             for (Core part : places) {
             // Where the part stands at places this could not choose between, those are the places,
@@ -652,13 +661,14 @@ public final class BehaviorSetStatements {
             // positions it names, and a term over a place nothing settled is a term at whichever
             // place a reader picked. Asked first, so a fork over such a part is filed at each of
             // them rather than at none — which is where the rule the author wrote would go.
-            if (fork.reads().pathOf(part, symbols)
+            if (fork.reads().pathOf(part, newtypes)
                     instanceof PathResolution.MayStandAt(var among)) {
                 among.forEach(at -> filed.putIfAbsent(FilingCoordinate.at(at),
                         new BlockReason.RuleAboutAnElementOfSeveralSequences()));
                 continue;
             }
-            GuardThresholds.Names names = GuardThresholds.namesIn(part, fork.reads(), symbols, answering);
+            GuardThresholds.Names names =
+                    GuardThresholds.namesIn(part, fork.reads(), symbols, newtypes, answering);
             BlockReason.RuleReadingStopped why =
                     UnreadComparison.notAboutOwnValues(names.origin());
             names.met().keySet().forEach(at -> filed.putIfAbsent(FilingCoordinate.at(at), why));
@@ -671,9 +681,10 @@ public final class BehaviorSetStatements {
 
     /** Whether {@code part} names a position of the input, however the reading gets there. */
     private static boolean namesSomething(Core part, ComparisonReadings.ForkMet fork,
-                                          Symbols symbols,
+                                          Symbols symbols, DeclarationNewtypes newtypes,
                                           souther.compiler.coverage.Arrivals answering) {
-        return fork.reads().pathOf(part, symbols) instanceof PathResolution.MayStandAt
-                || !GuardThresholds.namesIn(part, fork.reads(), symbols, answering).met().isEmpty();
+        return fork.reads().pathOf(part, newtypes) instanceof PathResolution.MayStandAt
+                || !GuardThresholds.namesIn(part, fork.reads(), symbols, newtypes, answering)
+                        .met().isEmpty();
     }
 }
