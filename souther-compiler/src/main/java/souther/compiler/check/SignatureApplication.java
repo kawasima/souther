@@ -57,8 +57,8 @@ final class SignatureApplication {
      * @param result   what the signature declares it answers
      * @param expected what the position the application stands in requires of the result, or null
      *                 where the reader has no position to read
-     * @param stated   what stands at each parameter, asked by position and asked once
-     * @param symbols  what the names in the types denote
+     * @param stated    what stands at each parameter, asked by position and asked once
+     * @param published what each declaration the types name says about itself
      */
     static Map<String, Type> settledByValues(List<Type> params, Type result, Type expected,
                                              IntFunction<Type> stated,
