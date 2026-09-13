@@ -1,6 +1,7 @@
 package souther.compiler.check;
 
 import souther.compiler.types.BinOp;
+import souther.compiler.core.ConstructionProjection;
 import souther.compiler.core.Core;
 import souther.compiler.numeric.Count;
 import souther.compiler.numeric.LinearForm;
@@ -513,19 +514,13 @@ public final class AffineForms {
                     if (!(target.value() instanceof Core.Construct nd)) {
                         yield null;
                     }
-                    Standing<A, E> given = null;
-                    for (Core.FieldValue each : nd.values()) {
-                        if (each.field().equals(fa.field())) {
-                            // What a member gives a field is read with what the member is read
-                            // with, which is how one plurality stays one over the parts of it.
-                            given = new Standing<>(each.value(), target.at(), target.reading());
-                            break;
-                        }
-                    }
-                    if (given == null) {
+                    Core written = ConstructionProjection.given(nd, fa.field());
+                    if (written == null) {
                         yield null;
                     }
-                    out.add(given);
+                    // What a member gives a field is read with what the member is read with, which
+                    // is how one plurality stays one over the parts of it.
+                    out.add(new Standing<>(written, target.at(), target.reading()));
                 }
                 yield out;
             }

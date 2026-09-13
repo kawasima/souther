@@ -5,6 +5,7 @@ import souther.compiler.check.DeclaredArgument;
 import souther.compiler.check.DefaultBoundOperationFacts;
 import souther.compiler.check.Location;
 import souther.compiler.check.Symbols;
+import souther.compiler.core.ConstructionProjection;
 import souther.compiler.core.Core;
 import souther.compiler.semantics.BuiltFrom;
 import souther.compiler.types.BindingId;
@@ -148,6 +149,15 @@ final class InputPath {
                         trail.through(r.binding(), () -> named(held, names));
                 case BindingRole.Unknown _ -> new PathResolution.NotAPosition();
             };
+            // A projection out of a construction is the value that field was given, and it is that
+            // value's position that is asked for. The construction and the projection cancel: what
+            // the input holds at the position is what was handed in, and a field of it read back out
+            // is the same value under another name. Asked as a path of the construction instead, the
+            // answer is that a value built here is at no position — which is true of the
+            // construction and is not what the projection above it reads.
+            case Core.FieldAccess fa when introducing(fa.target(), names,
+                    (construct, at) -> named(given(construct, fa), at))
+                    instanceof PathResolution reduced -> reduced;
             // A field of what the target stands at, at every place the target stands. Where the
             // field is not a step of a path — a newtype's own value is the value under it — the
             // place is the target's, which is the step this takes there.
@@ -198,6 +208,73 @@ final class InputPath {
             // Nothing at all, which a caller may hand over where a body has no expression there.
             case null -> new PathResolution.NotAPosition();
         };
+    }
+
+    /**
+     * What a reader makes of a construction and the names it stands under.
+     *
+     * <p>Two values because a construction reached through a {@code let} is written under bindings
+     * the expression above it is not: the value a field of it was given is read where the
+     * construction is, and read where the projection stands, a name the {@code let} opened would
+     * stand for nothing.
+     *
+     * @param <T> what that reader answers
+     */
+    private interface OfAConstruction<T> {
+        T of(Core.Construct construct, BindingEnvironment names);
+    }
+
+    /**
+     * What {@code found} makes of the construction {@code e} stands for, or null where {@code e}
+     * stands for none this walk reaches.
+     *
+     * <p>Which value a name holds is asked of the environment the same way the answer about a position
+     * is, and by the same steps: a name that was given a value, a {@code let}'s body, and a projection
+     * already reduced. What is not asked is where the construction stands — that question is the one
+     * whose answer this exists to get right, and asked here it would be answered for the construction
+     * rather than for the field read out of it.
+     *
+     * <p><b>The reader runs inside the walk and not after it.</b> Crossing to what a name holds is a
+     * step over the binding graph, and what keeps such a walk acyclic holds a binding only while the
+     * walk that crossed it is going on ({@link BindingTrail}). Reading the value a field was given is
+     * part of that walk: it is where the way back to the binding runs, since what the field was given
+     * may read the name again. Handed back as a value and read after the crossing, the binding is off
+     * the way while its own value is being followed, and a construction holding a read of the name it
+     * is bound to runs until the stack is gone rather than being raised as the graph this compiler
+     * does not build. So the answer is taken here, under every binding on the way to it.
+     *
+     * <p>Descending from a construction to the value it gave a field needs nothing of its own: that
+     * stays inside one expression, which is the kind of step nothing has to bound.
+     */
+    private <T> T introducing(Core e, BindingEnvironment names, OfAConstruction<T> found) {
+        return switch (e) {
+            case Core.Construct construct -> found.of(construct, names);
+            case Core.Read r when names.roleOf(r.binding()) instanceof BindingRole.Alias(var held) ->
+                    trail.through(r.binding(), () -> introducing(held, names, found));
+            case Core.LetIn let ->
+                    introducing(let.body(), names.inside(let.binder(), let.value()), found);
+            // A projection of a construction whose field was given another construction, which is
+            // what a value built out of values written where they stand looks like.
+            case Core.FieldAccess fa -> introducing(fa.target(), names,
+                    (construct, at) -> introducing(given(construct, fa), at, found));
+            case null, default -> null;
+        };
+    }
+
+    /**
+     * What {@code fa} reads out of {@code construct}.
+     *
+     * <p>Never nothing: a construction holds every declared field and a projection names a field of
+     * the type it reads, so a construction without the field asked for is this compiler disagreeing
+     * with itself and is said where it is found.
+     */
+    private static Core given(Core.Construct construct, Core.FieldAccess fa) {
+        Core written = ConstructionProjection.given(construct, fa.field());
+        if (written == null) {
+            throw new IllegalStateException("a construction of " + construct.typeName()
+                    + " was read for a field it has none of: " + fa.field());
+        }
+        return written;
     }
 
     /**

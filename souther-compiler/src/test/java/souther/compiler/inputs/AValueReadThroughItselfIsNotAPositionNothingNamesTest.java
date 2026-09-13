@@ -10,6 +10,9 @@ import souther.compiler.diag.SourcePos;
 import souther.compiler.types.BindingId;
 import souther.compiler.types.BindingOwner;
 import souther.compiler.types.Type;
+import souther.compiler.types.TypeKey;
+import souther.compiler.types.TypeSymbol;
+import souther.compiler.types.TypeSymbols;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -42,6 +45,8 @@ class AValueReadThroughItselfIsNotAPositionNothingNamesTest {
     private static final BindingId FIRST = new BindingId(OWNER, 1);
     private static final BindingId SECOND = new BindingId(OWNER, 2);
     private static final BindingId PARAMETER = new BindingId(OWNER, 0);
+    private static final TypeSymbol.AtModule CODE =
+            TypeSymbols.declared(new TypeKey("example", "Code"));
 
     private static Core.Read read(String name, BindingId binding) {
         return new Core.Read(name, binding, Type.INT, POS);
@@ -62,6 +67,35 @@ class AValueReadThroughItselfIsNotAPositionNothingNamesTest {
         bound.put(FIRST, read("b", SECOND));
         bound.put(SECOND, read("a", FIRST));
         return reads(bound);
+    }
+
+    /** A name bound to a construction one of whose fields reads the name back. */
+    private static InputReads aNameHoldingAConstructionOfItself() {
+        Core.FieldAccess ofItself =
+                new Core.FieldAccess(read("c", FIRST), "value", Type.INT, POS);
+        Core.Construct wrapping = new Core.Construct(CODE,
+                java.util.List.of(new Core.FieldValue("value", ofItself, POS)),
+                Type.ref(CODE), POS);
+        return reads(Map.of(FIRST, wrapping));
+    }
+
+    /**
+     * And the same where the way back to the binding runs through a construction it holds.
+     *
+     * <p>The projection and the construction cancel, so the walk goes on with what the field was
+     * given — and that is the name it crossed to get here. Every step of that is one traversal: the
+     * binding is on the way while the value inside the construction is being read, not only while the
+     * construction is being found. Let go of in between, this arrives back at the binding with
+     * nothing on the way and runs until the stack is gone, which is a report about this compiler that
+     * no reader can act on.
+     */
+    @Test
+    void readingAValueThroughAConstructionItHoldsIsRaisedToo() {
+        InputReads names = aNameHoldingAConstructionOfItself();
+
+        assertThrows(BindingTrail.ReadThroughItself.class,
+                () -> names.pathOf(new Core.FieldAccess(read("c", FIRST), "value", Type.INT, POS),
+                        symbols()));
     }
 
     /** Raised where a value is read through itself, and named as this compiler's own state. */
