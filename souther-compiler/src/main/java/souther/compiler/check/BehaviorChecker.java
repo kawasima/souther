@@ -50,7 +50,7 @@ public final class BehaviorChecker {
                                        DeclaredSig declared, Symbols symbols,
                                        PublishedDeclarations published, DeclarationKinds kinds,
                                        Map<String, Type> helpers) {
-        Reading reading = read(behavior, module, declared, symbols, published, kinds);
+        Reading reading = read(behavior, module, declared, published, kinds);
         BehaviorContract contract = reading.contract();
         // The rules it did read, held to what a rule has to be. Two mistakes in one declaration are
         // two things for an author to fix, and this is the reading that reports them.
@@ -95,10 +95,10 @@ public final class BehaviorChecker {
      *     reading of it reports as well
      */
     public static BehaviorContract contractAsRead(Hir.SpecBehavior behavior, String module,
-                                                  DeclaredSig declared, Symbols symbols,
+                                                  DeclaredSig declared,
                                                   PublishedDeclarations published,
                                                   DeclarationKinds kinds) {
-        return read(behavior, module, declared, symbols, published, kinds).whole();
+        return read(behavior, module, declared, published, kinds).whole();
     }
 
     /**
@@ -128,8 +128,7 @@ public final class BehaviorChecker {
 
     /** The declaration as rules, beside what could not be read of it. */
     private static Reading read(Hir.SpecBehavior behavior, String module, DeclaredSig declared,
-                                Symbols symbols, PublishedDeclarations published,
-                                DeclarationKinds kinds) {
+                                PublishedDeclarations published, DeclarationKinds kinds) {
         List<Diagnostic> found = new ArrayList<>();
         ValueName.Behavior name = new ValueName.Behavior(module, behavior.name());
         if (declared == null) {

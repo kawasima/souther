@@ -183,7 +183,7 @@ final class CardinalityTransfer {
      * gets. A type whose values can be written out has at least one of them: a list with nothing in
      * it is not a type, and the count of none is a claim that carries a proof.
      */
-    private static Cardinality howManyValues(Type type, NewtypeInners inners, Symbols symbols,
+    private static Cardinality howManyValues(Type type, NewtypeInners inners,
                                              DeclarationKinds kinds,
                                              PublishedDeclarations published) {
         List<Value> every = ValueUniverse.of(type, inners, kinds, published);
@@ -222,7 +222,7 @@ final class CardinalityTransfer {
                 // here as a number, the count and the values would be two records of one fact with
                 // nothing holding them together.
                 case BOOL ->
-                        howManyValues(type, source.inners(), source.symbols(), source.kinds(),
+                        howManyValues(type, source.inners(), source.kinds(),
                                 source.published());
                 case INT -> values.wholeValuesAt(path);
                 // Spaced too finely to count between two ends, or not spaced at all. A string bounded

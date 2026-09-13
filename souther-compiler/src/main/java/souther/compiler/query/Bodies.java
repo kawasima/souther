@@ -901,7 +901,7 @@ public final class Bodies {
                         : declaring.behaviorsThatState().entrySet()) {
                     try {
                         BehaviorContract contract = BehaviorChecker.contractAsRead(each.getValue(),
-                                name, signatures.value().get(each.getKey()), scope.value(),
+                                name, signatures.value().get(each.getKey()),
                                 Shapes.publishedDeclarations(db), Shapes.declarationKinds(db));
                         out.put(each.getKey(), StatedContract.of(contract, declaring, scope.value(),
                                 Shapes.publishedDeclarations(db), Shapes.declarationKinds(db),

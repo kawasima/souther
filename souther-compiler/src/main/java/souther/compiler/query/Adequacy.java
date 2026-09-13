@@ -1398,7 +1398,7 @@ public final class Adequacy {
                         case BoundaryForMeasurement.NotDerived why ->
                                 SignatureEvidence.notMeasurable(behavior, why);
                         case BoundaryForMeasurement.Derived(Sig sig, InputForMeasurement input) ->
-                                evidenceOf(behavior.name(), sig, scope.value(),
+                                evidenceOf(behavior.name(), sig,
                                         Shapes.publishedDeclarations(db),
                                         Shapes.declarationKinds(db), Shapes.newtypeInners(db),
                                         asked,
@@ -6456,7 +6456,7 @@ public final class Adequacy {
      *                 for ever. Handed the answer and not the reading it was read off, so that a
      *                 behavior with no reading of its own has nothing to be handed in its place
      */
-    static SignatureEvidence evidenceOf(String name, Sig sig, Symbols symbols,
+    static SignatureEvidence evidenceOf(String name, Sig sig,
                                         PublishedDeclarations published, DeclarationKinds kinds,
                                         souther.compiler.check.NewtypeInners inners,
                                         boolean asked,

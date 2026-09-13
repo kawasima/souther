@@ -175,7 +175,7 @@ public final class PipelineSigs {
      * has checked (a signature needs it) and after (a backend needs it), and answer the same.
      */
     public static Composition composition(Hir.PipeBehavior pipe, Map<ValueName.Behavior, Sig> sigs,
-                                          Symbols symbols, PublishedDeclarations published,
+                                          PublishedDeclarations published,
                                           Map<ValueName.Behavior, List<Hir.Var>> pipeStages) {
         // flatten nested pipeline stages so `>->` is associative (spec §type-routing)
         List<Hir.Var> stages = flattenStages(pipe.stages(), pipeStages, pipe.pos());
@@ -214,7 +214,7 @@ public final class PipelineSigs {
                                Symbols symbols, PublishedDeclarations published,
                                DeclarationKinds kinds,
                                Map<ValueName.Behavior, List<Hir.Var>> pipeStages) {
-        Composition composed = composition(pipe, sigs, symbols, published, pipeStages);
+        Composition composed = composition(pipe, sigs, published, pipeStages);
         Type out = composed.answers();
         // an optional declared output must match the inferred one exactly (spec
         // §declared-composition-output): neither a missing case (too narrow) nor an extra one (too wide) is
