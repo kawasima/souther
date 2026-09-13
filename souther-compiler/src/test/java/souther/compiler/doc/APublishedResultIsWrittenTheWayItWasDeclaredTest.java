@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * A published result of more than one case is written the way its declaration wrote it.
@@ -24,9 +25,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * set and cannot say which of two writings it came from, so the order is read off the declaration
  * that is still in hand rather than decided here.
  *
- * <p>And what the declaration does not account for is said after it. A written case naming a sum
- * contributes that sum's cases and not itself, so a member can be one no written case spells; those
- * have no place in a sequence that is the author's, and follow it in the order names are shown in.
+ * <p>And the declaration accounts for every member. The members were read off these same written
+ * cases — a case naming a sum stands for that sum, whose own cases are descended into elsewhere —
+ * so a member none of them writes is this compiler disagreeing with itself, and is said rather than
+ * given a place in a sequence published as the author's.
  */
 class APublishedResultIsWrittenTheWayItWasDeclaredTest {
 
@@ -67,12 +69,18 @@ class APublishedResultIsWrittenTheWayItWasDeclaredTest {
                 PublishedCaseOrder.asDeclared(members(MINOR, ADULT), declaring(MINOR, ADULT)));
     }
 
-    /** A member no written case spells follows what was written, in the order names are shown in. */
+    /**
+     * A member no written case spells is said rather than put somewhere.
+     *
+     * <p>The members were read off these written cases, so this is the compiler disagreeing with
+     * itself and not a shape a model reaches. Held all the same: what a caller would otherwise get
+     * is a sequence with a member in a place nobody chose, published as the order somebody wrote.
+     */
     @Test
-    void whatTheDeclarationDoesNotSpellComesAfterWhatItDoes() {
-        assertEquals(List.of(PENSIONER, ADULT, MINOR),
-                PublishedCaseOrder.asDeclared(members(MINOR, ADULT, PENSIONER),
-                        declaring(PENSIONER)));
+    void aMemberTheDeclarationDoesNotWriteIsRefused() {
+        assertThrows(IllegalStateException.class,
+                () -> PublishedCaseOrder.asDeclared(members(MINOR, ADULT, PENSIONER),
+                        declaring(PENSIONER, MINOR)));
     }
 
     /** And with no declaration in hand there is no writing to show, so the names decide. */

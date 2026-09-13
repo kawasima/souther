@@ -5,7 +5,6 @@ import souther.compiler.types.CanonicalNameOrder;
 import souther.compiler.types.Type;
 import souther.compiler.types.TypeSymbol;
 
-import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -25,11 +24,12 @@ import java.util.Set;
  * reason there is none (ADR-0007); the order carries no such claim, and is the author's for the same
  * reason the parameter names are.
  *
- * <p><b>What a written case does not account for is shown after it.</b> A case that names a sum
- * contributes that sum's own cases and not itself, so the members can hold names no written case
- * spells. Those have no place in the author's sequence — the sequence is over what was written —
- * and they come after it, in the order names are shown in. Reading them as the author's would be
- * claiming a writing for an expansion the author did not do.
+ * <p><b>The declaration accounts for every member, and a member it does not is said rather than
+ * worked around.</b> The members were read off these same written cases — one case each, a case
+ * naming a sum standing for that sum and not for its own cases, which are descended into further
+ * on and not here — so a member no written case spells is this compiler disagreeing with itself. A
+ * sequence made by putting the unaccounted-for members somewhere would be a third kind of order,
+ * neither the author's nor one anybody decided, and the surface would publish it as the author's.
  */
 public final class PublishedCaseOrder {
 
@@ -37,28 +37,30 @@ public final class PublishedCaseOrder {
     }
 
     /**
-     * {@code members}, those the declaration spells first and in its order, then the rest.
+     * {@code members}, in the order {@code declared} writes them, or the order names are shown in
+     * where there is no declaration to read.
      *
-     * <p>Answers the members and only the members: a written case that denotes something the union
-     * does not hold is not published as one, whatever it says about the declaration.
+     * <p>Answers the members and only the members: a written case denoting something the union does
+     * not hold is not published as one, whatever it says about the declaration.
      */
     public static List<TypeSymbol> asDeclared(Set<TypeSymbol> members, Hir.RetType declared) {
-        Set<TypeSymbol> out = new LinkedHashSet<>();
-        if (declared != null) {
-            for (Hir.TypeTerm each : declared.cases()) {
-                TypeSymbol spelled = named(each);
-                if (spelled != null && members.contains(spelled)) {
-                    out.add(spelled);
-                }
+        if (declared == null) {
+            return CanonicalNameOrder.shown(members);
+        }
+        Set<TypeSymbol> written = new LinkedHashSet<>();
+        for (Hir.TypeTerm each : declared.cases()) {
+            TypeSymbol spelled = named(each);
+            if (spelled != null && members.contains(spelled)) {
+                written.add(spelled);
             }
         }
-        List<TypeSymbol> shown = new ArrayList<>(out);
-        for (TypeSymbol each : CanonicalNameOrder.shown(members)) {
-            if (!out.contains(each)) {
-                shown.add(each);
-            }
+        if (!written.containsAll(members)) {
+            Set<TypeSymbol> unaccounted = new LinkedHashSet<>(members);
+            unaccounted.removeAll(written);
+            throw new IllegalStateException("a published result holds cases its declaration does not"
+                    + " write: " + unaccounted);
         }
-        return List.copyOf(shown);
+        return List.copyOf(written);
     }
 
     /**
