@@ -200,6 +200,18 @@ class ARuleAboutTheStringsOfAMadeValueIsNamedWhereItCameFromTest {
             }
             """;
 
+    private static final String A_PATH_THROUGH_THE_INPUT = """
+            module example.codes
+
+            data Answer = Yes | No
+            data Code = String
+            data Request = { code: Code, tag: String }
+
+            behavior f : (request: Request) -> Answer
+            let f (request) =
+                if String.startsWith("JP", request.code.value) then Yes else No
+            """;
+
     private static final String TWO_CONSTRUCTIONS_COMPARED = """
             module example.codes
 
@@ -530,32 +542,51 @@ class ARuleAboutTheStringsOfAMadeValueIsNamedWhereItCameFromTest {
     }
 
     /**
-     * A predicate read over a field of a construction is not yet measured at the position the
-     * construction was given it.
+     * A predicate read over a field of a construction is measured at the position the construction
+     * was given it.
      *
-     * <p>The known boundary and not a rule about what a model deserves. What a construction was
-     * given is the value a field of it comes back as, so the strings at the position are the ones
-     * the rule is about — and a number read the same way out of the same construction is one a line
-     * does fall on. Which positions a predicate's subject resolves to is asked of the reading
-     * instead, and that reading does not see through a construction; it is a defect of its own and
-     * is filed apart from the naming this class is about.
+     * <p>Which is what naming it there was owed all along: the strings the rule is about are the ones
+     * standing at the position, the construction having been handed them, so the rule draws its line
+     * there like a rule written over the position itself. What a line falls on is a question about the
+     * values and this is the one place it is asked of these models — the tests above ask where the
+     * rule is named and are answered by a line as readily as by a question standing there.
      *
-     * <p><b>The one place the boundary is written down.</b> The tests above ask where the rule is
-     * named and hold whichever way it is named there, so this is what fails on the day the reading
-     * sees through a construction — in both halves at once, the word going and the line arriving.
-     * The answer then is a line at the position, and the tests above go on saying the same thing.
+     * <p>Nothing here is derived. A value read back out of a construction is the value that went in,
+     * and a word promising an operation to be followed back would send an author looking for one
+     * nobody wrote. An operation standing over such a projection is another matter and keeps the word
+     * it had: what {@code String.append} answered is not the strings at either position, and the
+     * tests above are where that rule is named.
      */
     @Test
-    void aPredicateOverAProjectedConstructionIsNotYetMeasuredAtItsSourcePosition() {
-        for (String model : List.of(READ_OUT_OF_A_CONSTRUCTION, A_CONSTRUCTION_AND_NOTHING_ELSE,
-                ONE_FIELD_OF_TWO)) {
-            assertEquals(named(measured(model)), derived(measured(model)),
-                    () -> "every position the rule is named at is a question about a derived value: "
+    void aPredicateOverAProjectedConstructionIsMeasuredAtItsSourcePosition() {
+        assertEquals(List.of("a"), measured(A_CONSTRUCTION_AND_NOTHING_ELSE).axes().stream()
+                        .map(PartitionEvidence.AxisCoverage::path).toList(),
+                () -> "a line falls where the construction was given the string: "
+                        + measured(A_CONSTRUCTION_AND_NOTHING_ELSE).notRead());
+        assertEquals(List.of("a"), measured(ONE_FIELD_OF_TWO).axes().stream()
+                        .map(PartitionEvidence.AxisCoverage::path).toList(),
+                "and at the position the field the rule reads was given, and no other");
+        for (String model : List.of(A_CONSTRUCTION_AND_NOTHING_ELSE, ONE_FIELD_OF_TWO)) {
+            assertEquals(List.of(), derived(measured(model)),
+                    () -> "and nothing about it is a value an operation made: "
                             + measured(model).notRead());
-            assertEquals(List.of(), measured(model).axes().stream()
-                    .map(PartitionEvidence.AxisCoverage::path).toList(),
-                    "and no line falls at any of them");
         }
+    }
+
+    /**
+     * And a newtype's value inside the input is still the position it stands under.
+     *
+     * <p>Not this rule. There is no construction here to eliminate: the value is what the input holds
+     * at a position, and whether a newtype's own value is a step of a path is what the declarations
+     * say ({@code Location.isStep}). Read as an elimination, a field of the input would be a rule
+     * about a position nothing wrote.
+     */
+    @Test
+    void aNewtypesValueInsideTheInputIsThePositionItStandsUnder() {
+        assertEquals(List.of("request.code"), measured(A_PATH_THROUGH_THE_INPUT).axes().stream()
+                        .map(PartitionEvidence.AxisCoverage::path).toList(),
+                () -> "the position the newtype stands at: "
+                        + measured(A_PATH_THROUGH_THE_INPUT).notRead());
     }
 
     /**

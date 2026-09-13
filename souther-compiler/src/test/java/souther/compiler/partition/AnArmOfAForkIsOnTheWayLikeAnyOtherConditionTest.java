@@ -58,6 +58,17 @@ class AnArmOfAForkIsOnTheWayLikeAnyOtherConditionTest {
                 match (if p.n > 5 then Plain else Special) with
                     | Plain   -> p.n > 0
                     | Special -> p.n > 10
+
+            data Wrap = { held: Kind }
+
+            behavior onAProjectedConstruction : (kind: Kind, n: Int) -> Bool
+                constructs Wrap
+            let onAProjectedConstruction (kind, n) = {
+                let wrapped = Wrap { held = kind }
+                match wrapped.held with
+                    | Plain   -> n > 0
+                    | Special -> n > 10
+            }
             """;
 
     /** A narrowing is what a fork on a case states, named by the position it narrows. */
@@ -70,6 +81,22 @@ class AnArmOfAForkIsOnTheWayLikeAnyOtherConditionTest {
     @Test
     void aForkOnAFieldNarrowsThatField() {
         assertEquals(List.of("p.kind@Plain", "p.kind@Special"), narrowingsIn("onAField"));
+    }
+
+    /**
+     * And a fork on a field read back out of a construction narrows where the construction was given
+     * it.
+     *
+     * <p>The construction and the projection cancel: the case an arm selects is a case of the values
+     * standing at the parameter, since that is what the construction was handed. Read as a path of
+     * the construction, the scrutinee stands nowhere and both arms are declined — so a search
+     * composes rows for the comparisons inside them believing nothing stood in the way, which is the
+     * answer it gets for a comparison at the top of a body.
+     */
+    @Test
+    void aForkOnAFieldReadOutOfAConstructionNarrowsWhereItWasGivenIt() {
+        assertEquals(List.of("kind@Plain", "kind@Special"),
+                narrowingsIn("onAProjectedConstruction"));
     }
 
     /**
