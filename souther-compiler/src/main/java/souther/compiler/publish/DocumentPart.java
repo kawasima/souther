@@ -36,7 +36,11 @@ public enum DocumentPart {
     OBLIGATIONS("obligations", "/$defs/obligations"),
 
     /** What a measure found, published by two sections through one definition. */
-    FINDINGS("findings", "/$defs/findings");
+    FINDINGS("findings", "/$defs/findings"),
+
+    /** What gave the offer no value, where a search of a rule of a decision composed nothing. */
+    SYNTHESIS_SHORTFALL_CAUSES("synthesisShortfallCauses",
+            "/$defs/decision/properties/obligations/items/properties/synthesisShortfallCauses");
 
     private final String key;
     private final String schemaPath;

@@ -89,6 +89,11 @@ class WhoMaySayWhatARuleHandleReadsAsTest {
     private static final List<String> WRITING_IT_INTO_THE_DOCUMENT = List.of(
             "souther/compiler/report/AdequacyReport"
                     + "#about(ObjectNode, PublishedSubject, DocumentSources)",
+            // The rule a search of a decision rule was given no value by, written where that search
+            // is. The same rule reaches a consumer under the position as well, and the two are one
+            // piece of news only while both are handles.
+            "souther/compiler/report/AdequacyReport#causes(ObjectNode, Generator$"
+                    + "UnresolvedCombination, DocumentSources, PublishedRuleHandle$WhereARuleIs)",
             "souther/compiler/report/AdequacyReport#findings(DocumentArray, List, DocumentSources,"
                     + " PublishedRuleHandle$WhereARuleIs)",
             "souther/compiler/report/AdequacyReport"

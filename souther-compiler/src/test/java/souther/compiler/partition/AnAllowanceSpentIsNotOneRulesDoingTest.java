@@ -83,6 +83,33 @@ class AnAllowanceSpentIsNotOneRulesDoingTest {
     }
 
     /**
+     * And the word a document writes for it says the same, so nothing downstream has a rule to
+     * publish for an entry there is no rule behind.
+     *
+     * <p>The other half of the decision above. A projection that read the limit rather than the
+     * subject would put the rule back under a key a consumer joins on, and the check that the
+     * subject is right would go on passing.
+     */
+    @Test
+    void theDocumentAttributesAnAllowanceSpentToComposingAValue() {
+        StringOfferShortfall.NotOffered made =
+                StringOfferShortfall.NotOffered.whileMaking(aRule(), stoppedBy(
+                        Meter.Stopped.THE_ANSWER));
+
+        assertEquals(ReportedShortfall.Attribution.COMPOSING_A_VALUE,
+                ReportedShortfall.attribution(made.of()));
+        assertEquals(ReportedShortfall.Limit.WHAT_COMPOSING_A_VALUE_MAY_SPEND,
+                ReportedShortfall.limit(Meter.Stopped.THE_ANSWER));
+        // And a machine larger than a machine may be keeps its own word, which is the one an author
+        // writes a smaller pattern about.
+        assertEquals(ReportedShortfall.Attribution.A_RULE,
+                ReportedShortfall.attribution(StringOfferShortfall.NotOffered.whileMaking(
+                        aRule(), stoppedBy(Meter.Stopped.ONE_MACHINE)).of()));
+        assertEquals(ReportedShortfall.Limit.A_MACHINE_LARGER_THAN_ONE_MAY_BE,
+                ReportedShortfall.limit(Meter.Stopped.ONE_MACHINE));
+    }
+
+    /**
      * And what a combination carries is what it was made with, whatever the caller does with the
      * map afterwards.
      *
