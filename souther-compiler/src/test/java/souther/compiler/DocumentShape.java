@@ -64,15 +64,21 @@ public final class DocumentShape {
             // (`EveryFormOfARuleHandleIsOneTheContractDescribes`)
             "x-souther-contains");
 
-    /** What a walk of one document came to: how much of it was reached, and what the schema
-     *  refuses. */
-    public record Read(int objects, List<String> wrong) {}
+    /**
+     * What a walk of one document came to: how much of it was reached, how many of the schema's
+     * conditions were put to it, and what the schema refuses.
+     *
+     * <p>The conditions are counted because a condition that never applies is a check that passes
+     * for saying nothing. A document holding none of the shapes they are about is a document this
+     * walk agrees with the way it agrees with an empty file.
+     */
+    public record Read(int objects, int conditions, List<String> wrong) {}
 
     /** {@code document} read against the schema this compiler ships. */
     public static Read of(JsonNode document) {
         Walk walk = new Walk(schema());
         walk.of(document, "");
-        return new Read(walk.objects, walk.wrong);
+        return new Read(walk.objects, walk.conditions, walk.wrong);
     }
 
     /** The same, for a caller that wants the document held to the schema and nothing else. */
@@ -98,6 +104,7 @@ public final class DocumentShape {
         private final JsonNode schema;
         private final List<String> wrong = new ArrayList<>();
         private int objects;
+        private int conditions;
 
         Walk(JsonNode schema) {
             this.schema = schema;
@@ -133,6 +140,7 @@ public final class DocumentShape {
                         }
                     });
                 }
+                conditions(said, node, at);
                 node.properties().forEach(entry -> {
                     JsonNode under = declares(said, entry.getKey());
                     if (under != null) {
@@ -218,6 +226,174 @@ public final class DocumentShape {
                 }
             }
             return true;
+        }
+
+        /**
+         * Which keys an object must have and must not have where that turns on what it holds.
+         *
+         * <p>Evaluated, unlike the branches of an {@code oneOf}. Which branch of those a value took
+         * is a question about the value, and answering it here would report a document as short of
+         * a key another branch asks for — but an {@code if} names what it turns on and a
+         * {@code dependentRequired} names the key that brings another with it, so there is nothing
+         * to guess at. Stepped over, these were the part of the contract a consumer is held to and
+         * this compiler was not: a relation the schema states and nothing applies is prose with
+         * punctuation.
+         *
+         * <p>Through an {@code allOf}, where a relation several objects share is written once and
+         * referred to, and through the {@code if} of a branch that was taken, where one condition
+         * is written as the next question after another.
+         */
+        private void conditions(JsonNode said, JsonNode node, String at) {
+            if (said.has("if")) {
+                Boolean answered = guarded(said.get("if"), node, at);
+                JsonNode taken = answered == null ? null : said.get(answered ? "then" : "else");
+                if (taken != null) {
+                    conditions++;
+                    for (String key : required(taken)) {
+                        if (!node.has(key)) {
+                            wrong.add(at + ": the schema requires a `" + key + "` here");
+                        }
+                    }
+                    for (String key : refused(taken, at)) {
+                        if (node.has(key)) {
+                            wrong.add(at + ": the schema writes no `" + key + "` here");
+                        }
+                    }
+                    conditions(resolved(taken), node, at);
+                }
+            }
+            for (JsonNode each : said.has("allOf") ? said.get("allOf") : List.<JsonNode>of()) {
+                conditions(resolved(each), node, at);
+            }
+            if (said.has("dependentRequired")) {
+                JsonNode with = said.get("dependentRequired");
+                with.propertyNames().forEach(key -> {
+                    if (node.has(key)) {
+                        with.get(key).forEach(also -> {
+                            if (!node.has(also.asString())) {
+                                wrong.add(at + ": the schema has `" + key + "` bring `"
+                                        + also.asString() + "` with it");
+                            }
+                        });
+                    }
+                });
+            }
+        }
+
+        /**
+         * Whether the question an {@code if} asks is answered yes by what was written, or null
+         * where the question is spelled a way this walk does not read.
+         *
+         * <p>A word at a key, or one of several, the keys the question is put of at all, and a
+         * question that is any of a list of those. Null rather than no for the rest: read as a no,
+         * the other branch would be applied to every document and the condition would be reported
+         * as broken wherever it holds — and read as a yes, it would say nothing anywhere. So it is
+         * reported as a question nobody here can answer, which is what it is.
+         */
+        private Boolean guarded(JsonNode asked, JsonNode node, String at) {
+            boolean answered = true;
+            for (String keyword : names(asked)) {
+                if (!List.of("properties", "required", "anyOf", "description").contains(keyword)) {
+                    wrong.add(at + ": a condition spelled a way this walk does not read: `"
+                            + keyword + "`");
+                    return null;
+                }
+            }
+            if (asked.has("properties")) {
+                for (var each : asked.get("properties").properties()) {
+                    JsonNode said = each.getValue();
+                    JsonNode held = node.get(each.getKey());
+                    // A question about what stands under a key, which is how a condition on
+                    // something written inside another object is put. Asked of the object there,
+                    // and answered no where nothing is.
+                    if (!said.has("const") && !said.has("enum")) {
+                        if (!said.has("properties") && !said.has("required")) {
+                            wrong.add(at + ": a condition spelled a way this walk does not read: "
+                                    + said);
+                            return null;
+                        }
+                        if (held == null || !held.isObject()) {
+                            answered = false;
+                            continue;
+                        }
+                        Boolean under = guarded(said, held, at + "/" + each.getKey());
+                        if (under == null) {
+                            return null;
+                        }
+                        answered &= under;
+                        continue;
+                    }
+                    answered &= held != null && (said.has("const")
+                            ? said.get("const").asString().equals(held.asString())
+                            : anyIs(said.get("enum"), held.asString()));
+                }
+            }
+            for (String key : required(asked)) {
+                answered &= node.has(key);
+            }
+            // And a question that is any of several, which is how a condition over more than one
+            // word is written where the words sit at different keys.
+            if (asked.has("anyOf")) {
+                boolean some = false;
+                for (JsonNode each : asked.get("anyOf")) {
+                    Boolean branch = guarded(each, node, at);
+                    if (branch == null) {
+                        return null;
+                    }
+                    some |= branch;
+                }
+                answered &= some;
+            }
+            return answered;
+        }
+
+        private List<String> names(JsonNode of) {
+            List<String> out = new ArrayList<>();
+            of.propertyNames().forEach(out::add);
+            return out;
+        }
+
+        private boolean anyIs(JsonNode words, String word) {
+            for (JsonNode each : words) {
+                if (word.equals(each.asString())) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private List<String> required(JsonNode of) {
+            List<String> out = new ArrayList<>();
+            if (of.has("required")) {
+                of.get("required").forEach(each -> out.add(each.asString()));
+            }
+            return out;
+        }
+
+        /**
+         * The keys a branch writes out of the document, however it spells the refusal.
+         *
+         * <p>Two spellings, because the schema needed two: one key is {@code not: {required: [k]}}
+         * and several are {@code not: {anyOf: [{required: [k]}, ...]}}. Anything else is reported
+         * rather than passed over, for the reason the keywords above are.
+         */
+        private List<String> refused(JsonNode of, String at) {
+            if (!of.has("not")) {
+                return List.of();
+            }
+            JsonNode not = of.get("not");
+            if (not.has("required")) {
+                return required(not);
+            }
+            if (!not.has("anyOf")) {
+                wrong.add(at + ": a refusal spelled a way this walk does not read: " + not);
+                return List.of();
+            }
+            List<String> out = new ArrayList<>();
+            for (JsonNode each : not.get("anyOf")) {
+                out.addAll(required(each));
+            }
+            return out;
         }
 
         /** Every keyword of this schema object, held to what this walk was taught. */

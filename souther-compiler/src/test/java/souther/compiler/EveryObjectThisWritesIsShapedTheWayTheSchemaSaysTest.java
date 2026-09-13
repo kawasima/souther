@@ -85,6 +85,11 @@ class EveryObjectThisWritesIsShapedTheWayTheSchemaSaysTest {
         DocumentShape.Read read = DocumentShape.of(document());
         assertTrue(read.objects() > 20,
                 () -> "the model reaches the objects of the document: " + read.objects());
+        // And the conditions the schema states were put to it, which is what tells a document this
+        // walk agrees with from one that holds none of the shapes they are about.
+        assertTrue(read.conditions() > 0,
+                () -> "the model reaches what the schema states conditions about: "
+                        + read.conditions());
         assertEquals(List.of(), read.wrong(), "what the schema shipped beside this refuses");
     }
 

@@ -3,6 +3,7 @@ package souther.compiler.report;
 import souther.compiler.diag.SourceRendering;
 import org.junit.jupiter.api.Test;
 
+import souther.compiler.DocumentShape;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.Compilation;
 
@@ -13,7 +14,6 @@ import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -313,37 +313,42 @@ class AMeasureWithNoValueWritesNoFieldOfOneTest {
      */
     @Test
     void theConditionsTheSchemaStatesAreTrueOfWhatIsWritten() {
-        JsonNode schema = schema();
         JsonNode report = reportOf(INJECTED, Adequacy.Level.WITNESS);
 
-        JsonNode branches = schema.get("$defs").get("branch");
+        // Every condition of every object, put to the document by the walk that holds the two
+        // together. Read out of the schema there rather than here: applied by whoever happened to
+        // remember, a condition is enforced over the objects somebody wrote a loop for and is prose
+        // everywhere else, which is what these were.
+        DocumentShape.Read walked = DocumentShape.of(report);
+        assertTrue(walked.conditions() > 0,
+                () -> "the report reaches what the schema states conditions about: "
+                        + walked.conditions());
+        assertEquals(List.of(), walked.wrong(), "what the schema shipped beside this refuses");
+
         int checked = 0;
         for (JsonNode module : report.get("modules")) {
             for (JsonNode each : module.get("behaviors")) {
                 if (each.has("branch")) {
-                    holds(branches, each.get("branch"));
                     checked++;
                 }
             }
         }
         assertTrue(checked >= 2, "both a measured branch and an unmeasured one are in this report");
 
-        // And what each arm of a measured branch says. The conditions here are what keeps the
-        // document's normal form the account's: an arm says where it stands once, and beside it
-        // whatever left it open — so `undecided` carries what the reading went without and the two
-        // settled states carry nothing. Applied over a report holding all three.
-        JsonNode arms = schema.get("$defs").get("branch").get("properties").get("obligations")
-                .get("items");
+        // And that the arms the conditions are about are all reached. The conditions here are what
+        // keeps the document's normal form the account's: an arm says where it stands once, and
+        // beside it whatever left it open — so `undecided` carries what the reading went without
+        // and the two settled states carry nothing. Applied over a report holding all three.
+        JsonNode arms = armAccounts();
+        assertEquals(List.of(), DocumentShape.of(arms).wrong(),
+                "what the schema refuses of a report holding every state an arm reaches");
         Set<String> reached = new java.util.LinkedHashSet<>();
-        for (JsonNode module : armAccounts().get("modules")) {
+        for (JsonNode module : arms.get("modules")) {
             for (JsonNode each : module.get("behaviors")) {
                 if (!each.get("branch").has("obligations")) {
                     continue;
                 }
                 for (JsonNode arm : each.get("branch").get("obligations")) {
-                    for (JsonNode condition : arms.get("allOf")) {
-                        holds(condition, arm);
-                    }
                     reached.add(arm.get("disposition").asString());
                 }
             }
@@ -354,8 +359,6 @@ class AMeasureWithNoValueWritesNoFieldOfOneTest {
         assertEquals(Set.of("met", "unmet", "undecided"), reached,
                 "every state a model reaches is in the document this was applied to");
 
-        JsonNode items = schema.get("$defs").get("partition").get("properties").get("boundaries")
-                .get("items").get("properties").get("items").get("items");
         int measured = 0;
         int not = 0;
         for (JsonNode module : report.get("modules")) {
@@ -365,7 +368,6 @@ class AMeasureWithNoValueWritesNoFieldOfOneTest {
                 }
                 for (JsonNode border : each.get("partition").get("boundaries")) {
                     for (JsonNode point : border.get("items")) {
-                        holds(items, point);
                         if (point.has("status")) {
                             boolean withAValue = List.of("complete", "partial")
                                     .contains(point.get("status").asString());
@@ -384,83 +386,6 @@ class AMeasureWithNoValueWritesNoFieldOfOneTest {
         assertTrue(withAValue > 0 && without > 0,
                 () -> "the level was chosen so that both arms occur: " + withAValue + " measured, "
                         + without + " not");
-    }
-
-    /** The {@code if}/{@code then}/{@code else} of one object, applied to one document node. */
-    private static void holds(JsonNode declared, JsonNode written) {
-        boolean guard = true;
-        for (String key : declared.get("if").get("properties").propertyNames()) {
-            JsonNode said = declared.get("if").get("properties").get(key);
-            // A condition on one word and a condition on several are the same question spelled two
-            // ways. Reading only the second would step over a condition rather than fail on it,
-            // which is what this test exists not to do.
-            assertTrue(said.has("enum") || said.has("const"),
-                    () -> "a condition spelled a way this does not read: " + said);
-            boolean here = written.has(key) && (said.has("const")
-                    ? said.get("const").asString().equals(written.get(key).asString())
-                    : anyIs(said.get("enum"), written.get(key).asString()));
-            guard &= here;
-        }
-        for (String required : declared.get("if").has("required")
-                ? names(declared.get("if").get("required")) : List.<String>of()) {
-            guard &= written.has(required);
-        }
-        JsonNode taken = declared.get(guard ? "then" : "else");
-        for (String key : required(taken)) {
-            assertTrue(written.has(key),
-                    () -> "the schema requires " + key + " here and it is not written: " + written);
-        }
-        for (String key : forbidden(taken)) {
-            assertFalse(written.has(key),
-                    () -> "the schema forbids " + key + " here and it is written: " + written);
-        }
-    }
-
-    private static boolean anyIs(JsonNode words, String word) {
-        for (JsonNode each : words) {
-            if (word.equals(each.asString())) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private static List<String> names(JsonNode array) {
-        List<String> out = new java.util.ArrayList<>();
-        for (JsonNode each : array) {
-            out.add(each.asString());
-        }
-        return out;
-    }
-
-    private static List<String> required(JsonNode of) {
-        return of != null && of.has("required") ? names(of.get("required")) : List.of();
-    }
-
-    /**
-     * The keys a branch of the condition writes out of the document, however it spells it.
-     *
-     * <p>Two spellings because two conditions needed two: one key is {@code not: {required: [k]}}
-     * and several are {@code not: {anyOf: [{required: [k]}, ...]}}. A reader of this that understood
-     * only one of them would pass over the other in silence, which is the failure it is here to
-     * catch, so meeting anything else is a failure rather than something skipped.
-     */
-    private static List<String> forbidden(JsonNode of) {
-        if (of == null || !of.has("not")) {
-            return List.of();
-        }
-        JsonNode not = of.get("not");
-        if (not.has("required")) {
-            return names(not.get("required"));
-        }
-        assertTrue(not.has("anyOf"), () -> "a refusal spelled a way this does not read: " + not);
-        List<String> out = new java.util.ArrayList<>();
-        for (JsonNode each : not.get("anyOf")) {
-            assertTrue(each.has("required") && each.size() == 1,
-                    () -> "a refusal spelled a way this does not read: " + each);
-            out.addAll(names(each.get("required")));
-        }
-        return out;
     }
 
     private static JsonNode schema() {
