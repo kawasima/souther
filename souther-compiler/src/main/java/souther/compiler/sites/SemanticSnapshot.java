@@ -370,7 +370,7 @@ public final class SemanticSnapshot {
 
     /** What a declaration holds, as the text has resolved it so far. */
     private FieldTypes fields() {
-        return new ResolvedFieldTypes(symbols);
+        return new ResolvedFieldTypes(symbols, souther.compiler.query.Shapes.newtypeInners(db));
     }
 
     /**

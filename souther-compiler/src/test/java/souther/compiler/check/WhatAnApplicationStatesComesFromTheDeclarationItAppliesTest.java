@@ -445,12 +445,12 @@ class WhatAnApplicationStatesComesFromTheDeclarationItAppliesTest {
     }
 
     private DeclaredTypeReading reading() {
-        return readingOver(new ResolvedFieldTypes(symbols));
+        return readingOver(new ResolvedFieldTypes(symbols, ScopedDeclarations.wrapsOf(symbols)));
     }
 
     /** The same reading, over a world that records which declarations it was asked about. */
     private DeclaredTypeReading readingCounting(Map<String, Integer> asked) {
-        FieldTypes world = new ResolvedFieldTypes(symbols);
+        FieldTypes world = new ResolvedFieldTypes(symbols, ScopedDeclarations.wrapsOf(symbols));
         return readingOver(owner -> {
             asked.merge(owner.name(), 1, Integer::sum);
             return world.of(owner);
@@ -486,7 +486,7 @@ class WhatAnApplicationStatesComesFromTheDeclarationItAppliesTest {
                 read.db().ask(new Bodies.ModuleDefinitions(module)).value();
         return new DeclaredTypeReading(
                 new DeclarationFacts(new FieldRead(scope, ScopedDeclarations.of(scope),
-                        ScopedDeclarations.kindsOf(scope), new ResolvedFieldTypes(scope),
+                        ScopedDeclarations.kindsOf(scope), new ResolvedFieldTypes(scope, ScopedDeclarations.wrapsOf(scope)),
                         FieldRead.Unreadable.REFUSED)),
                 declared, read.db().ask(new Bodies.Reachable(module)).value())
                 .declaredTypeOf(assertInstanceOf(Hir.FnBody.Written.class,

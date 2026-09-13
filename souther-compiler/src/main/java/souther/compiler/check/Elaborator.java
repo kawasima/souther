@@ -542,7 +542,8 @@ public final class Elaborator {
      *  of them does not read, which a check is what reports. */
     private static FieldRead fieldRead(CheckContext ctx) {
         return new FieldRead(ctx.symbols(), ctx.published(), ctx.kinds(), ctx.inners(),
-                new ResolvedFieldTypes(ctx.symbols()), FieldRead.Unreadable.REFUSED);
+                new ResolvedFieldTypes(ctx.symbols(), ctx.inners()),
+                FieldRead.Unreadable.REFUSED);
     }
 
     /**

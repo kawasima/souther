@@ -3602,7 +3602,8 @@ public final class Adequacy {
                                 // that need not have been accepted — this same answer is worked out
                                 // where a body did not check — and a declaration the check said
                                 // nothing about is a value this cannot reach rather than a fault.
-                                new souther.compiler.check.ResolvedFieldTypes(symbols)),
+                                new souther.compiler.check.ResolvedFieldTypes(
+                                        symbols, Shapes.newtypeInners(db))),
                         bodies.get(behavior), plan, numbering,
                         RowReadings.readingFor(byTarget, behavior),
                         constructing(db, name),

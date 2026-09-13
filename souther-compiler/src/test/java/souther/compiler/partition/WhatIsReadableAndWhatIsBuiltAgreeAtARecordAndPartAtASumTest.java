@@ -198,7 +198,7 @@ class WhatIsReadableAndWhatIsBuiltAgreeAtARecordAndPartAtASumTest {
      */
     @Test
     void oneNameIsReadInAWorldTheWayEveryNameIs() {
-        FieldTypes world = new ResolvedFieldTypes(symbols());
+        FieldTypes world = new ResolvedFieldTypes(symbols(), wraps());
         for (Type type : List.of(typeOf("p"), typeOf("r"))) {
             Shape shape = shapeOf(type);
             ReadableFields readable = ReadableFields.of(shape);

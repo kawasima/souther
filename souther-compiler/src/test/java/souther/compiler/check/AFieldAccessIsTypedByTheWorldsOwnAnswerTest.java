@@ -149,7 +149,7 @@ class AFieldAccessIsTypedByTheWorldsOwnAnswerTest {
 
         assertEquals(Type.INT,
                 new FieldRead(scope, ScopedDeclarations.of(scope),
-                        ScopedDeclarations.kindsOf(scope), new ResolvedFieldTypes(scope),
+                        ScopedDeclarations.kindsOf(scope), new ResolvedFieldTypes(scope, ScopedDeclarations.wrapsOf(scope)),
                         FieldRead.Unreadable.REFUSED)
                         .of(Type.ref(bad), "n"),
                 "and what the declaration denotes is still there to be read");

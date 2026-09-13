@@ -82,7 +82,7 @@ class WhatADotMayNameIsOneAnswerForEveryReaderOfItTest {
      * a reading of what this answer already decided, so a change here that stopped a model compiling
      * would come back as a setup that could not be built rather than as the surface that moved.
      */
-    private final FieldTypes world = new ResolvedFieldTypes(symbols);
+    private final FieldTypes world = new ResolvedFieldTypes(symbols, ScopedDeclarations.wrapsOf(symbols));
     private final FieldRead read =
             new FieldRead(symbols, ScopedDeclarations.of(symbols), ScopedDeclarations.kindsOf(symbols),world, FieldRead.Unreadable.REFUSED);
 
@@ -263,7 +263,7 @@ class WhatADotMayNameIsOneAnswerForEveryReaderOfItTest {
             Compilation c = Compilation.ofSource(each[1], "Main");
             Symbols scope = Scopes.derived(c.db(), "demo").value();
             Type position = Type.ref(TypeSymbols.declared(new TypeKey("demo", each[0])));
-            FieldTypes text = new ResolvedFieldTypes(scope);
+            FieldTypes text = new ResolvedFieldTypes(scope, ScopedDeclarations.wrapsOf(scope));
 
             assertEquals(Map.of(),
                     new FieldRead(scope, ScopedDeclarations.of(scope), ScopedDeclarations.kindsOf(scope), text,FieldRead.Unreadable.MAKES_NOTHING_READABLE)
