@@ -2465,7 +2465,7 @@ public final class Generator {
                 || !(subject.symbols().scope().reach(built) instanceof TypeReachName.Written type)) {
             return null;
         }
-        Map<String, FixtureTemplate> fields = new LinkedHashMap<>();
+        SequencedMap<String, FixtureTemplate> fields = new LinkedHashMap<>();
         LocationWrites writing = new LocationWrites();
         for (int i : moved) {
             Axis axis = axes.get(i);
@@ -2512,7 +2512,7 @@ public final class Generator {
         // is why the value the model states is where this search starts.
         List<String> declared = fieldsOf(subject, built);
         if (declared != null && fields.keySet().containsAll(declared)) {
-            Map<String, FixtureTemplate> written = new LinkedHashMap<>();
+            SequencedMap<String, FixtureTemplate> written = new LinkedHashMap<>();
             for (String field : declared) {
                 written.put(field, fields.get(field));
             }
@@ -5120,9 +5120,9 @@ public final class Generator {
         }
 
         @Override
-        public Map<String, FixtureTemplate> under(ConstructionPlan.Built built,
+        public SequencedMap<String, FixtureTemplate> under(ConstructionPlan.Built built,
                                                   PlanComposer.Under under) {
-            Map<String, FixtureTemplate> fields = new LinkedHashMap<>();
+            SequencedMap<String, FixtureTemplate> fields = new LinkedHashMap<>();
             for (Map.Entry<String, ConstructionPlan.Node> each : built.under().entrySet()) {
                 FixtureTemplate value = under.of(each.getValue());
                 if (value == null) {

@@ -52,6 +52,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.function.Supplier;
 import java.util.Map;
+import java.util.SequencedMap;
 
 /**
  * The equivalence classes a model already states, read off the types a behavior takes.
@@ -1782,7 +1783,7 @@ public final class Partitions {
             return List.of();
         }
         RuleReadingSource ruleSource = reading.source();
-        Map<String, FixtureTemplate> chosen = fieldsOf(record, reading, expanding, given);
+        SequencedMap<String, FixtureTemplate> chosen = fieldsOf(record, reading, expanding, given);
         return chosen == null || !(ruleSource.symbols().scope().reach(record)
                 instanceof TypeReachName.Written written)
                         ? List.of() : List.of(FixtureTemplate.record(written, chosen));
@@ -1797,7 +1798,7 @@ public final class Partitions {
      * to write and needs what goes in it — a caller that took a written record apart again to get at
      * the fields would be reading one answer back out of another.
      */
-    static Map<String, FixtureTemplate> fieldsOf(TypeSymbol.AtModule record,
+    static SequencedMap<String, FixtureTemplate> fieldsOf(TypeSymbol.AtModule record,
                                                  RuleReadingContext reading,
                                                  java.util.Set<TypeSymbol> expanding,
                                                  Map<String, FixtureTemplate> given) {
@@ -1827,7 +1828,7 @@ public final class Partitions {
         // would be paying for every clause again to arrive where the first one already is.
         FieldDomains rules = FieldDomains.of(record, reading);
         FieldDomains.Composing left = rules.composing(Map.of());
-        Map<String, FixtureTemplate> chosen = new LinkedHashMap<>();
+        SequencedMap<String, FixtureTemplate> chosen = new LinkedHashMap<>();
         if (!fields.keySet().containsAll(given.keySet())) {
             return null;
         }

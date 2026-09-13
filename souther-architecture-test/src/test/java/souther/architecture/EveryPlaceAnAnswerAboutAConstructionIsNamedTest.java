@@ -217,8 +217,8 @@ class EveryPlaceAnAnswerAboutAConstructionIsNamedTest {
             "souther/compiler/check/Resolve#expr(Lsouther/compiler/ast/Ast$Expr;Lsouther/compiler/check/Resolve$InForce;)Lsouther/compiler/ast/Hir$Expr; -> NewData.read x1",
             "souther/compiler/check/Terms#asWrittenValue(Lsouther/compiler/core/Core;Lsouther/compiler/check/Denotations;Ljava/util/Map;)Lsouther/compiler/ast/Hir$Expr; -> Apply.synthetic(String) x2",
             "souther/compiler/partition/FixtureTemplate#newtype(Lsouther/compiler/types/TypeReachName$Written;Lsouther/compiler/partition/FixtureTemplate;)Lsouther/compiler/partition/FixtureTemplate; -> Apply.synthetic(String) x1",
-            "souther/compiler/partition/FixtureTemplate#record(Lsouther/compiler/types/TypeReachName$Written;Ljava/util/Map;)Lsouther/compiler/partition/FixtureTemplate; -> NewData.syntheticWithEveryFieldWritten x1",
-            "souther/compiler/partition/FixtureTemplate#spreading(Lsouther/compiler/types/TypeReachName$Written;Lsouther/compiler/partition/FixtureTemplate;Ljava/util/Map;)Lsouther/compiler/partition/FixtureTemplate; -> NewData.syntheticWithEveryFieldWritten x1",
+            "souther/compiler/partition/FixtureTemplate#record(Lsouther/compiler/types/TypeReachName$Written;Ljava/util/SequencedMap;)Lsouther/compiler/partition/FixtureTemplate; -> NewData.syntheticWithEveryFieldWritten x1",
+            "souther/compiler/partition/FixtureTemplate#spreading(Lsouther/compiler/types/TypeReachName$Written;Lsouther/compiler/partition/FixtureTemplate;Ljava/util/SequencedMap;)Lsouther/compiler/partition/FixtureTemplate; -> NewData.syntheticWithEveryFieldWritten x1",
             "souther/compiler/partition/FixtureTemplate#temporal(Ljava/lang/String;Ljava/lang/String;)Lsouther/compiler/partition/FixtureTemplate; -> Apply.synthetic(String) x1");
 
     @Test

@@ -6,6 +6,7 @@ import souther.compiler.inputs.TermPath;
 import souther.compiler.types.TypeSymbol;
 
 import java.util.Map;
+import java.util.SequencedMap;
 
 /**
  * The values of a plan where one position inside it holds a number the caller has.
@@ -44,7 +45,7 @@ record ValuesCarryingANumber(TermPath fixed, FixtureTemplate value, RuleReadingC
     }
 
     @Override
-    public Map<String, FixtureTemplate> under(ConstructionPlan.Built built,
+    public SequencedMap<String, FixtureTemplate> under(ConstructionPlan.Built built,
                                               PlanComposer.Under under) {
         Map.Entry<String, ConstructionPlan.Node> down = fieldTowards(built);
         FixtureTemplate inner = down == null ? null : under.of(down.getValue());

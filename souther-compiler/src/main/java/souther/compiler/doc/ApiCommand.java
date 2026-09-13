@@ -17,7 +17,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
+import java.util.SequencedMap;
 
 /**
  * {@code souther api}: the standard library's published surface, one name per line with the
@@ -130,9 +130,14 @@ public final class ApiCommand {
      * answer, walked here rather than rebuilt: a listing assembled from the declarations and then
      * the rewrites puts every sugar after every module, whichever module it reads as. What each
      * name's signature comes from is this command's own question, and the only one it decides.
+     *
+     * <p>Answered as something that has an order, because a reader is given these one after another.
+     * A map that only said which names are on the surface would be one every caller had to walk in
+     * whatever it walked in, and the order a reader is shown would be a fact about how this was
+     * built rather than the one that was asked for.
      */
-    static Map<String, Signature> surface(Stdlib stdlib) {
-        Map<String, Signature> surface = new LinkedHashMap<>();
+    static SequencedMap<String, Signature> surface(Stdlib stdlib) {
+        SequencedMap<String, Signature> surface = new LinkedHashMap<>();
         for (String name : stdlib.published()) {
             // A published name is a spelling, and the library is what turns one into the operation
             // it reaches. Everything below is asked with that operation.

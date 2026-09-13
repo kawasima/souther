@@ -20,6 +20,7 @@ import souther.compiler.types.TypeSymbols;
 import souther.compiler.types.TypeSymbol;
 
 import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -111,7 +112,7 @@ class ANameGoesBackOnTheWayItCameOffTest {
         assertEquals(List.of(reached("DecisionNN"), reached("DecisionN")), compose.worn());
         assertEquals("DecisionNN(DecisionN(Approved { id = 1 }))",
                 compose.written(FixtureTemplate.record(reached("Approved"),
-                        Map.of("id", FixtureTemplate.integer(1)))).text());
+                        new LinkedHashMap<>(Map.of("id", FixtureTemplate.integer(1))))).text());
     }
 
     // --- and taken off again ---------------------------------------------------------------------
