@@ -1789,6 +1789,11 @@ public final class FixtureReader {
         return new ValueRendering(neutral).show(v, position);
     }
 
+    /** The same, beside what the row wrote, whose order the pairs of a map are put in. */
+    String shown(ObservedValue v, Type position, Asserted against) {
+        return new ValueRendering(neutral).show(v, position, against);
+    }
+
     /** What a value is, named as the language names it. */
     String typeShown(Asserted a) {
         return new ValueRendering(neutral).typeShown(a);

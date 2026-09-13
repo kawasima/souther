@@ -102,6 +102,136 @@ final class ValueRendering {
         return show(v);
     }
 
+    /**
+     * What came out, written beside what the row wrote and put in the row's order where the two
+     * line up.
+     *
+     * <p>A map is a value with no order. What came out of a run holds its pairs in whatever the
+     * runtime's table walks, which is a fact about the keys' numbers and about nothing a model
+     * says — so writing them out in that order shows a reader something the value does not hold,
+     * and shows it beside a row that does hold one. Sorting the pairs instead would settle the
+     * second half and not the first: it puts a total order on a value that has none, and the
+     * reader still reads two sequences that agree about nothing.
+     *
+     * <p><b>So the row's order is the one, for as far as the row reaches.</b> The author wrote the
+     * pairs somewhere, in some order, and a reader holding the two side by side is reading for the
+     * one that differs. A pair the row wrote is shown where the row wrote it; a pair it did not
+     * write has no place of the author's and comes after them.
+     *
+     * <p><b>Which is a rule about showing two values together and not about either of them.</b> A
+     * map is no more ordered for having been rendered, nothing downstream may read this sequence
+     * as the value's, and two pairs are the same pair here when they are written the same, which
+     * is the only sameness a rendering has. What the comparison made of them is its own answer and
+     * is reported as one.
+     */
+    String show(ObservedValue v, Type position, Asserted against) {
+        Type open = NeutralForm.open(position);
+        if (v instanceof ObservedValue.Sequence s && open instanceof Type.SetOf set) {
+            return "Set.fromList(" + elements(s, set.element(), against) + ")";
+        }
+        if (v instanceof ObservedValue.Sequence s && open instanceof Type.ListOf list) {
+            return elements(s, list.element(), against);
+        }
+        return against(v, against);
+    }
+
+    /** The elements, each beside the one the row wrote in its place where it wrote one. */
+    private String elements(ObservedValue.Sequence s, Type element, Asserted against) {
+        List<Asserted> written = against instanceof Asserted.Elements(var _, List<Asserted> these)
+                ? these : List.of();
+        List<String> out = new ArrayList<>();
+        for (int i = 0; i < s.elements().size(); i++) {
+            out.add(i < written.size()
+                    ? show(s.elements().get(i), element, written.get(i))
+                    : show(s.elements().get(i), element));
+        }
+        return out.isEmpty() ? "[]" : "[ " + String.join(", ", out) + " ]";
+    }
+
+    /**
+     * What came out, put in the row's order wherever the row reaches.
+     *
+     * <p>Carried down rather than applied at the top, because the map a row and an answer differ
+     * inside may be under a field or an element. Where the two are not of a shape that lines up,
+     * the row says nothing about the order here and the answer is written as it stands.
+     */
+    private String against(ObservedValue v, Asserted against) {
+        return switch (v) {
+            case ObservedValue.Mapping m when against instanceof Asserted.Entries written ->
+                    entries(m, written);
+            case ObservedValue.Constructed c when against instanceof Asserted.Built built ->
+                    constructed(c, built);
+            case ObservedValue.Sequence s when against
+                    instanceof Asserted.Elements(var _, List<Asserted> these) -> {
+                List<String> out = new ArrayList<>();
+                for (int i = 0; i < s.elements().size(); i++) {
+                    out.add(i < these.size() ? against(s.elements().get(i), these.get(i))
+                            : show(s.elements().get(i)));
+                }
+                yield out.isEmpty() ? "[]" : "[ " + String.join(", ", out) + " ]";
+            }
+            // Everything the row says nothing about the order of, which is everything else: a value
+            // with no parts, and a shape the row did not write the same way.
+            default -> show(v);
+        };
+    }
+
+    /**
+     * The pairs, the row's first and in its order, then the rest.
+     *
+     * <p>Each written pair takes the first pair of the answer nobody has taken that is written the
+     * same way — which is what a reader matching the two columns by eye does, and all a rendering
+     * is in a position to say two pairs have in common. What is left over the row wrote nothing
+     * about, so nothing about the author decides where it goes, and it goes in the order the pairs
+     * are written out in.
+     */
+    private String entries(ObservedValue.Mapping m, Asserted.Entries written) {
+        List<ObservedValue.Entry> left = new ArrayList<>(m.entries());
+        List<String> out = new ArrayList<>();
+        for (Asserted.Entry each : written.entries()) {
+            String key = show(each.key());
+            int found = -1;
+            for (int i = 0; i < left.size(); i++) {
+                if (show(left.get(i).key()).equals(key)) {
+                    found = i;
+                    break;
+                }
+            }
+            if (found < 0) {
+                continue;
+            }
+            ObservedValue.Entry taken = left.remove(found);
+            out.add("(" + show(taken.key()) + ", " + against(taken.value(), each.value()) + ")");
+        }
+        List<String> rest = new ArrayList<>();
+        for (ObservedValue.Entry each : left) {
+            rest.add("(" + show(each.key()) + ", " + show(each.value()) + ")");
+        }
+        rest.sort(String::compareTo);
+        out.addAll(rest);
+        return out.isEmpty() ? "[]" : "[ " + String.join(", ", out) + " ]";
+    }
+
+    /** The fields, each beside the one the row wrote under that name where it wrote one. */
+    private String constructed(ObservedValue.Constructed c, Asserted.Built built) {
+        ObservedValue inner = c.field("value");
+        if (inner != null && neutral.isNewtype(c.type()) && c.fields().size() == 1) {
+            Asserted under = built.fields().get("value");
+            return c.type().name() + "("
+                    + (under == null ? show(inner) : against(inner, under)) + ")";
+        }
+        List<String> names = new ArrayList<>(c.fields().keySet());
+        names.sort(String::compareTo);
+        List<String> out = new ArrayList<>();
+        for (String name : names) {
+            Asserted under = built.fields().get(name);
+            out.add(name + " = " + (under == null ? show(c.fields().get(name))
+                    : against(c.fields().get(name), under)));
+        }
+        return out.isEmpty() ? c.type().name()
+                : c.type().name() + " { " + String.join(", ", out) + " }";
+    }
+
     /** What came out is, named as the language names it, at the position that says what it is. */
     String typeShown(ObservedValue v, Type position) {
         return typeShown(v, Position.at(position));
