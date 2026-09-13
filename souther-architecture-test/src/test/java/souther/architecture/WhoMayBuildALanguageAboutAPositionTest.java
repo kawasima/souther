@@ -151,9 +151,14 @@ class WhoMayBuildALanguageAboutAPositionTest {
      * What writing one value out of a pattern may cost.
      *
      * <p>Its own because it bounds a different question: a caller here is offering a string for a
-     * row and has no answer about a position to compose. Where it runs out, no row is offered —
-     * which is what it does for a pattern it cannot read either, so nothing about a model turns on
-     * the number.
+     * row and has no answer about a position to compose. Where it runs out, no row is offered, and
+     * nothing about a model turns on the number — what a position is read to admit is answered out
+     * of another allowance and comes out the same.
+     *
+     * <p>What the run says about it is not what it says about a pattern it cannot read. Both leave
+     * the values coming from the rules beside the one that gave nothing, and what an author does
+     * about them differs, so the two travel apart from the offer to the block
+     * ({@code StringOfferShortfall}).
      */
     private static final List<String> OF_A_WITNESS =
             List.of("souther/compiler/partition/Partitions");

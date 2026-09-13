@@ -769,6 +769,14 @@ public final class GeneratedRows {
             case ALL_CANDIDATES_REJECTED ->
                     "every value tried was refused at construction, which does not make the"
                             + " combination impossible";
+            // The same refusals, and one fewer thing they show. The values tried came from the
+            // rules this compiler read, so a reader is told they were refused and told not to read
+            // that as the rules refusing them. Which rule composed none of them is said beside
+            // this, where the class says what it knows about itself.
+            case NOT_ALL_CANDIDATES_COULD_BE_OFFERED ->
+                    "every value tried was refused at construction, and a rule about the values"
+                            + " here composed none of them, so what was tried was not all there"
+                            + " was to try";
             // What is missing is the stand-in and not the row's values, so an author reading this
             // is being told what to write beside the row rather than that no row exists.
             case NOTHING_STANDS_IN_FOR_A_DEPENDENCY ->

@@ -20,6 +20,7 @@ import souther.compiler.inputs.Requirements;
 import souther.compiler.inputs.TermPath;
 import souther.compiler.numeric.Count;
 import souther.compiler.numeric.Place;
+import souther.compiler.regex.Meter;
 import souther.compiler.observe.Classification;
 import souther.compiler.observe.Incompleteness;
 import souther.compiler.types.Type;
@@ -490,6 +491,29 @@ public final class Generator {
              */
             NO_CANDIDATE_WAS_OFFERED,
             /**
+             * Candidates were put forward and every one of them was refused, and they were not all
+             * the candidates there were to put forward.
+             *
+             * <p>Apart from {@link #ALL_CANDIDATES_REJECTED}, and the difference is the whole of
+             * what this word is for. That one says the values the rules leave were tried and every
+             * one was refused, which is a reader's licence to go looking for the rule that refuses
+             * them. Here a rule about the position composed nothing — this compiler could not read
+             * it, or could not afford the machine for it — so the values tried came from the rules
+             * beside it, and the refusal that followed says nothing about the rule missing from
+             * them.
+             *
+             * <p>Apart from {@link #THE_SEARCH_LEFT_SOMETHING_UNTRIED} as well, and this one is the
+             * easier to mistake. That one is a search that stopped holding candidates it never
+             * tried, and raising the figure tries them. This search ran to the end of everything it
+             * was given; what was short was the giving, and no figure over the search reaches it.
+             *
+             * <p>Which rule it was, and what stopped it, is said beside this rather than in it. An
+             * author rewriting a rule and an author allowing more are doing different work, and
+             * what they act on together is this: what was offered was not everything, so nothing
+             * about the model follows from its having been refused.
+             */
+            NOT_ALL_CANDIDATES_COULD_BE_OFFERED,
+            /**
              * No reading of the line was searched, so nothing was looked for at the point.
              *
              * <p>A line an {@code invariant} drew is owed once over every behavior carrying the
@@ -521,7 +545,8 @@ public final class Generator {
                     case THE_RULES_LEAVE_NOTHING_THERE, ONE_POSITION_CANNOT_BE_BOTH -> true;
                     // Every one of these is this compiler falling short, and none of them is the
                     // model saying anything: another value of the same classes may well build.
-                    case NOTHING_COMPOSES_ONE, ALL_CANDIDATES_REJECTED, THE_SEARCH_LEFT_SOMETHING_UNTRIED,
+                    case NOTHING_COMPOSES_ONE, ALL_CANDIDATES_REJECTED,
+                         NOT_ALL_CANDIDATES_COULD_BE_OFFERED, THE_SEARCH_LEFT_SOMETHING_UNTRIED,
                          NOTHING_STANDS_IN_FOR_A_DEPENDENCY, A_TABLE_IS_WHAT_THIS_NEEDS,
                          NOTHING_TO_BUILD_AGAINST, NO_VALUES_WERE_ASKED_FOR, LINKAGE_FAILED,
                          NO_CERTIFIED_WITNESS, THE_GROUP_WAS_NOT_OFFERED,
@@ -589,14 +614,14 @@ public final class Generator {
              * The same answer in the words a walk of a coverage item comes back with.
              *
              * <p>Two vocabularies for one distinction, and this is the whole of what relates them.
-             * A walk says one of two things and a search says one of thirteen, so the projection
-             * runs this way and never the other — read back, eleven words would have to name a
+             * A walk says one of two things and a search says one of nineteen, so the projection
+             * runs this way and never the other — read back, seventeen words would have to name a
              * walk's answer and none of them does.
              *
-             * <p>Exhaustive, with the eleven named. A word added is a word somebody has to decide
-             * about here, and deciding is what a {@code default} would do on their behalf: it would
-             * put the new word among the ones no walk says, which is the answer for eleven of them
-             * and is nobody's to assume for the twelfth.
+             * <p>Exhaustive, with the seventeen named. A word added is a word somebody has to
+             * decide about here, and deciding is what a {@code default} would do on their behalf:
+             * it would put the new word among the ones no walk says, which is the answer for
+             * seventeen of them and is nobody's to assume for the eighteenth.
              */
             public Realization.Unknown.Reason asAWalksAnswer() {
                 return switch (this) {
@@ -605,7 +630,8 @@ public final class Generator {
                     // What a walk of a coverage item comes back with is what it did, and these are
                     // what somebody else did: the model settling the point, a candidate refused, a
                     // module with no classes, a position held back, a group never offered.
-                    case ALL_CANDIDATES_REJECTED, THE_RULES_LEAVE_NOTHING_THERE,
+                    case ALL_CANDIDATES_REJECTED, NOT_ALL_CANDIDATES_COULD_BE_OFFERED,
+                         THE_RULES_LEAVE_NOTHING_THERE,
                          NOTHING_STANDS_IN_FOR_A_DEPENDENCY, A_TABLE_IS_WHAT_THIS_NEEDS,
                          ONE_POSITION_CANNOT_BE_BOTH, NOTHING_TO_BUILD_AGAINST,
                          NO_VALUES_WERE_ASKED_FOR, LINKAGE_FAILED, NO_CERTIFIED_WITNESS,
@@ -2890,13 +2916,14 @@ public final class Generator {
                 // short of travels with the answer that is about it, and never onto one that was
                 // settled before the edge's offer was in question.
                 case Outcome.Built _, Outcome.Stopped _, Outcome.Unexhausted _,
-                     Outcome.Unplanned _ -> tried;
+                     Outcome.OfferShort _, Outcome.Unplanned _ -> tried;
                 case Outcome.Unresolved(UnresolvedCombination.Reason word, String said) -> {
                     UnresolvedCombination.Reason itsWord =
                             nothingStoodWhereItWasBuilt(uncertified[0], word);
                     yield whatTheSearchCameTo(whatTheEdgeHeldBack(heldBack, here, itsWord),
                             whatTheEdgeHeldBack(writesSomeOf, here, itsWord),
-                            Set.of(), new Outcome.Unresolved(itsWord, said));
+                            new LinkedHashMap<>(), Set.of(),
+                            new Outcome.Unresolved(itsWord, said));
                 }
                 // Taken apart into what the search itself came to and what the plan was short of,
                 // which is what the rule is asked in terms of. Handed over whole, the plan's
@@ -2908,7 +2935,8 @@ public final class Generator {
                             nothingStoodWhereItWasBuilt(uncertified[0], word);
                     yield whatTheSearchCameTo(whatTheEdgeHeldBack(heldBack, here, itsWord),
                             whatTheEdgeHeldBack(writesSomeOf, here, itsWord),
-                            planCut, new Outcome.Unresolved(itsWord, said));
+                            new LinkedHashMap<>(), planCut,
+                            new Outcome.Unresolved(itsWord, said));
                 }
             };
             return switch (answered) {
@@ -2922,6 +2950,17 @@ public final class Generator {
                                 where.unrepresented());
                 case Outcome.Unexhausted(Set<CompositionRepertoire> writes, String said) ->
                         BoundaryAttempt.Unexhausted.at(label, said, writes,
+                                where.unrepresented());
+                // No figure stopped this, so it is not one of the two above: what a reader is told
+                // is the word for an offer short of the rules, and which rule is the sentence
+                // beside it.
+                case Outcome.OfferShort(
+                        SequencedMap<TermPath, StringOfferShortfall> offered, String said) ->
+                        new BoundaryAttempt.Unresolved(
+                                new UnresolvedCombination(List.of(label),
+                                        UnresolvedCombination.Reason
+                                                .NOT_ALL_CANDIDATES_COULD_BE_OFFERED,
+                                        said, Optional.of(whatWasNotOffered(offered))),
                                 where.unrepresented());
                 case Outcome.Limited(UnresolvedCombination.Reason word, String said,
                                      Set<CompositionBudget> by) ->
@@ -3851,6 +3890,16 @@ public final class Generator {
                 case Outcome.Unexhausted some -> {
                     return Attempt.no(some.why(), some.detail());
                 }
+                // The word for an offer that was not everything, and beside it which rule of the
+                // position none of the values came from. Said rather than folded into the word: an
+                // author rewriting a rule and an author allowing more act on the same category and
+                // go to different places, and the sentence is what sends them.
+                case Outcome.OfferShort(
+                        SequencedMap<TermPath, StringOfferShortfall> offered, String detail) -> {
+                    return new Attempt(null,
+                            UnresolvedCombination.Reason.NOT_ALL_CANDIDATES_COULD_BE_OFFERED,
+                            detail, Optional.of(whatWasNotOffered(offered)));
+                }
                 case Outcome.Limited(UnresolvedCombination.Reason why, String detail,
                                      java.util.Set<CompositionBudget> _) -> {
                     return Attempt.no(why, detail);
@@ -3997,7 +4046,8 @@ public final class Generator {
             // offered at a position the plan stopped short of is whole values of a type it declined
             // to look inside, and none being available is that decision and not a fact about the
             // model.
-            return whatTheSearchCameTo(Set.of(), Set.of(), choices.missingUnderAFigure(),
+            return whatTheSearchCameTo(Set.of(), Set.of(), new LinkedHashMap<>(),
+                    choices.missingUnderAFigure(),
                     new Outcome.Unresolved(UnresolvedCombination.Reason.NOTHING_COMPOSES_ONE,
                             choices.missingAt()));
         }
@@ -4053,7 +4103,56 @@ public final class Generator {
         // compiler's over what it builds, and every value of the kind it does build is one it would
         // offer.
         HeldBack held = heldBack(subject, plan, under);
-        return whatTheSearchCameTo(held.offer(), Set.of(), held.plan(), product);
+        return whatTheSearchCameTo(held.offer(), Set.of(), held.offered(), held.plan(), product);
+    }
+
+    /**
+     * Why the values offered at a position were not all the values there were, in the words a class
+     * says about itself.
+     *
+     * <p><b>Which of the two, because an author does different work about them.</b> A rule this
+     * compiler does not read is one they may be able to write another way, or one nobody has taught
+     * this compiler; an allowance run down is a figure, and the rule may be perfectly ordinary. Said
+     * as one sentence, half of the readers are sent to the wrong place.
+     *
+     * <p>Both where both, for the same reason the figures beside them are both said: two rules
+     * short for two reasons are two things to act on, and a reader handed one of them would fix it
+     * and meet the row again.
+     *
+     * <p>What the rules themselves are is not said here. Which word a document writes for one of
+     * this compiler's reasons belongs to whoever writes the document, and a sentence spelling them
+     * here would be a second vocabulary for them, kept up by hand.
+     */
+    static String whatWasNotOffered(
+            SequencedMap<TermPath, StringOfferShortfall> offered) {
+        List<String> ways = new ArrayList<>();
+        for (Map.Entry<TermPath, StringOfferShortfall> each : offered.entrySet()) {
+            String at = "`" + each.getKey() + "`";
+            if (!each.getValue().unreadable().isEmpty()) {
+                ways.add(at + " holds a rule this compiler could not read, so none of the values"
+                        + " tried there came from it");
+            }
+            for (Meter.Stopped stopped : whatStopped(each.getValue())) {
+                ways.add(switch (stopped) {
+                    case ONE_MACHINE -> "working a value out of a rule on " + at + " asks for a"
+                            + " larger machine than one may be, so none of the values tried there"
+                            + " came from it";
+                    case THE_ANSWER -> "working out the values " + at + " holds spent what"
+                            + " composing one for a row may spend, so what was tried there is what"
+                            + " had been composed by then";
+                });
+            }
+        }
+        return String.join("; ", ways);
+    }
+
+    /** Which limits refused a value being composed, each said once however often it refused. */
+    private static Set<Meter.Stopped> whatStopped(StringOfferShortfall offered) {
+        Set<Meter.Stopped> out = EnumSet.noneOf(Meter.Stopped.class);
+        for (StringOfferShortfall.WitnessOfferStopped each : offered.witnessStopped()) {
+            out.add(each.stopped());
+        }
+        return out;
     }
 
     /**
@@ -4070,6 +4169,7 @@ public final class Generator {
      */
     private static Outcome whatTheSearchCameTo(Set<CompositionBudget> offerCut,
                                                Set<CompositionRepertoire> offerWritesSomeOf,
+                                               SequencedMap<TermPath, StringOfferShortfall> offered,
                                                Set<CompositionBudget> planCut, Outcome came) {
         return switch (came) {
             case Outcome.Unresolved(UnresolvedCombination.Reason why, String detail) -> {
@@ -4094,13 +4194,25 @@ public final class Generator {
                 if (!offerWritesSomeOf.isEmpty()) {
                     yield new Outcome.Unexhausted(offerWritesSomeOf, detail);
                 }
+                // And the third way the offer was short of everything, which is neither of the two
+                // above and is not a figure. Every value the search had was tried, so nothing here
+                // is a number to raise; what is short is what the position had to give it, and the
+                // word says so instead of saying the refusals were the whole story.
+                //
+                // Of that word and not of every word a search comes back with. What a shortfall
+                // here bears on is the claim that the refusals were of everything there was, and
+                // the other words claim something else — a reading that settled the position, a
+                // walk that put nothing forward — which a value never composed does not touch.
+                if (!offered.isEmpty() && why == UnresolvedCombination.Reason.ALL_CANDIDATES_REJECTED) {
+                    yield new Outcome.OfferShort(offered, detail);
+                }
                 yield planCut.isEmpty() ? came : new Outcome.Limited(why, detail, planCut);
             }
             // A search a figure stopped already names one, and nothing here turns that into a
             // second account of the same emptiness. A row stands whatever the plan gave up on, and
             // a value nothing planned had no search for this to be about.
-            case Outcome.Built _, Outcome.Stopped _, Outcome.Unexhausted _, Outcome.Limited _,
-                 Outcome.Unplanned _ -> came;
+            case Outcome.Built _, Outcome.Stopped _, Outcome.Unexhausted _, Outcome.OfferShort _,
+                 Outcome.Limited _, Outcome.Unplanned _ -> came;
         };
     }
 
@@ -4196,12 +4308,25 @@ public final class Generator {
         // last was the whole answer.
         java.util.Set<CompositionBudget> budgets =
                 java.util.EnumSet.noneOf(CompositionBudget.class);
+        // And what the rules about the strings at each position left out of what was offered there.
+        // Every position's, for the reason every position's budget is here: two positions short of
+        // two different things are two things this compiler did not offer, and a reader asking why
+        // nothing was taken is owed both.
+        // Under the position it is about, because a reader is being sent to a rule. A row fixes
+        // several positions and the rule that composed nothing is written at one of them, so a
+        // shortfall gathered into one heap names whichever position the reader guesses.
+        SequencedMap<TermPath, StringOfferShortfall> offered = new LinkedHashMap<>();
         for (ConstructionPlan.Slot each : plan.slots()) {
             RuleKey field = fieldUnder(each.at());
             budgets.addAll(Partitions.notBuilt(each.type(), subject.ruleReading(),
                     field == null ? null : rules.heldAt(field)));
+            StringOfferShortfall here =
+                    Partitions.notOffered(each.type(), subject.ruleReading());
+            if (!here.isEmpty()) {
+                offered.merge(each.at(), here, StringOfferShortfall::and);
+            }
         }
-        return new HeldBack(budgets, plan.cutBy());
+        return new HeldBack(budgets, offered, plan.cutBy());
     }
 
     /**
@@ -4226,11 +4351,17 @@ public final class Generator {
      * ran. Asked again here, it would be asked of a search that had already happened — and
      * whichever answer came back first would be the one a reader got.
      *
-     * @param offer what the offers were short of
-     * @param plan  what the plan was short of. Either may be empty, and both being empty is a
-     *              search that had the whole of what the point had
+     * @param offer   what the offers were short of
+     * @param offered what the rules about each position's strings left out of the offer there,
+     *                under the position it is about. The same kind of shortfall said in the other
+     *                vocabulary: no figure of this compiler's stopped it, and what a reader does
+     *                about it is read a rule rather than raise a number
+     * @param plan    what the plan was short of. Any of them may be empty, and all being empty is a
+     *                search that had the whole of what the point had
      */
-    private record HeldBack(Set<CompositionBudget> offer, Set<CompositionBudget> plan) {
+    private record HeldBack(Set<CompositionBudget> offer,
+                            SequencedMap<TermPath, StringOfferShortfall> offered,
+                            Set<CompositionBudget> plan) {
 
         private HeldBack {
             offer = Set.copyOf(offer);
@@ -4681,6 +4812,34 @@ public final class Generator {
 
         /** None was, and no figure of this compiler's is why. */
         record Unresolved(UnresolvedCombination.Reason why, String detail) implements Outcome {}
+
+        /**
+         * Every value the search was given was refused, and it was not given everything the
+         * position had.
+         *
+         * <p>Beside {@link Unresolved} and not a shape of it. That one is a search whose answer is
+         * about what it looked at and about everything there was to look at; here a rule about the
+         * position composed nothing, so the two are the same refusals and not the same news.
+         *
+         * <p>Beside {@link Stopped} as well, and the difference is what a reader does. A stopped
+         * search was holding a value a figure had no room for; nothing was held back here — the
+         * value was never worked out, and there is no number over the search that reaches it.
+         *
+         * @param offered what the rules about each position's strings left out of the offer there,
+         *                under the position it is about
+         * @param detail  where the search was, in the words the rest of these use
+         */
+        record OfferShort(SequencedMap<TermPath, StringOfferShortfall> offered, String detail)
+                implements Outcome {
+
+            public OfferShort {
+                if (offered.isEmpty()) {
+                    throw new IllegalArgumentException(
+                            "an offer short of the rules says which rule it was short of");
+                }
+                offered = new LinkedHashMap<>(offered);
+            }
+        }
 
         /**
          * A search this compiler stopped before it had tried what it held.

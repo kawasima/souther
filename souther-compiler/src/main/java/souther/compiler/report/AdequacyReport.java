@@ -3203,6 +3203,12 @@ public record AdequacyReport(int schemaVersion, String compilerVersion,
         return switch (why.reason()) {
             case NOTHING_COMPOSES_ONE -> "nothing here could build a representative for " + at;
             case ALL_CANDIDATES_REJECTED -> "every value tried at " + at + " was refused";
+            // The same refusals and one claim fewer. A rule about the position composed nothing, so
+            // what was tried came from the rules beside it — and an author told the line above
+            // would go looking for the rule that refuses those values, which is not what happened.
+            case NOT_ALL_CANDIDATES_COULD_BE_OFFERED ->
+                    "every value tried at " + at + " was refused, and a rule about it composed"
+                            + " none of them";
             // What the row is short of, and not what the model is short of. A row that stands
             // nothing in for a dependency its target requires is one nothing applies, so it is
             // held back rather than handed over to be pasted and refused.

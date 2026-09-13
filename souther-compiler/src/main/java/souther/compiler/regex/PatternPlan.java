@@ -86,9 +86,15 @@ public final class PatternPlan {
          * What composing one value somebody can write into a row is allowed to cost.
          *
          * <p>Its own and not the one above, because it bounds a different thing: what a caller here
-         * is after is a string for a row and never an answer about a position. Where the allowance
-         * runs out no row is offered, which is what it does for a pattern it cannot read either —
-         * so nothing about how a model is read turns on this number.
+         * is after is a string for a row and never an answer about a position. So nothing about how
+         * a model is read turns on this number: what running out costs is a value to paste, and a
+         * position is read to admit what it admits either way.
+         *
+         * <p><b>What it costs is said as itself, and not as a pattern nothing read.</b> Both leave
+         * the row composed out of the rules beside the one that gave nothing, and there they part:
+         * an author meeting this raises a figure or writes a smaller machine, and one meeting an
+         * unreadable rule has a rule to rewrite. Reported alike, half of them are sent to look at
+         * something that is not the matter.
          *
          * <p><b>The whole of what arriving at that string costs, and not one pattern.</b> Which
          * strings a class is left is what the position admits met with the run of the order it is

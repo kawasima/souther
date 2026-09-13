@@ -97,8 +97,12 @@ class AReportSaysWhatRegionARowWasLookedForInTest {
                 "named for the shape this reading stopped at, and where it is written: " + line);
         // Beside what the search came to and not instead of it. The two answer different questions
         // — what happened, and what the search was looking over — and a reader acts on both.
-        assertTrue(line.contains("nothing composed one: every value tried at p.low = 11 was"
-                + " refused"), line);
+        //
+        // What the search came to is not that every value there was was refused: `p.tag` carries a
+        // back reference, which is outside what this compiler reads, so no value of that position
+        // was composed from it and the ones tried came from the rest.
+        assertTrue(line.contains("nothing composed one: `p.tag` holds a rule this compiler could"
+                + " not read"), line);
     }
 
     /**
