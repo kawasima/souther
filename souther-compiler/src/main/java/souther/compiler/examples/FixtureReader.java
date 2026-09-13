@@ -1789,6 +1789,20 @@ public final class FixtureReader {
         return new ValueRendering(neutral).show(v, position);
     }
 
+    /**
+     * The same, beside what the row stated, whose order the pairs of a map are put in.
+     *
+     * <p>Which of the answer's parts stands for which of the row's is the comparison's answer and is
+     * asked for here rather than found again: a map's entries are paired by key and a set's
+     * elements without an order, and a second way of finding them is a second answer to what being
+     * the same value means.
+     */
+    String shown(ObservedValue v, Type position, Asserted stated) {
+        return new ValueRendering(neutral).show(v, position,
+                souther.compiler.observe.Comparisons.alignment(stated, v, types,
+                        souther.compiler.observe.Position.at(position)));
+    }
+
     /** What a value is, named as the language names it. */
     String typeShown(Asserted a) {
         return new ValueRendering(neutral).typeShown(a);

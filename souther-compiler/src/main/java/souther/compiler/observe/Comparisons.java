@@ -73,6 +73,29 @@ public final class Comparisons {
         return new ValueMatch(types).same(left, right, position);
     }
 
+    /**
+     * Which part of {@code answered} stands for which part of {@code stated}, read with
+     * {@code types} and at {@code answers}.
+     *
+     * <p>For a report writing the two side by side. A map's entries are paired by key and a set's
+     * elements without an order, and which pairing that comes to is a question about what being the
+     * same value means — asked here, so that a report does not answer it from what the two are
+     * written as. It says nothing about whether they are the same, which is {@link #verdict}'s
+     * answer and is reported as one.
+     *
+     * <p>Asked when a report wants it. A verdict is asked of every row and nearly all of them hold,
+     * so the correspondence under one is work almost nobody has a use for; this walks the two again
+     * for the ones that did not, by the step {@link #verdict} finds its own pairings with.
+     */
+    public static Alignment alignment(Asserted stated, ObservedValue answered, ValueTypes types,
+                                      Position answers) {
+        if (stated == null || answered == null || types == null || answers == null) {
+            throw new IllegalArgumentException("a correspondence is of a statement with an answer,"
+                    + " read with what the declarations say and where the answer stands");
+        }
+        return new ValueMatch(types).align(stated, answered, answers);
+    }
+
     private static void refuseWhatIsNotThere(ObservedValue value, String which) {
         Incompleteness.Code stopped = Limits.UNBOUNDED.stoppedBy(value);
         if (stopped != null) {
