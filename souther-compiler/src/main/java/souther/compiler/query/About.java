@@ -1,6 +1,7 @@
 package souther.compiler.query;
 
 import souther.compiler.check.RuleCitation;
+import souther.compiler.check.RuleCitations;
 import souther.compiler.coverage.CoverageSites;
 import souther.compiler.diag.SourcePos;
 import souther.compiler.observe.RowIdentity;
@@ -229,10 +230,18 @@ public sealed interface About {
      * identity, which is one rule's findings coming out identical in every field with nothing to
      * join them by. A shape that is about a rule says so by being one of these.
      */
-    sealed interface OfARule extends About {
+    sealed interface OfARule extends About, RuleCitations {
 
         /** Which rule, as everything that names a rule names it. */
         souther.compiler.check.RuleRef rule();
+
+        /** The handles this finding offers, which are the ones it was made with. Written here
+         *  because what a finding holds is one answer under two names — the seal's own question,
+         *  and the one every value holding a handle is asked. */
+        @Override
+        default Set<RuleCitation> ruleCitations() {
+            return cited();
+        }
 
         /**
          * Every handle a reader was offered for that rule.

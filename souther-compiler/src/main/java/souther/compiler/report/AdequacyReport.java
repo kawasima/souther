@@ -12,6 +12,7 @@ import souther.compiler.check.CoverageObligation;
 import souther.compiler.check.PartId;
 import souther.compiler.types.SourceConstructOrigin;
 import souther.compiler.check.RuleCitation;
+import souther.compiler.check.RuleCitations;
 import souther.compiler.check.RuleRef;
 import souther.compiler.numeric.Towards;
 import souther.compiler.partition.AuthoredLine;
@@ -34,6 +35,7 @@ import souther.compiler.partition.OnTheWay;
 import souther.compiler.partition.ReachabilityGap;
 import souther.compiler.partition.ReportedReason;
 import souther.compiler.partition.RoleAnswer;
+import souther.compiler.partition.RuleEvidenceOrigin;
 import souther.compiler.partition.UndividedPosition;
 import souther.compiler.diag.Citation;
 import souther.compiler.diag.SourcePos;
@@ -761,20 +763,21 @@ public record AdequacyReport(int schemaVersion, String compilerVersion,
             Map<DecisionRule, RuleSettlement> requirements = ruleSettlements(compilation, name,
                     behavior.name(),
                     decisions == null ? null : decisions.get(behavior.name()));
+            // The measures this behavior was made of, held as one value before the page is: what
+            // the page may send a reader to is asked of it, and a whole that answers for its parts
+            // is the one thing that has to be in reach for that question to be asked at all.
+            BehaviorEvidence evidence = new BehaviorEvidence(reading, signature, partition, read,
+                    accounts == null ? null : accounts.get(behavior.name()), branch,
+                    decisions == null ? null : decisions.get(behavior.name()));
             behaviors.add(new BehaviorReport(behavior.name(),
                     module.implementationOf(behavior),
-                    new BehaviorEvidence(reading, signature, partition, read,
-                            accounts == null ? null : accounts.get(behavior.name()), branch,
-                            decisions == null ? null : decisions.get(behavior.name())),
+                    evidence,
                     claims == null ? ClaimAnnotations.NONE
                             : claims.getOrDefault(behavior.name(), ClaimAnnotations.NONE),
                     reported,
                     armPlaces(compilation, branch),
                     conditionPlaces(compilation, linesOf(read)),
-                    rulePlaces(compilation, partition, linesOf(read),
-                            accounts == null ? List.of()
-                                    : pointsOf(accounts.get(behavior.name())),
-                            reported),
+                    rulePlaces(compilation, citedBy(evidence, reported)),
                     partPlaces(compilation, partition, reported),
                     ruleReadings(compilation, name, behavior.name(),
                             decisions == null ? null : decisions.get(behavior.name()),
@@ -794,7 +797,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion,
                 // under are the debts' rather than any behavior's.
                 new DeclarationsShown(declared,
                         conditionPlaces(compilation, declaredLines(declared)),
-                        rulePlaces(compilation, null, declaredLines(declared), null, owed)));
+                        rulePlaces(compilation, citedByDeclarations(declared, owed))));
     }
 
     /** The lines a module's declarations were read at, which is where the block about them looks
@@ -1012,37 +1015,75 @@ public record AdequacyReport(int schemaVersion, String compilerVersion,
      * sentence is decided where the sentence is written; a gathering that asked it here would be
      * that decision made twice.
      *
-     * <p>Every kind of finding about a rule is read through the one question that spans them
-     * ({@link About.OfARule#cited}), and the rules the document's own arrays name are read off
-     * those arrays. A rule found by two readers is one entry: what is asked about is the handle,
-     * and two readers offering one handle offer one value.
+     * <p><b>Asked of what read the rules, and never gathered from where their outcomes were
+     * filed.</b> Every value holding a handle answers one question ({@link RuleCitations}), and a
+     * whole answers by asking its parts — so what this takes in is already the closure, and there
+     * is no list here to keep in step. Listed instead, a reading filed somewhere new is a reading
+     * nothing points at, nothing fails, and the page names a class with no handle for the rule that
+     * made it.
+     *
+     * <p>Only the rules with somewhere to be asked about get an entry: a rule the author named is
+     * found by that name from anywhere. A rule two readers hold a handle for is one entry — what is
+     * asked about is the handle, and two readers offering one handle offer one value.
      */
     private static Map<RuleCitation.Written, Citation> rulePlaces(
-            Compilation compilation, PartitionEvidence partition,
-            List<BorderAssessment> lines, List<BorderObligationPointAssessment> account,
-            List<ReportedFinding> found) {
+            Compilation compilation, Set<RuleCitation> cited) {
         Map<RuleCitation.Written, Citation> places = new LinkedHashMap<>();
-        Consumer<RuleCitation> take = cited -> {
-            if (cited instanceof RuleCitation.Written written) {
-                places.computeIfAbsent(written,
-                        it -> Sites.placeOf(compilation.db(), it));
+        for (RuleCitation each : cited) {
+            if (each instanceof RuleCitation.Written written) {
+                places.computeIfAbsent(written, it -> Sites.placeOf(compilation.db(), it));
             }
-        };
-        if (partition != null) {
-            partition.unanswered().forEach(each -> each.cited().forEach(take));
-            partition.notRead().forEach(each -> each.cited().forEach(take));
-        }
-        lines.forEach(line -> take.accept(line.origin().cited()));
-        if (account != null) {
-            account.forEach(each -> each.citations().forEach(take));
-        }
-        if (found != null) {
-            found.stream().map(ReportedFinding::finding).map(Adequacy.Finding::about)
-                    .filter(About.OfARule.class::isInstance)
-                    .map(About.OfARule.class::cast)
-                    .forEach(each -> each.cited().forEach(take));
         }
         return places;
+    }
+
+    /**
+     * Every handle the page about one behavior may send a reader to.
+     *
+     * <p>Two, because a page shows two things: the measures this behavior was made of, which
+     * answer for the rules they read, and the findings written under it, which answer for the rules
+     * they are about. A finding is not a measure — it is what a measure came to, kept beside it —
+     * so neither is recovered from the other.
+     */
+    private static Set<RuleCitation> citedBy(BehaviorEvidence evidence,
+                                             List<ReportedFinding> found) {
+        Set<RuleCitation> cited = new LinkedHashSet<>(evidence.ruleCitations());
+        cited.addAll(citedBy(found));
+        return cited;
+    }
+
+    /**
+     * Every handle the block about a module's declarations may send a reader to.
+     *
+     * <p>The lines the declarations drew, which are read at no behavior's page, and the findings
+     * about them. There is no behavior here and so no measures to ask: what a module's declarations
+     * are owed is read off the lines themselves.
+     */
+    private static Set<RuleCitation> citedByDeclarations(Adequacy.DeclaredBoundaries declared,
+                                                         List<ReportedFinding> found) {
+        Set<RuleCitation> cited = new LinkedHashSet<>();
+        declaredLines(declared).forEach(line -> cited.addAll(line.ruleCitations()));
+        cited.addAll(citedBy(found));
+        return cited;
+    }
+
+    /**
+     * Every handle the findings hold.
+     *
+     * <p>Asked of what a finding is about, by the same question every value holding a handle
+     * answers ({@link RuleCitations}). Matched against the kinds that happen to be about a rule
+     * instead, a kind added later is a kind whose rules a page names with nowhere to point — which
+     * is the fault this gathering was rewritten to keep out, one seal over.
+     */
+    private static Set<RuleCitation> citedBy(List<ReportedFinding> found) {
+        Set<RuleCitation> cited = new LinkedHashSet<>();
+        if (found != null) {
+            found.stream().map(ReportedFinding::about)
+                    .filter(RuleCitations.class::isInstance)
+                    .map(RuleCitations.class::cast)
+                    .forEach(each -> cited.addAll(each.ruleCitations()));
+        }
+        return cited;
     }
 
     /**
@@ -1089,10 +1130,23 @@ public record AdequacyReport(int schemaVersion, String compilerVersion,
         return places;
     }
 
-    /** The points one behavior's account holds, or none where the measure could not be made. */
-    private static List<BorderObligationPointAssessment> pointsOf(
-            Measure<List<BorderObligationPointAssessment>> account) {
-        return account == null ? List.of() : account.made().orElse(List.of());
+    /**
+     * The handles each rule that composed a position's classes offers, one entry per rule.
+     *
+     * <p>Grouped by the rule and not by the reading. What tells two readings apart is which of them
+     * divided what, and that is a fact about the readings; what a reader is sent to is the rule the
+     * author wrote, and a sentence per reading of it is the same rule said as many times as this
+     * compiler happened to meet it.
+     *
+     * <p>In the order the rules were read, which is the order the axis holds them in. An order of
+     * this method's own would be a second answer to a question the reading already settled.
+     */
+    private static List<Set<RuleCitation>> dividedBy(PartitionEvidence.AxisCoverage axis) {
+        Map<RuleRef, Set<RuleCitation>> byRule = new LinkedHashMap<>();
+        for (RuleEvidenceOrigin origin : axis.divides()) {
+            byRule.computeIfAbsent(origin.rule(), _ -> new LinkedHashSet<>()).add(origin.cited());
+        }
+        return List.copyOf(byRule.values());
     }
 
     /** The lines one behavior met, or none where the measure could not be made. */
@@ -2009,6 +2063,18 @@ public record AdequacyReport(int schemaVersion, String compilerVersion,
                     out.append(String.format("      · %s holds %d classes and this behavior's rules"
                                     + " compose %d of them%n",
                             axis.name(), axis.classes().size(), axis.divides().size()));
+                }
+                // Which rule composed the classes, for a reader told that no row is in one of them.
+                // The lines above name the class; this names what made it, so that a reader sent
+                // after a row has somewhere to open rather than a name of the model's.
+                //
+                // One line per rule and not per reading. A helper is expanded at each call, so one
+                // rule the author wrote is read at several places; what those offer is several
+                // handles onto one rule, and which of them a document writes is settled where that
+                // choice is made.
+                for (Set<RuleCitation> rule : dividedBy(axis)) {
+                    out.append(String.format("      · %s is divided by %s%n",
+                            axis.name(), cited(rule, rendering, declaredIn, places)));
                 }
                 for (ClaimAnnotations.Said said : behavior.claimed().at(axis.path())) {
                     // A case out of the denominator says what the author wrote about it; one still

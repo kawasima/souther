@@ -3,6 +3,7 @@ package souther.compiler.query;
 import souther.compiler.check.CoverageObligation;
 import souther.compiler.check.NumberAt;
 import souther.compiler.check.RuleCitation;
+import souther.compiler.check.RuleCitations;
 import souther.compiler.check.RuleRef;
 import souther.compiler.inputs.BlockReason;
 import souther.compiler.inputs.FilingCoordinate;
@@ -18,6 +19,7 @@ import souther.compiler.partition.UndividedPosition;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.SequencedMap;
 import java.util.Set;
@@ -69,7 +71,7 @@ public record PartitionEvidence(Measure<List<AxisCoverage>> partitioned,
                                 List<souther.compiler.inputs.PositionReadingBlocked> blocked,
                                 List<souther.compiler.inputs.PositionValuesNotSeparated> notSeparated,
                                 List<Unanswered> unanswered,
-                                List<Incompleteness> whyUnclassified) {
+                                List<Incompleteness> whyUnclassified) implements RuleCitations {
 
 
     /**
@@ -497,6 +499,30 @@ public record PartitionEvidence(Measure<List<AxisCoverage>> partitioned,
             out = out.union(axis.reached().weakening());
         }
         return out;
+    }
+
+    /**
+     * Every handle this measure holds for a rule it read.
+     *
+     * <p>Three ways a rule of the model reaches this measure and all three are here. A question
+     * nothing answered names the rule it stands on; a rule this reading could not turn into a line
+     * names itself; and a rule that did divide a position is what the classes were composed out of,
+     * which is the axis's to say ({@link AxisCoverage#divides()}). The third used to be nobody's:
+     * the page that names a class no row is in had no handle for the rule that made that class.
+     *
+     * <p>Asked here and not of the axes. Which arrays a rule can reach this measure through is what
+     * this record is made of, and a reader gathering them from outside is a reader who has to be
+     * told when a fourth arrives.
+     */
+    @Override
+    public Set<RuleCitation> ruleCitations() {
+        Set<RuleCitation> out = new LinkedHashSet<>();
+        unanswered().forEach(each -> out.addAll(each.cited()));
+        notRead().forEach(each -> out.addAll(each.cited()));
+        for (AxisCoverage axis : axes()) {
+            axis.divides().forEach(each -> out.add(each.cited()));
+        }
+        return Collections.unmodifiableSet(out);
     }
 
     /** The positions, for a reader that wants them and not what the measure made of itself. Empty
