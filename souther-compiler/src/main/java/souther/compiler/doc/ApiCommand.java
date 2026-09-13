@@ -6,6 +6,7 @@ import souther.compiler.stdlib.Stdlib;
 import souther.compiler.types.ValueName;
 import souther.compiler.ast.Hir;
 import souther.compiler.types.Type;
+import souther.compiler.types.TypeSymbol;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -101,8 +102,12 @@ public final class ApiCommand {
     }
 
     /** One published name's parameters, as written, and the type it answers with. A name declaring
-     *  none is a value rather than a function of no arguments. */
-    record Signature(List<String> paramNames, List<Type> paramTypes, Type result) {}
+     *  none is a value rather than a function of no arguments. The return is carried as the
+     *  declaration wrote it beside the type it resolved to, because a result of more than one case
+     *  is published in the order it was written ({@link PublishedCaseOrder}) and a type does not
+     *  hold that. */
+    record Signature(List<String> paramNames, List<Type> paramTypes, Type result,
+                     Hir.RetType declaredReturn) {}
 
     private static void listPublished(PrintStream out, String prefix, Stdlib stdlib) {
         surface(stdlib).forEach((name, signature) -> {
@@ -160,7 +165,8 @@ public final class ApiCommand {
             names.add(params.get(i).binder().name());
             kept.add(types.get(i));
         }
-        return new Signature(names, kept, entry.signature().result());
+        return new Signature(names, kept, entry.signature().result(),
+                entry.declaration().declaredReturn());
     }
 
     /**
@@ -184,9 +190,25 @@ public final class ApiCommand {
             sb.append(")");
         }
         if (signature.result() != null) {
-            sb.append(" : ").append(Type.show(signature.result()));
+            sb.append(" : ").append(result(signature));
         }
         return sb.toString();
+    }
+
+    /**
+     * The type a published name answers with, written the way its declaration writes it.
+     *
+     * <p>Which differs from {@link Type#show} for a result of more than one case and for nothing
+     * else. What is published here is a declaration — the parameter names above are the
+     * declaration's too — so a result somebody wrote as {@code Int | DivisionByZero} is published
+     * that way round, and not in the order a set of names is shown in.
+     */
+    static String result(Signature signature) {
+        if (!(signature.result() instanceof Type.Union union)) {
+            return Type.show(signature.result());
+        }
+        return PublishedCaseOrder.asDeclared(union.members(), signature.declaredReturn()).stream()
+                .map(TypeSymbol::name).collect(java.util.stream.Collectors.joining(" | "));
     }
 
     private static int printSource(String alias, PrintStream out, PrintStream err) {

@@ -8,6 +8,7 @@ import souther.compiler.query.Compilation;
 import souther.compiler.query.PartitionEvidence;
 import souther.compiler.query.Sites;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -143,6 +144,87 @@ class ARuleAboutTheStringsOfAMadeValueIsNamedWhereItCameFromTest {
                     then Yes else No
             """;
 
+    private static final String READ_OUT_OF_A_CONSTRUCTION = """
+            module example.codes
+
+            data Answer = Yes | No
+            data Code = String
+
+            behavior f : (a: String, b: String) -> Answer
+                constructs Code
+            let f (a, b) = {
+                let code = Code(a)
+                if String.startsWith("JP", String.append(code.value, b)) then Yes else No
+            }
+            """;
+
+    private static final String A_CONSTRUCTION_AND_NOTHING_ELSE = """
+            module example.codes
+
+            data Answer = Yes | No
+            data Code = String
+
+            behavior f : (a: String, b: String) -> Answer
+                constructs Code
+            let f (a, b) = {
+                let code = Code(a)
+                if String.startsWith("JP", code.value) then Yes else No
+            }
+            """;
+
+    private static final String ONE_FIELD_OF_TWO = """
+            module example.codes
+
+            data Answer = Yes | No
+            data Pair = { left: String, right: String }
+
+            behavior f : (a: String, b: String) -> Answer
+                constructs Pair
+            let f (a, b) = {
+                let pair = Pair { left = a, right = b }
+                if String.startsWith("JP", pair.left) then Yes else No
+            }
+            """;
+
+    private static final String A_CONSTRUCTION_GIVEN_WHAT_AN_OPERATION_MADE = """
+            module example.codes
+
+            data Answer = Yes | No
+            data Code = String
+
+            behavior f : (a: String, b: String) -> Answer
+                constructs Code
+            let f (a, b) = {
+                let code = Code(String.uppercase(a))
+                if String.startsWith("JP", String.append(code.value, b)) then Yes else No
+            }
+            """;
+
+    private static final String A_PATH_THROUGH_THE_INPUT = """
+            module example.codes
+
+            data Answer = Yes | No
+            data Code = String
+            data Request = { code: Code, tag: String }
+
+            behavior f : (request: Request) -> Answer
+            let f (request) =
+                if String.startsWith("JP", request.code.value) then Yes else No
+            """;
+
+    private static final String TWO_CONSTRUCTIONS_COMPARED = """
+            module example.codes
+
+            data Answer = Yes | No
+            data Pair = { left: String, right: String }
+
+            behavior f : (a: String, b: String) -> Answer
+                constructs Pair
+            let f (a, b) =
+                if Pair { left = a, right = b } == Pair { left = "x", right = "y" }
+                    then Yes else No
+            """;
+
     private static final String AN_ELEMENT_IT_CAME_FROM = """
             module example.codes
 
@@ -165,6 +247,33 @@ class ARuleAboutTheStringsOfAMadeValueIsNamedWhereItCameFromTest {
                 .ask(new Adequacy.Coverage(MODULE)).value().get("f");
         assertNotNull(f, "the model under test compiles");
         return f;
+    }
+
+    /**
+     * Every position this model's report names its rule at, whichever way it names it.
+     *
+     * <p>Read off whether an entry names a rule at all and off the axes a rule drew, and never off
+     * the word an entry came with. Where an author is owed a sentence is one question and which
+     * sentence they are given is another: a test selecting by the word states as its contract
+     * whatever this compiler calls the finding today, so the day the word moves the claim about
+     * where the rule is named moves with it and neither claim is being checked any more.
+     *
+     * <p>A line the rule drew names the position as much as a question standing there does. Which
+     * of the two a model gets is asked once, of the one test whose subject that is.
+     */
+    private static List<String> named(PartitionEvidence measured) {
+        List<String> out = new ArrayList<>();
+        for (PartitionEvidence.NotRead each : measured.notRead()) {
+            if (!each.cited().isEmpty() && !out.contains(each.at())) {
+                out.add(each.at());
+            }
+        }
+        for (PartitionEvidence.AxisCoverage each : measured.axes()) {
+            if (!out.contains(each.path())) {
+                out.add(each.path());
+            }
+        }
+        return out;
     }
 
     /** Where a rule that came to nothing was said, once per position. */
@@ -287,6 +396,93 @@ class ARuleAboutTheStringsOfAMadeValueIsNamedWhereItCameFromTest {
     }
 
     /**
+     * And a value read back out of a construction is named where the construction was given it.
+     *
+     * <p>What the construction was handed is the value the field comes back as, so the rule is about
+     * the strings standing at {@code a} as much as about the ones at {@code b}. Read as a form
+     * nothing takes apart, the construction answered for neither and the rule was named at {@code b}
+     * alone — which tells an author the model states nothing at the position the value came from.
+     *
+     * <p>Where and not in which words: what these four ask is the sentence an author is owed, and
+     * the word it is given in is one test's subject and not theirs.
+     */
+    @Test
+    void aValueReadOutOfAConstructionIsNamedWhereTheConstructionWasGivenIt() {
+        assertEquals(List.of("a", "b"), named(measured(READ_OUT_OF_A_CONSTRUCTION)),
+                () -> "said where the construction was given each string: "
+                        + measured(READ_OUT_OF_A_CONSTRUCTION).notRead());
+    }
+
+    /**
+     * And a rule about nothing but the constructed value is named there too.
+     *
+     * <p>The one the construction answers for alone. Nothing else in the body reaches a position, so
+     * a reading that cannot say where a constructed value came from places the rule nowhere at all —
+     * the answer a body with no rule in it gives.
+     */
+    @Test
+    void aRuleAboutNothingButAConstructedValueIsNamedThere() {
+        assertEquals(List.of("a"), named(measured(A_CONSTRUCTION_AND_NOTHING_ELSE)),
+                () -> "said where the construction was given it: "
+                        + measured(A_CONSTRUCTION_AND_NOTHING_ELSE).notRead());
+    }
+
+    /**
+     * And at the field the reader asked for, and not at the others the construction was given.
+     *
+     * <p>What tells the two readings apart. A construction read for everything it was given names
+     * every position a field of it came from, whichever field was taken back out — and the rule here
+     * is about the strings at {@code left} and holds none of the ones at {@code right}. A single
+     * field cannot tell the two apart, since every field of such a construction is the one asked
+     * for.
+     */
+    @Test
+    void oneFieldOfAConstructionIsNamedWithoutTheOthers() {
+        assertEquals(List.of("a"), named(measured(ONE_FIELD_OF_TWO)),
+                () -> "b was given to the field the rule does not read: "
+                        + measured(ONE_FIELD_OF_TWO).notRead());
+    }
+
+    /**
+     * And a field given what an operation made is named where that operation's arguments stand.
+     *
+     * <p>The field comes back as what it was given, whatever that is. So a construction is not a
+     * step that turns what is under it into a position: what was handed in was made from {@code a}
+     * by an operation, and that is what the rule is about.
+     */
+    @Test
+    void aFieldGivenWhatAnOperationMadeIsNamedWhereItsArgumentsStand() {
+        assertEquals(List.of("a", "b"),
+                named(measured(A_CONSTRUCTION_GIVEN_WHAT_AN_OPERATION_MADE)),
+                () -> "said at what the operation was applied to: "
+                        + measured(A_CONSTRUCTION_GIVEN_WHAT_AN_OPERATION_MADE).notRead());
+    }
+
+    /**
+     * And a construction standing as a side of a comparison is a form nothing read, not a value an
+     * operation made.
+     *
+     * <p>The other question about the same arm. Where the value came from is answered for a
+     * construction — both positions are named — and what an author is told is still not the word that
+     * promises an operation to be followed back: there is none, and a reader sent looking for one is
+     * sent after something nobody wrote. Two data compare by their fields, which is what puts a
+     * construction here; an invariant's clause cannot, since a clause observes and does not build.
+     */
+    @Test
+    void aConstructionComparedIsAFormNothingReadRatherThanAValueAnOperationMade() {
+        PartitionEvidence measured = measured(TWO_CONSTRUCTIONS_COMPARED);
+
+        assertEquals(List.of("a", "b"), named(measured),
+                () -> "the constructions were given what stands at each: " + measured.notRead());
+        assertEquals(List.of(), derived(measured),
+                () -> "and no operation made either of them: " + measured.notRead());
+        assertEquals(List.of(UndividedPosition.Reason.UNSUPPORTED_SYNTAX,
+                        UndividedPosition.Reason.UNSUPPORTED_SYNTAX),
+                measured.notRead().stream().map(PartitionEvidence.NotRead::reason).toList(),
+                () -> "what stopped the reading is the form: " + measured.notRead());
+    }
+
+    /**
      * And a value handed out by an operation is named at the position it was taken from.
      *
      * <p>Beside the three above and reached the other way: nothing was applied to what the rule is
@@ -343,6 +539,57 @@ class ARuleAboutTheStringsOfAMadeValueIsNamedWhereItCameFromTest {
 
         assertNotNull(Sites.placeOf(compilation.db(), cited.getFirst()),
                 "where the rule the report names is written");
+    }
+
+    /**
+     * A predicate read over a field of a construction is measured at the position the construction
+     * was given it.
+     *
+     * <p>Which is what naming it there was owed all along: the strings the rule is about are the ones
+     * standing at the position, the construction having been handed them, so the rule draws its line
+     * there like a rule written over the position itself. What a line falls on is a question about the
+     * values and this is the one place it is asked of these models — the tests above ask where the
+     * rule is named and are answered by a line as readily as by a question standing there.
+     *
+     * <p>Nothing here is derived. A value read back out of a construction is the value that went in,
+     * and a word promising an operation to be followed back would send an author looking for one
+     * nobody wrote. An operation standing over such a projection is another matter and keeps the word
+     * it had: what {@code String.append} answered is not the strings at either position, and the
+     * tests above are where that rule is named.
+     */
+    @Test
+    void aPredicateOverAProjectedConstructionIsMeasuredAtItsSourcePosition() {
+        PartitionEvidence alone = measured(A_CONSTRUCTION_AND_NOTHING_ELSE);
+        PartitionEvidence oneOfTwo = measured(ONE_FIELD_OF_TWO);
+
+        assertEquals(List.of("a"),
+                alone.axes().stream().map(PartitionEvidence.AxisCoverage::path).toList(),
+                () -> "a line falls where the construction was given the string: "
+                        + alone.notRead());
+        assertEquals(List.of("a"),
+                oneOfTwo.axes().stream().map(PartitionEvidence.AxisCoverage::path).toList(),
+                "and at the position the field the rule reads was given, and no other");
+        for (PartitionEvidence each : List.of(alone, oneOfTwo)) {
+            assertEquals(List.of(), derived(each),
+                    () -> "and nothing about it is a value an operation made: " + each.notRead());
+        }
+    }
+
+    /**
+     * And a newtype's value inside the input is still the position it stands under.
+     *
+     * <p>Not this rule. There is no construction here to eliminate: the value is what the input holds
+     * at a position, and whether a newtype's own value is a step of a path is what the declarations
+     * say ({@code Location.isStep}). Read as an elimination, a field of the input would be a rule
+     * about a position nothing wrote.
+     */
+    @Test
+    void aNewtypesValueInsideTheInputIsThePositionItStandsUnder() {
+        PartitionEvidence measured = measured(A_PATH_THROUGH_THE_INPUT);
+
+        assertEquals(List.of("request.code"),
+                measured.axes().stream().map(PartitionEvidence.AxisCoverage::path).toList(),
+                () -> "the position the newtype stands at: " + measured.notRead());
     }
 
     /**

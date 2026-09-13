@@ -1,5 +1,6 @@
 package souther.compiler.check;
 
+import souther.compiler.types.CanonicalNameOrder;
 import souther.compiler.types.Type;
 import souther.compiler.types.TypeSymbol;
 
@@ -75,28 +76,10 @@ public final class AtomSpace {
         return List.copyOf(TypeOps.namesOf(t));
     }
 
-    /**
-     * The members of {@code union}, in the order a union states them.
-     *
-     * <p>A union states none — {@link Type.Union} holds a set — so one is put on it, and it is put
-     * on here so that there is one. Every reader of a union's members answers about the same union,
-     * and two of them ordering it differently is two answers to a question the type does not have:
-     * a set built one way iterates one way and a set built another iterates another, so an order
-     * taken from the collection is an order that can differ between two runs of one compiler.
-     *
-     * <p>By name, which is the only thing a union's members have that the union itself did not
-     * choose. What is downstream of it is a derived artifact's contents and the order a report
-     * reads in, and neither may move because of how a set happened to be built.
-     *
-     * <p>Not what {@link Type#show} does with a union, which renders the members as it finds them.
-     * Putting this there would render the standard library's `+Int | DivisionByZero+` as
-     * `+DivisionByZero | Int+` — the order a reader wants there is the one the author wrote, and a
-     * union does not keep it. That is a wider question than the order an answer comes out in.
-     */
+    /** The members of {@code union}, in the order a union states them, which is
+     *  {@link CanonicalNameOrder}'s — a union states none of its own. */
     static List<TypeSymbol> statedBy(Type.Union union) {
-        List<TypeSymbol> members = new ArrayList<>(union.members());
-        members.sort(null);
-        return members;
+        return CanonicalNameOrder.shown(union.members());
     }
 
     /**

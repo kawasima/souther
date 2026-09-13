@@ -156,7 +156,11 @@ at.coverage().made().orElseThrow());
         // the line — another reading of it may compose a row. The declaration's own name is
         // reserved for the sentence a walk over every reading licenses (issue #1076).
         assertTrue(block.contains("no row for `amount = 0` in `place`"), block);
-        assertTrue(block.contains("every value tried was refused"), block);
+        // And what the search came to, which is not that the refusals were of everything there was:
+        // the rule on `code` is a lookahead, so no value of that position was composed from it and
+        // the ones tried came from the rest. The point of this test is that the block says
+        // something at all, and what it says is the sentence the search can stand behind.
+        assertTrue(block.contains("invariant Code #1 at `code` gave none of them"), block);
     }
 
     /**

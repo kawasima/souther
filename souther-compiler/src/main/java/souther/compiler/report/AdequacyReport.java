@@ -10,6 +10,7 @@ import souther.compiler.check.Carrier;
 import souther.compiler.check.ComparisonClaim;
 import souther.compiler.check.CoverageObligation;
 import souther.compiler.check.PartId;
+import souther.compiler.types.CanonicalNameOrder;
 import souther.compiler.types.SourceConstructOrigin;
 import souther.compiler.check.RuleCitation;
 import souther.compiler.check.RuleCitations;
@@ -2393,7 +2394,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion,
      * phrase travelled inside the finding, which is how a value that was never words came to be
      * printed by whoever called {@code String.valueOf} on it.
      */
-    private static String whyUnread(UndividedPosition.Reason reason) {
+    static String whyUnread(UndividedPosition.Reason reason) {
         return switch (reason) {
             // The three a rule reaches, written about the rule: the line these appear on names it,
             // so a sentence saying "a rule about it" would name the rule and then not say so.
@@ -3269,6 +3270,12 @@ public record AdequacyReport(int schemaVersion, String compilerVersion,
         return switch (why.reason()) {
             case NOTHING_COMPOSES_ONE -> "nothing here could build a representative for " + at;
             case ALL_CANDIDATES_REJECTED -> "every value tried at " + at + " was refused";
+            // The same refusals and one claim fewer. A rule about the position composed nothing, so
+            // what was tried came from the rules beside it — and an author told the line above
+            // would go looking for the rule that refuses those values, which is not what happened.
+            case NOT_ALL_CANDIDATES_COULD_BE_OFFERED ->
+                    "every value tried at " + at + " was refused, and what was tried was not"
+                            + " everything the rules leave";
             // What the row is short of, and not what the model is short of. A row that stands
             // nothing in for a dependency its target requires is one nothing applies, so it is
             // held back rather than handed over to be pasted and refused.
@@ -5852,9 +5859,12 @@ public record AdequacyReport(int schemaVersion, String compilerVersion,
         };
     }
 
-    /** Case names, sorted: a report that changes order between runs cannot be compared between runs,
-     * and the sets these come from keep the order the rows happened to arrive in. */
+    /** Case names, in the order this compiler shows a set of names in. The sets these come from keep
+     * the order the rows happened to arrive in, which is a fact about a run and not about the model,
+     * and two reports that put the cases differently cannot be compared. Asked of the names rather
+     * than of their spellings, so that two modules declaring one spelling are still told apart
+     * somewhere and not left in whichever order they arrived. */
     private static void names(ArrayNode into, Set<TypeSymbol> cases) {
-        cases.stream().map(TypeSymbol::name).sorted().forEach(into::add);
+        CanonicalNameOrder.shown(cases).stream().map(TypeSymbol::name).forEach(into::add);
     }
 }

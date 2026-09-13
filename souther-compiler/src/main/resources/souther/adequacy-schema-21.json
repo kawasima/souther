@@ -2161,6 +2161,7 @@
                   "linkage_failed",
                   "no_certified_witness",
                   "no_candidate_was_offered",
+                  "not_all_candidates_could_be_offered",
                   "no_reading_of_the_line_could_be_searched"
                 ]
               }

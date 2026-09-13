@@ -469,23 +469,27 @@ public final class PublicationOrders {
     public static int positionOf(Generator.UnresolvedCombination.Reason reason) {
         return switch (reason) {
             case ALL_CANDIDATES_REJECTED -> 0;
-            case THE_RULES_LEAVE_NOTHING_THERE -> 1;
-            case ONE_POSITION_CANNOT_BE_BOTH -> 2;
-            case NOTHING_COMPOSES_ONE -> 3;
-            case NOTHING_STANDS_IN_FOR_A_DEPENDENCY -> 4;
-            case A_TABLE_IS_WHAT_THIS_NEEDS -> 5;
-            case NOTHING_TO_BUILD_AGAINST -> 6;
-            case THE_WAY_IN_PLACES_AT_NO_CLASS -> 7;
-            case THE_SEARCH_LEFT_SOMETHING_UNTRIED -> 8;
-            case THE_BLOCK_IS_AS_LONG_AS_IT_MAY_BE -> 9;
-            case THE_GROUP_WAS_NOT_OFFERED -> 10;
-            case THE_POSITION_WAS_WITHHELD -> 11;
-            case NO_VALUES_WERE_ASKED_FOR -> 12;
-            case NO_CANDIDATE_WAS_OFFERED -> 13;
-            case NO_CERTIFIED_WITNESS -> 14;
-            case NO_READING_OF_THE_LINE_COULD_BE_SEARCHED -> 15;
-            case THE_ROWS_WERE_NOT_READ -> 16;
-            case LINKAGE_FAILED -> 17;
+            // Beside it, because it is the same news less one claim, and a reader meeting both is
+            // reading about the same refusals: these were refused too, and what they were is not
+            // everything the position had.
+            case NOT_ALL_CANDIDATES_COULD_BE_OFFERED -> 1;
+            case THE_RULES_LEAVE_NOTHING_THERE -> 2;
+            case ONE_POSITION_CANNOT_BE_BOTH -> 3;
+            case NOTHING_COMPOSES_ONE -> 4;
+            case NOTHING_STANDS_IN_FOR_A_DEPENDENCY -> 5;
+            case A_TABLE_IS_WHAT_THIS_NEEDS -> 6;
+            case NOTHING_TO_BUILD_AGAINST -> 7;
+            case THE_WAY_IN_PLACES_AT_NO_CLASS -> 8;
+            case THE_SEARCH_LEFT_SOMETHING_UNTRIED -> 9;
+            case THE_BLOCK_IS_AS_LONG_AS_IT_MAY_BE -> 10;
+            case THE_GROUP_WAS_NOT_OFFERED -> 11;
+            case THE_POSITION_WAS_WITHHELD -> 12;
+            case NO_VALUES_WERE_ASKED_FOR -> 13;
+            case NO_CANDIDATE_WAS_OFFERED -> 14;
+            case NO_CERTIFIED_WITNESS -> 15;
+            case NO_READING_OF_THE_LINE_COULD_BE_SEARCHED -> 16;
+            case THE_ROWS_WERE_NOT_READ -> 17;
+            case LINKAGE_FAILED -> 18;
         };
     }
 

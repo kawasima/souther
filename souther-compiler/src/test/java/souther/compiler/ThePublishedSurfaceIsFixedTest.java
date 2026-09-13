@@ -1,8 +1,10 @@
 package souther.compiler;
 
 import souther.compiler.ast.Hir;
+import souther.compiler.doc.PublishedCaseOrder;
 import souther.compiler.stdlib.Stdlib;
 import souther.compiler.types.Type;
+import souther.compiler.types.TypeSymbol;
 
 import org.junit.jupiter.api.Test;
 
@@ -83,7 +85,7 @@ class ThePublishedSurfaceIsFixedTest {
     private static String signature(Stdlib.Entry entry) {
         Hir.FnDef fn = entry.declaration();
         String result = entry.signature().result() == null ? ""
-                : " : " + Type.show(entry.signature().result());
+                : " : " + shown(entry.signature().result(), fn.declaredReturn());
         if (fn.params().isEmpty()) {
             return result;   // a value, written with no parameter list
         }
@@ -93,6 +95,16 @@ class ThePublishedSurfaceIsFixedTest {
                     + Type.show(entry.signature().params().get(i)));
         }
         return params + result;
+    }
+
+    /** A result of more than one case, in the order its declaration writes it — the surface is a
+     *  declaration, as the parameter names beside it already are. */
+    private static String shown(Type result, Hir.RetType declaredReturn) {
+        if (!(result instanceof Type.Union union)) {
+            return Type.show(result);
+        }
+        return PublishedCaseOrder.asDeclared(union.members(), declaredReturn).stream()
+                .map(TypeSymbol::name).collect(java.util.stream.Collectors.joining(" | "));
     }
 
     private static String recorded() {

@@ -7,6 +7,8 @@ import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.Carrier;
 import souther.compiler.check.RuleKey;
 import souther.compiler.check.DeclaredBounds;
+import souther.compiler.check.PartId;
+import souther.compiler.check.RuleRef;
 import souther.compiler.check.StringPredicates;
 import souther.compiler.check.DeclaredClauses;
 import souther.compiler.inputs.Distinctions;
@@ -1543,13 +1545,13 @@ public final class Partitions {
         // What the rules say about the strings and how many characters they hold, each read once
         // for the three readers below. Asked again per reader, a position carrying a format paid
         // for the clauses to be walked and the counts to be read as many times as it has readers.
-        List<PatternSyntax> stated = patternsStatedOn(view, ruleSource);
+        PatternsStated stated = patternsStatedOn(view, ruleSource);
         DeclaredBounds.CountRange characters = DeclaredBounds.countsHeld(view, reading, null);
         // What the rules ask for, and then what the position is where nothing was written about it.
         List<FixtureTemplate> bare = new ArrayList<>();
         bare.addAll(whatEveryRuleAdmits(stated, characters));
         bare.addAll(whereTheRulesLeaveTheValue(view, reading, within));
-        bare.addAll(whatAFormatAsksFor(stated));
+        bare.addAll(whatAFormatAsksFor(stated.patterns()));
         // What the rules say the value holds, before the value that would hold nothing.
         bare.addAll(Witnesses.holding(view, characters.least(), reading, inside));
         List<FixtureTemplate> ofTheShape =
@@ -1910,6 +1912,32 @@ public final class Partitions {
     }
 
     /**
+     * What the rules about the strings at {@code type} left out of the values offered there, or
+     * nothing where every one of them reached the offer.
+     *
+     * <p>Why the values offered at a position are the ones they are, asked where none of them was
+     * taken. A rule this could not read composed nothing, and neither did one whose machine cost
+     * more than composing a value may spend, so what was offered came from the rules beside them —
+     * and a search that had every one of those refused has not shown that the model refuses what it
+     * states. It has shown that what it tried was refused, which is a different sentence and is the
+     * one an author can act on.
+     *
+     * <p>Asked only where nothing was written, for the reason {@link #notBuilt} is: this reads the
+     * rules again and builds what they leave, and a row that was composed has no reason to pay for
+     * that. A rule that could not be read is not an answer about the model either way — the values
+     * it admits may be as many as anybody could want, and none of them was composed here.
+     */
+    static StringOfferShortfall notOffered(Type type, RuleReadingContext reading) {
+        if (type == null) {
+            return StringOfferShortfall.NONE;
+        }
+        TypeView view = TypeView.of(type, reading.source().inners(), reading.source().symbols(),
+                        reading.source().published());
+        return stringsTheRulesReadAdmit(view, reading, PatternPlan.Budget.OF_A_WITNESS.meter())
+                .shortfall();
+    }
+
+    /**
      * The {@code index}th number the rules on {@code type} leave it able to hold, or null where it has
      * no such number.
      *
@@ -2179,7 +2207,7 @@ public final class Partitions {
             return List.of();
         }
         Meter meter = PatternPlan.Budget.OF_A_WITNESS.meter();
-        Language admits = stringsTheRulesAdmit(view, reading, meter);
+        Language admits = stringsTheRulesReadAdmit(view, reading, meter).language();
         Language counted = admits == null ? null
                 : languageOf(PatternSyntax.ofAnySymbols(size, size), meter);
         Language both = counted == null ? null : admits.and(counted, meter);
@@ -2201,15 +2229,15 @@ public final class Partitions {
      * offered by whichever reading made it. Composed here as well it would be the same string
      * arrived at through a machine, and every position carrying a format would pay for one.
      */
-    private static List<FixtureTemplate> whatEveryRuleAdmits(List<PatternSyntax> stated,
+    private static List<FixtureTemplate> whatEveryRuleAdmits(PatternsStated stated,
                                                              DeclaredBounds.CountRange characters) {
         // A rule counting the characters says which strings as much as a format does: it leaves out
         // every string of another length.
-        if (stated.size() + (countsTheCharacters(characters) ? 1 : 0) < 2) {
+        if (stated.read().size() + (countsTheCharacters(characters) ? 1 : 0) < 2) {
             return List.of();
         }
         Meter meter = PatternPlan.Budget.OF_A_WITNESS.meter();
-        Language admits = admittedBy(stated, characters, meter);
+        Language admits = admittedBy(stated, characters, meter).language();
         String some = admits == null ? null : admits.someWritten();
         return some == null ? List.of() : List.of(FixtureTemplate.string(some));
     }
@@ -2228,7 +2256,7 @@ public final class Partitions {
             return List.of();
         }
         Meter meter = PatternPlan.Budget.OF_A_WITNESS.meter();
-        Language left = stringsTheRulesAdmit(view, reading, meter);
+        Language left = stringsTheRulesReadAdmit(view, reading, meter).language();
         List<String> out = new ArrayList<>();
         while (left != null && out.size() < many) {
             String some = left.someWritten();
@@ -2262,11 +2290,38 @@ public final class Partitions {
      * answered where counts are answered. Answered here as well, every string a length rule leaves
      * would come from a machine built to say what stepping already says.
      */
-    private static Language stringsTheRulesAdmit(TypeView view, RuleReadingContext reading,
-                                                 Meter meter) {
-        return admittedBy(patternsStatedOn(view, reading.source()),
-                DeclaredBounds.countsHeld(view, reading, null), meter);
+    private static CandidateStrings stringsTheRulesReadAdmit(TypeView view,
+                                                             RuleReadingContext reading,
+                                                             Meter meter) {
+        PatternsStated stated = patternsStatedOn(view, reading.source());
+        // The count narrows what was said about the strings and is not read where nothing was said:
+        // there is nothing for it to narrow, and what one more value of such a position is is a
+        // character on the end of the last. Read before the patterns are looked at, every position
+        // whose rules say nothing about its strings pays for a reading of its counts.
+        if (stated.read().isEmpty()) {
+            return new CandidateStrings(null, stated.unread());
+        }
+        return admittedBy(stated, DeclaredBounds.countsHeld(view, reading, null), meter);
     }
+
+    /**
+     * Strings to offer at a position, and what the rules about its strings left out of them.
+     *
+     * <p><b>Not what the position admits.</b> What the rules admit is a reading of the position and
+     * has an owner; this is a set to take a value out of and paste into a row, worked out of the
+     * rules that were read and no further. Where {@link #shortfall} holds anything, the strings are
+     * wider than the model's — every rule missing from the meet is one that may still refuse what
+     * comes out of it, which is the decoder's answer and not this one's.
+     *
+     * <p>So a caller offering values takes {@link #language} and a caller saying what the offer was
+     * short of takes {@link #shortfall}, and neither is the other's absence. Nothing to paste is an
+     * ordinary answer and says nothing about a rule; a rule this compiler could not read is a fact
+     * about the rule, and it is here as itself rather than as the absence it also causes.
+     *
+     * @param language the strings to draw a value from, or null where there is no string to draw
+     * @param shortfall what the rules about the strings left out of what can be drawn from here
+     */
+    private record CandidateStrings(Language language, StringOfferShortfall shortfall) {}
 
     /**
      * The patterns the rules on {@code view} state about its strings, innermost name first.
@@ -2286,27 +2341,79 @@ public final class Partitions {
      * constraint, every predicate the decoder has no word for stated nothing, and a position an
      * author had written a rule for was offered {@code "x"} and refused.
      *
-     * <p>Only where the reading came to them. Why it did not is the reading's to keep and nothing
-     * here has a use for it: a rule this could not read states no pattern, the same as one whose
-     * strings nobody can paste.
+     * <p><b>And which of them this could not read, kept beside the ones it could.</b> A rule read
+     * no further states no pattern to compose from, and dropping it there leaves the two apart only
+     * until somebody asks why nothing was composed: the values then come from the rules that were
+     * read, and a search that refuses all of them has not shown that the rules refuse them. So what
+     * was read and what stopped the rest are one answer, and a caller offering values takes the
+     * first while a caller saying what the offer was short of takes the second.
      */
-    private static List<PatternSyntax> patternsStatedOn(TypeView view,
-                                                        RuleReadingSource ruleSource) {
+    private static PatternsStated patternsStatedOn(TypeView view,
+                                                   RuleReadingSource ruleSource) {
         if (!(view.shape() instanceof Shape.Scalar scalar) || scalar.prim() != Type.Prim.STRING) {
-            return List.of();
+            return PatternsStated.NONE;
         }
         List<DeclaredClauses.OnAName> written = DeclaredClauses.of(view.wrappers(), ruleSource);
-        List<PatternSyntax> out = new ArrayList<>();
+        List<Stated> read = new ArrayList<>();
+        List<StringOfferShortfall.NotOffered> unread = new ArrayList<>();
         for (int name = written.size() - 1; name >= 0; name--) {
             for (DeclaredClauses.Conjunct each : written.get(name).conjuncts()) {
-                if (StringPredicates.statedByWritten(each.expr(), ruleSource.symbols())
-                        instanceof StringPredicates.Reading.Accepting it) {
-                    out.add(it.accepts());
+                switch (StringPredicates.statedByWritten(each.expr(), ruleSource.symbols())) {
+                    case StringPredicates.Reading.Accepting it ->
+                            read.add(new Stated(each.part(), it.accepts()));
+                    case StringPredicates.Reading.PatternNotRead it ->
+                            unread.add(StringOfferShortfall.NotOffered.ofARuleNotRead(
+                                    each.part(), BlockReason.forAPatternNotRead(it.why())));
+                    // A rule whose text this compiler did not work out is a rule it did not read,
+                    // the same as one written in a construct the subset does not hold.
+                    case StringPredicates.Reading.WrittenArgumentNotKnown _ ->
+                            unread.add(StringOfferShortfall.NotOffered.ofARuleNotRead(
+                                    each.part(), new BlockReason.UnreadValueRule()));
+                    // No predicate over strings at all, which is nothing about this question.
+                    case null -> { }
                 }
             }
         }
-        return List.copyOf(out);
+        return new PatternsStated(read, new StringOfferShortfall(unread));
     }
+
+    /**
+     * What the rules about a position's strings came to when they were read to compose a value
+     * from: the patterns this compiler read, and what stopped it reading the rest.
+     *
+     * <p><b>Both, because they answer different callers.</b> A value to paste into a row comes from
+     * what was read, and every rule this could not read leaves that value one the rules may still
+     * refuse — so a caller that offered them and had them all refused is holding a search that
+     * never had the whole of what the position states. Held as the patterns alone, that caller has
+     * nothing to say but that the model refused everything.
+     *
+     * @param read   what each rule this compiler read accepts, under the rule it was written as,
+     *               innermost name first
+     * @param unread the rules about the strings this compiler did not read, each under itself
+     */
+    private record PatternsStated(List<Stated> read, StringOfferShortfall unread) {
+
+        private static final PatternsStated NONE =
+                new PatternsStated(List.of(), StringOfferShortfall.NONE);
+
+        private PatternsStated {
+            read = List.copyOf(read);
+        }
+
+        /** Just the patterns, for a caller that offers a value per rule and names none of them. */
+        private List<PatternSyntax> patterns() {
+            return read.stream().map(Stated::accepts).toList();
+        }
+    }
+
+    /**
+     * One rule about the strings at a position, as the rule it was written as and what it accepts.
+     *
+     * <p>Carried together because a rule whose machine cannot be afforded is named to an author by
+     * the rule and not by the pattern: two rules of one declaration state two patterns, and a
+     * sentence about "the pattern here" leaves them to guess which.
+     */
+    private record Stated(PartId<RuleRef.Invariant> part, PatternSyntax accepts) {}
 
     /** Whether a rule counts the characters, which leaves out every string of another length and
      *  is a thing to be met with the patterns like any other. */
@@ -2315,45 +2422,77 @@ public final class Partitions {
     }
 
     /**
-     * The strings {@code stated} and {@code characters} admit between them, or null where nothing
-     * was stated or the machine costs more than {@code meter} allows.
+     * The strings the rules this compiler read admit between them, and what stopped it reading the
+     * rest of them.
+     *
+     * <p>The rules this compiler could not read are carried and not met: there is nothing to meet
+     * them with. What comes back is a meet of the rest, which is a set to propose values out of and
+     * not what the position admits — every value taken from it is put to the decoder, and the rules
+     * that are missing from it are the ones the decoder may still refuse it for.
      */
-    private static Language admittedBy(List<PatternSyntax> stated,
-                                       DeclaredBounds.CountRange characters, Meter meter) {
+    private static CandidateStrings admittedBy(PatternsStated stated,
+                                               DeclaredBounds.CountRange characters, Meter meter) {
+        StringOfferShortfall shortfall = stated.unread();
         Language all = null;
-        for (PatternSyntax each : stated) {
-            Language one = languageOf(each, meter);
+        for (Stated each : stated.read()) {
+            // The rule whose machine this is, so that a run that cannot afford it names the rule
+            // rather than the position. Read where the build came back with nothing and not
+            // afterwards: a meter is the whole question's, and the next construction on it says
+            // which limit refused that one.
+            Language one = languageOf(each.accepts(), meter);
             if (one == null) {
-                return null;   // the allowance would not pay for this rule's machine
+                return new CandidateStrings(null, shortfall.and(StringOfferShortfall.of(
+                        StringOfferShortfall.NotOffered.whileMaking(
+                                new StringOfferShortfall.Subject.ARule(each.part()), meter))));
             }
-            all = all == null ? one : all.and(one, meter);
-            if (all == null) {
-                return null;   // nor for putting it together with the rules before it
+            // And what it comes to with the rules before it, which is nobody's rule: an author sent
+            // to either of them would be sent to one this compiler read from end to end.
+            Language both = all == null ? one : all.and(one, meter);
+            if (both == null) {
+                return new CandidateStrings(null, shortfall.and(StringOfferShortfall.of(
+                        StringOfferShortfall.NotOffered.whileMaking(
+                                new StringOfferShortfall.Subject.WhatTheyLeaveTogether(), meter))));
             }
+            all = both;
         }
-        return all == null ? null : withinTheCount(all, characters, meter);
+        return all == null ? new CandidateStrings(null, shortfall)
+                : withinTheCount(all, characters, meter, shortfall);
     }
 
     /**
-     * {@code strings} less the ones the rules leave no room for, or null where the count leaves
-     * none at all or the machine costs more than {@code meter} allows.
+     * {@code strings} less the ones the rules leave no room for, with nothing to draw from where
+     * the count leaves none at all, and with what the allowance refused where it would not pay for
+     * the narrowing.
      *
      * <p>The count as a language, because that is what meeting it with the strings takes. What the
      * rules leave is a run of counts and what is being narrowed is a set of strings, and the two are
      * put together the way every pair of sets here is.
+     *
+     * <p>The two ways of coming back with nothing are not one answer. A count that leaves no string
+     * is what the rules say, and a narrowing this could not afford is what this compiler did — so
+     * the second is carried and the first is the ordinary absence of anything to paste.
      */
-    private static Language withinTheCount(Language strings,
-                                           DeclaredBounds.CountRange characters, Meter meter) {
+    private static CandidateStrings withinTheCount(Language strings,
+                                                   DeclaredBounds.CountRange characters,
+                                                   Meter meter, StringOfferShortfall shortfall) {
         if (characters.empty()) {
-            return null;   // no count at all, so no string of the position holds one
+            // No count at all, so no string of the position holds one. An answer about the rules
+            // and not a shortfall of this compiler's, which is why nothing is added beside it.
+            return new CandidateStrings(null, shortfall);
         }
         if (!countsTheCharacters(characters)) {
-            return strings;   // every count, so nothing to take away
+            return new CandidateStrings(strings, shortfall);  // every count, nothing to take away
         }
         Language counted = languageOf(PatternSyntax.ofAnySymbols(characters.least(),
                 characters.most() == Integer.MAX_VALUE
                         ? PatternSyntax.Repeated.NO_CEILING : characters.most()), meter);
-        return counted == null ? null : strings.and(counted, meter);
+        Language within = counted == null ? null : strings.and(counted, meter);
+        // The count met with the strings, which is again nobody's one rule.
+        return within == null
+                ? new CandidateStrings(null, shortfall.and(StringOfferShortfall.of(
+                        StringOfferShortfall.NotOffered.whileMaking(
+                                new StringOfferShortfall.Subject.WhatTheyLeaveTogether(), meter))))
+                : new CandidateStrings(within, shortfall);
     }
 
     /** A count the position holds, or null where it holds none. The ends decide it, so nothing here
