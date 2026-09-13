@@ -52,7 +52,17 @@ public enum RuleHandleSurface {
 
     /** What a finding is about, which names the rule among other things. */
     FINDING_SUBJECT("/$defs/findings/items/properties/subject",
-            "subject", Carries.A_SENTENCE_AROUND_IT);
+            "subject", Carries.A_SENTENCE_AROUND_IT),
+
+    /**
+     * The rule that gave a search of a decision rule no value to try.
+     *
+     * <p>The same handle the questions under the position publish, written where the search that
+     * was short of it is. What such an entry tells a reader is which rule to rewrite, and one
+     * naming only the position hands them every rule written there.
+     */
+    SYNTHESIS_SHORTFALL_RULE("/$defs/decision/properties/obligations/items/properties"
+            + "/synthesisShortfallCauses/items/properties/rule", "rule", Carries.THE_HANDLE_ALONE);
 
     private final String schemaPath;
     private final String key;

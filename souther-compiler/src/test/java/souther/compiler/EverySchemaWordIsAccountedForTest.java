@@ -405,6 +405,22 @@ class EverySchemaWordIsAccountedForTest {
                     List.of("$defs", "decision", "properties", "obligations", "items",
                             "properties", "synthesisShortfall"),
                     souther.compiler.partition.Generator.UnresolvedCombination.Reason.class),
+            // What the shortfall is attributed to, which is the axis the word above is not. Held
+            // against the document's own vocabulary rather than against the shapes this compiler
+            // records: what a consumer keys on is where an author goes about it, and how those are
+            // arranged here is nothing a consumer was promised.
+            new Vocabulary("decision.obligations[].synthesisShortfallCauses[].attribution",
+                    List.of("$defs", "decision", "properties", "obligations", "items",
+                            "properties", "synthesisShortfallCauses", "items",
+                            "properties", "attribution"),
+                    souther.compiler.partition.ReportedShortfall.Attribution.class),
+            // And which limit refused it, where one did. Apart from the reasons a reading stops,
+            // which the entry beside this writes in the vocabulary `notRead` already has.
+            new Vocabulary("decision.obligations[].synthesisShortfallCauses[].limit",
+                    List.of("$defs", "decision", "properties", "obligations", "items",
+                            "properties", "synthesisShortfallCauses", "items",
+                            "properties", "limit"),
+                    souther.compiler.partition.ReportedShortfall.Limit.class),
             new Vocabulary("findings[].kind",
                     List.of("$defs", "findings", "items", "properties", "kind"),
                     Adequacy.Kind.class),

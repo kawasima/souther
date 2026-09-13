@@ -771,7 +771,19 @@ public final class GeneratedRows {
      */
     private static String saidOf(Generator.UnresolvedCombination left, SourceRendering rendering,
                                  PublishedRuleHandle.WhereARuleIs places) {
-        String category = left.said().orElseGet(() -> why(left.reason()));
+        return beside(left.said().orElseGet(() -> why(left.reason())), left, rendering, places);
+    }
+
+    /**
+     * {@code category} and what else was true of the search, in one sentence.
+     *
+     * <p>Here rather than at each surface, because the join is part of what is said: a surface that
+     * put the attribution first would say which rule gave nothing before saying what the search
+     * came to, and one that wrote its own separator would tell a reader who meets both surfaces
+     * that they are reading two different facts.
+     */
+    static String beside(String category, Generator.UnresolvedCombination left,
+                         SourceRendering rendering, PublishedRuleHandle.WhereARuleIs places) {
         String also = alsoShort(left.alsoShort(), rendering, places);
         return also.isEmpty() ? category : category + ", and " + also;
     }

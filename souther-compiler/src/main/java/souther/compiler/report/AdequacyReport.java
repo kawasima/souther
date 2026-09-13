@@ -34,6 +34,8 @@ import souther.compiler.partition.NotOwedReason;
 import souther.compiler.partition.OnTheWay;
 import souther.compiler.partition.ReachabilityGap;
 import souther.compiler.partition.ReportedReason;
+import souther.compiler.partition.ReportedShortfall;
+import souther.compiler.partition.StringOfferShortfall;
 import souther.compiler.partition.RoleAnswer;
 import souther.compiler.partition.RuleEvidenceOrigin;
 import souther.compiler.partition.UndividedPosition;
@@ -44,6 +46,7 @@ import souther.compiler.inputs.AuthoredOrder;
 import souther.compiler.inputs.InputQuestion;
 import souther.compiler.inputs.StandingQuestion;
 import souther.compiler.inputs.RuleSite;
+import souther.compiler.inputs.TermPath;
 import souther.compiler.meta.ModuleMetadata;
 import souther.compiler.check.CheckSurface;
 import souther.compiler.observe.Disposition;
@@ -2632,9 +2635,11 @@ public record AdequacyReport(int schemaVersion, String compilerVersion,
         // of them, which is the account being shown as a backlog. The numbers close over the count
         // all the same, so nothing is lost and the rules themselves are in the document.
         gathered(out, behavior, decision, RuleRequirement.Unsettled.class,
-                "      ? nothing could show a row can be written at %d decision rule%s%n");
+                "      ? nothing could show a row can be written at %d decision rule%s%n",
+                rendering, behavior.rulePlace());
         gathered(out, behavior, decision, RuleRequirement.Excluded.class,
-                "      · no row is owed at %d decision rule%s%n");
+                "      · no row is owed at %d decision rule%s%n",
+                rendering, behavior.rulePlace());
     }
 
     /**
@@ -2651,7 +2656,9 @@ public record AdequacyReport(int schemaVersion, String compilerVersion,
      */
     private static void gathered(StringBuilder out, BehaviorReport behavior,
                                  DecisionEvidence decision,
-                                 Class<? extends RuleRequirement> answer, String opening) {
+                                 Class<? extends RuleRequirement> answer, String opening,
+                                 SourceRendering rendering,
+                                 PublishedRuleHandle.WhereARuleIs places) {
         Set<Said> order = new java.util.TreeSet<>(Said.IN_ORDER);
         Map<String, Integer> counted = new LinkedHashMap<>();
         int all = 0;
@@ -2660,7 +2667,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion,
             if (came == null || !answer.isInstance(came.requirement())) {
                 continue;
             }
-            Said said = said(came);
+            Said said = said(came, rendering, places);
             order.add(said);
             counted.merge(said.text(), 1, Integer::sum);
             all++;
@@ -2717,8 +2724,16 @@ public record AdequacyReport(int schemaVersion, String compilerVersion,
      * nothing, what the sentence says is the shortfall — which is this compiler's and is what
      * could be done about it — and the requirement's own word for it says only that there was
      * nothing to try the rule with, which no reader acts on.
+     *
+     * <p>And what the offer was short of, where anything was, in the words the block says it in.
+     * The category is what the search came to and the attribution is why the values it had to try
+     * were not everything the rules leave, and a line carrying the first alone sends a reader after
+     * a rule that refuses nothing. Said here and not left to the questions under the position: a
+     * rule this compiler could not read is named there, an allowance spent on composing a value is
+     * named nowhere, and a sentence that relied on the neighbour would be complete for one of them.
      */
-    private static Said said(RuleSettlement came) {
+    private static Said said(RuleSettlement came, SourceRendering rendering,
+                             PublishedRuleHandle.WhereARuleIs places) {
         return switch (came.requirement()) {
             // Composed and run first, because they are what a reader can tell this compiler about:
             // a row that went elsewhere is a way this steered wrong and the model may be fine.
@@ -2727,7 +2742,8 @@ public record AdequacyReport(int schemaVersion, String compilerVersion,
             case RuleRequirement.Unsettled.NothingWasComposedToTry _ ->
                     new Said(1, PublicationOrders.positionOf(
                                     came.synthesisShortfall().reason()),
-                            whyUnresolved(came.synthesisShortfall()));
+                            GeneratedRows.beside(whyUnresolved(came.synthesisShortfall()),
+                                    came.synthesisShortfall(), rendering, places));
             case RuleRequirement.Unsettled.CouldNotTellWhereTheRowWent(var reading) ->
                     new Said(2, PublicationOrders.positionOf(reading), switch (reading) {
                         case NO_RULE_IS_RECOGNISABLE ->
@@ -4119,7 +4135,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion,
                         behavior.account(), behavior.claimed(), sources,
                         behavior.rulePlace(), behavior.partPlace());
                 branch(b, behavior, sources);
-                decision(b, behavior);
+                decision(b, behavior, sources);
                 findings(b, behavior, sources);
             }
         }
@@ -4668,7 +4684,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion,
      * than about any entry. A reading that stopped comes back with some of the body's ways, so the
      * entries here are of those and the ones it did not reach are in no document.
      */
-    static void decision(ObjectNode into, BehaviorReport behavior) {
+    static void decision(ObjectNode into, BehaviorReport behavior, DocumentSources sources) {
         DecisionEvidence decision = behavior.evidence().decision();
         if (decision == null) {
             return;
@@ -4702,6 +4718,63 @@ public record AdequacyReport(int schemaVersion, String compilerVersion,
                 // never handed a generator's failure as the answer to that question.
                 if (came.synthesisShortfall() != null) {
                     one.put("synthesisShortfall", word(came.synthesisShortfall().reason()));
+                    // And why the offer it was refusing was not everything the rules leave, where
+                    // anything made it short. Beside the word and not spelled into it: the word is
+                    // what the search came to and this is what it was given to try, and a consumer
+                    // told the first alone counts a rule this compiler never read as a rule the
+                    // values were refused by.
+                    causes(one, came.synthesisShortfall(), sources, behavior.rulePlace());
+                }
+            }
+        }
+    }
+
+    /**
+     * What gave the offer no value, one entry per thing that gave none.
+     *
+     * <p>The structure and not the sentence. What a reader of the page is shown is words, and a
+     * document carrying those words would be a contract on how this compiler phrases them — so what
+     * is written here is what the shortfall is attributed to, the rule where the attribution is one,
+     * and what stopped it, each in a vocabulary of the document's own.
+     *
+     * <p>What stopped it under one of two keys, because the two are not one vocabulary. A reading
+     * that stopped is said in the words this document already writes for a reading that stopped, so
+     * a rule reported unread here and the same rule reported unread under the position are one
+     * piece of news. A limit is no reading at all.
+     *
+     * <p>Nothing where the offer was everything the rules leave, which is most searches. An empty
+     * array would be a consumer asked to tell "nothing was short" from "nobody looked", and the
+     * absence says the first because the word beside it says a search ran.
+     */
+    private static void causes(ObjectNode into, Generator.UnresolvedCombination why,
+                               DocumentSources sources,
+                               PublishedRuleHandle.WhereARuleIs places) {
+        if (why.alsoShort().isEmpty()) {
+            return;
+        }
+        DocumentArray causes = DocumentPart.SYNTHESIS_SHORTFALL_CAUSES.putArray(into);
+        for (Map.Entry<TermPath, StringOfferShortfall> at : why.alsoShort().entrySet()) {
+            for (StringOfferShortfall.NotOffered each : at.getValue().these()) {
+                DocumentItem row = causes.addObject();
+                ObjectNode said = row.node();
+                said.put("position", at.getKey().toString());
+                said.put("attribution", word(ReportedShortfall.attribution(each.of())));
+                // And which rule, where the attribution is one. The pair is the one the rest of
+                // this document writes: `rule` is the handle an author acts on and `ruleId` is what
+                // tells one rule from another, and the two are not in step wherever a rule has no
+                // name of its own.
+                if (each.of() instanceof StringOfferShortfall.Subject.ARule it) {
+                    RuleHandleSurface.SYNTHESIS_SHORTFALL_RULE.put(row,
+                            PublishedRuleHandle.of(new RuleCitation.Named(it.part().rule()),
+                                    places),
+                            sources.rendering(), null);
+                    ruleId(said.putObject("ruleId"), it.part().rule());
+                }
+                switch (each.why()) {
+                    case StringOfferShortfall.Why.NotRead it ->
+                            said.put("unread", word(ReportedReason.of(it.why())));
+                    case StringOfferShortfall.Why.TooCostly it ->
+                            said.put("limit", word(ReportedShortfall.limit(it.stopped())));
                 }
             }
         }

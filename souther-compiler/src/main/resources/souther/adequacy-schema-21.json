@@ -2164,6 +2164,51 @@
                   "not_all_candidates_could_be_offered",
                   "no_reading_of_the_line_could_be_searched"
                 ]
+              },
+              "synthesisShortfallCauses": {
+                "type": "array",
+                "description": "Why the values this compiler had to try were not everything the rules leave, one entry per thing that gave the offer none. Beside `synthesisShortfall` and never inside it: that word is what the search came to and these are what it was given to work with, and a consumer reading the word alone counts a rule this compiler never read as a rule the values were refused by. Absent where the offer was everything the rules leave, which is what an entry carrying a word for the search and no array here says.",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "position",
+                    "attribution"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "position": {
+                      "type": "string",
+                      "description": "Where in the row the values were being composed for, in the terms a row is written in."
+                    },
+                    "attribution": {
+                      "description": "What the shortfall is attributed to, which is what decides where an author goes about it. `a_rule` is one they wrote and may rewrite; `the_rules_together` is what two of them leave between them, which is nobody's rule and a size this compiler declined to work out; `composing_a_value` is the allowance for working out a value at all, which is about no rule of the position.",
+                      "enum": [
+                        "a_rule",
+                        "the_rules_together",
+                        "composing_a_value"
+                      ]
+                    },
+                    "rule": {
+                      "$ref": "#/$defs/ruleHandle",
+                      "description": "How a reader finds the rule that gave the offer no value, present exactly where `attribution` is `a_rule`. The same handle a `notRead` entry carries for the same rule. Not what tells one rule from another: `ruleId` beside this is."
+                    },
+                    "ruleId": {
+                      "$ref": "#/$defs/ruleId",
+                      "description": "Which rule the entry is about, present exactly with `rule`."
+                    },
+                    "unread": {
+                      "$ref": "#/$defs/notReadReason",
+                      "description": "What stopped the reading of it, where what gave nothing was a reading that stopped. The vocabulary `notRead` writes, so a rule reported unread here and the same rule reported unread under the position are one piece of news rather than two. Present exactly where `limit` is absent."
+                    },
+                    "limit": {
+                      "description": "Which limit refused it, where a limit did. `a_machine_larger_than_one_may_be` is a pattern that can be written smaller; `what_composing_a_value_may_spend` is an allowance already spent, which the same pattern asked for first would not have met. Present exactly where `unread` is absent, and no reading stopped: the rule was read from end to end.",
+                      "enum": [
+                        "a_machine_larger_than_one_may_be",
+                        "what_composing_a_value_may_spend"
+                      ]
+                    }
+                  }
+                }
               }
             }
           }
